@@ -87,229 +87,10 @@ from nanoarrow._utils cimport (
     Error
 )
 
+from typing import Iterable, Tuple, Union
+
 from nanoarrow import _repr_utils
 from nanoarrow._device import DEVICE_CPU, DeviceType
-
-
-cdef class CArray:
-    """Low-level ArrowArray wrapper
-
-    This object is a literal wrapper around a read-only ArrowArray. It provides field accessors
-    that return Python objects and handles the C Data interface lifecycle (i.e., initialized
-    ArrowArray structures are always released).
-
-    See `nanoarrow.c_array()` for construction and usage examples.
-    """
-
-    @staticmethod
-    def allocate(CSchema schema):
-        cdef ArrowArray* c_array_out
-        base = alloc_c_array(&c_array_out)
-        return CArray(base, <uintptr_t>c_array_out, schema)
-
-    def __cinit__(self, object base, uintptr_t addr, CSchema schema):
-        self._base = base
-        self._ptr = <ArrowArray*>addr
-        self._schema = schema
-        self._device_type = ARROW_DEVICE_CPU
-        self._device_id = 0
-
-    cdef _set_device(self, ArrowDeviceType device_type, int64_t device_id):
-        self._device_type = device_type
-        self._device_id = device_id
-
-    @staticmethod
-    def _import_from_c_capsule(schema_capsule, array_capsule):
-        """
-        Import from a ArrowSchema and ArrowArray PyCapsule tuple.
-
-        Parameters
-        ----------
-        schema_capsule : PyCapsule
-            A valid PyCapsule with name 'arrow_schema' containing an
-            ArrowSchema pointer.
-        array_capsule : PyCapsule
-            A valid PyCapsule with name 'arrow_array' containing an
-            ArrowArray pointer.
-        """
-        cdef:
-            CSchema out_schema
-            CArray out
-
-        out_schema = CSchema._import_from_c_capsule(schema_capsule)
-        out = CArray(
-            array_capsule,
-            <uintptr_t>PyCapsule_GetPointer(array_capsule, 'arrow_array'),
-            out_schema
-        )
-
-        return out
-
-    def __getitem__(self, k):
-        self._assert_valid()
-
-        if not isinstance(k, slice):
-            raise TypeError(
-                f"Can't subset CArray with object of type {type(k).__name__}")
-
-        if k.step is not None:
-            raise ValueError("Can't slice CArray with step")
-
-        cdef int64_t start = 0 if k.start is None else k.start
-        cdef int64_t stop = self._ptr.length if k.stop is None else k.stop
-        if start < 0:
-            start = self._ptr.length + start
-        if stop < 0:
-            stop = self._ptr.length + stop
-
-        if start > self._ptr.length or stop > self._ptr.length or stop < start:
-            raise IndexError(
-                f"{k} does not describe a valid slice of CArray "
-                f"with length {self._ptr.length}"
-            )
-
-        cdef ArrowArray* c_array_out
-        base = alloc_c_array(&c_array_out)
-        c_array_shallow_copy(self._base, self._ptr, c_array_out)
-
-        c_array_out.offset = c_array_out.offset + start
-        c_array_out.length = stop - start
-        cdef CArray out = CArray(base, <uintptr_t>c_array_out, self._schema)
-        out._set_device(self._device_type, self._device_id)
-        return out
-
-    def __arrow_c_array__(self, requested_schema=None):
-        """
-        Get a pair of PyCapsules containing a C ArrowArray representation of the object.
-
-        Parameters
-        ----------
-        requested_schema : PyCapsule | None
-            A PyCapsule containing a C ArrowSchema representation of a requested
-            schema. Not supported.
-
-        Returns
-        -------
-        Tuple[PyCapsule, PyCapsule]
-            A pair of PyCapsules containing a C ArrowSchema and ArrowArray,
-            respectively.
-        """
-        self._assert_valid()
-
-        if self._device_type != ARROW_DEVICE_CPU:
-            raise ValueError(
-                "Can't invoke __arrow_c_array__ on non-CPU array "
-                f"with device_type {self._device_type}")
-
-        if requested_schema is not None:
-            raise NotImplementedError("requested_schema")
-
-        # Export a shallow copy pointing to the same data in a way
-        # that ensures this object stays valid.
-
-        # TODO optimize this to export a version where children are reference
-        # counted and can be released separately
-        cdef ArrowArray* c_array_out
-        array_capsule = alloc_c_array(&c_array_out)
-        c_array_shallow_copy(self._base, self._ptr, c_array_out)
-
-        return self._schema.__arrow_c_schema__(), array_capsule
-
-    def _addr(self):
-        return <uintptr_t>self._ptr
-
-    def is_valid(self):
-        return self._ptr != NULL and self._ptr.release != NULL
-
-    def _assert_valid(self):
-        if self._ptr == NULL:
-            raise RuntimeError("CArray is NULL")
-        if self._ptr.release == NULL:
-            raise RuntimeError("CArray is released")
-
-    def view(self):
-        device = Device.resolve(self._device_type, self._device_id)
-        return CArrayView.from_array(self, device)
-
-    @property
-    def schema(self):
-        return self._schema
-
-    @property
-    def device_type(self):
-        return DeviceType(self._device_type)
-
-    @property
-    def device_type_id(self):
-        return self._device_type
-
-    @property
-    def device_id(self):
-        return self._device_id
-
-    def __len__(self):
-        self._assert_valid()
-        return self._ptr.length
-
-    @property
-    def length(self):
-        return len(self)
-
-    @property
-    def offset(self):
-        self._assert_valid()
-        return self._ptr.offset
-
-    @property
-    def null_count(self):
-        self._assert_valid()
-        return self._ptr.null_count
-
-    @property
-    def n_buffers(self):
-        self._assert_valid()
-        return self._ptr.n_buffers
-
-    @property
-    def buffers(self):
-        self._assert_valid()
-        return tuple(<uintptr_t>self._ptr.buffers[i] for i in range(self._ptr.n_buffers))
-
-    @property
-    def n_children(self):
-        self._assert_valid()
-        return self._ptr.n_children
-
-    def child(self, int64_t i):
-        self._assert_valid()
-        if i < 0 or i >= self._ptr.n_children:
-            raise IndexError(f"{i} out of range [0, {self._ptr.n_children})")
-        cdef CArray out = CArray(
-            self._base,
-            <uintptr_t>self._ptr.children[i],
-            self._schema.child(i)
-        )
-        out._set_device(self._device_type, self._device_id)
-        return out
-
-    @property
-    def children(self):
-        for i in range(self.n_children):
-            yield self.child(i)
-
-    @property
-    def dictionary(self):
-        self._assert_valid()
-        cdef CArray out
-        if self._ptr.dictionary != NULL:
-            out = CArray(self, <uintptr_t>self._ptr.dictionary, self._schema.dictionary)
-            out._set_device(self._device_type, self._device_id)
-            return out
-        else:
-            return None
-
-    def __repr__(self):
-        return _repr_utils.array_repr(self)
 
 
 cdef class CArrayView:
@@ -484,7 +265,236 @@ cdef class CArrayView:
         return out._set_array(array, device)
 
 
+cdef class CArray:
+    """Low-level ArrowArray wrapper
+
+    This object is a literal wrapper around a read-only ArrowArray. It provides field accessors
+    that return Python objects and handles the C Data interface lifecycle (i.e., initialized
+    ArrowArray structures are always released).
+
+    See `nanoarrow.c_array()` for construction and usage examples.
+    """
+
+    @staticmethod
+    def allocate(CSchema schema) -> CArray:
+        """Allocate a released ArrowArray"""
+        cdef ArrowArray* c_array_out
+        base = alloc_c_array(&c_array_out)
+        return CArray(base, <uintptr_t>c_array_out, schema)
+
+    def __cinit__(self, object base, uintptr_t addr, CSchema schema):
+        self._base = base
+        self._ptr = <ArrowArray*>addr
+        self._schema = schema
+        self._device_type = ARROW_DEVICE_CPU
+        self._device_id = 0
+
+    cdef _set_device(self, ArrowDeviceType device_type, int64_t device_id):
+        self._device_type = device_type
+        self._device_id = device_id
+
+    @staticmethod
+    def _import_from_c_capsule(schema_capsule, array_capsule) -> CArray:
+        """
+        Import from a ArrowSchema and ArrowArray PyCapsule tuple.
+
+        Parameters
+        ----------
+        schema_capsule : PyCapsule
+            A valid PyCapsule with name 'arrow_schema' containing an
+            ArrowSchema pointer.
+        array_capsule : PyCapsule
+            A valid PyCapsule with name 'arrow_array' containing an
+            ArrowArray pointer.
+        """
+        cdef:
+            CSchema out_schema
+            CArray out
+
+        out_schema = CSchema._import_from_c_capsule(schema_capsule)
+        out = CArray(
+            array_capsule,
+            <uintptr_t>PyCapsule_GetPointer(array_capsule, 'arrow_array'),
+            out_schema
+        )
+
+        return out
+
+    def __getitem__(self, k) -> CArray:
+        self._assert_valid()
+
+        if not isinstance(k, slice):
+            raise TypeError(
+                f"Can't subset CArray with object of type {type(k).__name__}")
+
+        if k.step is not None:
+            raise ValueError("Can't slice CArray with step")
+
+        cdef int64_t start = 0 if k.start is None else k.start
+        cdef int64_t stop = self._ptr.length if k.stop is None else k.stop
+        if start < 0:
+            start = self._ptr.length + start
+        if stop < 0:
+            stop = self._ptr.length + stop
+
+        if start > self._ptr.length or stop > self._ptr.length or stop < start:
+            raise IndexError(
+                f"{k} does not describe a valid slice of CArray "
+                f"with length {self._ptr.length}"
+            )
+
+        cdef ArrowArray* c_array_out
+        base = alloc_c_array(&c_array_out)
+        c_array_shallow_copy(self._base, self._ptr, c_array_out)
+
+        c_array_out.offset = c_array_out.offset + start
+        c_array_out.length = stop - start
+        cdef CArray out = CArray(base, <uintptr_t>c_array_out, self._schema)
+        out._set_device(self._device_type, self._device_id)
+        return out
+
+    def __arrow_c_array__(self, requested_schema=None):
+        """
+        Get a pair of PyCapsules containing a C ArrowArray representation of the object.
+
+        Parameters
+        ----------
+        requested_schema : PyCapsule | None
+            A PyCapsule containing a C ArrowSchema representation of a requested
+            schema. Not supported.
+
+        Returns
+        -------
+        Tuple[PyCapsule, PyCapsule]
+            A pair of PyCapsules containing a C ArrowSchema and ArrowArray,
+            respectively.
+        """
+        self._assert_valid()
+
+        if self._device_type != ARROW_DEVICE_CPU:
+            raise ValueError(
+                "Can't invoke __arrow_c_array__ on non-CPU array "
+                f"with device_type {self._device_type}")
+
+        if requested_schema is not None:
+            raise NotImplementedError("requested_schema")
+
+        # Export a shallow copy pointing to the same data in a way
+        # that ensures this object stays valid.
+
+        # TODO optimize this to export a version where children are reference
+        # counted and can be released separately
+        cdef ArrowArray* c_array_out
+        array_capsule = alloc_c_array(&c_array_out)
+        c_array_shallow_copy(self._base, self._ptr, c_array_out)
+
+        return self._schema.__arrow_c_schema__(), array_capsule
+
+    def _addr(self) -> int:
+        return <uintptr_t>self._ptr
+
+    def is_valid(self) -> bool:
+        """Check for a non-null and non-released underlying ArrowArray"""
+        return self._ptr != NULL and self._ptr.release != NULL
+
+    def _assert_valid(self):
+        if self._ptr == NULL:
+            raise RuntimeError("CArray is NULL")
+        if self._ptr.release == NULL:
+            raise RuntimeError("CArray is released")
+
+    def view(self) -> CArrayView:
+        """Allocate a :class:`CArrayView` to access the buffers of this array"""
+        device = Device.resolve(self._device_type, self._device_id)
+        return CArrayView.from_array(self, device)
+
+    @property
+    def schema(self) -> CSchema:
+        return self._schema
+
+    @property
+    def device_type(self) -> DeviceType:
+        return DeviceType(self._device_type)
+
+    @property
+    def device_type_id(self) -> int:
+        return self._device_type
+
+    @property
+    def device_id(self) -> int:
+        return self._device_id
+
+    def __len__(self) -> int:
+        self._assert_valid()
+        return self._ptr.length
+
+    @property
+    def length(self) -> int:
+        return len(self)
+
+    @property
+    def offset(self) -> int:
+        self._assert_valid()
+        return self._ptr.offset
+
+    @property
+    def null_count(self) -> int:
+        self._assert_valid()
+        return self._ptr.null_count
+
+    @property
+    def n_buffers(self) -> int:
+        self._assert_valid()
+        return self._ptr.n_buffers
+
+    @property
+    def buffers(self) -> Tuple[int, ...]:
+        self._assert_valid()
+        return tuple(<uintptr_t>self._ptr.buffers[i] for i in range(self._ptr.n_buffers))
+
+    @property
+    def n_children(self) -> int:
+        self._assert_valid()
+        return self._ptr.n_children
+
+    def child(self, int64_t i):
+        self._assert_valid()
+        if i < 0 or i >= self._ptr.n_children:
+            raise IndexError(f"{i} out of range [0, {self._ptr.n_children})")
+        cdef CArray out = CArray(
+            self._base,
+            <uintptr_t>self._ptr.children[i],
+            self._schema.child(i)
+        )
+        out._set_device(self._device_type, self._device_id)
+        return out
+
+    @property
+    def children(self) -> Iterable[CArray]:
+        for i in range(self.n_children):
+            yield self.child(i)
+
+    @property
+    def dictionary(self) -> Union[CArray, None]:
+        self._assert_valid()
+        cdef CArray out
+        if self._ptr.dictionary != NULL:
+            out = CArray(self, <uintptr_t>self._ptr.dictionary, self._schema.dictionary)
+            out._set_device(self._device_type, self._device_id)
+            return out
+        else:
+            return None
+
+    def __repr__(self) -> str:
+        return _repr_utils.array_repr(self)
+
+
 cdef class CArrayBuilder:
+    """Helper for constructing an ArrowArray
+
+    The primary function of this class is to wrap the nanoarrow C library calls
+    that build up the components of an ArrowArray.
+    """
     cdef CArray c_array
     cdef ArrowArray* _ptr
     cdef bint _can_validate
@@ -496,15 +506,21 @@ cdef class CArrayBuilder:
 
     @staticmethod
     def allocate():
+        """Create a CArrayBuilder
+
+        Allocates memory for an ArrowArray and populates it with nanoarrow's
+        ArrowArray private_data/release callback implementation. This should
+        usually be followed by :meth:`init_from_type` or :meth:`init_from_schema`.
+        """
         return CArrayBuilder(CArray.allocate(CSchema.allocate()))
 
-    def is_empty(self):
+    def is_empty(self) -> bool:
         if self._ptr.release == NULL:
             raise RuntimeError("CArrayBuilder is not initialized")
 
         return self._ptr.length == 0
 
-    def init_from_type(self, int type_id):
+    def init_from_type(self, int type_id) -> CArrayBuilder:
         if self._ptr.release != NULL:
             raise RuntimeError("CArrayBuilder is already initialized")
 
@@ -516,7 +532,7 @@ cdef class CArrayBuilder:
 
         return self
 
-    def init_from_schema(self, CSchema schema):
+    def init_from_schema(self, CSchema schema) -> CArrayBuilder:
         if self._ptr.release != NULL:
             raise RuntimeError("CArrayBuilder is already initialized")
 
@@ -527,12 +543,12 @@ cdef class CArrayBuilder:
         self.c_array._schema = schema
         return self
 
-    def start_appending(self):
+    def start_appending(self) -> CArrayBuilder:
         cdef int code = ArrowArrayStartAppending(self._ptr)
         Error.raise_error_not_ok("ArrowArrayStartAppending()", code)
         return self
 
-    def append_strings(self, obj):
+    def append_strings(self, obj: Iterable[Union[str, None]]) -> CArrayBuilder:
         cdef int code
         cdef Py_ssize_t item_utf8_size
         cdef ArrowStringView item
@@ -554,7 +570,7 @@ cdef class CArrayBuilder:
 
         return self
 
-    def append_bytes(self, obj):
+    def append_bytes(self, obj: Iterable[Union[str, None]]) -> CArrayBuilder:
         cdef Py_buffer buffer
         cdef ArrowBufferView item
 
@@ -579,22 +595,23 @@ cdef class CArrayBuilder:
             if code != NANOARROW_OK:
                 Error.raise_error(f"append bytes item {py_item}", code)
 
-    def set_offset(self, int64_t offset):
+    def set_offset(self, int64_t offset) -> CArrayBuilder:
         self.c_array._assert_valid()
         self._ptr.offset = offset
         return self
 
-    def set_length(self, int64_t length):
+    def set_length(self, int64_t length) -> CArrayBuilder:
         self.c_array._assert_valid()
         self._ptr.length = length
         return self
 
-    def set_null_count(self, int64_t null_count):
+    def set_null_count(self, int64_t null_count) -> CArrayBuilder:
         self.c_array._assert_valid()
         self._ptr.null_count = null_count
         return self
 
-    def resolve_null_count(self):
+    def resolve_null_count(self) -> CArrayBuilder:
+        """Ensure the output null count is synchronized with existing buffers"""
         self.c_array._assert_valid()
 
         # This doesn't apply to unions. We currently don't have a schema view
@@ -632,8 +649,10 @@ cdef class CArrayBuilder:
         self._ptr.null_count = self._ptr.length - count
         return self
 
-    def set_buffer(self, int64_t i, CBuffer buffer, move=False):
-        """Sets a buffer of this ArrowArray such the pointer at array->buffers[i] is
+    def set_buffer(self, int64_t i, CBuffer buffer, move=False) -> CArrayBuilder:
+        """Set an ArrowArray buffer
+
+        Sets a buffer of this ArrowArray such the pointer at array->buffers[i] is
         equal to buffer->data and such that the buffer's lifcycle is managed by
         the array. If move is True, the input Python object that previously wrapped
         the ArrowBuffer will be invalidated, which is usually the desired behaviour
@@ -656,7 +675,7 @@ cdef class CArrayBuilder:
 
         return self
 
-    def set_child(self, int64_t i, CArray c_array, move=False):
+    def set_child(self, int64_t i, CArray c_array, move=False) -> CArrayBuilder:
         cdef CArray child = self.c_array.child(i)
         if child._ptr.release != NULL:
             ArrowArrayRelease(child._ptr)
@@ -673,7 +692,7 @@ cdef class CArrayBuilder:
 
         return self
 
-    def finish(self, validation_level=None):
+    def finish(self, validation_level=None) -> CArray:
         self.c_array._assert_valid()
         cdef ArrowValidationLevel c_validation_level
         cdef Error error = Error()
