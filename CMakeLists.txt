@@ -310,9 +310,10 @@ if(NANOARROW_DEVICE)
 endif()
 
 if(NANOARROW_TESTING)
-  add_library(nanoarrow_testing src/nanoarrow/nanoarrow_testing.cc)
+  add_library(nanoarrow_testing src/nanoarrow/testing/testing.cc)
   target_include_directories(nanoarrow_testing PRIVATE ${CMAKE_CURRENT_LIST_DIR}/src)
-  target_link_libraries(nanoarrow_testing PUBLIC nanoarrow nlohmann_json::nlohmann_json)
+  target_link_libraries(nanoarrow_testing PRIVATE nlohmann_json::nlohmann_json)
+  target_link_libraries(nanoarrow_testing PUBLIC nanoarrow)
 endif()
 
 # Always build integration test if building tests

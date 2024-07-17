@@ -555,6 +555,7 @@ ArrowErrorCode TestingJSONWriter::WriteDataFile(std::ostream& out,
 
   return NANOARROW_OK;
 }
+
 ArrowErrorCode TestingJSONWriter::WriteSchema(std::ostream& out,
                                               const ArrowSchema* schema) {
   // Make sure we have a struct
@@ -587,6 +588,7 @@ ArrowErrorCode TestingJSONWriter::WriteSchema(std::ostream& out,
   out << "}";
   return NANOARROW_OK;
 }
+
 ArrowErrorCode TestingJSONWriter::WriteField(std::ostream& out,
                                              const ArrowSchema* field) {
   ArrowSchemaView view;
@@ -650,12 +652,14 @@ ArrowErrorCode TestingJSONWriter::WriteField(std::ostream& out,
   out << "}";
   return NANOARROW_OK;
 }
+
 ArrowErrorCode TestingJSONWriter::WriteType(std::ostream& out, const ArrowSchema* field) {
   ArrowSchemaView view;
   NANOARROW_RETURN_NOT_OK(ArrowSchemaViewInit(&view, (ArrowSchema*)field, nullptr));
   NANOARROW_RETURN_NOT_OK(WriteTypeFromView(out, &view));
   return NANOARROW_OK;
 }
+
 ArrowErrorCode TestingJSONWriter::WriteMetadata(std::ostream& out, const char* metadata) {
   if (metadata == nullptr) {
     out << "null";
@@ -679,6 +683,7 @@ ArrowErrorCode TestingJSONWriter::WriteMetadata(std::ostream& out, const char* m
   out << "]";
   return NANOARROW_OK;
 }
+
 ArrowErrorCode TestingJSONWriter::WriteBatch(std::ostream& out, const ArrowSchema* schema,
                                              const ArrowArrayView* value) {
   // Make sure we have a struct
@@ -698,6 +703,7 @@ ArrowErrorCode TestingJSONWriter::WriteBatch(std::ostream& out, const ArrowSchem
   out << "}";
   return NANOARROW_OK;
 }
+
 ArrowErrorCode TestingJSONWriter::WriteColumn(std::ostream& out, const ArrowSchema* field,
                                               const ArrowArrayView* value) {
   out << "{";
@@ -803,6 +809,7 @@ ArrowErrorCode TestingJSONWriter::WriteColumn(std::ostream& out, const ArrowSche
 
   return NANOARROW_OK;
 }
+
 ArrowErrorCode TestingJSONWriter::WriteDictionaryBatches(std::ostream& out) {
   std::vector<int32_t> ids = dictionaries_.GetAllIds();
   if (ids.empty()) {
@@ -821,6 +828,7 @@ ArrowErrorCode TestingJSONWriter::WriteDictionaryBatches(std::ostream& out) {
 
   return NANOARROW_OK;
 }
+
 ArrowErrorCode TestingJSONWriter::WriteDictionaryBatch(std::ostream& out,
                                                        int32_t dictionary_id) {
   const internal::Dictionary& dict = dictionaries_.Get(dictionary_id);
@@ -828,6 +836,7 @@ ArrowErrorCode TestingJSONWriter::WriteDictionaryBatch(std::ostream& out,
       << R"(, "columns": [)" << dict.column_json << "]}}";
   return NANOARROW_OK;
 }
+
 ArrowErrorCode TestingJSONWriter::WriteFieldChildren(std::ostream& out,
                                                      const ArrowSchema* field) {
   if (field->n_children == 0) {
@@ -863,6 +872,7 @@ ArrowErrorCode TestingJSONWriter::WriteFieldDictionary(
   out << "}";
   return NANOARROW_OK;
 }
+
 ArrowErrorCode TestingJSONWriter::WriteChildren(std::ostream& out,
                                                 const ArrowSchema* field,
                                                 const ArrowArrayView* value) {
@@ -881,12 +891,12 @@ ArrowErrorCode TestingJSONWriter::WriteChildren(std::ostream& out,
   return NANOARROW_OK;
 }
 
+// Reader utility functions
 namespace {
 
 using nlohmann::json;
 
-static inline ArrowErrorCode Check(bool value, ArrowError* error,
-                                   const std::string& err) {
+ArrowErrorCode Check(bool value, ArrowError* error, const std::string& err) {
   if (value) {
     return NANOARROW_OK;
   } else {
@@ -895,8 +905,8 @@ static inline ArrowErrorCode Check(bool value, ArrowError* error,
   }
 }
 
-static inline ArrowErrorCode PrefixError(ArrowErrorCode value, ArrowError* error,
-                                         const std::string& prefix) {
+ArrowErrorCode PrefixError(ArrowErrorCode value, ArrowError* error,
+                           const std::string& prefix) {
   if (value != NANOARROW_OK && error != nullptr) {
     std::string msg = prefix + error->message;
     ArrowErrorSet(error, "%s", msg.c_str());
@@ -905,8 +915,7 @@ static inline ArrowErrorCode PrefixError(ArrowErrorCode value, ArrowError* error
   return value;
 }
 
-static inline ArrowErrorCode SetTypeInt(ArrowSchema* schema, const json& value,
-                                        ArrowError* error) {
+ArrowErrorCode SetTypeInt(ArrowSchema* schema, const json& value, ArrowError* error) {
   NANOARROW_RETURN_NOT_OK(Check(value.contains("bitWidth"), error,
                                 "Type[name=='int'] missing key 'bitWidth'"));
   NANOARROW_RETURN_NOT_OK(Check(value.contains("isSigned"), error,
@@ -963,8 +972,8 @@ static inline ArrowErrorCode SetTypeInt(ArrowSchema* schema, const json& value,
   return NANOARROW_OK;
 }
 
-static inline ArrowErrorCode SetTypeFloatingPoint(ArrowSchema* schema, const json& value,
-                                                  ArrowError* error) {
+ArrowErrorCode SetTypeFloatingPoint(ArrowSchema* schema, const json& value,
+                                    ArrowError* error) {
   NANOARROW_RETURN_NOT_OK(Check(value.contains("precision"), error,
                                 "Type[name=='floatingpoint'] missing key 'precision'"));
 
@@ -991,9 +1000,8 @@ static inline ArrowErrorCode SetTypeFloatingPoint(ArrowSchema* schema, const jso
   return NANOARROW_OK;
 }
 
-static inline ArrowErrorCode SetTypeFixedSizeBinary(ArrowSchema* schema,
-                                                    const json& value,
-                                                    ArrowError* error) {
+ArrowErrorCode SetTypeFixedSizeBinary(ArrowSchema* schema, const json& value,
+                                      ArrowError* error) {
   NANOARROW_RETURN_NOT_OK(Check(value.contains("byteWidth"), error,
                                 "Type[name=='fixedsizebinary'] missing key 'byteWidth'"));
 
@@ -1009,8 +1017,7 @@ static inline ArrowErrorCode SetTypeFixedSizeBinary(ArrowSchema* schema,
   return NANOARROW_OK;
 }
 
-static inline ArrowErrorCode SetTypeDecimal(ArrowSchema* schema, const json& value,
-                                            ArrowError* error) {
+ArrowErrorCode SetTypeDecimal(ArrowSchema* schema, const json& value, ArrowError* error) {
   NANOARROW_RETURN_NOT_OK(Check(value.contains("precision"), error,
                                 "Type[name=='decimal'] missing key 'precision'"));
   NANOARROW_RETURN_NOT_OK(
@@ -1055,8 +1062,7 @@ static inline ArrowErrorCode SetTypeDecimal(ArrowSchema* schema, const json& val
   return NANOARROW_OK;
 }
 
-static inline ArrowErrorCode SetTypeDate(ArrowSchema* schema, const json& value,
-                                         ArrowError* error) {
+ArrowErrorCode SetTypeDate(ArrowSchema* schema, const json& value, ArrowError* error) {
   NANOARROW_RETURN_NOT_OK(
       Check(value.contains("unit"), error, "Type[name=='date'] missing key 'unit'"));
   const auto& unit = value["unit"];
@@ -1078,8 +1084,8 @@ static inline ArrowErrorCode SetTypeDate(ArrowSchema* schema, const json& value,
   return NANOARROW_OK;
 }
 
-static inline ArrowErrorCode SetTimeUnit(const json& value, ArrowTimeUnit* time_unit,
-                                         ArrowError* error) {
+ArrowErrorCode SetTimeUnit(const json& value, ArrowTimeUnit* time_unit,
+                           ArrowError* error) {
   NANOARROW_RETURN_NOT_OK(
       Check(value.contains("unit"), error, "Time-like type missing key 'unit'"));
   const auto& unit = value["unit"];
@@ -1105,8 +1111,7 @@ static inline ArrowErrorCode SetTimeUnit(const json& value, ArrowTimeUnit* time_
   return NANOARROW_OK;
 }
 
-static inline ArrowErrorCode SetTypeTime(ArrowSchema* schema, const json& value,
-                                         ArrowError* error) {
+ArrowErrorCode SetTypeTime(ArrowSchema* schema, const json& value, ArrowError* error) {
   ArrowTimeUnit time_unit;
   NANOARROW_RETURN_NOT_OK(SetTimeUnit(value, &time_unit, error));
 
@@ -1140,8 +1145,8 @@ static inline ArrowErrorCode SetTypeTime(ArrowSchema* schema, const json& value,
   return NANOARROW_OK;
 }
 
-static inline ArrowErrorCode SetTypeTimestamp(ArrowSchema* schema, const json& value,
-                                              ArrowError* error) {
+ArrowErrorCode SetTypeTimestamp(ArrowSchema* schema, const json& value,
+                                ArrowError* error) {
   ArrowTimeUnit time_unit;
   NANOARROW_RETURN_NOT_OK(SetTimeUnit(value, &time_unit, error));
 
@@ -1161,8 +1166,8 @@ static inline ArrowErrorCode SetTypeTimestamp(ArrowSchema* schema, const json& v
   return NANOARROW_OK;
 }
 
-static inline ArrowErrorCode SetTypeDuration(ArrowSchema* schema, const json& value,
-                                             ArrowError* error) {
+ArrowErrorCode SetTypeDuration(ArrowSchema* schema, const json& value,
+                               ArrowError* error) {
   ArrowTimeUnit time_unit;
   NANOARROW_RETURN_NOT_OK(SetTimeUnit(value, &time_unit, error));
 
@@ -1173,8 +1178,8 @@ static inline ArrowErrorCode SetTypeDuration(ArrowSchema* schema, const json& va
   return NANOARROW_OK;
 }
 
-static inline ArrowErrorCode SetTypeInterval(ArrowSchema* schema, const json& value,
-                                             ArrowError* error) {
+ArrowErrorCode SetTypeInterval(ArrowSchema* schema, const json& value,
+                               ArrowError* error) {
   NANOARROW_RETURN_NOT_OK(
       Check(value.contains("unit"), error, "Type[name=='interval'] missing key 'unit'"));
   const auto& unit = value["unit"];
@@ -1201,8 +1206,7 @@ static inline ArrowErrorCode SetTypeInterval(ArrowSchema* schema, const json& va
   return NANOARROW_OK;
 }
 
-static inline ArrowErrorCode SetTypeMap(ArrowSchema* schema, const json& value,
-                                        ArrowError* error) {
+ArrowErrorCode SetTypeMap(ArrowSchema* schema, const json& value, ArrowError* error) {
   NANOARROW_RETURN_NOT_OK(Check(value.contains("keysSorted"), error,
                                 "Type[name=='map'] missing key 'keysSorted'"));
 
@@ -1220,8 +1224,8 @@ static inline ArrowErrorCode SetTypeMap(ArrowSchema* schema, const json& value,
   return NANOARROW_OK;
 }
 
-static inline ArrowErrorCode SetTypeFixedSizeList(ArrowSchema* schema, const json& value,
-                                                  ArrowError* error) {
+ArrowErrorCode SetTypeFixedSizeList(ArrowSchema* schema, const json& value,
+                                    ArrowError* error) {
   NANOARROW_RETURN_NOT_OK(Check(value.contains("listSize"), error,
                                 "Type[name=='fixedsizelist'] missing key 'listSize'"));
 
@@ -1236,8 +1240,7 @@ static inline ArrowErrorCode SetTypeFixedSizeList(ArrowSchema* schema, const jso
   return NANOARROW_OK;
 }
 
-static inline ArrowErrorCode SetTypeUnion(ArrowSchema* schema, const json& value,
-                                          ArrowError* error) {
+ArrowErrorCode SetTypeUnion(ArrowSchema* schema, const json& value, ArrowError* error) {
   NANOARROW_RETURN_NOT_OK(
       Check(value.contains("mode"), error, "Type[name=='union'] missing key 'mode'"));
   NANOARROW_RETURN_NOT_OK(Check(value.contains("typeIds"), error,
@@ -1283,8 +1286,7 @@ static inline ArrowErrorCode SetTypeUnion(ArrowSchema* schema, const json& value
   return NANOARROW_OK;
 }
 
-static inline ArrowErrorCode SetType(ArrowSchema* schema, const json& value,
-                                     ArrowError* error) {
+ArrowErrorCode SetType(ArrowSchema* schema, const json& value, ArrowError* error) {
   NANOARROW_RETURN_NOT_OK(Check(value.is_object(), error, "Type must be object"));
   NANOARROW_RETURN_NOT_OK(
       Check(value.contains("name"), error, "Type missing key 'name'"));
@@ -1349,8 +1351,8 @@ static inline ArrowErrorCode SetType(ArrowSchema* schema, const json& value,
   return NANOARROW_OK;
 }
 
-static inline ArrowErrorCode SetDictionary(ArrowSchema* schema, const json& value,
-                                           int32_t* dictionary_id, ArrowError* error) {
+ArrowErrorCode SetDictionary(ArrowSchema* schema, const json& value,
+                             int32_t* dictionary_id, ArrowError* error) {
   NANOARROW_RETURN_NOT_OK(Check(value.is_object(), error, "Dictionary must be object"));
   NANOARROW_RETURN_NOT_OK(
       Check(value.contains("id"), error, "Dictionary missing key 'id'"));
@@ -1380,8 +1382,7 @@ static inline ArrowErrorCode SetDictionary(ArrowSchema* schema, const json& valu
   return NANOARROW_OK;
 }
 
-static inline ArrowErrorCode SetMetadata(ArrowSchema* schema, const json& value,
-                                         ArrowError* error) {
+ArrowErrorCode SetMetadata(ArrowSchema* schema, const json& value, ArrowError* error) {
   NANOARROW_RETURN_NOT_OK(Check(value.is_null() || value.is_array(), error,
                                 "Field or Schema metadata must be null or array"));
   if (value.is_null()) {
@@ -1419,13 +1420,11 @@ static inline ArrowErrorCode SetMetadata(ArrowSchema* schema, const json& value,
   return NANOARROW_OK;
 }
 
-static inline ArrowErrorCode SetField(ArrowSchema* schema, const json& value,
-                                      internal::DictionaryContext& dictionaries,
-                                      ArrowError* error);
+ArrowErrorCode SetField(ArrowSchema* schema, const json& value,
+                        internal::DictionaryContext& dictionaries, ArrowError* error);
 
-static inline ArrowErrorCode SetSchema(ArrowSchema* schema, const json& value,
-                                       internal::DictionaryContext& dictionaries,
-                                       ArrowError* error) {
+ArrowErrorCode SetSchema(ArrowSchema* schema, const json& value,
+                         internal::DictionaryContext& dictionaries, ArrowError* error) {
   NANOARROW_RETURN_NOT_OK(
       Check(value.is_object(), error, "Expected Schema to be a JSON object"));
   NANOARROW_RETURN_NOT_OK(
@@ -1456,9 +1455,8 @@ static inline ArrowErrorCode SetSchema(ArrowSchema* schema, const json& value,
   return NANOARROW_OK;
 }
 
-static inline ArrowErrorCode SetField(ArrowSchema* schema, const json& value,
-                                      internal::DictionaryContext& dictionaries,
-                                      ArrowError* error) {
+ArrowErrorCode SetField(ArrowSchema* schema, const json& value,
+                        internal::DictionaryContext& dictionaries, ArrowError* error) {
   NANOARROW_RETURN_NOT_OK(
       Check(value.is_object(), error, "Expected Field to be a JSON object"));
   ArrowSchemaInit(schema);
@@ -1547,8 +1545,8 @@ static inline ArrowErrorCode SetField(ArrowSchema* schema, const json& value,
 
 namespace {
 
-static inline ArrowErrorCode SetBufferBitmap(const json& value, ArrowBitmap* bitmap,
-                                             ArrowError* error) {
+ArrowErrorCode SetBufferBitmap(const json& value, ArrowBitmap* bitmap,
+                               ArrowError* error) {
   NANOARROW_RETURN_NOT_OK(Check(value.is_array(), error, "bitmap buffer must be array"));
 
   // Reserving with the exact length ensures that the last bits are always zeroed.
@@ -1679,8 +1677,8 @@ ArrowErrorCode SetBufferString(const json& value, ArrowBuffer* offsets, ArrowBuf
   return NANOARROW_OK;
 }
 
-static inline ArrowErrorCode AppendBinaryElement(const json& item, ArrowBuffer* data,
-                                                 ArrowError* error) {
+ArrowErrorCode AppendBinaryElement(const json& item, ArrowBuffer* data,
+                                   ArrowError* error) {
   NANOARROW_RETURN_NOT_OK(
       Check(item.is_string(), error, "binary data buffer item must be string"));
   auto item_str = item.get<std::string>();
@@ -1732,10 +1730,8 @@ ArrowErrorCode SetBufferBinary(const json& value, ArrowBuffer* offsets, ArrowBuf
   return NANOARROW_OK;
 }
 
-static inline ArrowErrorCode SetBufferFixedSizeBinary(const json& value,
-                                                      ArrowBuffer* data,
-                                                      int64_t fixed_size,
-                                                      ArrowError* error) {
+ArrowErrorCode SetBufferFixedSizeBinary(const json& value, ArrowBuffer* data,
+                                        int64_t fixed_size, ArrowError* error) {
   NANOARROW_RETURN_NOT_OK(
       Check(value.is_array(), error, "binary data buffer must be array"));
 
@@ -1755,9 +1751,8 @@ static inline ArrowErrorCode SetBufferFixedSizeBinary(const json& value,
   return NANOARROW_OK;
 }
 
-static inline ArrowErrorCode SetBufferIntervalDayTime(const json& value,
-                                                      ArrowBuffer* buffer,
-                                                      ArrowError* error) {
+ArrowErrorCode SetBufferIntervalDayTime(const json& value, ArrowBuffer* buffer,
+                                        ArrowError* error) {
   NANOARROW_RETURN_NOT_OK(
       Check(value.is_array(), error, "interval_day_time buffer must be array"));
 
@@ -1778,9 +1773,8 @@ static inline ArrowErrorCode SetBufferIntervalDayTime(const json& value,
   return NANOARROW_OK;
 }
 
-static inline ArrowErrorCode SetBufferIntervalMonthDayNano(const json& value,
-                                                           ArrowBuffer* buffer,
-                                                           ArrowError* error) {
+ArrowErrorCode SetBufferIntervalMonthDayNano(const json& value, ArrowBuffer* buffer,
+                                             ArrowError* error) {
   NANOARROW_RETURN_NOT_OK(
       Check(value.is_array(), error, "interval buffer must be array"));
 
@@ -1803,8 +1797,8 @@ static inline ArrowErrorCode SetBufferIntervalMonthDayNano(const json& value,
   return NANOARROW_OK;
 }
 
-static inline ArrowErrorCode SetBufferDecimal(const json& value, ArrowBuffer* buffer,
-                                              int bitwidth, ArrowError* error) {
+ArrowErrorCode SetBufferDecimal(const json& value, ArrowBuffer* buffer, int bitwidth,
+                                ArrowError* error) {
   NANOARROW_RETURN_NOT_OK(Check(value.is_array(), error, "decimal buffer must be array"));
 
   ArrowDecimal decimal;
@@ -1827,10 +1821,8 @@ static inline ArrowErrorCode SetBufferDecimal(const json& value, ArrowBuffer* bu
   return NANOARROW_OK;
 }
 
-static inline ArrowErrorCode SetArrayColumnBuffers(const json& value,
-                                                   ArrowArrayView* array_view,
-                                                   ArrowArray* array, int buffer_i,
-                                                   ArrowError* error) {
+ArrowErrorCode SetArrayColumnBuffers(const json& value, ArrowArrayView* array_view,
+                                     ArrowArray* array, int buffer_i, ArrowError* error) {
   ArrowBuffer* buffer = ArrowArrayBuffer(array, buffer_i);
 
   switch (array_view->layout.buffer_type[buffer_i]) {
@@ -1942,11 +1934,11 @@ static inline ArrowErrorCode SetArrayColumnBuffers(const json& value,
   return NANOARROW_OK;
 }
 
-static inline ArrowErrorCode SetArrayColumn(const json& value, const ArrowSchema* schema,
-                                            ArrowArrayView* array_view, ArrowArray* array,
-                                            internal::DictionaryContext& dictionaries,
-                                            ArrowError* error,
-                                            const std::string& parent_error_prefix = "") {
+ArrowErrorCode SetArrayColumn(const json& value, const ArrowSchema* schema,
+                              ArrowArrayView* array_view, ArrowArray* array,
+                              internal::DictionaryContext& dictionaries,
+                              ArrowError* error,
+                              const std::string& parent_error_prefix = "") {
   NANOARROW_RETURN_NOT_OK(
       Check(value.is_object(), error, "Expected Column to be a JSON object"));
 
@@ -2312,5 +2304,6 @@ void TestingJSONReader::SetArrayAllocatorRecursive(ArrowArray* array) {
     SetArrayAllocatorRecursive(array->dictionary);
   }
 }
+
 }  // namespace testing
 }  // namespace nanoarrow
