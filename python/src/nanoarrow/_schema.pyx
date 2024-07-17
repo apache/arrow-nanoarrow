@@ -37,6 +37,7 @@ from nanoarrow_c cimport (
     ArrowSchemaAllocateDictionary,
     ArrowSchemaDeepCopy,
     ArrowSchemaInit,
+    ArrowSchemaMove,
     ArrowSchemaRelease,
     ArrowSchemaSetMetadata,
     ArrowSchemaSetType,
@@ -64,7 +65,7 @@ from nanoarrow cimport _types
 from nanoarrow._buffer cimport CBuffer
 from nanoarrow._utils cimport alloc_c_schema, Error
 
-from typing import Iterable, List, Tuple, Union
+from typing import Iterable, List, Mapping, Tuple, Union
 
 from nanoarrow import _repr_utils
 
@@ -440,12 +441,12 @@ cdef class CSchema:
         return CSchema(self._base, <uintptr_t>self._ptr.children[i])
 
     @property
-    def children(self) -> Iterable["CSchema"]:
+    def children(self) -> Iterable[CSchema]:
         for i in range(self.n_children):
             yield self.child(i)
 
     @property
-    def dictionary(self) -> Union["CSchema", None]:
+    def dictionary(self) -> Union[CSchema, None]:
         self._assert_valid()
         if self._ptr.dictionary != NULL:
             return CSchema(self, <uintptr_t>self._ptr.dictionary)
@@ -699,6 +700,11 @@ cdef class CSchemaView:
 
 
 cdef class CSchemaBuilder:
+    """Helper for constructing an ArrowSchema
+
+    The primary function of this class is to wrap the nanoarrow C library calls
+    that build up the components of an ArrowSchema.
+    """
 
     def __cinit__(self, CSchema schema):
         self.c_schema = schema
@@ -707,10 +713,17 @@ cdef class CSchemaBuilder:
             ArrowSchemaInit(self._ptr)
 
     @staticmethod
-    def allocate():
+    def allocate() -> CSchemaBuilder:
+        """Create a CSchemaBuilder
+
+        Allocates memory for an ArrowSchema and populates it with nanoarrow's
+        ArrowSchema private_data/release callback implementation. This should
+        usually be followed by :meth:`set_type` or :meth:`set_format`.
+        """
         return CSchemaBuilder(CSchema.allocate())
 
-    def append_metadata(self, metadata):
+    def append_metadata(self, metadata: Mapping[bytes, bytes]) -> CSchemaBuilder:
+        """Append key/value metadata"""
         cdef CBuffer buffer = CBuffer.empty()
 
         cdef const char* existing_metadata = self.c_schema._ptr.metadata
@@ -741,10 +754,10 @@ cdef class CSchemaBuilder:
 
         return self
 
-    def child(self, int64_t i):
+    def child(self, int64_t i) -> CSchemaBuilder:
         return CSchemaBuilder(self.c_schema.child(i))
 
-    def set_type(self, int type_id):
+    def set_type(self, int type_id) -> CSchemaBuilder:
         self.c_schema._assert_valid()
 
         cdef int code = ArrowSchemaSetType(self._ptr, <ArrowType>type_id)
@@ -752,13 +765,13 @@ cdef class CSchemaBuilder:
 
         return self
 
-    def set_type_decimal(self, int type_id, int precision, int scale):
+    def set_type_decimal(self, int type_id, int precision, int scale) -> CSchemaBuilder:
         self.c_schema._assert_valid()
 
         cdef int code = ArrowSchemaSetTypeDecimal(self._ptr, <ArrowType>type_id, precision, scale)
         Error.raise_error_not_ok("ArrowSchemaSetType()", code)
 
-    def set_type_fixed_size(self, int type_id, int fixed_size):
+    def set_type_fixed_size(self, int type_id, int fixed_size) -> CSchemaBuilder:
         self.c_schema._assert_valid()
 
         cdef int code = ArrowSchemaSetTypeFixedSize(self._ptr, <ArrowType>type_id, fixed_size)
@@ -766,7 +779,7 @@ cdef class CSchemaBuilder:
 
         return self
 
-    def set_type_date_time(self, int type_id, int time_unit, timezone):
+    def set_type_date_time(self, int type_id, int time_unit, timezone) -> CSchemaBuilder:
         self.c_schema._assert_valid()
 
         cdef int code
@@ -780,7 +793,7 @@ cdef class CSchemaBuilder:
 
         return self
 
-    def set_format(self, str format):
+    def set_format(self, str format) -> CSchemaBuilder:
         self.c_schema._assert_valid()
 
         cdef int code = ArrowSchemaSetFormat(self._ptr, format.encode("UTF-8"))
@@ -788,7 +801,7 @@ cdef class CSchemaBuilder:
 
         return self
 
-    def set_name(self, name):
+    def set_name(self, name) -> CSchemaBuilder:
         self.c_schema._assert_valid()
 
         cdef int code
@@ -802,7 +815,7 @@ cdef class CSchemaBuilder:
 
         return self
 
-    def allocate_children(self, int n):
+    def allocate_children(self, int n) -> CSchemaBuilder:
         self.c_schema._assert_valid()
 
         cdef int code = ArrowSchemaAllocateChildren(self._ptr, n)
@@ -810,7 +823,7 @@ cdef class CSchemaBuilder:
 
         return self
 
-    def set_child(self, int64_t i, name, CSchema child_src):
+    def set_child(self, int64_t i, name, CSchema child_src) -> CSchemaBuilder:
         self.c_schema._assert_valid()
 
         if i < 0 or i >= self._ptr.n_children:
@@ -829,7 +842,7 @@ cdef class CSchemaBuilder:
 
         return self
 
-    def set_dictionary(self, CSchema dictionary):
+    def set_dictionary(self, CSchema dictionary) -> CSchemaBuilder:
         self.c_schema._assert_valid()
 
         cdef int code
@@ -845,11 +858,11 @@ cdef class CSchemaBuilder:
 
         return self
 
-    def set_flags(self, flags):
+    def set_flags(self, flags) -> CSchemaBuilder:
         self._ptr.flags = flags
         return self
 
-    def set_nullable(self, nullable):
+    def set_nullable(self, nullable) -> CSchemaBuilder:
         if nullable:
             self._ptr.flags = self._ptr.flags | ARROW_FLAG_NULLABLE
         else:
@@ -857,7 +870,7 @@ cdef class CSchemaBuilder:
 
         return self
 
-    def set_dictionary_ordered(self, dictionary_ordered):
+    def set_dictionary_ordered(self, dictionary_ordered) -> CSchemaBuilder:
         if dictionary_ordered:
             self._ptr.flags = self._ptr.flags | ARROW_FLAG_DICTIONARY_ORDERED
         else:
@@ -865,10 +878,12 @@ cdef class CSchemaBuilder:
 
         return self
 
-    def validate(self):
+    def validate(self) -> CSchemaView:
         return CSchemaView(self.c_schema)
 
-    def finish(self):
+    def finish(self) -> CSchema:
         self.c_schema._assert_valid()
-
-        return self.c_schema
+        cdef CSchema out = CSchema.allocate()
+        ArrowSchemaMove(self.c_schema._ptr, out._ptr)
+        ArrowSchemaInit(self.c_schema._ptr)
+        return out
