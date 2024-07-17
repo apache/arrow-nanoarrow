@@ -46,3 +46,21 @@ services:
       - ./ci/scripts/build-docs.sh:/build-docs.sh
       - ${NANOARROW_DOCKER_SOURCE_DIR}:/nanoarrow
     command: "/bin/bash /build-docs.sh /nanoarrow"
+
+  integration:
+    # Based on an arrow-dev repo image that is amd64 only
+    image: ${REPO}:integration-amd64
+    build:
+      context: .
+      cache_from:
+        - ${REPO}:integration-amd64
+      dockerfile: ci/docker/integration.dockerfile
+    volumes:
+      - ${NANOARROW_DOCKER_SOURCE_DIR}:/arrow-integration/nanoarrow
+    command:
+      ["echo '::group::Build nanoarrow' &&
+        conda run --no-capture-output /arrow-integration/ci/scripts/nanoarrow_build.sh /arrow-integration /build &&
+        echo '::endgroup::' &&
+        echo '::group::Run integration tests' &&
+        conda run --no-capture-output /arrow-integration/ci/scripts/integration_arrow.sh /arrow-integration /build &&
+        echo '::endgroup::'"]
