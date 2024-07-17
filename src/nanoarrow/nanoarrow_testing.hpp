@@ -879,6 +879,512 @@ static inline ArrowErrorCode SetField(ArrowSchema* schema, const json& value,
 
 }  // namespace
 
+namespace {
+
+static inline ArrowErrorCode SetBufferBitmap(const json& value, ArrowBitmap* bitmap,
+                                             ArrowError* error) {
+  NANOARROW_RETURN_NOT_OK(Check(value.is_array(), error, "bitmap buffer must be array"));
+
+  // Reserving with the exact length ensures that the last bits are always zeroed.
+  // This was an assumption made by the C# implementation at the time this was
+  // implemented.
+  NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowBitmapReserve(bitmap, value.size()), error);
+
+  for (const auto& item : value) {
+    // Some example files write bitmaps as [true, false, true] but the documentation
+    // says [1, 0, 1]. Accept both for simplicity.
+    NANOARROW_RETURN_NOT_OK(Check(item.is_boolean() || item.is_number_integer(), error,
+                                  "bitmap item must be bool or integer"));
+    NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowBitmapAppend(bitmap, item.get<int>(), 1),
+                                       error);
+  }
+
+  return NANOARROW_OK;
+}
+
+template <typename T, typename BiggerT = int64_t>
+ArrowErrorCode SetBufferIntItem(const json& item, ArrowBuffer* buffer,
+                                ArrowError* error) {
+  if (item.is_string()) {
+    try {
+      // The JSON parser here can handle up to 2^64 - 1
+      auto item_int = json::parse(item.get<std::string>());
+      return SetBufferIntItem<T, BiggerT>(item_int, buffer, error);
+    } catch (json::parse_error&) {
+      ArrowErrorSet(error,
+                    "integer buffer item encoded as string must parse as integer: %s",
+                    item.dump().c_str());
+      return EINVAL;
+    }
+  }
+
+  NANOARROW_RETURN_NOT_OK(Check(item.is_number_integer(), error,
+                                "integer buffer item must be integer number or string"));
+  NANOARROW_RETURN_NOT_OK(
+      Check(std::numeric_limits<T>::is_signed || item.is_number_unsigned(), error,
+            "expected unsigned integer buffer item but found signed integer '" +
+                item.dump() + "'"));
+
+  auto item_int = item.get<BiggerT>();
+
+  NANOARROW_RETURN_NOT_OK(
+      Check(item_int >= std::numeric_limits<T>::lowest() &&
+                item_int <= std::numeric_limits<T>::max(),
+            error, "integer buffer item '" + item.dump() + "' outside type limits"));
+
+  T buffer_value = static_cast<T>(item_int);
+  NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowBufferAppend(buffer, &buffer_value, sizeof(T)),
+                                     error);
+
+  return NANOARROW_OK;
+}
+
+template <typename T, typename BiggerT = int64_t>
+ArrowErrorCode SetBufferInt(const json& value, ArrowBuffer* buffer, ArrowError* error) {
+  NANOARROW_RETURN_NOT_OK(Check(value.is_array(), error, "int buffer must be array"));
+
+  for (const auto& item : value) {
+    // NANOARROW_RETURN_NOT_OK() interacts poorly with multiple template args
+    ArrowErrorCode result = SetBufferIntItem<T, BiggerT>(item, buffer, error);
+    NANOARROW_RETURN_NOT_OK(result);
+  }
+
+  return NANOARROW_OK;
+}
+
+template <typename T>
+ArrowErrorCode SetBufferFloatingPoint(const json& value, ArrowBuffer* buffer,
+                                      ArrowError* error) {
+  NANOARROW_RETURN_NOT_OK(
+      Check(value.is_array(), error, "floatingpoint buffer must be array"));
+
+  for (const auto& item : value) {
+    NANOARROW_RETURN_NOT_OK(
+        Check(item.is_number(), error, "floatingpoint buffer item must be number"));
+    double item_dbl = item.get<double>();
+
+    NANOARROW_RETURN_NOT_OK(Check(
+        item_dbl >= std::numeric_limits<T>::lowest() &&
+            item_dbl <= std::numeric_limits<T>::max(),
+        error, "floatingpoint buffer item '" + item.dump() + "' outside type limits"));
+
+    T buffer_value = static_cast<T>(item_dbl);
+    NANOARROW_RETURN_NOT_OK_WITH_ERROR(
+        ArrowBufferAppend(buffer, &buffer_value, sizeof(T)), error);
+  }
+
+  return NANOARROW_OK;
+}
+
+template <typename T>
+ArrowErrorCode SetBufferString(const json& value, ArrowBuffer* offsets, ArrowBuffer* data,
+                               ArrowError* error) {
+  NANOARROW_RETURN_NOT_OK(
+      Check(value.is_array(), error, "utf8 data buffer must be array"));
+
+  // Check offsets against values
+  const T* expected_offset = reinterpret_cast<const T*>(offsets->data);
+  NANOARROW_RETURN_NOT_OK(Check(
+      static_cast<size_t>(offsets->size_bytes) == ((value.size() + 1) * sizeof(T)), error,
+      "Expected offset buffer with " + std::to_string(value.size()) + " elements"));
+  NANOARROW_RETURN_NOT_OK(
+      Check(*expected_offset++ == 0, error, "first offset must be zero"));
+
+  int64_t last_offset = 0;
+
+  for (const auto& item : value) {
+    NANOARROW_RETURN_NOT_OK(
+        Check(item.is_string(), error, "utf8 data buffer item must be string"));
+    auto item_str = item.get<std::string>();
+
+    // Append data
+    NANOARROW_RETURN_NOT_OK_WITH_ERROR(
+        ArrowBufferAppend(data, reinterpret_cast<const uint8_t*>(item_str.data()),
+                          item_str.size()),
+        error);
+
+    // Check offset
+    last_offset += item_str.size();
+    NANOARROW_RETURN_NOT_OK(Check(*expected_offset++ == last_offset, error,
+                                  "Expected offset value " + std::to_string(last_offset) +
+                                      " at utf8 data buffer item " + item.dump()));
+  }
+
+  return NANOARROW_OK;
+}
+
+static inline ArrowErrorCode AppendBinaryElement(const json& item, ArrowBuffer* data,
+                                                 ArrowError* error) {
+  NANOARROW_RETURN_NOT_OK(
+      Check(item.is_string(), error, "binary data buffer item must be string"));
+  auto item_str = item.get<std::string>();
+
+  size_t item_size_bytes = item_str.size() / 2;
+  NANOARROW_RETURN_NOT_OK(Check((item_size_bytes * 2) == item_str.size(), error,
+                                "binary data buffer item must have even size"));
+
+  NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowBufferReserve(data, item_size_bytes), error);
+  for (size_t i = 0; i < item_str.size(); i += 2) {
+    std::string byte_hex = item_str.substr(i, 2);
+    char* end_ptr;
+    uint8_t byte = static_cast<uint8_t>(std::strtoul(byte_hex.data(), &end_ptr, 16));
+    NANOARROW_RETURN_NOT_OK(
+        Check(end_ptr == (byte_hex.data() + 2), error,
+              "binary data buffer item must contain a valid hex-encoded byte string"));
+
+    data->data[data->size_bytes] = byte;
+    data->size_bytes++;
+  }
+
+  return NANOARROW_OK;
+}
+
+template <typename T>
+ArrowErrorCode SetBufferBinary(const json& value, ArrowBuffer* offsets, ArrowBuffer* data,
+                               ArrowError* error) {
+  NANOARROW_RETURN_NOT_OK(
+      Check(value.is_array(), error, "binary data buffer must be array"));
+
+  // Check offsets against values if not fixed size
+  const T* expected_offset = reinterpret_cast<const T*>(offsets->data);
+  NANOARROW_RETURN_NOT_OK(Check(
+      static_cast<size_t>(offsets->size_bytes) == ((value.size() + 1) * sizeof(T)), error,
+      "Expected offset buffer with " + std::to_string(value.size()) + " elements"));
+  NANOARROW_RETURN_NOT_OK(
+      Check(*expected_offset++ == 0, error, "first offset must be zero"));
+
+  for (const auto& item : value) {
+    NANOARROW_RETURN_NOT_OK(AppendBinaryElement(item, data, error));
+
+    // Check offset
+    NANOARROW_RETURN_NOT_OK(Check(*expected_offset++ == data->size_bytes, error,
+                                  "Expected offset value " +
+                                      std::to_string(data->size_bytes) +
+                                      " at binary data buffer item " + item.dump()));
+  }
+
+  return NANOARROW_OK;
+}
+
+static inline ArrowErrorCode SetBufferFixedSizeBinary(const json& value,
+                                                      ArrowBuffer* data,
+                                                      int64_t fixed_size,
+                                                      ArrowError* error) {
+  NANOARROW_RETURN_NOT_OK(
+      Check(value.is_array(), error, "binary data buffer must be array"));
+
+  int64_t last_offset = 0;
+
+  for (const auto& item : value) {
+    NANOARROW_RETURN_NOT_OK(AppendBinaryElement(item, data, error));
+    int64_t item_size_bytes = data->size_bytes - last_offset;
+
+    NANOARROW_RETURN_NOT_OK(Check(item_size_bytes == fixed_size, error,
+                                  "Expected fixed size binary value of size " +
+                                      std::to_string(fixed_size) +
+                                      " at binary data buffer item " + item.dump()));
+    last_offset = data->size_bytes;
+  }
+
+  return NANOARROW_OK;
+}
+
+static inline ArrowErrorCode SetBufferIntervalDayTime(const json& value,
+                                                      ArrowBuffer* buffer,
+                                                      ArrowError* error) {
+  NANOARROW_RETURN_NOT_OK(
+      Check(value.is_array(), error, "interval_day_time buffer must be array"));
+
+  for (const auto& item : value) {
+    NANOARROW_RETURN_NOT_OK(
+        Check(item.is_object(), error, "interval_day_time buffer item must be object"));
+    NANOARROW_RETURN_NOT_OK(Check(item.contains("days"), error,
+                                  "interval_day_time buffer item missing key 'days'"));
+    NANOARROW_RETURN_NOT_OK(
+        Check(item.contains("milliseconds"), error,
+              "interval_day_time buffer item missing key 'milliseconds'"));
+
+    NANOARROW_RETURN_NOT_OK(SetBufferIntItem<int32_t>(item["days"], buffer, error));
+    NANOARROW_RETURN_NOT_OK(
+        SetBufferIntItem<int32_t>(item["milliseconds"], buffer, error));
+  }
+
+  return NANOARROW_OK;
+}
+
+static inline ArrowErrorCode SetBufferIntervalMonthDayNano(const json& value,
+                                                           ArrowBuffer* buffer,
+                                                           ArrowError* error) {
+  NANOARROW_RETURN_NOT_OK(
+      Check(value.is_array(), error, "interval buffer must be array"));
+
+  for (const auto& item : value) {
+    NANOARROW_RETURN_NOT_OK(
+        Check(item.is_object(), error, "interval buffer item must be object"));
+    NANOARROW_RETURN_NOT_OK(Check(item.contains("months"), error,
+                                  "interval buffer item missing key 'months'"));
+    NANOARROW_RETURN_NOT_OK(
+        Check(item.contains("days"), error, "interval buffer item missing key 'days'"));
+    NANOARROW_RETURN_NOT_OK(Check(item.contains("nanoseconds"), error,
+                                  "interval buffer item missing key 'nanoseconds'"));
+
+    NANOARROW_RETURN_NOT_OK(SetBufferIntItem<int32_t>(item["months"], buffer, error));
+    NANOARROW_RETURN_NOT_OK(SetBufferIntItem<int32_t>(item["days"], buffer, error));
+    NANOARROW_RETURN_NOT_OK(
+        SetBufferIntItem<int64_t>(item["nanoseconds"], buffer, error));
+  }
+
+  return NANOARROW_OK;
+}
+
+static inline ArrowErrorCode SetBufferDecimal(const json& value, ArrowBuffer* buffer,
+                                              int bitwidth, ArrowError* error) {
+  NANOARROW_RETURN_NOT_OK(Check(value.is_array(), error, "decimal buffer must be array"));
+
+  ArrowDecimal decimal;
+  ArrowDecimalInit(&decimal, bitwidth, 0, 0);
+
+  ArrowStringView item_view;
+
+  for (const auto& item : value) {
+    NANOARROW_RETURN_NOT_OK(
+        Check(item.is_string(), error, "decimal buffer item must be string"));
+    auto item_str = item.get<std::string>();
+    item_view.data = item_str.data();
+    item_view.size_bytes = item_str.size();
+    NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowDecimalSetDigits(&decimal, item_view), error);
+    NANOARROW_RETURN_NOT_OK_WITH_ERROR(
+        ArrowBufferAppend(buffer, decimal.words, decimal.n_words * sizeof(uint64_t)),
+        error);
+  }
+
+  return NANOARROW_OK;
+}
+
+static inline ArrowErrorCode SetArrayColumnBuffers(const json& value,
+                                                   ArrowArrayView* array_view,
+                                                   ArrowArray* array, int buffer_i,
+                                                   ArrowError* error) {
+  ArrowBuffer* buffer = ArrowArrayBuffer(array, buffer_i);
+
+  switch (array_view->layout.buffer_type[buffer_i]) {
+    case NANOARROW_BUFFER_TYPE_VALIDITY: {
+      NANOARROW_RETURN_NOT_OK(
+          Check(value.contains("VALIDITY"), error, "missing key 'VALIDITY'"));
+      const auto& validity = value["VALIDITY"];
+      NANOARROW_RETURN_NOT_OK(
+          SetBufferBitmap(validity, ArrowArrayValidityBitmap(array), error));
+      break;
+    }
+    case NANOARROW_BUFFER_TYPE_TYPE_ID: {
+      NANOARROW_RETURN_NOT_OK(
+          Check(value.contains("TYPE_ID"), error, "missing key 'TYPE_ID'"));
+      const auto& type_id = value["TYPE_ID"];
+      NANOARROW_RETURN_NOT_OK(SetBufferInt<int8_t>(type_id, buffer, error));
+      break;
+    }
+    case NANOARROW_BUFFER_TYPE_UNION_OFFSET: {
+      NANOARROW_RETURN_NOT_OK(
+          Check(value.contains("OFFSET"), error, "missing key 'OFFSET'"));
+      const auto& offset = value["OFFSET"];
+      NANOARROW_RETURN_NOT_OK(SetBufferInt<int32_t>(offset, buffer, error));
+      break;
+    }
+    case NANOARROW_BUFFER_TYPE_DATA_OFFSET: {
+      NANOARROW_RETURN_NOT_OK(
+          Check(value.contains("OFFSET"), error, "missing key 'OFFSET'"));
+      const auto& offset = value["OFFSET"];
+
+      if (array_view->layout.element_size_bits[buffer_i] == 32) {
+        NANOARROW_RETURN_NOT_OK(SetBufferInt<int32_t>(offset, buffer, error));
+      } else {
+        NANOARROW_RETURN_NOT_OK(SetBufferInt<int64_t>(offset, buffer, error));
+      }
+      break;
+    }
+
+    case NANOARROW_BUFFER_TYPE_DATA: {
+      NANOARROW_RETURN_NOT_OK(Check(value.contains("DATA"), error, "missing key 'DATA'"));
+      const auto& data = value["DATA"];
+
+      switch (array_view->storage_type) {
+        case NANOARROW_TYPE_BOOL: {
+          nanoarrow::UniqueBitmap bitmap;
+          NANOARROW_RETURN_NOT_OK(SetBufferBitmap(data, bitmap.get(), error));
+          ArrowBufferMove(&bitmap->buffer, buffer);
+          return NANOARROW_OK;
+        }
+        case NANOARROW_TYPE_INT8:
+          return SetBufferInt<int8_t>(data, buffer, error);
+        case NANOARROW_TYPE_UINT8:
+          return SetBufferInt<uint8_t>(data, buffer, error);
+        case NANOARROW_TYPE_INT16:
+          return SetBufferInt<int16_t>(data, buffer, error);
+        case NANOARROW_TYPE_UINT16:
+          return SetBufferInt<uint16_t>(data, buffer, error);
+        case NANOARROW_TYPE_INT32:
+        case NANOARROW_TYPE_INTERVAL_MONTHS:
+          return SetBufferInt<int32_t>(data, buffer, error);
+        case NANOARROW_TYPE_UINT32:
+          return SetBufferInt<uint32_t>(data, buffer, error);
+        case NANOARROW_TYPE_INT64:
+          return SetBufferInt<int64_t>(data, buffer, error);
+        case NANOARROW_TYPE_UINT64:
+          return SetBufferInt<uint64_t, uint64_t>(data, buffer, error);
+
+        case NANOARROW_TYPE_HALF_FLOAT:
+          return SetBufferFloatingPoint<float>(data, buffer, error);
+        case NANOARROW_TYPE_FLOAT:
+          return SetBufferFloatingPoint<float>(data, buffer, error);
+        case NANOARROW_TYPE_DOUBLE:
+          return SetBufferFloatingPoint<double>(data, buffer, error);
+
+        case NANOARROW_TYPE_STRING:
+          return SetBufferString<int32_t>(data, ArrowArrayBuffer(array, buffer_i - 1),
+                                          buffer, error);
+        case NANOARROW_TYPE_LARGE_STRING:
+          return SetBufferString<int64_t>(data, ArrowArrayBuffer(array, buffer_i - 1),
+                                          buffer, error);
+        case NANOARROW_TYPE_BINARY:
+          return SetBufferBinary<int32_t>(data, ArrowArrayBuffer(array, buffer_i - 1),
+                                          buffer, error);
+        case NANOARROW_TYPE_LARGE_BINARY:
+          return SetBufferBinary<int64_t>(data, ArrowArrayBuffer(array, buffer_i - 1),
+                                          buffer, error);
+        case NANOARROW_TYPE_FIXED_SIZE_BINARY:
+          return SetBufferFixedSizeBinary(
+              data, buffer, array_view->layout.element_size_bits[buffer_i] / 8, error);
+        case NANOARROW_TYPE_INTERVAL_DAY_TIME:
+          return SetBufferIntervalDayTime(data, buffer, error);
+        case NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO:
+          return SetBufferIntervalMonthDayNano(data, buffer, error);
+        case NANOARROW_TYPE_DECIMAL128:
+          return SetBufferDecimal(data, buffer, 128, error);
+        case NANOARROW_TYPE_DECIMAL256:
+          return SetBufferDecimal(data, buffer, 256, error);
+        default:
+          ArrowErrorSet(error, "storage type %s DATA buffer not supported",
+                        ArrowTypeString(array_view->storage_type));
+          return ENOTSUP;
+      }
+      break;
+    }
+    case NANOARROW_BUFFER_TYPE_NONE:
+      break;
+  }
+
+  return NANOARROW_OK;
+}
+
+static inline ArrowErrorCode SetArrayColumn(const json& value, const ArrowSchema* schema,
+                                            ArrowArrayView* array_view, ArrowArray* array,
+                                            internal::DictionaryContext& dictionaries,
+                                            ArrowError* error,
+                                            const std::string& parent_error_prefix = "") {
+  NANOARROW_RETURN_NOT_OK(
+      Check(value.is_object(), error, "Expected Column to be a JSON object"));
+
+  // Check + resolve name early to generate better error messages
+  NANOARROW_RETURN_NOT_OK(
+      Check(value.contains("name"), error, "Column missing key 'name'"));
+
+  const auto& name = value["name"];
+  NANOARROW_RETURN_NOT_OK(Check(name.is_null() || name.is_string(), error,
+                                "Column name must be string or null"));
+
+  std::string error_prefix;
+  if (name.is_string()) {
+    error_prefix = parent_error_prefix + "-> Column '" + name.get<std::string>() + "' ";
+  } else {
+    error_prefix = parent_error_prefix + "-> Column <name is null> ";
+  }
+
+  // Check, resolve, and recurse children
+  NANOARROW_RETURN_NOT_OK(Check(array_view->n_children == 0 || value.contains("children"),
+                                error, error_prefix + "missing key children"));
+
+  if (value.contains("children")) {
+    const auto& children = value["children"];
+    NANOARROW_RETURN_NOT_OK(
+        Check(children.is_array(), error, error_prefix + "children must be array"));
+    NANOARROW_RETURN_NOT_OK(
+        Check(children.size() == static_cast<size_t>(array_view->n_children), error,
+              error_prefix + "children has incorrect size"));
+
+    for (int64_t i = 0; i < array_view->n_children; i++) {
+      NANOARROW_RETURN_NOT_OK(SetArrayColumn(children[i], schema->children[i],
+                                             array_view->children[i], array->children[i],
+                                             dictionaries, error, error_prefix));
+    }
+  }
+
+  // Build buffers
+  for (int i = 0; i < NANOARROW_MAX_FIXED_BUFFERS; i++) {
+    NANOARROW_RETURN_NOT_OK(PrefixError(
+        SetArrayColumnBuffers(value, array_view, array, i, error), error, error_prefix));
+  }
+
+  // Check + resolve count
+  NANOARROW_RETURN_NOT_OK(
+      Check(value.contains("count"), error, error_prefix + "missing key 'count'"));
+  const auto& count = value["count"];
+  NANOARROW_RETURN_NOT_OK(
+      Check(count.is_number_integer(), error, error_prefix + "count must be integer"));
+  array_view->length = count.get<int64_t>();
+
+  // Set ArrayView buffer views. This is because ArrowArrayInitFromSchema() doesn't
+  // support custom type ids for unions but the ArrayView does (otherwise
+  // ArrowArrayFinishBuilding() would work).
+  for (int i = 0; i < NANOARROW_MAX_FIXED_BUFFERS; i++) {
+    ArrowBuffer* buffer = ArrowArrayBuffer(array, i);
+    ArrowBufferView* buffer_view = array_view->buffer_views + i;
+    buffer_view->data.as_uint8 = buffer->data;
+    buffer_view->size_bytes = buffer->size_bytes;
+
+    // If this is a validity buffer, set the null_count
+    if (array_view->layout.buffer_type[i] == NANOARROW_BUFFER_TYPE_VALIDITY &&
+        _ArrowBytesForBits(array_view->length) <= buffer_view->size_bytes) {
+      array_view->null_count =
+          array_view->length -
+          ArrowBitCountSet(buffer_view->data.as_uint8, 0, array_view->length);
+    }
+  }
+
+  // The null type doesn't have any buffers but we can set the null_count
+  if (array_view->storage_type == NANOARROW_TYPE_NA) {
+    array_view->null_count = array_view->length;
+  }
+
+  // If there is a dictionary associated with schema, parse its value into dictionary
+  if (schema->dictionary != nullptr) {
+    NANOARROW_RETURN_NOT_OK(Check(
+        dictionaries.HasDictionaryForSchema(schema->dictionary), error,
+        error_prefix +
+            "dictionary could not be resolved from dictionary id in SetArrayColumn()"));
+
+    const internal::Dictionary& dict = dictionaries.Get(schema->dictionary);
+    NANOARROW_RETURN_NOT_OK(SetArrayColumn(
+        json::parse(dict.column_json), schema->dictionary, array_view->dictionary,
+        array->dictionary, dictionaries, error, error_prefix + "-> <dictionary> "));
+  }
+
+  // Validate the array view
+  NANOARROW_RETURN_NOT_OK(PrefixError(
+      ArrowArrayViewValidate(array_view, NANOARROW_VALIDATION_LEVEL_FULL, error), error,
+      error_prefix + "failed to validate: "));
+
+  // Flush length and buffer pointers to the Array. This also ensures that buffers
+  // are not NULL (matters for some versions of some implementations).
+  NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowArrayFinishBuildingDefault(array, nullptr),
+                                     error);
+  array->length = array_view->length;
+  array->null_count = array_view->null_count;
+
+  return NANOARROW_OK;
+}
+
+}  // namespace
+
 /// \brief Reader for the Arrow integration testing JSON format
 class TestingJSONReader {
   using json = nlohmann::json;
@@ -1054,8 +1560,8 @@ class TestingJSONReader {
       SetArrayAllocatorRecursive(array.get());
 
       // Parse the JSON into the array
-      NANOARROW_RETURN_NOT_OK(
-          SetArrayColumn(obj, schema, array_view.get(), array.get(), error));
+      NANOARROW_RETURN_NOT_OK(SetArrayColumn(obj, schema, array_view.get(), array.get(),
+                                             dictionaries_, error));
 
       // Return the result
       ArrowArrayMove(array.get(), out);
@@ -1097,7 +1603,7 @@ class TestingJSONReader {
     for (int64_t i = 0; i < array_view->n_children; i++) {
       NANOARROW_RETURN_NOT_OK(SetArrayColumn(columns[i], schema->children[i],
                                              array_view->children[i], array->children[i],
-                                             error));
+                                             dictionaries_, error));
     }
 
     // Validate the array view
@@ -1157,500 +1663,6 @@ class TestingJSONReader {
 
     dictionaries_.RecordArray(id_int, batch_count.get<int32_t>(),
                               batch_columns[0].dump());
-    return NANOARROW_OK;
-  }
-
-  ArrowErrorCode SetArrayColumn(const json& value, const ArrowSchema* schema,
-                                ArrowArrayView* array_view, ArrowArray* array,
-                                ArrowError* error,
-                                const std::string& parent_error_prefix = "") {
-    NANOARROW_RETURN_NOT_OK(
-        Check(value.is_object(), error, "Expected Column to be a JSON object"));
-
-    // Check + resolve name early to generate better error messages
-    NANOARROW_RETURN_NOT_OK(
-        Check(value.contains("name"), error, "Column missing key 'name'"));
-
-    const auto& name = value["name"];
-    NANOARROW_RETURN_NOT_OK(Check(name.is_null() || name.is_string(), error,
-                                  "Column name must be string or null"));
-
-    std::string error_prefix;
-    if (name.is_string()) {
-      error_prefix = parent_error_prefix + "-> Column '" + name.get<std::string>() + "' ";
-    } else {
-      error_prefix = parent_error_prefix + "-> Column <name is null> ";
-    }
-
-    // Check, resolve, and recurse children
-    NANOARROW_RETURN_NOT_OK(
-        Check(array_view->n_children == 0 || value.contains("children"), error,
-              error_prefix + "missing key children"));
-
-    if (value.contains("children")) {
-      const auto& children = value["children"];
-      NANOARROW_RETURN_NOT_OK(
-          Check(children.is_array(), error, error_prefix + "children must be array"));
-      NANOARROW_RETURN_NOT_OK(
-          Check(children.size() == static_cast<size_t>(array_view->n_children), error,
-                error_prefix + "children has incorrect size"));
-
-      for (int64_t i = 0; i < array_view->n_children; i++) {
-        NANOARROW_RETURN_NOT_OK(SetArrayColumn(children[i], schema->children[i],
-                                               array_view->children[i],
-                                               array->children[i], error, error_prefix));
-      }
-    }
-
-    // Build buffers
-    for (int i = 0; i < NANOARROW_MAX_FIXED_BUFFERS; i++) {
-      NANOARROW_RETURN_NOT_OK(
-          PrefixError(SetArrayColumnBuffers(value, array_view, array, i, error), error,
-                      error_prefix));
-    }
-
-    // Check + resolve count
-    NANOARROW_RETURN_NOT_OK(
-        Check(value.contains("count"), error, error_prefix + "missing key 'count'"));
-    const auto& count = value["count"];
-    NANOARROW_RETURN_NOT_OK(
-        Check(count.is_number_integer(), error, error_prefix + "count must be integer"));
-    array_view->length = count.get<int64_t>();
-
-    // Set ArrayView buffer views. This is because ArrowArrayInitFromSchema() doesn't
-    // support custom type ids for unions but the ArrayView does (otherwise
-    // ArrowArrayFinishBuilding() would work).
-    for (int i = 0; i < NANOARROW_MAX_FIXED_BUFFERS; i++) {
-      ArrowBuffer* buffer = ArrowArrayBuffer(array, i);
-      ArrowBufferView* buffer_view = array_view->buffer_views + i;
-      buffer_view->data.as_uint8 = buffer->data;
-      buffer_view->size_bytes = buffer->size_bytes;
-    }
-    array_view->null_count = ArrowArrayViewComputeNullCount(array_view);
-
-    // If there is a dictionary associated with schema, parse its value into dictionary
-    if (schema->dictionary != nullptr) {
-      NANOARROW_RETURN_NOT_OK(Check(
-          dictionaries_.HasDictionaryForSchema(schema->dictionary), error,
-          error_prefix +
-              "dictionary could not be resolved from dictionary id in SetArrayColumn()"));
-
-      const internal::Dictionary& dict = dictionaries_.Get(schema->dictionary);
-      NANOARROW_RETURN_NOT_OK(SetArrayColumn(
-          json::parse(dict.column_json), schema->dictionary, array_view->dictionary,
-          array->dictionary, error, error_prefix + "-> <dictionary> "));
-    }
-
-    // Validate the array view
-    NANOARROW_RETURN_NOT_OK(PrefixError(
-        ArrowArrayViewValidate(array_view, NANOARROW_VALIDATION_LEVEL_FULL, error), error,
-        error_prefix + "failed to validate: "));
-
-    // Flush length and buffer pointers to the Array. This also ensures that buffers
-    // are not NULL (matters for some versions of some implementations).
-    NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowArrayFinishBuildingDefault(array, nullptr),
-                                       error);
-    array->length = array_view->length;
-    array->null_count = array_view->null_count;
-
-    return NANOARROW_OK;
-  }
-
-  ArrowErrorCode SetArrayColumnBuffers(const json& value, ArrowArrayView* array_view,
-                                       ArrowArray* array, int buffer_i,
-                                       ArrowError* error) {
-    ArrowBuffer* buffer = ArrowArrayBuffer(array, buffer_i);
-
-    switch (array_view->layout.buffer_type[buffer_i]) {
-      case NANOARROW_BUFFER_TYPE_VALIDITY: {
-        NANOARROW_RETURN_NOT_OK(
-            Check(value.contains("VALIDITY"), error, "missing key 'VALIDITY'"));
-        const auto& validity = value["VALIDITY"];
-        NANOARROW_RETURN_NOT_OK(
-            SetBufferBitmap(validity, ArrowArrayValidityBitmap(array), error));
-        break;
-      }
-      case NANOARROW_BUFFER_TYPE_TYPE_ID: {
-        NANOARROW_RETURN_NOT_OK(
-            Check(value.contains("TYPE_ID"), error, "missing key 'TYPE_ID'"));
-        const auto& type_id = value["TYPE_ID"];
-        NANOARROW_RETURN_NOT_OK(SetBufferInt<int8_t>(type_id, buffer, error));
-        break;
-      }
-      case NANOARROW_BUFFER_TYPE_UNION_OFFSET: {
-        NANOARROW_RETURN_NOT_OK(
-            Check(value.contains("OFFSET"), error, "missing key 'OFFSET'"));
-        const auto& offset = value["OFFSET"];
-        NANOARROW_RETURN_NOT_OK(SetBufferInt<int32_t>(offset, buffer, error));
-        break;
-      }
-      case NANOARROW_BUFFER_TYPE_DATA_OFFSET: {
-        NANOARROW_RETURN_NOT_OK(
-            Check(value.contains("OFFSET"), error, "missing key 'OFFSET'"));
-        const auto& offset = value["OFFSET"];
-
-        if (array_view->layout.element_size_bits[buffer_i] == 32) {
-          NANOARROW_RETURN_NOT_OK(SetBufferInt<int32_t>(offset, buffer, error));
-        } else {
-          NANOARROW_RETURN_NOT_OK(SetBufferInt<int64_t>(offset, buffer, error));
-        }
-        break;
-      }
-
-      case NANOARROW_BUFFER_TYPE_DATA: {
-        NANOARROW_RETURN_NOT_OK(
-            Check(value.contains("DATA"), error, "missing key 'DATA'"));
-        const auto& data = value["DATA"];
-
-        switch (array_view->storage_type) {
-          case NANOARROW_TYPE_BOOL: {
-            nanoarrow::UniqueBitmap bitmap;
-            NANOARROW_RETURN_NOT_OK(SetBufferBitmap(data, bitmap.get(), error));
-            ArrowBufferMove(&bitmap->buffer, buffer);
-            return NANOARROW_OK;
-          }
-          case NANOARROW_TYPE_INT8:
-            return SetBufferInt<int8_t>(data, buffer, error);
-          case NANOARROW_TYPE_UINT8:
-            return SetBufferInt<uint8_t>(data, buffer, error);
-          case NANOARROW_TYPE_INT16:
-            return SetBufferInt<int16_t>(data, buffer, error);
-          case NANOARROW_TYPE_UINT16:
-            return SetBufferInt<uint16_t>(data, buffer, error);
-          case NANOARROW_TYPE_INT32:
-          case NANOARROW_TYPE_INTERVAL_MONTHS:
-            return SetBufferInt<int32_t>(data, buffer, error);
-          case NANOARROW_TYPE_UINT32:
-            return SetBufferInt<uint32_t>(data, buffer, error);
-          case NANOARROW_TYPE_INT64:
-            return SetBufferInt<int64_t>(data, buffer, error);
-          case NANOARROW_TYPE_UINT64:
-            return SetBufferInt<uint64_t, uint64_t>(data, buffer, error);
-
-          case NANOARROW_TYPE_HALF_FLOAT:
-            return SetBufferFloatingPoint<float>(data, buffer, error);
-          case NANOARROW_TYPE_FLOAT:
-            return SetBufferFloatingPoint<float>(data, buffer, error);
-          case NANOARROW_TYPE_DOUBLE:
-            return SetBufferFloatingPoint<double>(data, buffer, error);
-
-          case NANOARROW_TYPE_STRING:
-            return SetBufferString<int32_t>(data, ArrowArrayBuffer(array, buffer_i - 1),
-                                            buffer, error);
-          case NANOARROW_TYPE_LARGE_STRING:
-            return SetBufferString<int64_t>(data, ArrowArrayBuffer(array, buffer_i - 1),
-                                            buffer, error);
-          case NANOARROW_TYPE_BINARY:
-            return SetBufferBinary<int32_t>(data, ArrowArrayBuffer(array, buffer_i - 1),
-                                            buffer, error);
-          case NANOARROW_TYPE_LARGE_BINARY:
-            return SetBufferBinary<int64_t>(data, ArrowArrayBuffer(array, buffer_i - 1),
-                                            buffer, error);
-          case NANOARROW_TYPE_FIXED_SIZE_BINARY:
-            return SetBufferFixedSizeBinary(
-                data, buffer, array_view->layout.element_size_bits[buffer_i] / 8, error);
-          case NANOARROW_TYPE_INTERVAL_DAY_TIME:
-            return SetBufferIntervalDayTime(data, buffer, error);
-          case NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO:
-            return SetBufferIntervalMonthDayNano(data, buffer, error);
-          case NANOARROW_TYPE_DECIMAL128:
-            return SetBufferDecimal(data, buffer, 128, error);
-          case NANOARROW_TYPE_DECIMAL256:
-            return SetBufferDecimal(data, buffer, 256, error);
-          default:
-            ArrowErrorSet(error, "storage type %s DATA buffer not supported",
-                          ArrowTypeString(array_view->storage_type));
-            return ENOTSUP;
-        }
-        break;
-      }
-      case NANOARROW_BUFFER_TYPE_NONE:
-        break;
-    }
-
-    return NANOARROW_OK;
-  }
-
-  ArrowErrorCode SetBufferBitmap(const json& value, ArrowBitmap* bitmap,
-                                 ArrowError* error) {
-    NANOARROW_RETURN_NOT_OK(
-        Check(value.is_array(), error, "bitmap buffer must be array"));
-
-    // Reserving with the exact length ensures that the last bits are always zeroed.
-    // This was an assumption made by the C# implementation at the time this was
-    // implemented.
-    NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowBitmapReserve(bitmap, value.size()), error);
-
-    for (const auto& item : value) {
-      // Some example files write bitmaps as [true, false, true] but the documentation
-      // says [1, 0, 1]. Accept both for simplicity.
-      NANOARROW_RETURN_NOT_OK(Check(item.is_boolean() || item.is_number_integer(), error,
-                                    "bitmap item must be bool or integer"));
-      NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowBitmapAppend(bitmap, item.get<int>(), 1),
-                                         error);
-    }
-
-    return NANOARROW_OK;
-  }
-
-  template <typename T, typename BiggerT = int64_t>
-  ArrowErrorCode SetBufferInt(const json& value, ArrowBuffer* buffer, ArrowError* error) {
-    NANOARROW_RETURN_NOT_OK(Check(value.is_array(), error, "int buffer must be array"));
-
-    for (const auto& item : value) {
-      // NANOARROW_RETURN_NOT_OK() interacts poorly with multiple template args
-      ArrowErrorCode result = SetBufferIntItem<T, BiggerT>(item, buffer, error);
-      NANOARROW_RETURN_NOT_OK(result);
-    }
-
-    return NANOARROW_OK;
-  }
-
-  template <typename T, typename BiggerT = int64_t>
-  ArrowErrorCode SetBufferIntItem(const json& item, ArrowBuffer* buffer,
-                                  ArrowError* error) {
-    if (item.is_string()) {
-      try {
-        // The JSON parser here can handle up to 2^64 - 1
-        auto item_int = json::parse(item.get<std::string>());
-        return SetBufferIntItem<T, BiggerT>(item_int, buffer, error);
-      } catch (json::parse_error&) {
-        ArrowErrorSet(error,
-                      "integer buffer item encoded as string must parse as integer: %s",
-                      item.dump().c_str());
-        return EINVAL;
-      }
-    }
-
-    NANOARROW_RETURN_NOT_OK(
-        Check(item.is_number_integer(), error,
-              "integer buffer item must be integer number or string"));
-    NANOARROW_RETURN_NOT_OK(
-        Check(std::numeric_limits<T>::is_signed || item.is_number_unsigned(), error,
-              "expected unsigned integer buffer item but found signed integer '" +
-                  item.dump() + "'"));
-
-    auto item_int = item.get<BiggerT>();
-
-    NANOARROW_RETURN_NOT_OK(
-        Check(item_int >= std::numeric_limits<T>::lowest() &&
-                  item_int <= std::numeric_limits<T>::max(),
-              error, "integer buffer item '" + item.dump() + "' outside type limits"));
-
-    T buffer_value = static_cast<T>(item_int);
-    NANOARROW_RETURN_NOT_OK_WITH_ERROR(
-        ArrowBufferAppend(buffer, &buffer_value, sizeof(T)), error);
-
-    return NANOARROW_OK;
-  }
-
-  template <typename T>
-  ArrowErrorCode SetBufferFloatingPoint(const json& value, ArrowBuffer* buffer,
-                                        ArrowError* error) {
-    NANOARROW_RETURN_NOT_OK(
-        Check(value.is_array(), error, "floatingpoint buffer must be array"));
-
-    for (const auto& item : value) {
-      NANOARROW_RETURN_NOT_OK(
-          Check(item.is_number(), error, "floatingpoint buffer item must be number"));
-      double item_dbl = item.get<double>();
-
-      NANOARROW_RETURN_NOT_OK(Check(
-          item_dbl >= std::numeric_limits<T>::lowest() &&
-              item_dbl <= std::numeric_limits<T>::max(),
-          error, "floatingpoint buffer item '" + item.dump() + "' outside type limits"));
-
-      T buffer_value = static_cast<T>(item_dbl);
-      NANOARROW_RETURN_NOT_OK_WITH_ERROR(
-          ArrowBufferAppend(buffer, &buffer_value, sizeof(T)), error);
-    }
-
-    return NANOARROW_OK;
-  }
-
-  template <typename T>
-  ArrowErrorCode SetBufferString(const json& value, ArrowBuffer* offsets,
-                                 ArrowBuffer* data, ArrowError* error) {
-    NANOARROW_RETURN_NOT_OK(
-        Check(value.is_array(), error, "utf8 data buffer must be array"));
-
-    // Check offsets against values
-    const T* expected_offset = reinterpret_cast<const T*>(offsets->data);
-    NANOARROW_RETURN_NOT_OK(Check(
-        static_cast<size_t>(offsets->size_bytes) == ((value.size() + 1) * sizeof(T)),
-        error,
-        "Expected offset buffer with " + std::to_string(value.size()) + " elements"));
-    NANOARROW_RETURN_NOT_OK(
-        Check(*expected_offset++ == 0, error, "first offset must be zero"));
-
-    int64_t last_offset = 0;
-
-    for (const auto& item : value) {
-      NANOARROW_RETURN_NOT_OK(
-          Check(item.is_string(), error, "utf8 data buffer item must be string"));
-      auto item_str = item.get<std::string>();
-
-      // Append data
-      NANOARROW_RETURN_NOT_OK_WITH_ERROR(
-          ArrowBufferAppend(data, reinterpret_cast<const uint8_t*>(item_str.data()),
-                            item_str.size()),
-          error);
-
-      // Check offset
-      last_offset += item_str.size();
-      NANOARROW_RETURN_NOT_OK(Check(*expected_offset++ == last_offset, error,
-                                    "Expected offset value " +
-                                        std::to_string(last_offset) +
-                                        " at utf8 data buffer item " + item.dump()));
-    }
-
-    return NANOARROW_OK;
-  }
-
-  template <typename T>
-  ArrowErrorCode SetBufferBinary(const json& value, ArrowBuffer* offsets,
-                                 ArrowBuffer* data, ArrowError* error) {
-    NANOARROW_RETURN_NOT_OK(
-        Check(value.is_array(), error, "binary data buffer must be array"));
-
-    // Check offsets against values if not fixed size
-    const T* expected_offset = reinterpret_cast<const T*>(offsets->data);
-    NANOARROW_RETURN_NOT_OK(Check(
-        static_cast<size_t>(offsets->size_bytes) == ((value.size() + 1) * sizeof(T)),
-        error,
-        "Expected offset buffer with " + std::to_string(value.size()) + " elements"));
-    NANOARROW_RETURN_NOT_OK(
-        Check(*expected_offset++ == 0, error, "first offset must be zero"));
-
-    for (const auto& item : value) {
-      NANOARROW_RETURN_NOT_OK(AppendBinaryElement(item, data, error));
-
-      // Check offset
-      NANOARROW_RETURN_NOT_OK(Check(*expected_offset++ == data->size_bytes, error,
-                                    "Expected offset value " +
-                                        std::to_string(data->size_bytes) +
-                                        " at binary data buffer item " + item.dump()));
-    }
-
-    return NANOARROW_OK;
-  }
-
-  ArrowErrorCode SetBufferFixedSizeBinary(const json& value, ArrowBuffer* data,
-                                          int64_t fixed_size, ArrowError* error) {
-    NANOARROW_RETURN_NOT_OK(
-        Check(value.is_array(), error, "binary data buffer must be array"));
-
-    int64_t last_offset = 0;
-
-    for (const auto& item : value) {
-      NANOARROW_RETURN_NOT_OK(AppendBinaryElement(item, data, error));
-      int64_t item_size_bytes = data->size_bytes - last_offset;
-
-      NANOARROW_RETURN_NOT_OK(Check(item_size_bytes == fixed_size, error,
-                                    "Expected fixed size binary value of size " +
-                                        std::to_string(fixed_size) +
-                                        " at binary data buffer item " + item.dump()));
-      last_offset = data->size_bytes;
-    }
-
-    return NANOARROW_OK;
-  }
-
-  ArrowErrorCode AppendBinaryElement(const json& item, ArrowBuffer* data,
-                                     ArrowError* error) {
-    NANOARROW_RETURN_NOT_OK(
-        Check(item.is_string(), error, "binary data buffer item must be string"));
-    auto item_str = item.get<std::string>();
-
-    size_t item_size_bytes = item_str.size() / 2;
-    NANOARROW_RETURN_NOT_OK(Check((item_size_bytes * 2) == item_str.size(), error,
-                                  "binary data buffer item must have even size"));
-
-    NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowBufferReserve(data, item_size_bytes), error);
-    for (size_t i = 0; i < item_str.size(); i += 2) {
-      std::string byte_hex = item_str.substr(i, 2);
-      char* end_ptr;
-      uint8_t byte = static_cast<uint8_t>(std::strtoul(byte_hex.data(), &end_ptr, 16));
-      NANOARROW_RETURN_NOT_OK(
-          Check(end_ptr == (byte_hex.data() + 2), error,
-                "binary data buffer item must contain a valid hex-encoded byte string"));
-
-      data->data[data->size_bytes] = byte;
-      data->size_bytes++;
-    }
-
-    return NANOARROW_OK;
-  }
-
-  ArrowErrorCode SetBufferIntervalDayTime(const json& value, ArrowBuffer* buffer,
-                                          ArrowError* error) {
-    NANOARROW_RETURN_NOT_OK(
-        Check(value.is_array(), error, "interval_day_time buffer must be array"));
-
-    for (const auto& item : value) {
-      NANOARROW_RETURN_NOT_OK(
-          Check(item.is_object(), error, "interval_day_time buffer item must be object"));
-      NANOARROW_RETURN_NOT_OK(Check(item.contains("days"), error,
-                                    "interval_day_time buffer item missing key 'days'"));
-      NANOARROW_RETURN_NOT_OK(
-          Check(item.contains("milliseconds"), error,
-                "interval_day_time buffer item missing key 'milliseconds'"));
-
-      NANOARROW_RETURN_NOT_OK(SetBufferIntItem<int32_t>(item["days"], buffer, error));
-      NANOARROW_RETURN_NOT_OK(
-          SetBufferIntItem<int32_t>(item["milliseconds"], buffer, error));
-    }
-
-    return NANOARROW_OK;
-  }
-
-  ArrowErrorCode SetBufferIntervalMonthDayNano(const json& value, ArrowBuffer* buffer,
-                                               ArrowError* error) {
-    NANOARROW_RETURN_NOT_OK(
-        Check(value.is_array(), error, "interval buffer must be array"));
-
-    for (const auto& item : value) {
-      NANOARROW_RETURN_NOT_OK(
-          Check(item.is_object(), error, "interval buffer item must be object"));
-      NANOARROW_RETURN_NOT_OK(Check(item.contains("months"), error,
-                                    "interval buffer item missing key 'months'"));
-      NANOARROW_RETURN_NOT_OK(
-          Check(item.contains("days"), error, "interval buffer item missing key 'days'"));
-      NANOARROW_RETURN_NOT_OK(Check(item.contains("nanoseconds"), error,
-                                    "interval buffer item missing key 'nanoseconds'"));
-
-      NANOARROW_RETURN_NOT_OK(SetBufferIntItem<int32_t>(item["months"], buffer, error));
-      NANOARROW_RETURN_NOT_OK(SetBufferIntItem<int32_t>(item["days"], buffer, error));
-      NANOARROW_RETURN_NOT_OK(
-          SetBufferIntItem<int64_t>(item["nanoseconds"], buffer, error));
-    }
-
-    return NANOARROW_OK;
-  }
-
-  ArrowErrorCode SetBufferDecimal(const json& value, ArrowBuffer* buffer, int bitwidth,
-                                  ArrowError* error) {
-    NANOARROW_RETURN_NOT_OK(
-        Check(value.is_array(), error, "decimal buffer must be array"));
-
-    ArrowDecimal decimal;
-    ArrowDecimalInit(&decimal, bitwidth, 0, 0);
-
-    ArrowStringView item_view;
-
-    for (const auto& item : value) {
-      NANOARROW_RETURN_NOT_OK(
-          Check(item.is_string(), error, "decimal buffer item must be string"));
-      auto item_str = item.get<std::string>();
-      item_view.data = item_str.data();
-      item_view.size_bytes = item_str.size();
-      NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowDecimalSetDigits(&decimal, item_view),
-                                         error);
-      NANOARROW_RETURN_NOT_OK_WITH_ERROR(
-          ArrowBufferAppend(buffer, decimal.words, decimal.n_words * sizeof(uint64_t)),
-          error);
-    }
-
     return NANOARROW_OK;
   }
 
