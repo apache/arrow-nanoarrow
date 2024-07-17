@@ -35,7 +35,19 @@ generally have better autocomplete + documentation available to IDEs).
 from libc.stdint cimport uintptr_t, int64_t
 from cpython.pycapsule cimport PyCapsule_GetPointer
 
-from nanoarrow_c cimport *
+from nanoarrow_c cimport (
+    ArrowArray,
+    ArrowArrayStream,
+    ArrowArrayStreamGetNext,
+    ArrowArrayStreamGetSchema,
+    ArrowArrayStreamMove,
+    ArrowBasicArrayStreamInit,
+    ArrowBasicArrayStreamSetArray,
+    ArrowBasicArrayStreamValidate,
+    ArrowBufferAppendInt64,
+    ArrowResolveChunk64,
+    ArrowType,
+)
 
 from nanoarrow cimport _types
 from nanoarrow._array cimport CArray
