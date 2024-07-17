@@ -26,7 +26,7 @@ Python objects.
 """
 
 
-from nanoarrow._lib import CSchema, CSchemaView
+from nanoarrow._schema import CSchema, CSchemaView
 from nanoarrow._utils import obj_is_capsule
 
 
