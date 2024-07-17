@@ -127,6 +127,368 @@ class DictionaryContext {
 
 }  // namespace internal
 
+namespace {
+
+class LocalizedStream {
+ public:
+  LocalizedStream(std::ostream& out) : out_(out) {
+    previous_locale_ = out.imbue(std::locale::classic());
+    previous_precision_ = out.precision();
+    fmt_flags_ = out.flags();
+    out.setf(out.fixed);
+  }
+
+  void SetFixed(int precision) { out_.precision(precision); }
+
+  ~LocalizedStream() {
+    out_.flags(fmt_flags_);
+    out_.precision(previous_precision_);
+    out_.imbue(previous_locale_);
+  }
+
+ private:
+  std::ostream& out_;
+  std::locale previous_locale_;
+  std::ios::fmtflags fmt_flags_;
+  std::streamsize previous_precision_;
+};
+
+static inline void WriteString(std::ostream& out, ArrowStringView value) {
+  std::string value_str(value.data, static_cast<size_t>(value.size_bytes));
+  out << nlohmann::json(value_str);
+}
+
+static inline void WriteBytes(std::ostream& out, ArrowBufferView value) {
+  out << R"(")";
+  char hex[3];
+  hex[2] = '\0';
+
+  for (int64_t i = 0; i < value.size_bytes; i++) {
+    snprintf(hex, sizeof(hex), "%02X", static_cast<int>(value.data.as_uint8[i]));
+    out << hex;
+  }
+  out << R"(")";
+}
+
+static inline void WriteBitmap(std::ostream& out, const uint8_t* bits, int64_t length) {
+  if (length == 0) {
+    out << "[]";
+    return;
+  }
+
+  out << "[";
+
+  if (bits == nullptr) {
+    out << "1";
+    for (int64_t i = 1; i < length; i++) {
+      out << ", 1";
+    }
+  } else {
+    out << static_cast<int32_t>(ArrowBitGet(bits, 0));
+    for (int64_t i = 1; i < length; i++) {
+      out << ", " << static_cast<int32_t>(ArrowBitGet(bits, i));
+    }
+  }
+
+  out << "]";
+}
+
+template <typename T>
+static inline ArrowErrorCode WriteOffsetOrTypeID(std::ostream& out,
+                                                 ArrowBufferView content) {
+  if (content.size_bytes == 0) {
+    out << "[]";
+    return NANOARROW_OK;
+  }
+
+  const T* values = reinterpret_cast<const T*>(content.data.data);
+  int64_t n_values = content.size_bytes / sizeof(T);
+
+  out << "[";
+
+  if (sizeof(T) == sizeof(int64_t)) {
+    // Ensure int64s are quoted (i.e, "123456")
+    out << R"(")" << values[0] << R"(")";
+    for (int64_t i = 1; i < n_values; i++) {
+      out << R"(, ")" << values[i] << R"(")";
+    }
+  } else {
+    // No need to quote smaller ints (i.e., 123456)
+    out << static_cast<int64_t>(values[0]);
+    for (int64_t i = 1; i < n_values; i++) {
+      out << ", " << static_cast<int64_t>(values[i]);
+    }
+  }
+
+  out << "]";
+  return NANOARROW_OK;
+}
+
+static inline void WriteIntMaybeNull(std::ostream& out, const ArrowArrayView* view,
+                                     int64_t i) {
+  if (ArrowArrayViewIsNull(view, i)) {
+    out << 0;
+  } else {
+    out << ArrowArrayViewGetIntUnsafe(view, i);
+  }
+}
+
+static inline void WriteQuotedIntMaybeNull(std::ostream& out, const ArrowArrayView* view,
+                                           int64_t i) {
+  if (ArrowArrayViewIsNull(view, i)) {
+    out << R"("0")";
+  } else {
+    out << R"(")" << ArrowArrayViewGetIntUnsafe(view, i) << R"(")";
+  }
+}
+
+static inline void WriteQuotedUIntMaybeNull(std::ostream& out, const ArrowArrayView* view,
+                                            int64_t i) {
+  if (ArrowArrayViewIsNull(view, i)) {
+    out << R"("0")";
+  } else {
+    out << R"(")" << ArrowArrayViewGetUIntUnsafe(view, i) << R"(")";
+  }
+}
+
+static inline void WriteFloatMaybeNull(std::ostream& out, const ArrowArrayView* view,
+                                       int64_t i, int float_precision) {
+  if (float_precision >= 0) {
+    if (ArrowArrayViewIsNull(view, i)) {
+      out << static_cast<double>(0);
+    } else {
+      out << ArrowArrayViewGetDoubleUnsafe(view, i);
+    }
+  } else {
+    if (ArrowArrayViewIsNull(view, i)) {
+      out << "0.0";
+    } else {
+      out << nlohmann::json(ArrowArrayViewGetDoubleUnsafe(view, i));
+    }
+  }
+}
+
+static inline void WriteBytesMaybeNull(std::ostream& out, const ArrowArrayView* view,
+                                       int64_t i) {
+  ArrowBufferView item = ArrowArrayViewGetBytesUnsafe(view, i);
+  if (ArrowArrayViewIsNull(view, i)) {
+    out << R"(")";
+    for (int64_t i = 0; i < item.size_bytes; i++) {
+      out << "00";
+    }
+    out << R"(")";
+  } else {
+    WriteBytes(out, item);
+  }
+}
+
+static inline void WriteIntervalDayTimeMaybeNull(std::ostream& out,
+                                                 const ArrowArrayView* view, int64_t i,
+                                                 ArrowInterval* interval) {
+  if (ArrowArrayViewIsNull(view, i)) {
+    out << R"({"days": 0, "milliseconds": 0})";
+  } else {
+    ArrowArrayViewGetIntervalUnsafe(view, i, interval);
+    out << R"({"days": )" << interval->days << R"(, "milliseconds": )" << interval->ms
+        << "}";
+  }
+}
+
+static inline void WriteIntervalMonthDayNanoMaybeNull(std::ostream& out,
+                                                      const ArrowArrayView* view,
+                                                      int64_t i,
+                                                      ArrowInterval* interval) {
+  if (ArrowArrayViewIsNull(view, i)) {
+    out << R"({"months": 0, "days": 0, "nanoseconds": "0"})";
+  } else {
+    ArrowArrayViewGetIntervalUnsafe(view, i, interval);
+    out << R"({"months": )" << interval->months << R"(, "days": )" << interval->days
+        << R"(, "nanoseconds": ")" << interval->ns << R"("})";
+  }
+}
+
+static inline ArrowErrorCode WriteDecimalMaybeNull(std::ostream& out,
+                                                   const ArrowArrayView* view, int64_t i,
+                                                   ArrowDecimal* decimal,
+                                                   ArrowBuffer* tmp) {
+  if (ArrowArrayViewIsNull(view, i)) {
+    out << R"("0")";
+    return NANOARROW_OK;
+  } else {
+    ArrowArrayViewGetDecimalUnsafe(view, i, decimal);
+    tmp->size_bytes = 0;
+    NANOARROW_RETURN_NOT_OK(ArrowDecimalAppendDigitsToBuffer(decimal, tmp));
+    out << R"(")" << std::string(reinterpret_cast<char*>(tmp->data), tmp->size_bytes)
+        << R"(")";
+    return NANOARROW_OK;
+  }
+}
+
+static inline ArrowErrorCode WriteDecimalData(std::ostream& out,
+                                              const ArrowArrayView* view, int bitwidth) {
+  ArrowDecimal value;
+  ArrowDecimalInit(&value, bitwidth, 0, 0);
+  nanoarrow::UniqueBuffer tmp;
+
+  NANOARROW_RETURN_NOT_OK(WriteDecimalMaybeNull(out, view, 0, &value, tmp.get()));
+  for (int64_t i = 1; i < view->length; i++) {
+    out << ", ";
+    NANOARROW_RETURN_NOT_OK(WriteDecimalMaybeNull(out, view, i, &value, tmp.get()));
+  }
+
+  return NANOARROW_OK;
+}
+
+static inline ArrowErrorCode WriteData(std::ostream& out, const ArrowArrayView* value,
+                                       int float_precision) {
+  if (value->length == 0) {
+    out << "[]";
+    return NANOARROW_OK;
+  }
+
+  out << "[";
+
+  switch (value->storage_type) {
+    case NANOARROW_TYPE_BOOL:
+    case NANOARROW_TYPE_INT8:
+    case NANOARROW_TYPE_UINT8:
+    case NANOARROW_TYPE_INT16:
+    case NANOARROW_TYPE_UINT16:
+    case NANOARROW_TYPE_INT32:
+    case NANOARROW_TYPE_UINT32:
+    case NANOARROW_TYPE_INTERVAL_MONTHS:
+      // Regular JSON integers (i.e., 123456)
+      WriteIntMaybeNull(out, value, 0);
+      for (int64_t i = 1; i < value->length; i++) {
+        out << ", ";
+        WriteIntMaybeNull(out, value, i);
+      }
+      break;
+    case NANOARROW_TYPE_INT64:
+      // Quoted integers to avoid overflow (i.e., "123456")
+      WriteQuotedIntMaybeNull(out, value, 0);
+      for (int64_t i = 1; i < value->length; i++) {
+        out << ", ";
+        WriteQuotedIntMaybeNull(out, value, i);
+      }
+      break;
+    case NANOARROW_TYPE_UINT64:
+      // Quoted integers to avoid overflow (i.e., "123456")
+      WriteQuotedUIntMaybeNull(out, value, 0);
+      for (int64_t i = 1; i < value->length; i++) {
+        out << ", ";
+        WriteQuotedUIntMaybeNull(out, value, i);
+      }
+      break;
+
+    case NANOARROW_TYPE_HALF_FLOAT:
+    case NANOARROW_TYPE_FLOAT:
+    case NANOARROW_TYPE_DOUBLE: {
+      // JSON number to float_precision_ decimal places
+      LocalizedStream local_stream_opt(out);
+      local_stream_opt.SetFixed(float_precision);
+
+      WriteFloatMaybeNull(out, value, 0, float_precision);
+      for (int64_t i = 1; i < value->length; i++) {
+        out << ", ";
+        WriteFloatMaybeNull(out, value, i, float_precision);
+      }
+      break;
+    }
+
+    case NANOARROW_TYPE_STRING:
+    case NANOARROW_TYPE_LARGE_STRING:
+      WriteString(out, ArrowArrayViewGetStringUnsafe(value, 0));
+      for (int64_t i = 1; i < value->length; i++) {
+        out << ", ";
+        WriteString(out, ArrowArrayViewGetStringUnsafe(value, i));
+      }
+      break;
+
+    case NANOARROW_TYPE_BINARY:
+    case NANOARROW_TYPE_LARGE_BINARY:
+    case NANOARROW_TYPE_FIXED_SIZE_BINARY: {
+      WriteBytesMaybeNull(out, value, 0);
+      for (int64_t i = 1; i < value->length; i++) {
+        out << ", ";
+        WriteBytesMaybeNull(out, value, i);
+      }
+      break;
+    }
+
+    case NANOARROW_TYPE_INTERVAL_DAY_TIME: {
+      ArrowInterval interval;
+      ArrowIntervalInit(&interval, value->storage_type);
+      WriteIntervalDayTimeMaybeNull(out, value, 0, &interval);
+      for (int64_t i = 1; i < value->length; i++) {
+        out << ", ";
+        WriteIntervalDayTimeMaybeNull(out, value, i, &interval);
+      }
+      break;
+    }
+
+    case NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO: {
+      ArrowInterval interval;
+      ArrowIntervalInit(&interval, value->storage_type);
+      WriteIntervalMonthDayNanoMaybeNull(out, value, 0, &interval);
+      for (int64_t i = 1; i < value->length; i++) {
+        out << ", ";
+        WriteIntervalMonthDayNanoMaybeNull(out, value, i, &interval);
+      }
+      break;
+    }
+
+    case NANOARROW_TYPE_DECIMAL128:
+      NANOARROW_RETURN_NOT_OK(WriteDecimalData(out, value, 128));
+      break;
+    case NANOARROW_TYPE_DECIMAL256:
+      NANOARROW_RETURN_NOT_OK(WriteDecimalData(out, value, 256));
+      break;
+
+    default:
+      // Not supported
+      return ENOTSUP;
+  }
+
+  out << "]";
+  return NANOARROW_OK;
+}
+
+static inline ArrowErrorCode WriteTimeUnit(std::ostream& out,
+                                           const ArrowSchemaView* field) {
+  switch (field->time_unit) {
+    case NANOARROW_TIME_UNIT_NANO:
+      out << R"(, "unit": "NANOSECOND")";
+      return NANOARROW_OK;
+    case NANOARROW_TIME_UNIT_MICRO:
+      out << R"(, "unit": "MICROSECOND")";
+      return NANOARROW_OK;
+    case NANOARROW_TIME_UNIT_MILLI:
+      out << R"(, "unit": "MILLISECOND")";
+      return NANOARROW_OK;
+    case NANOARROW_TIME_UNIT_SECOND:
+      out << R"(, "unit": "SECOND")";
+      return NANOARROW_OK;
+    default:
+      return EINVAL;
+  }
+}
+
+static inline ArrowErrorCode WriteMetadataItem(std::ostream& out,
+                                               ArrowMetadataReader* reader) {
+  ArrowStringView key;
+  ArrowStringView value;
+  NANOARROW_RETURN_NOT_OK(ArrowMetadataReaderRead(reader, &key, &value));
+  out << R"({"key": )";
+  WriteString(out, key);
+  out << R"(, "value": )";
+  WriteString(out, value);
+  out << "}";
+  return NANOARROW_OK;
+}
+
+}  // namespace
+
 /// \defgroup nanoarrow_testing-json Integration test helpers
 ///
 /// See testing format documentation for details of the JSON representation. This
@@ -442,7 +804,7 @@ class TestingJSONWriter {
         break;
       default:
         out << R"(, "DATA": )";
-        NANOARROW_RETURN_NOT_OK(WriteData(out, value));
+        NANOARROW_RETURN_NOT_OK(WriteData(out, value, float_precision_));
         break;
     }
 
@@ -659,25 +1021,6 @@ class TestingJSONWriter {
     return NANOARROW_OK;
   }
 
-  ArrowErrorCode WriteTimeUnit(std::ostream& out, const ArrowSchemaView* field) {
-    switch (field->time_unit) {
-      case NANOARROW_TIME_UNIT_NANO:
-        out << R"(, "unit": "NANOSECOND")";
-        return NANOARROW_OK;
-      case NANOARROW_TIME_UNIT_MICRO:
-        out << R"(, "unit": "MICROSECOND")";
-        return NANOARROW_OK;
-      case NANOARROW_TIME_UNIT_MILLI:
-        out << R"(, "unit": "MILLISECOND")";
-        return NANOARROW_OK;
-      case NANOARROW_TIME_UNIT_SECOND:
-        out << R"(, "unit": "SECOND")";
-        return NANOARROW_OK;
-      default:
-        return EINVAL;
-    }
-  }
-
   ArrowErrorCode WriteFieldDictionary(std::ostream& out, int32_t dictionary_id,
                                       bool is_ordered,
                                       const ArrowSchemaView* indices_field) {
@@ -698,309 +1041,6 @@ class TestingJSONWriter {
     return NANOARROW_OK;
   }
 
-  ArrowErrorCode WriteMetadataItem(std::ostream& out, ArrowMetadataReader* reader) {
-    ArrowStringView key;
-    ArrowStringView value;
-    NANOARROW_RETURN_NOT_OK(ArrowMetadataReaderRead(reader, &key, &value));
-    out << R"({"key": )";
-    WriteString(out, key);
-    out << R"(, "value": )";
-    WriteString(out, value);
-    out << "}";
-    return NANOARROW_OK;
-  }
-
-  void WriteBitmap(std::ostream& out, const uint8_t* bits, int64_t length) {
-    if (length == 0) {
-      out << "[]";
-      return;
-    }
-
-    out << "[";
-
-    if (bits == nullptr) {
-      out << "1";
-      for (int64_t i = 1; i < length; i++) {
-        out << ", 1";
-      }
-    } else {
-      out << static_cast<int32_t>(ArrowBitGet(bits, 0));
-      for (int64_t i = 1; i < length; i++) {
-        out << ", " << static_cast<int32_t>(ArrowBitGet(bits, i));
-      }
-    }
-
-    out << "]";
-  }
-
-  template <typename T>
-  ArrowErrorCode WriteOffsetOrTypeID(std::ostream& out, ArrowBufferView content) {
-    if (content.size_bytes == 0) {
-      out << "[]";
-      return NANOARROW_OK;
-    }
-
-    const T* values = reinterpret_cast<const T*>(content.data.data);
-    int64_t n_values = content.size_bytes / sizeof(T);
-
-    out << "[";
-
-    if (sizeof(T) == sizeof(int64_t)) {
-      // Ensure int64s are quoted (i.e, "123456")
-      out << R"(")" << values[0] << R"(")";
-      for (int64_t i = 1; i < n_values; i++) {
-        out << R"(, ")" << values[i] << R"(")";
-      }
-    } else {
-      // No need to quote smaller ints (i.e., 123456)
-      out << static_cast<int64_t>(values[0]);
-      for (int64_t i = 1; i < n_values; i++) {
-        out << ", " << static_cast<int64_t>(values[i]);
-      }
-    }
-
-    out << "]";
-    return NANOARROW_OK;
-  }
-
-  ArrowErrorCode WriteData(std::ostream& out, const ArrowArrayView* value) {
-    if (value->length == 0) {
-      out << "[]";
-      return NANOARROW_OK;
-    }
-
-    out << "[";
-
-    switch (value->storage_type) {
-      case NANOARROW_TYPE_BOOL:
-      case NANOARROW_TYPE_INT8:
-      case NANOARROW_TYPE_UINT8:
-      case NANOARROW_TYPE_INT16:
-      case NANOARROW_TYPE_UINT16:
-      case NANOARROW_TYPE_INT32:
-      case NANOARROW_TYPE_UINT32:
-      case NANOARROW_TYPE_INTERVAL_MONTHS:
-        // Regular JSON integers (i.e., 123456)
-        WriteIntMaybeNull(out, value, 0);
-        for (int64_t i = 1; i < value->length; i++) {
-          out << ", ";
-          WriteIntMaybeNull(out, value, i);
-        }
-        break;
-      case NANOARROW_TYPE_INT64:
-        // Quoted integers to avoid overflow (i.e., "123456")
-        WriteQuotedIntMaybeNull(out, value, 0);
-        for (int64_t i = 1; i < value->length; i++) {
-          out << ", ";
-          WriteQuotedIntMaybeNull(out, value, i);
-        }
-        break;
-      case NANOARROW_TYPE_UINT64:
-        // Quoted integers to avoid overflow (i.e., "123456")
-        WriteQuotedUIntMaybeNull(out, value, 0);
-        for (int64_t i = 1; i < value->length; i++) {
-          out << ", ";
-          WriteQuotedUIntMaybeNull(out, value, i);
-        }
-        break;
-
-      case NANOARROW_TYPE_HALF_FLOAT:
-      case NANOARROW_TYPE_FLOAT:
-      case NANOARROW_TYPE_DOUBLE: {
-        // JSON number to float_precision_ decimal places
-        LocalizedStream local_stream_opt(out);
-        local_stream_opt.SetFixed(float_precision_);
-
-        WriteFloatMaybeNull(out, value, 0);
-        for (int64_t i = 1; i < value->length; i++) {
-          out << ", ";
-          WriteFloatMaybeNull(out, value, i);
-        }
-        break;
-      }
-
-      case NANOARROW_TYPE_STRING:
-      case NANOARROW_TYPE_LARGE_STRING:
-        WriteString(out, ArrowArrayViewGetStringUnsafe(value, 0));
-        for (int64_t i = 1; i < value->length; i++) {
-          out << ", ";
-          WriteString(out, ArrowArrayViewGetStringUnsafe(value, i));
-        }
-        break;
-
-      case NANOARROW_TYPE_BINARY:
-      case NANOARROW_TYPE_LARGE_BINARY:
-      case NANOARROW_TYPE_FIXED_SIZE_BINARY: {
-        WriteBytesMaybeNull(out, value, 0);
-        for (int64_t i = 1; i < value->length; i++) {
-          out << ", ";
-          WriteBytesMaybeNull(out, value, i);
-        }
-        break;
-      }
-
-      case NANOARROW_TYPE_INTERVAL_DAY_TIME: {
-        ArrowInterval interval;
-        ArrowIntervalInit(&interval, value->storage_type);
-        WriteIntervalDayTimeMaybeNull(out, value, 0, &interval);
-        for (int64_t i = 1; i < value->length; i++) {
-          out << ", ";
-          WriteIntervalDayTimeMaybeNull(out, value, i, &interval);
-        }
-        break;
-      }
-
-      case NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO: {
-        ArrowInterval interval;
-        ArrowIntervalInit(&interval, value->storage_type);
-        WriteIntervalMonthDayNanoMaybeNull(out, value, 0, &interval);
-        for (int64_t i = 1; i < value->length; i++) {
-          out << ", ";
-          WriteIntervalMonthDayNanoMaybeNull(out, value, i, &interval);
-        }
-        break;
-      }
-
-      case NANOARROW_TYPE_DECIMAL128:
-        NANOARROW_RETURN_NOT_OK(WriteDecimalData(out, value, 128));
-        break;
-      case NANOARROW_TYPE_DECIMAL256:
-        NANOARROW_RETURN_NOT_OK(WriteDecimalData(out, value, 256));
-        break;
-
-      default:
-        // Not supported
-        return ENOTSUP;
-    }
-
-    out << "]";
-    return NANOARROW_OK;
-  }
-
-  void WriteIntMaybeNull(std::ostream& out, const ArrowArrayView* view, int64_t i) {
-    if (ArrowArrayViewIsNull(view, i)) {
-      out << 0;
-    } else {
-      out << ArrowArrayViewGetIntUnsafe(view, i);
-    }
-  }
-
-  void WriteQuotedIntMaybeNull(std::ostream& out, const ArrowArrayView* view, int64_t i) {
-    if (ArrowArrayViewIsNull(view, i)) {
-      out << R"("0")";
-    } else {
-      out << R"(")" << ArrowArrayViewGetIntUnsafe(view, i) << R"(")";
-    }
-  }
-
-  void WriteQuotedUIntMaybeNull(std::ostream& out, const ArrowArrayView* view,
-                                int64_t i) {
-    if (ArrowArrayViewIsNull(view, i)) {
-      out << R"("0")";
-    } else {
-      out << R"(")" << ArrowArrayViewGetUIntUnsafe(view, i) << R"(")";
-    }
-  }
-
-  void WriteFloatMaybeNull(std::ostream& out, const ArrowArrayView* view, int64_t i) {
-    if (float_precision_ >= 0) {
-      if (ArrowArrayViewIsNull(view, i)) {
-        out << static_cast<double>(0);
-      } else {
-        out << ArrowArrayViewGetDoubleUnsafe(view, i);
-      }
-    } else {
-      if (ArrowArrayViewIsNull(view, i)) {
-        out << "0.0";
-      } else {
-        out << nlohmann::json(ArrowArrayViewGetDoubleUnsafe(view, i));
-      }
-    }
-  }
-
-  void WriteBytesMaybeNull(std::ostream& out, const ArrowArrayView* view, int64_t i) {
-    ArrowBufferView item = ArrowArrayViewGetBytesUnsafe(view, i);
-    if (ArrowArrayViewIsNull(view, i)) {
-      out << R"(")";
-      for (int64_t i = 0; i < item.size_bytes; i++) {
-        out << "00";
-      }
-      out << R"(")";
-    } else {
-      WriteBytes(out, item);
-    }
-  }
-
-  void WriteIntervalDayTimeMaybeNull(std::ostream& out, const ArrowArrayView* view,
-                                     int64_t i, ArrowInterval* interval) {
-    if (ArrowArrayViewIsNull(view, i)) {
-      out << R"({"days": 0, "milliseconds": 0})";
-    } else {
-      ArrowArrayViewGetIntervalUnsafe(view, i, interval);
-      out << R"({"days": )" << interval->days << R"(, "milliseconds": )" << interval->ms
-          << "}";
-    }
-  }
-
-  void WriteIntervalMonthDayNanoMaybeNull(std::ostream& out, const ArrowArrayView* view,
-                                          int64_t i, ArrowInterval* interval) {
-    if (ArrowArrayViewIsNull(view, i)) {
-      out << R"({"months": 0, "days": 0, "nanoseconds": "0"})";
-    } else {
-      ArrowArrayViewGetIntervalUnsafe(view, i, interval);
-      out << R"({"months": )" << interval->months << R"(, "days": )" << interval->days
-          << R"(, "nanoseconds": ")" << interval->ns << R"("})";
-    }
-  }
-
-  ArrowErrorCode WriteDecimalData(std::ostream& out, const ArrowArrayView* view,
-                                  int bitwidth) {
-    ArrowDecimal value;
-    ArrowDecimalInit(&value, bitwidth, 0, 0);
-    nanoarrow::UniqueBuffer tmp;
-
-    NANOARROW_RETURN_NOT_OK(WriteDecimalMaybeNull(out, view, 0, &value, tmp.get()));
-    for (int64_t i = 1; i < view->length; i++) {
-      out << ", ";
-      NANOARROW_RETURN_NOT_OK(WriteDecimalMaybeNull(out, view, i, &value, tmp.get()));
-    }
-
-    return NANOARROW_OK;
-  }
-
-  ArrowErrorCode WriteDecimalMaybeNull(std::ostream& out, const ArrowArrayView* view,
-                                       int64_t i, ArrowDecimal* decimal,
-                                       ArrowBuffer* tmp) {
-    if (ArrowArrayViewIsNull(view, i)) {
-      out << R"("0")";
-      return NANOARROW_OK;
-    } else {
-      ArrowArrayViewGetDecimalUnsafe(view, i, decimal);
-      tmp->size_bytes = 0;
-      NANOARROW_RETURN_NOT_OK(ArrowDecimalAppendDigitsToBuffer(decimal, tmp));
-      out << R"(")" << std::string(reinterpret_cast<char*>(tmp->data), tmp->size_bytes)
-          << R"(")";
-      return NANOARROW_OK;
-    }
-  }
-
-  void WriteString(std::ostream& out, ArrowStringView value) {
-    std::string value_str(value.data, static_cast<size_t>(value.size_bytes));
-    out << nlohmann::json(value_str);
-  }
-
-  void WriteBytes(std::ostream& out, ArrowBufferView value) {
-    out << R"(")";
-    char hex[3];
-    hex[2] = '\0';
-
-    for (int64_t i = 0; i < value.size_bytes; i++) {
-      snprintf(hex, sizeof(hex), "%02X", static_cast<int>(value.data.as_uint8[i]));
-      out << hex;
-    }
-    out << R"(")";
-  }
-
   ArrowErrorCode WriteChildren(std::ostream& out, const ArrowSchema* field,
                                const ArrowArrayView* value) {
     if (field->n_children == 0) {
@@ -1017,30 +1057,6 @@ class TestingJSONWriter {
     out << "]";
     return NANOARROW_OK;
   }
-
-  class LocalizedStream {
-   public:
-    LocalizedStream(std::ostream& out) : out_(out) {
-      previous_locale_ = out.imbue(std::locale::classic());
-      previous_precision_ = out.precision();
-      fmt_flags_ = out.flags();
-      out.setf(out.fixed);
-    }
-
-    void SetFixed(int precision) { out_.precision(precision); }
-
-    ~LocalizedStream() {
-      out_.flags(fmt_flags_);
-      out_.precision(previous_precision_);
-      out_.imbue(previous_locale_);
-    }
-
-   private:
-    std::ostream& out_;
-    std::locale previous_locale_;
-    std::ios::fmtflags fmt_flags_;
-    std::streamsize previous_precision_;
-  };
 };
 
 /// \brief Reader for the Arrow integration testing JSON format
