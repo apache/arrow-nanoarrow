@@ -17,8 +17,8 @@
 
 from typing import Any, Callable, List, Sequence, Tuple, Union
 
+from nanoarrow._array import CArrayView
 from nanoarrow._buffer import CBuffer, CBufferBuilder
-from nanoarrow._lib import CArrayView
 from nanoarrow.c_array_stream import c_array_stream
 from nanoarrow.c_schema import c_schema_view
 from nanoarrow.iterator import ArrayViewBaseIterator, PyIterator
@@ -76,7 +76,7 @@ class ArrayViewVisitable:
         >>> names
         ['col1', 'col2']
         >>> columns
-        [nanoarrow.c_lib.CBuffer(int64[24 b] 1 2 3), ['a', 'b', 'c']]
+        [nanoarrow.c_buffer.CBuffer(int64[24 b] 1 2 3), ['a', 'b', 'c']]
         """
         return ToColumnsPysequenceConverter.visit(self, handle_nulls=handle_nulls)
 
@@ -105,7 +105,7 @@ class ArrayViewVisitable:
         --------
         >>> import nanoarrow as na
         >>> na.Array([1, 2, 3], na.int32()).to_pysequence()
-        nanoarrow.c_lib.CBuffer(int32[12 b] 1 2 3)
+        nanoarrow.c_buffer.CBuffer(int32[12 b] 1 2 3)
         """
         return ToPySequenceConverter.visit(self, handle_nulls=handle_nulls)
 
@@ -120,7 +120,7 @@ def nulls_forbid() -> Callable[[CBuffer, Sequence], Sequence]:
 
     >>> import nanoarrow as na
     >>> na.Array([1, 2, 3], na.int32()).to_pysequence(handle_nulls=na.nulls_forbid())
-    nanoarrow.c_lib.CBuffer(int32[12 b] 1 2 3)
+    nanoarrow.c_buffer.CBuffer(int32[12 b] 1 2 3)
     >>> na.Array([1, None, 3], na.int32()).to_pysequence(handle_nulls=na.nulls_forbid())
     Traceback (most recent call last):
     ...
@@ -193,13 +193,13 @@ def nulls_separate() -> Callable[[CBuffer, Sequence], Tuple[CBuffer, Sequence]]:
     >>> import nanoarrow as na
     >>> na_array = na.Array([1, 2, 3], na.int32())
     >>> na_array.to_pysequence(handle_nulls=na.nulls_separate())
-    (None, nanoarrow.c_lib.CBuffer(int32[12 b] 1 2 3))
+    (None, nanoarrow.c_buffer.CBuffer(int32[12 b] 1 2 3))
     >>> na_array = na.Array([1, None, 3], na.int32())
     >>> result = na_array.to_pysequence(handle_nulls=na.nulls_separate())
     >>> result[0]
-    nanoarrow.c_lib.CBuffer(uint8[3 b] True False True)
+    nanoarrow.c_buffer.CBuffer(uint8[3 b] True False True)
     >>> result[1]
-    nanoarrow.c_lib.CBuffer(int32[12 b] 1 0 3)
+    nanoarrow.c_buffer.CBuffer(int32[12 b] 1 0 3)
     """
 
     def handle(is_valid, data):

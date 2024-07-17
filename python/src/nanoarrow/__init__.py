@@ -87,7 +87,6 @@ __all__ = [
     "c_array_from_buffers",
     "c_array_stream",
     "c_buffer",
-    "c_lib",
     "c_schema",
     "c_version",
     "date32",

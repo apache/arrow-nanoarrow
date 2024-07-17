@@ -510,7 +510,7 @@ cdef class CBufferView:
         pass
 
     def __repr__(self):
-        class_label = _repr_utils.make_class_label(self, module="nanoarrow.c_lib")
+        class_label = _repr_utils.make_class_label(self, module="nanoarrow.c_buffer")
         return f"{class_label}({_repr_utils.buffer_view_repr(self)})"
 
 
@@ -666,7 +666,7 @@ cdef class CBuffer:
         self._get_buffer_count -= 1
 
     def __repr__(self):
-        class_label = _repr_utils.make_class_label(self, module="nanoarrow.c_lib")
+        class_label = _repr_utils.make_class_label(self, module="nanoarrow.c_buffer")
         if self._ptr == NULL:
             return f"{class_label}(<invalid>)"
 
@@ -905,7 +905,7 @@ cdef class CBufferBuilder:
         return out
 
     def __repr__(self):
-        class_label = _repr_utils.make_class_label(self, module="nanoarrow.c_lib")
+        class_label = _repr_utils.make_class_label(self, module="nanoarrow.c_buffer")
         return f"{class_label}({self.size_bytes}/{self.capacity_bytes})"
 
 
