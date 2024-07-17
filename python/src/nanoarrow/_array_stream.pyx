@@ -16,7 +16,6 @@
 # under the License.
 
 # cython: language_level = 3
-# cython: linetrace=True
 
 """Low-level nanoarrow Python bindings
 

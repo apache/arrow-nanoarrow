@@ -17,7 +17,6 @@
 
 # cython: language_level = 3
 
-
 from libc.stdint cimport uintptr_t, uint8_t, int64_t
 from cpython.pycapsule cimport PyCapsule_GetPointer
 from cpython.unicode cimport PyUnicode_AsUTF8AndSize
@@ -28,7 +27,46 @@ from cpython cimport (
     PyBUF_ANY_CONTIGUOUS,
     PyBUF_FORMAT,
 )
-from nanoarrow_c cimport *
+
+from nanoarrow_c cimport (
+    ArrowArray,
+    ArrowArrayAppendBytes,
+    ArrowArrayAppendNull,
+    ArrowArrayAppendString,
+    ArrowArrayBuffer,
+    ArrowArrayFinishBuilding,
+    ArrowArrayInitFromSchema,
+    ArrowArrayInitFromType,
+    ArrowArrayMove,
+    ArrowArrayRelease,
+    ArrowArrayStartAppending,
+    ArrowArrayView,
+    ArrowArrayViewInitFromSchema,
+    ArrowArrayViewSetArray,
+    ArrowArrayViewSetArrayMinimal,
+    ArrowBitCountSet,
+    ArrowBuffer,
+    ArrowBufferMove,
+    ArrowBufferType,
+    ArrowBufferView,
+    ArrowSchemaInitFromType,
+    ArrowStringView,
+    ArrowType,
+    ArrowTypeString,
+    ArrowValidationLevel,
+    NANOARROW_BUFFER_TYPE_DATA,
+    NANOARROW_BUFFER_TYPE_DATA_OFFSET,
+    NANOARROW_BUFFER_TYPE_TYPE_ID,
+    NANOARROW_BUFFER_TYPE_UNION_OFFSET,
+    NANOARROW_BUFFER_TYPE_VALIDITY,
+    NANOARROW_VALIDATION_LEVEL_DEFAULT,
+    NANOARROW_VALIDATION_LEVEL_FULL,
+    NANOARROW_VALIDATION_LEVEL_MINIMAL,
+    NANOARROW_VALIDATION_LEVEL_NONE,
+    NANOARROW_OK,
+)
+
+
 from nanoarrow_device_c cimport (
     ARROW_DEVICE_CPU,
     ArrowDeviceType,
