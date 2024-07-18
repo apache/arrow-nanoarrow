@@ -87,7 +87,7 @@ if(NANOARROW_BUNDLE)
                REQUIRED)
 
   # Set up arguments to the bundler
-  set(NANOARROW_BUNDLE_ARGS "--with-ipc" "--with-device" "--with-flatcc")
+  set(NANOARROW_BUNDLE_ARGS "--with-ipc" "--with-device" "--with-testing" "--with-flatcc")
 
   if(NANOARROW_BUNDLE_AS_CPP)
     list(APPEND NANOARROW_BUNDLE_ARGS "--cpp")
@@ -109,6 +109,8 @@ if(NANOARROW_BUNDLE)
   set(NANOARROW_BUILD_INCLUDE_DIR "${CMAKE_BINARY_DIR}/bundled/include")
   set(NANOARROW_IPC_BUILD_SOURCES "${CMAKE_BINARY_DIR}/bundled/src/nanoarrow_ipc.c")
   set(NANOARROW_DEVICE_BUILD_SOURCES "${CMAKE_BINARY_DIR}/bundled/src/nanoarrow_device.c")
+  set(NANOARROW_TESTING_BUILD_SOURCES
+      "${CMAKE_BINARY_DIR}/bundled/src/nanoarrow_testing.cc")
   set(NANOARROW_FLATCC_BUILD_SOURCES "${CMAKE_BINARY_DIR}/bundled/src/flatcc.c")
 else()
   # Generate the version information
@@ -317,10 +319,17 @@ if(NANOARROW_TESTING
     set(CMAKE_CXX_STANDARD_REQUIRED ON)
   endif()
 
+  if(NOT NANOARROW_BUNDLE)
+    set(NANOARROW_TESTING_BUILD_SOURCES src/nanoarrow/testing/testing.cc)
+  endif()
+
   add_subdirectory("thirdparty/nlohmann_json")
 
   add_library(nanoarrow_testing src/nanoarrow/testing/testing.cc)
-  target_include_directories(nanoarrow_testing PRIVATE ${CMAKE_CURRENT_LIST_DIR}/src)
+  target_include_directories(nanoarrow_testing
+                             PUBLIC $<BUILD_INTERFACE:${NANOARROW_BUILD_INCLUDE_DIR}>
+                                    $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/src>
+                                    $<INSTALL_INTERFACE:include>)
   target_link_libraries(nanoarrow_testing PRIVATE nlohmann_json::nlohmann_json)
   target_link_libraries(nanoarrow_testing PUBLIC nanoarrow)
   set_target_properties(nanoarrow_testing PROPERTIES POSITION_INDEPENDENT_CODE ON)
