@@ -328,6 +328,7 @@ endif()
 
 # Always build integration test if building tests
 if(NANOARROW_BUILD_TESTS OR NANOARROW_BUILD_INTEGRATION_TESTS)
+  set_target_properties(nanoarrow PROPERTIES POSITION_INDEPENDENT_CODE ON)
   add_library(nanoarrow_c_data_integration SHARED
               src/nanoarrow/integration/c_data_integration.cc)
   target_compile_definitions(nanoarrow_c_data_integration PRIVATE NANOARROW_BUILD_DLL
