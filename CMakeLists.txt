@@ -309,7 +309,9 @@ if(NANOARROW_DEVICE)
   install(FILES src/nanoarrow/nanoarrow_device.h DESTINATION include/nanoarrow)
 endif()
 
-if(NANOARROW_TESTING)
+if(NANOARROW_TESTING OR NANOARROW_BUILD_TESTS OR NANOARROW_BUILD_INTEGRATION_TESTS)
+  add_subdirectory("thirdparty/nlohmann_json")
+
   add_library(nanoarrow_testing src/nanoarrow/testing/testing.cc)
   target_include_directories(nanoarrow_testing PRIVATE ${CMAKE_CURRENT_LIST_DIR}/src)
   target_link_libraries(nanoarrow_testing PRIVATE nlohmann_json::nlohmann_json)
@@ -318,8 +320,6 @@ endif()
 
 # Always build integration test if building tests
 if(NANOARROW_BUILD_TESTS OR NANOARROW_BUILD_INTEGRATION_TESTS)
-  add_subdirectory("thirdparty/nlohmann_json")
-
   set_target_properties(nanoarrow PROPERTIES POSITION_INDEPENDENT_CODE ON)
   add_library(nanoarrow_c_data_integration SHARED
               src/nanoarrow/integration/c_data_integration.cc)
