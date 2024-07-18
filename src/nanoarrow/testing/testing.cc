@@ -899,7 +899,8 @@ ArrowErrorCode TestingJSONWriter::WriteChildren(std::ostream& out,
   return NANOARROW_OK;
 }
 
-// Reader utility functions
+namespace reader_internal {
+
 namespace {
 
 using nlohmann::json;
@@ -1549,10 +1550,6 @@ ArrowErrorCode SetField(ArrowSchema* schema, const json& value,
   return NANOARROW_OK;
 }
 
-}  // namespace
-
-namespace {
-
 ArrowErrorCode SetBufferBitmap(const json& value, ArrowBitmap* bitmap,
                                ArrowError* error) {
   NANOARROW_RETURN_NOT_OK(Check(value.is_array(), error, "bitmap buffer must be array"));
@@ -2145,26 +2142,30 @@ ArrowErrorCode RecordDictionaryBatches(const json& value,
 
 }  // namespace
 
+}  // namespace reader_internal
+
 ArrowErrorCode TestingJSONReader::ReadDataFile(const std::string& data_file_json,
                                                ArrowArrayStream* out, int num_batch,
                                                ArrowError* error) {
   dictionaries_.clear();
 
   try {
-    auto obj = json::parse(data_file_json);
-    NANOARROW_RETURN_NOT_OK(Check(obj.is_object(), error, "data file must be object"));
+    auto obj = nlohmann::json::parse(data_file_json);
     NANOARROW_RETURN_NOT_OK(
-        Check(obj.contains("schema"), error, "data file missing key 'schema'"));
+        reader_internal::Check(obj.is_object(), error, "data file must be object"));
+    NANOARROW_RETURN_NOT_OK(reader_internal::Check(obj.contains("schema"), error,
+                                                   "data file missing key 'schema'"));
 
     // Read Schema
     nanoarrow::UniqueSchema schema;
-    NANOARROW_RETURN_NOT_OK(SetSchema(schema.get(), obj["schema"], dictionaries_, error));
+    NANOARROW_RETURN_NOT_OK(
+        reader_internal::SetSchema(schema.get(), obj["schema"], dictionaries_, error));
 
-    NANOARROW_RETURN_NOT_OK(
-        Check(obj.contains("batches"), error, "data file missing key 'batches'"));
+    NANOARROW_RETURN_NOT_OK(reader_internal::Check(obj.contains("batches"), error,
+                                                   "data file missing key 'batches'"));
     const auto& batches = obj["batches"];
-    NANOARROW_RETURN_NOT_OK(
-        Check(batches.is_array(), error, "data file batches must be array"));
+    NANOARROW_RETURN_NOT_OK(reader_internal::Check(batches.is_array(), error,
+                                                   "data file batches must be array"));
 
     // Populate ArrayView
     nanoarrow::UniqueArrayView array_view;
@@ -2173,8 +2174,8 @@ ArrowErrorCode TestingJSONReader::ReadDataFile(const std::string& data_file_json
 
     // Record any dictionaries that might be present
     if (obj.contains("dictionaries")) {
-      NANOARROW_RETURN_NOT_OK(
-          RecordDictionaryBatches(obj["dictionaries"], dictionaries_, error));
+      NANOARROW_RETURN_NOT_OK(reader_internal::RecordDictionaryBatches(
+          obj["dictionaries"], dictionaries_, error));
     }
 
     // Get a vector of batch ids to parse
@@ -2203,15 +2204,15 @@ ArrowErrorCode TestingJSONReader::ReadDataFile(const std::string& data_file_json
       NANOARROW_RETURN_NOT_OK(
           ArrowArrayInitFromArrayView(array.get(), array_view.get(), error));
       SetArrayAllocatorRecursive(array.get());
-      NANOARROW_RETURN_NOT_OK(SetArrayBatch(batches[batch_ids[i]], schema.get(),
-                                            array_view.get(), array.get(), dictionaries_,
-                                            error));
+      NANOARROW_RETURN_NOT_OK(reader_internal::SetArrayBatch(
+          batches[batch_ids[i]], schema.get(), array_view.get(), array.get(),
+          dictionaries_, error));
       ArrowBasicArrayStreamSetArray(stream.get(), i, array.get());
     }
 
     ArrowArrayStreamMove(stream.get(), out);
     return NANOARROW_OK;
-  } catch (json::exception& e) {
+  } catch (nlohmann::json::exception& e) {
     ArrowErrorSet(error, "Exception in TestingJSONReader::ReadDataFile(): %s", e.what());
     return EINVAL;
   }
@@ -2219,13 +2220,14 @@ ArrowErrorCode TestingJSONReader::ReadDataFile(const std::string& data_file_json
 ArrowErrorCode TestingJSONReader::ReadSchema(const std::string& schema_json,
                                              ArrowSchema* out, ArrowError* error) {
   try {
-    auto obj = json::parse(schema_json);
+    auto obj = nlohmann::json::parse(schema_json);
     nanoarrow::UniqueSchema schema;
 
-    NANOARROW_RETURN_NOT_OK(SetSchema(schema.get(), obj, dictionaries_, error));
+    NANOARROW_RETURN_NOT_OK(
+        reader_internal::SetSchema(schema.get(), obj, dictionaries_, error));
     ArrowSchemaMove(schema.get(), out);
     return NANOARROW_OK;
-  } catch (json::exception& e) {
+  } catch (nlohmann::json::exception& e) {
     ArrowErrorSet(error, "Exception in TestingJSONReader::ReadSchema(): %s", e.what());
     return EINVAL;
   }
@@ -2233,13 +2235,14 @@ ArrowErrorCode TestingJSONReader::ReadSchema(const std::string& schema_json,
 ArrowErrorCode TestingJSONReader::ReadField(const std::string& field_json,
                                             ArrowSchema* out, ArrowError* error) {
   try {
-    auto obj = json::parse(field_json);
+    auto obj = nlohmann::json::parse(field_json);
     nanoarrow::UniqueSchema schema;
 
-    NANOARROW_RETURN_NOT_OK(SetField(schema.get(), obj, dictionaries_, error));
+    NANOARROW_RETURN_NOT_OK(
+        reader_internal::SetField(schema.get(), obj, dictionaries_, error));
     ArrowSchemaMove(schema.get(), out);
     return NANOARROW_OK;
-  } catch (json::exception& e) {
+  } catch (nlohmann::json::exception& e) {
     ArrowErrorSet(error, "Exception in TestingJSONReader::ReadField(): %s", e.what());
     return EINVAL;
   }
@@ -2249,7 +2252,7 @@ ArrowErrorCode TestingJSONReader::ReadBatch(const std::string& batch_json,
                                             const ArrowSchema* schema, ArrowArray* out,
                                             ArrowError* error) {
   try {
-    auto obj = json::parse(batch_json);
+    auto obj = nlohmann::json::parse(batch_json);
 
     // ArrowArrayView to enable validation
     nanoarrow::UniqueArrayView array_view;
@@ -2261,11 +2264,11 @@ ArrowErrorCode TestingJSONReader::ReadBatch(const std::string& batch_json,
     NANOARROW_RETURN_NOT_OK(ArrowArrayInitFromSchema(array.get(), schema, error));
     SetArrayAllocatorRecursive(array.get());
 
-    NANOARROW_RETURN_NOT_OK(
-        SetArrayBatch(obj, schema, array_view.get(), array.get(), dictionaries_, error));
+    NANOARROW_RETURN_NOT_OK(reader_internal::SetArrayBatch(
+        obj, schema, array_view.get(), array.get(), dictionaries_, error));
     ArrowArrayMove(array.get(), out);
     return NANOARROW_OK;
-  } catch (json::exception& e) {
+  } catch (nlohmann::json::exception& e) {
     ArrowErrorSet(error, "Exception in TestingJSONReader::ReadBatch(): %s", e.what());
     return EINVAL;
   }
@@ -2274,7 +2277,7 @@ ArrowErrorCode TestingJSONReader::ReadColumn(const std::string& column_json,
                                              const ArrowSchema* schema, ArrowArray* out,
                                              ArrowError* error) {
   try {
-    auto obj = json::parse(column_json);
+    auto obj = nlohmann::json::parse(column_json);
 
     // ArrowArrayView to enable validation
     nanoarrow::UniqueArrayView array_view;
@@ -2287,13 +2290,13 @@ ArrowErrorCode TestingJSONReader::ReadColumn(const std::string& column_json,
     SetArrayAllocatorRecursive(array.get());
 
     // Parse the JSON into the array
-    NANOARROW_RETURN_NOT_OK(
-        SetArrayColumn(obj, schema, array_view.get(), array.get(), dictionaries_, error));
+    NANOARROW_RETURN_NOT_OK(reader_internal::SetArrayColumn(
+        obj, schema, array_view.get(), array.get(), dictionaries_, error));
 
     // Return the result
     ArrowArrayMove(array.get(), out);
     return NANOARROW_OK;
-  } catch (json::exception& e) {
+  } catch (nlohmann::json::exception& e) {
     ArrowErrorSet(error, "Exception in TestingJSONReader::ReadColumn(): %s", e.what());
     return EINVAL;
   }
