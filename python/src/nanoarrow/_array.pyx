@@ -295,8 +295,7 @@ cdef class CArray:
 
     @staticmethod
     def _import_from_c_capsule(schema_capsule, array_capsule) -> CArray:
-        """
-        Import from a ArrowSchema and ArrowArray PyCapsule tuple.
+        """Import from a ArrowSchema and ArrowArray PyCapsule tuple.
 
         Parameters
         ----------
@@ -515,6 +514,7 @@ cdef class CArrayBuilder:
         return CArrayBuilder(CArray.allocate(CSchema.allocate()))
 
     def is_empty(self) -> bool:
+        """Check if any items have been appended to this builder"""
         if self._ptr.release == NULL:
             raise RuntimeError("CArrayBuilder is not initialized")
 
@@ -544,6 +544,11 @@ cdef class CArrayBuilder:
         return self
 
     def start_appending(self) -> CArrayBuilder:
+        """Use append mode for building this ArrowArray
+
+        Calling this method is required to produce a valid array prior to calling
+        :meth:`append_strings` or `append_bytes`.
+        """
         cdef int code = ArrowArrayStartAppending(self._ptr)
         Error.raise_error_not_ok("ArrowArrayStartAppending()", code)
         return self
@@ -658,7 +663,8 @@ cdef class CArrayBuilder:
         the ArrowBuffer will be invalidated, which is usually the desired behaviour
         if you built or imported a buffer specifically to build this array. If move
         is False (the default), this function will a make a shallow copy via another
-        layer of Python object wrapping."""
+        layer of Python object wrapping.
+        """
         if i < 0 or i > 3:
             raise IndexError("i must be >= 0 and <= 3")
 
@@ -676,6 +682,13 @@ cdef class CArrayBuilder:
         return self
 
     def set_child(self, int64_t i, CArray c_array, move=False) -> CArrayBuilder:
+        """Set an ArrowArray child
+
+        Set a child of this array by performing a show copy or optionally
+        transferring ownership to this object. The initialized child array
+        must have been initialized before this call by initializing this
+        builder with a schema containing the correct number of children.
+        """
         cdef CArray child = self.c_array.child(i)
         if child._ptr.release != NULL:
             ArrowArrayRelease(child._ptr)
@@ -693,6 +706,19 @@ cdef class CArrayBuilder:
         return self
 
     def finish(self, validation_level=None) -> CArray:
+        """Finish building this array
+
+        Performs any steps required to return a valid ArrowArray and optionally
+        validates the output to ensure that the result is valid (given the information
+        the array has available to it).
+
+        Parameters
+        ----------
+        validation_level : None, "full", "default", "minimal", or "none", optional
+            Explicitly define a validation level or use None to perform default
+            validation if possible. Validation may not be possible if children
+            were set that were not created by nanoarrow.
+        """
         self.c_array._assert_valid()
         cdef ArrowValidationLevel c_validation_level
         cdef Error error = Error()
@@ -722,6 +748,14 @@ cdef class CArrayBuilder:
 
 
 cdef class CDeviceArray:
+    """Low-level ArrowDeviceArray wrapper
+
+    This object is a literal wrapper around an ArrowDeviceArray. It provides field accessors
+    that return Python objects and handles the structure lifecycle (i.e., initialized
+    ArrowDeviceArray structures are always released).
+
+    See `nanoarrow.device.c_device_array()` for construction and usage examples.
+    """
 
     def __cinit__(self, object base, uintptr_t addr, CSchema schema):
         self._base = base
@@ -740,30 +774,30 @@ cdef class CDeviceArray:
         return CDeviceArray(holder, <uintptr_t>device_array_ptr, schema)
 
     @property
-    def schema(self):
+    def schema(self) -> CSchema:
         return self._schema
 
     @property
-    def device_type(self):
+    def device_type(self) -> DeviceType:
         return DeviceType(self._ptr.device_type)
 
     @property
-    def device_type_id(self):
+    def device_type_id(self) -> int:
         return self._ptr.device_type
 
     @property
-    def device_id(self):
+    def device_id(self) -> int:
         return self._ptr.device_id
 
     @property
-    def array(self):
+    def array(self) -> CArray:
         # TODO: We lose access to the sync_event here, so we probably need to
         # synchronize (or propagate it, or somehow prevent data access downstream)
         cdef CArray array = CArray(self, <uintptr_t>&self._ptr.array, self._schema)
         array._set_device(self._ptr.device_type, self._ptr.device_id)
         return array
 
-    def view(self):
+    def view(self) -> CArrayView:
         return self.array.view()
 
     def __arrow_c_array__(self, requested_schema=None):
@@ -782,7 +816,7 @@ cdef class CDeviceArray:
         return self._schema.__arrow_c_schema__(), device_array_capsule
 
     @staticmethod
-    def _import_from_c_capsule(schema_capsule, device_array_capsule):
+    def _import_from_c_capsule(schema_capsule, device_array_capsule) -> CDeviceArray:
         """
         Import from an ArrowSchema and ArrowArray PyCapsule tuple.
 
@@ -808,5 +842,5 @@ cdef class CDeviceArray:
 
         return out
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return _repr_utils.device_array_repr(self)
