@@ -238,8 +238,11 @@ def bundle_nanoarrow_testing(
             src_dir / "testing" / "testing.cc",
         ]
     )
-    nanoarrow_testing_cc = namespace_nanoarrow_includes(nanoarrow_testing_cc, header_namespace)
+    nanoarrow_testing_cc = namespace_nanoarrow_includes(
+        nanoarrow_testing_cc, header_namespace
+    )
     yield f"{output_source_dir}/nanoarrow_testing.cc", nanoarrow_testing_cc
+
 
 def bundle_flatcc(
     root_dir,

@@ -23,6 +23,8 @@ namespace nanoarrow {
 
 namespace testing {
 
+namespace writer_internal {
+
 namespace {
 
 class LocalizedStream {
@@ -507,6 +509,8 @@ ArrowErrorCode WriteMetadataItem(std::ostream& out, ArrowMetadataReader* reader)
 
 }  // namespace
 
+}  // namespace writer_internal
+
 ArrowErrorCode TestingJSONWriter::WriteDataFile(std::ostream& out,
                                                 ArrowArrayStream* stream) {
   if (stream == nullptr || stream->release == nullptr) {
@@ -601,7 +605,7 @@ ArrowErrorCode TestingJSONWriter::WriteField(std::ostream& out,
     out << R"("name": null)";
   } else {
     out << R"("name": )";
-    WriteString(out, ArrowCharView(field->name));
+    writer_internal::WriteString(out, ArrowCharView(field->name));
   }
 
   // Write nullability
@@ -619,7 +623,7 @@ ArrowErrorCode TestingJSONWriter::WriteField(std::ostream& out,
         ArrowSchemaViewInit(&dictionary_view, field->dictionary, nullptr));
 
     out << R"(, "type": )";
-    NANOARROW_RETURN_NOT_OK(WriteTypeFromView(out, &dictionary_view));
+    NANOARROW_RETURN_NOT_OK(writer_internal::WriteTypeFromView(out, &dictionary_view));
 
     int32_t dictionary_id;
     NANOARROW_RETURN_NOT_OK(
@@ -636,7 +640,7 @@ ArrowErrorCode TestingJSONWriter::WriteField(std::ostream& out,
   } else {
     // Write non-dictionary type/children
     out << R"(, "type": )";
-    NANOARROW_RETURN_NOT_OK(WriteTypeFromView(out, &view));
+    NANOARROW_RETURN_NOT_OK(writer_internal::WriteTypeFromView(out, &view));
 
     // Write children
     out << R"(, "children": )";
@@ -656,7 +660,7 @@ ArrowErrorCode TestingJSONWriter::WriteField(std::ostream& out,
 ArrowErrorCode TestingJSONWriter::WriteType(std::ostream& out, const ArrowSchema* field) {
   ArrowSchemaView view;
   NANOARROW_RETURN_NOT_OK(ArrowSchemaViewInit(&view, (ArrowSchema*)field, nullptr));
-  NANOARROW_RETURN_NOT_OK(WriteTypeFromView(out, &view));
+  NANOARROW_RETURN_NOT_OK(writer_internal::WriteTypeFromView(out, &view));
   return NANOARROW_OK;
 }
 
@@ -674,10 +678,10 @@ ArrowErrorCode TestingJSONWriter::WriteMetadata(std::ostream& out, const char* m
   }
 
   out << "[";
-  NANOARROW_RETURN_NOT_OK(WriteMetadataItem(out, &reader));
+  NANOARROW_RETURN_NOT_OK(writer_internal::WriteMetadataItem(out, &reader));
   while (reader.remaining_keys > 0) {
     out << ", ";
-    NANOARROW_RETURN_NOT_OK(WriteMetadataItem(out, &reader));
+    NANOARROW_RETURN_NOT_OK(writer_internal::WriteMetadataItem(out, &reader));
   }
 
   out << "]";
@@ -713,7 +717,7 @@ ArrowErrorCode TestingJSONWriter::WriteColumn(std::ostream& out, const ArrowSche
     out << R"("name": null)";
   } else {
     out << R"("name": )";
-    WriteString(out, ArrowCharView(field->name));
+    writer_internal::WriteString(out, ArrowCharView(field->name));
   }
 
   // Write length
@@ -727,7 +731,8 @@ ArrowErrorCode TestingJSONWriter::WriteColumn(std::ostream& out, const ArrowSche
       break;
     default:
       out << R"(, "VALIDITY": )";
-      WriteBitmap(out, value->buffer_views[0].data.as_uint8, value->length);
+      writer_internal::WriteBitmap(out, value->buffer_views[0].data.as_uint8,
+                                   value->length);
       break;
   }
 
@@ -736,7 +741,8 @@ ArrowErrorCode TestingJSONWriter::WriteColumn(std::ostream& out, const ArrowSche
     case NANOARROW_TYPE_SPARSE_UNION:
     case NANOARROW_TYPE_DENSE_UNION:
       out << R"(, "TYPE_ID": )";
-      NANOARROW_RETURN_NOT_OK(WriteOffsetOrTypeID<int8_t>(out, value->buffer_views[0]));
+      NANOARROW_RETURN_NOT_OK(
+          writer_internal::WriteOffsetOrTypeID<int8_t>(out, value->buffer_views[0]));
       break;
     default:
       break;
@@ -749,13 +755,15 @@ ArrowErrorCode TestingJSONWriter::WriteColumn(std::ostream& out, const ArrowSche
     case NANOARROW_TYPE_DENSE_UNION:
     case NANOARROW_TYPE_LIST:
       out << R"(, "OFFSET": )";
-      NANOARROW_RETURN_NOT_OK(WriteOffsetOrTypeID<int32_t>(out, value->buffer_views[1]));
+      NANOARROW_RETURN_NOT_OK(
+          writer_internal::WriteOffsetOrTypeID<int32_t>(out, value->buffer_views[1]));
       break;
     case NANOARROW_TYPE_LARGE_LIST:
     case NANOARROW_TYPE_LARGE_BINARY:
     case NANOARROW_TYPE_LARGE_STRING:
       out << R"(, "OFFSET": )";
-      NANOARROW_RETURN_NOT_OK(WriteOffsetOrTypeID<int64_t>(out, value->buffer_views[1]));
+      NANOARROW_RETURN_NOT_OK(
+          writer_internal::WriteOffsetOrTypeID<int64_t>(out, value->buffer_views[1]));
       break;
     default:
       break;
@@ -774,7 +782,7 @@ ArrowErrorCode TestingJSONWriter::WriteColumn(std::ostream& out, const ArrowSche
       break;
     default:
       out << R"(, "DATA": )";
-      NANOARROW_RETURN_NOT_OK(WriteData(out, value, float_precision_));
+      NANOARROW_RETURN_NOT_OK(writer_internal::WriteData(out, value, float_precision_));
       break;
   }
 
@@ -861,7 +869,7 @@ ArrowErrorCode TestingJSONWriter::WriteFieldDictionary(
   out << R"("id": )" << dictionary_id;
 
   out << R"(, "indexType": )";
-  NANOARROW_RETURN_NOT_OK(WriteTypeFromView(out, indices_field));
+  NANOARROW_RETURN_NOT_OK(writer_internal::WriteTypeFromView(out, indices_field));
 
   if (is_ordered) {
     out << R"(, "isOrdered": true)";
