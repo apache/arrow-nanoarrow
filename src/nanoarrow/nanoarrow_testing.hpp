@@ -215,7 +215,6 @@ class TestingJSONWriter {
 
 /// \brief Reader for the Arrow integration testing JSON format
 class TestingJSONReader {
-
  public:
   TestingJSONReader(ArrowBufferAllocator allocator) : allocator_(allocator) {}
   TestingJSONReader() : TestingJSONReader(ArrowBufferAllocatorDefault()) {}

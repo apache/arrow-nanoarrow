@@ -309,7 +309,14 @@ if(NANOARROW_DEVICE)
   install(FILES src/nanoarrow/nanoarrow_device.h DESTINATION include/nanoarrow)
 endif()
 
-if(NANOARROW_TESTING OR NANOARROW_BUILD_TESTS OR NANOARROW_BUILD_INTEGRATION_TESTS)
+if(NANOARROW_TESTING
+   OR NANOARROW_BUILD_TESTS
+   OR NANOARROW_BUILD_INTEGRATION_TESTS)
+  if(NOT DEFINED CMAKE_CXX_STANDARD)
+    set(CMAKE_CXX_STANDARD 11)
+    set(CMAKE_CXX_STANDARD_REQUIRED ON)
+  endif()
+
   add_subdirectory("thirdparty/nlohmann_json")
 
   add_library(nanoarrow_testing src/nanoarrow/testing/testing.cc)
@@ -397,7 +404,10 @@ if(NANOARROW_BUILD_TESTS)
                         gtest_main
                         gmock_main
                         nlohmann_json::nlohmann_json)
-  target_link_libraries(nanoarrow_testing_test nanoarrow nanoarrow_testing gtest_main
+  target_link_libraries(nanoarrow_testing_test
+                        nanoarrow
+                        nanoarrow_testing
+                        gtest_main
                         nlohmann_json::nlohmann_json)
   target_link_libraries(c_data_integration_test nanoarrow nanoarrow_c_data_integration
                         gtest_main)
