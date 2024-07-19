@@ -1852,6 +1852,15 @@ TEST(ArrayTest, ArrayViewTestComputeNullCount) {
         << error.message;
     EXPECT_EQ(ArrowArrayViewComputeNullCount(array_view.get()), null_count);
   }
+
+  array->length = 0;
+  array->null_count = 0;
+  buffers[0] = &all_null;
+  nanoarrow::UniqueArrayView array_view;
+  ArrowArrayViewInitFromType(array_view.get(), NANOARROW_TYPE_INT32);
+  EXPECT_EQ(ArrowArrayViewSetArray(array_view.get(), array.get(), &error), NANOARROW_OK)
+      << error.message;
+  EXPECT_EQ(ArrowArrayViewComputeNullCount(array_view.get()), 0);
 }
 
 TEST(ArrayTest, ArrayViewTestComputeNullCountUnion) {

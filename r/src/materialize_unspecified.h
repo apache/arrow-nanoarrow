@@ -35,19 +35,18 @@ static inline int nanoarrow_materialize_unspecified(struct ArrayViewSlice* src,
 
   if (ArrowArrayViewComputeNullCount(src->array_view) == 0) {
     // We can blindly set all the values to NA_LOGICAL without checking
-    for (int64_t i = 0; i < length; i++) {
+    for (int64_t i = 0; i < src->length; i++) {
       result[dst->offset + i] = NA_LOGICAL;
     }
     return NANOARROW_OK;
   }
 
   int64_t total_offset = src->array_view->array->offset + src->offset;
-  int64_t length = src->length;
   const uint8_t* bits = src->array_view->buffer_views[0].data.as_uint8;
 
   // Count non-null values and warn
   int64_t n_bad_values = 0;
-  for (int64_t i = 0; i < length; i++) {
+  for (int64_t i = 0; i < src->length; i++) {
     n_bad_values += ArrowBitGet(bits, total_offset + i);
     result[dst->offset + i] = NA_LOGICAL;
   }
