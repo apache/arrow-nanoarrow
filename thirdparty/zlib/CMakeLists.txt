@@ -23,3 +23,4 @@ fetchcontent_makeavailable(nanoarrow_zlib)
 
 add_library(ZLIB::ZLIB ALIAS zlibstatic)
 target_include_directories(zlibstatic INTERFACE ${zlib_BINARY_DIR} ${zlib_SOURCE_DIR})
+target_include_directories(zlib INTERFACE ${zlib_BINARY_DIR} ${zlib_SOURCE_DIR})
