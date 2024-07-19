@@ -1071,6 +1071,10 @@ void ArrowArrayViewReset(struct ArrowArrayView* array_view);
 static inline int8_t ArrowArrayViewIsNull(const struct ArrowArrayView* array_view,
                                           int64_t i);
 
+/// \brief Compute null count for an ArrowArrayView
+static inline int64_t ArrowArrayViewComputeNullCount(
+    const struct ArrowArrayView* array_view);
+
 /// \brief Get the type id of a union array element
 static inline int8_t ArrowArrayViewUnionTypeId(const struct ArrowArrayView* array_view,
                                                int64_t i);
