@@ -740,6 +740,31 @@ static inline int8_t ArrowArrayViewIsNull(const struct ArrowArrayView* array_vie
   }
 }
 
+static inline int64_t ArrowArrayViewComputeNullCount(
+    const struct ArrowArrayView* array_view) {
+  if (array_view->length == 0) {
+    return 0;
+  }
+
+  switch (array_view->storage_type) {
+    case NANOARROW_TYPE_NA:
+      return array_view->length;
+    case NANOARROW_TYPE_DENSE_UNION:
+    case NANOARROW_TYPE_SPARSE_UNION:
+      // Unions are "never null" in Arrow land
+      return 0;
+    default:
+      break;
+  }
+
+  const uint8_t* validity_buffer = array_view->buffer_views[0].data.as_uint8;
+  if (validity_buffer == NULL) {
+    return 0;
+  }
+  return array_view->length -
+         ArrowBitCountSet(validity_buffer, array_view->offset, array_view->length);
+}
+
 static inline int8_t ArrowArrayViewUnionTypeId(const struct ArrowArrayView* array_view,
                                                int64_t i) {
   switch (array_view->storage_type) {

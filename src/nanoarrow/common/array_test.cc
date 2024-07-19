@@ -1816,6 +1816,97 @@ TEST(ArrayTest, ArrayViewTestBasic) {
   ArrowArrayViewReset(&array_view);
 }
 
+TEST(ArrayTest, ArrayViewTestComputeNullCount) {
+  struct ArrowError error;
+
+  int32_t values[] = {17, 87, 23, 53};
+  uint8_t all_valid = 0b1111'1111;
+  uint8_t all_null = 0b0000'0000;
+  uint8_t half_valid = 0b1010'1010;
+  uint8_t* all_valid_because_missing = nullptr;
+
+  const void* buffers[2];
+  buffers[1] = values;
+
+  nanoarrow::UniqueArray array;
+  array->length = 4;
+  array->offset = 0;
+  array->n_buffers = 2;
+  array->n_children = 0;
+  array->buffers = buffers;
+  array->children = nullptr;
+  array->dictionary = nullptr;
+  array->release = [](struct ArrowArray*) {};
+
+  for (auto [buffer, null_count] : {
+           std::pair{&all_valid, int64_t(0)},
+           std::pair{&all_null, array->length},
+           std::pair{&half_valid, array->length / 2},
+           std::pair{all_valid_because_missing, int64_t(0)},
+       }) {
+    array->null_count = null_count;
+    buffers[0] = buffer;
+    nanoarrow::UniqueArrayView array_view;
+    ArrowArrayViewInitFromType(array_view.get(), NANOARROW_TYPE_INT32);
+    EXPECT_EQ(ArrowArrayViewSetArray(array_view.get(), array.get(), &error), NANOARROW_OK)
+        << error.message;
+    EXPECT_EQ(ArrowArrayViewComputeNullCount(array_view.get()), null_count);
+  }
+
+  array->length = 0;
+  array->null_count = 0;
+  buffers[0] = &all_null;
+  nanoarrow::UniqueArrayView array_view;
+  ArrowArrayViewInitFromType(array_view.get(), NANOARROW_TYPE_INT32);
+  EXPECT_EQ(ArrowArrayViewSetArray(array_view.get(), array.get(), &error), NANOARROW_OK)
+      << error.message;
+  EXPECT_EQ(ArrowArrayViewComputeNullCount(array_view.get()), 0);
+}
+
+TEST(ArrayTest, ArrayViewTestComputeNullCountUnion) {
+  struct ArrowError error;
+
+  // Build a simple union with one int and one string
+  nanoarrow::UniqueSchema schema;
+  ArrowSchemaInit(schema.get());
+  ASSERT_EQ(ArrowSchemaSetTypeUnion(schema.get(), NANOARROW_TYPE_DENSE_UNION, 2),
+            NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaSetType(schema->children[0], NANOARROW_TYPE_INT32), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaSetType(schema->children[1], NANOARROW_TYPE_STRING), NANOARROW_OK);
+
+  nanoarrow::UniqueArray array;
+  ASSERT_EQ(ArrowArrayInitFromSchema(array.get(), schema.get(), &error), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayStartAppending(array.get()), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAppendNull(array->children[0], 1), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayFinishUnionElement(array.get(), 0), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAppendNull(array->children[1], 1), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayFinishUnionElement(array.get(), 1), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayFinishBuildingDefault(array.get(), &error), NANOARROW_OK);
+
+  nanoarrow::UniqueArrayView array_view;
+  ASSERT_EQ(ArrowArrayViewInitFromSchema(array_view.get(), schema.get(), &error),
+            NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayViewSetArray(array_view.get(), array.get(), &error), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayViewComputeNullCount(array_view.get()), 0);
+}
+
+TEST(ArrayTest, ArrayViewTestComputeNullCountNull) {
+  struct ArrowError error;
+  nanoarrow::UniqueArray array;
+  ASSERT_EQ(ArrowArrayInitFromType(array.get(), NANOARROW_TYPE_NA), NANOARROW_OK);
+
+  EXPECT_EQ(ArrowArrayStartAppending(array.get()), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayAppendNull(array.get(), 11), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayAppendNull(array.get(), 42), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayFinishBuildingDefault(array.get(), &error), NANOARROW_OK)
+      << error.message;
+
+  nanoarrow::UniqueArrayView array_view;
+  ArrowArrayViewInitFromType(array_view.get(), NANOARROW_TYPE_NA);
+  ASSERT_EQ(ArrowArrayViewSetArray(array_view.get(), array.get(), &error), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayViewComputeNullCount(array_view.get()), 53);
+}
+
 TEST(ArrayTest, ArrayViewTestMove) {
   struct ArrowArrayView array_view;
   ArrowArrayViewInitFromType(&array_view, NANOARROW_TYPE_STRING);
@@ -2407,7 +2498,7 @@ TEST(ArrayTest, ArrayViewTestUnionChildIndices) {
   ASSERT_EQ(ArrowArrayFinishUnionElement(&array, 1), NANOARROW_OK);
   ASSERT_EQ(ArrowArrayFinishBuildingDefault(&array, nullptr), NANOARROW_OK);
 
-  // The ArrayView for a union could in theroy be created without a schema.
+  // The ArrayView for a union could in theory be created without a schema.
   // Currently FULL validation will fail here since we can't guarantee that
   // these are valid.
   ArrowArrayViewInitFromType(&array_view, NANOARROW_TYPE_DENSE_UNION);
