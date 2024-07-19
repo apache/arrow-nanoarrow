@@ -33,7 +33,7 @@ static inline int nanoarrow_materialize_unspecified(struct ArrayViewSlice* src,
 
   int* result = LOGICAL(dst->vec_sexp);
 
-  if (ArrowArrayViewComputeNullCount(src->array_view) == 0) {
+  if (ArrowArrayViewComputeNullCount(src->array_view) == src->length) {
     // We can blindly set all the values to NA_LOGICAL without checking
     for (int64_t i = 0; i < src->length; i++) {
       result[dst->offset + i] = NA_LOGICAL;
