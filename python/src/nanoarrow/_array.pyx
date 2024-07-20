@@ -41,6 +41,7 @@ from nanoarrow_c cimport (
     ArrowArrayRelease,
     ArrowArrayStartAppending,
     ArrowArrayView,
+    ArrowArrayViewComputeNullCount,
     ArrowArrayViewInitFromSchema,
     ArrowArrayViewSetArray,
     ArrowArrayViewSetArrayMinimal,
