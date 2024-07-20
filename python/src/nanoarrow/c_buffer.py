@@ -57,9 +57,9 @@ def c_buffer(obj, schema=None) -> CBuffer:
 
     >>> import nanoarrow as na
     >>> na.c_buffer(b"1234")
-    nanoarrow.c_lib.CBuffer(uint8[4 b] 49 50 51 52)
+    nanoarrow.c_buffer.CBuffer(uint8[4 b] 49 50 51 52)
     >>> na.c_buffer([1, 2, 3], na.int32())
-    nanoarrow.c_lib.CBuffer(int32[12 b] 1 2 3)
+    nanoarrow.c_buffer.CBuffer(int32[12 b] 1 2 3)
     """
     if isinstance(obj, CBuffer) and schema is None:
         return obj

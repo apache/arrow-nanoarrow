@@ -19,7 +19,7 @@ import array
 from datetime import date, datetime, timezone
 
 import pytest
-from nanoarrow._lib import CArrayBuilder
+from nanoarrow._array import CArrayBuilder
 from nanoarrow._utils import NanoarrowException
 from nanoarrow.c_schema import c_schema_view
 

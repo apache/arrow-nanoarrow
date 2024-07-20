@@ -15,7 +15,7 @@
 # specific language governing permissions and limitations
 # under the License.
 
-# The functions here are imported in _lib.pyx. They're defined here
+# The functions here are imported from Cython. They're defined here
 # instead of there to make it easier to iterate (no need to rebuild
 # after editing when working with an editable installation)
 

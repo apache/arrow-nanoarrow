@@ -15,8 +15,8 @@
 # specific language governing permissions and limitations
 # under the License.
 
+from nanoarrow._array import CDeviceArray
 from nanoarrow._device import DEVICE_CPU, Device, DeviceType  # noqa: F401
-from nanoarrow._lib import CDeviceArray
 from nanoarrow.c_array import c_array
 from nanoarrow.c_schema import c_schema
 

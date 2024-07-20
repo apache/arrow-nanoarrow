@@ -35,7 +35,7 @@ def test_buffer_invalid():
     with pytest.raises(RuntimeError, match="CBuffer is not valid"):
         memoryview(invalid)
 
-    assert repr(invalid) == "nanoarrow.c_lib.CBuffer(<invalid>)"
+    assert repr(invalid) == "nanoarrow.c_buffer.CBuffer(<invalid>)"
 
 
 def test_c_buffer_constructor():
@@ -68,7 +68,7 @@ def test_c_buffer_empty():
     assert empty.size_bytes == 0
     assert bytes(empty) == b""
 
-    assert repr(empty) == "nanoarrow.c_lib.CBuffer(binary[0 b] b'')"
+    assert repr(empty) == "nanoarrow.c_buffer.CBuffer(binary[0 b] b'')"
 
     # Export it via the Python buffer protocol wrapped in a new CBuffer
     empty_roundtrip = na.c_buffer(empty)
@@ -85,7 +85,7 @@ def test_c_buffer_pybuffer():
     assert buffer.size_bytes == len(data)
     assert bytes(buffer) == b"abcdefghijklmnopqrstuvwxyz"
 
-    assert repr(buffer).startswith("nanoarrow.c_lib.CBuffer(uint8[26 b] 97 98")
+    assert repr(buffer).startswith("nanoarrow.c_buffer.CBuffer(uint8[26 b] 97 98")
 
 
 def test_c_buffer_unsupported_type():
@@ -201,7 +201,7 @@ def test_c_buffer_builder():
     builder = CBufferBuilder()
     assert builder.size_bytes == 0
     assert builder.capacity_bytes == 0
-    assert repr(builder) == "nanoarrow.c_lib.CBufferBuilder(0/0)"
+    assert repr(builder) == "nanoarrow.c_buffer.CBufferBuilder(0/0)"
 
     builder.reserve_bytes(123)
     assert builder.size_bytes == 0

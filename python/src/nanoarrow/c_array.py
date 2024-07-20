@@ -17,8 +17,8 @@
 
 from typing import Any, Iterable, Literal, Tuple
 
+from nanoarrow._array import CArray, CArrayBuilder, CArrayView
 from nanoarrow._buffer import CBuffer, CBufferBuilder, NoneAwareWrapperIterator
-from nanoarrow._lib import CArray, CArrayBuilder, CArrayView
 from nanoarrow._schema import CSchema, CSchemaBuilder
 from nanoarrow._utils import obj_is_buffer, obj_is_capsule
 from nanoarrow.c_buffer import c_buffer
