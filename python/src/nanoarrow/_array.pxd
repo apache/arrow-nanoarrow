@@ -29,7 +29,7 @@ from nanoarrow_device_c cimport (
     ArrowDeviceType
 )
 
-from nanoarrow._device cimport Device
+from nanoarrow._device cimport CSharedSyncEvent
 from nanoarrow._schema cimport CSchema
 
 
@@ -39,6 +39,7 @@ cdef class CArray:
     cdef CSchema _schema
     cdef ArrowDeviceType _device_type
     cdef int _device_id
+    cdef void* _sync_event
 
     cdef _set_device(self, ArrowDeviceType device_type, int64_t device_id)
 
@@ -47,7 +48,7 @@ cdef class CArrayView:
     cdef object _base
     cdef object _array_base
     cdef ArrowArrayView* _ptr
-    cdef Device _device
+    cdef CSharedSyncEvent _event
 
 cdef class CDeviceArray:
     cdef object _base
