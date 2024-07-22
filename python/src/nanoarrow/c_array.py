@@ -19,7 +19,7 @@ from typing import Any, Iterable, Literal, Tuple, Union
 
 from nanoarrow._array import CArray, CArrayBuilder, CArrayView
 from nanoarrow._buffer import CBuffer, CBufferBuilder, NoneAwareWrapperIterator
-from nanoarrow._device import Device
+from nanoarrow._device import Device, DEVICE_CPU
 from nanoarrow._schema import CSchema, CSchemaBuilder
 from nanoarrow._utils import obj_is_buffer, obj_is_capsule
 from nanoarrow.c_buffer import c_buffer
