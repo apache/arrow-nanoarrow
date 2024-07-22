@@ -41,7 +41,7 @@ cdef class CArray:
     cdef int _device_id
     cdef void* _sync_event
 
-    cdef _set_device(self, ArrowDeviceType device_type, int64_t device_id)
+    cdef _set_device(self, ArrowDeviceType device_type, int64_t device_id, void* sync_event)
 
 
 cdef class CArrayView:
