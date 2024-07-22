@@ -67,7 +67,6 @@ from nanoarrow_c cimport (
     NANOARROW_OK,
 )
 
-
 from nanoarrow_device_c cimport (
     ARROW_DEVICE_CPU,
     ArrowDeviceType,
@@ -75,7 +74,7 @@ from nanoarrow_device_c cimport (
     ArrowDeviceArrayInit,
 )
 
-from nanoarrow._device cimport Device
+from nanoarrow._device cimport Device, CSharedSyncEvent
 
 from nanoarrow._buffer cimport CBuffer, CBufferView
 from nanoarrow._schema cimport CSchema, CLayout
@@ -107,7 +106,7 @@ cdef class CArrayView:
     def __cinit__(self, object base, uintptr_t addr):
         self._base = base
         self._ptr = <ArrowArrayView*>addr
-        self._device = DEVICE_CPU
+        self._event = CSharedSyncEvent(DEVICE_CPU)
 
     def _set_array(self, CArray array, Device device=DEVICE_CPU):
         cdef Error error = Error()
@@ -120,7 +119,8 @@ cdef class CArrayView:
 
         error.raise_message_not_ok("ArrowArrayViewSetArray()", code)
         self._array_base = array._base
-        self._device = device
+        self._event = CSharedSyncEvent(device, <uintptr_t>array._sync_event)
+
         return self
 
     @property
@@ -178,7 +178,8 @@ cdef class CArrayView:
             <uintptr_t>self._ptr.children[i]
         )
 
-        child._device = self._device
+        child._event = self._event
+
         return child
 
     @property
@@ -227,7 +228,7 @@ cdef class CArrayView:
             buffer_view.size_bytes,
             self._ptr.layout.buffer_data_type[i],
             self._ptr.layout.element_size_bits[i],
-            self._device
+            self._event
         )
 
     @property
@@ -239,11 +240,14 @@ cdef class CArrayView:
     def dictionary(self):
         if self._ptr.dictionary == NULL:
             return None
-        else:
-            return CArrayView(
-                self,
-                <uintptr_t>self._ptr.dictionary
-            )
+
+        cdef CArrayView dictionary = CArrayView(
+            self,
+            <uintptr_t>self._ptr.dictionary
+        )
+        dictionary._event = self._event
+
+        return dictionary
 
     def __repr__(self):
         return _repr_utils.array_view_repr(self)
@@ -289,10 +293,12 @@ cdef class CArray:
         self._schema = schema
         self._device_type = ARROW_DEVICE_CPU
         self._device_id = 0
+        self._sync_event = NULL
 
-    cdef _set_device(self, ArrowDeviceType device_type, int64_t device_id):
+    cdef _set_device(self, ArrowDeviceType device_type, int64_t device_id, void* sync_event):
         self._device_type = device_type
         self._device_id = device_id
+        self._sync_event = sync_event
 
     @staticmethod
     def _import_from_c_capsule(schema_capsule, array_capsule) -> CArray:
@@ -350,7 +356,8 @@ cdef class CArray:
         c_array_out.offset = c_array_out.offset + start
         c_array_out.length = stop - start
         cdef CArray out = CArray(base, <uintptr_t>c_array_out, self._schema)
-        out._set_device(self._device_type, self._device_id)
+        out._set_device(self._device_type, self._device_id, self._sync_event)
+
         return out
 
     def __arrow_c_array__(self, requested_schema=None):
@@ -466,7 +473,7 @@ cdef class CArray:
             <uintptr_t>self._ptr.children[i],
             self._schema.child(i)
         )
-        out._set_device(self._device_type, self._device_id)
+        out._set_device(self._device_type, self._device_id, self._sync_event)
         return out
 
     @property
@@ -480,7 +487,7 @@ cdef class CArray:
         cdef CArray out
         if self._ptr.dictionary != NULL:
             out = CArray(self, <uintptr_t>self._ptr.dictionary, self._schema.dictionary)
-            out._set_device(self._device_type, self._device_id)
+            out._set_device(self._device_type, self._device_id, self._sync_event)
             return out
         else:
             return None
@@ -497,22 +504,24 @@ cdef class CArrayBuilder:
     """
     cdef CArray c_array
     cdef ArrowArray* _ptr
+    cdef Device _device
     cdef bint _can_validate
 
-    def __cinit__(self, CArray array):
+    def __cinit__(self, CArray array, Device device=DEVICE_CPU):
         self.c_array = array
         self._ptr = array._ptr
-        self._can_validate = True
+        self._device = device
+        self._can_validate = device is DEVICE_CPU
 
     @staticmethod
-    def allocate():
+    def allocate(Device device=DEVICE_CPU):
         """Create a CArrayBuilder
 
         Allocates memory for an ArrowArray and populates it with nanoarrow's
         ArrowArray private_data/release callback implementation. This should
         usually be followed by :meth:`init_from_type` or :meth:`init_from_schema`.
         """
-        return CArrayBuilder(CArray.allocate(CSchema.allocate()))
+        return CArrayBuilder(CArray.allocate(CSchema.allocate()), device)
 
     def is_empty(self) -> bool:
         """Check if any items have been appended to this builder"""
@@ -550,6 +559,9 @@ cdef class CArrayBuilder:
         Calling this method is required to produce a valid array prior to calling
         :meth:`append_strings` or `append_bytes`.
         """
+        if self._device != DEVICE_CPU:
+            raise ValueError("Can't append to non-CPU array")
+
         cdef int code = ArrowArrayStartAppending(self._ptr)
         Error.raise_error_not_ok("ArrowArrayStartAppending()", code)
         return self
@@ -636,6 +648,10 @@ cdef class CArrayBuilder:
             self._ptr.null_count = 0
             return self
 
+        # Don't attempt to access a non-cpu buffer
+        if self._device != DEVICE_CPU:
+            return self
+
         # From _ArrowBytesForBits(), which is not included in nanoarrow_c.pxd
         # because it's an internal inline function.
         cdef int64_t bits = self._ptr.offset + self._ptr.length
@@ -668,6 +684,9 @@ cdef class CArrayBuilder:
         """
         if i < 0 or i > 3:
             raise IndexError("i must be >= 0 and <= 3")
+
+        if buffer._device != self._device:
+            raise ValueError("Can't source and buffer device not identical")
 
         self.c_array._assert_valid()
         if not move:
@@ -747,6 +766,16 @@ cdef class CArrayBuilder:
 
         return out
 
+    def finish_device(self):
+        cdef CArray array = self.finish()
+
+        cdef ArrowDeviceArray* device_array_ptr
+        holder = alloc_c_device_array(&device_array_ptr)
+        cdef int code = ArrowDeviceArrayInit(self._device._ptr, device_array_ptr, array._ptr, NULL)
+        Error.raise_error_not_ok("ArrowDeviceArrayInit", code)
+
+        return CDeviceArray(holder, <uintptr_t>device_array_ptr, array._schema)
+
 
 cdef class CDeviceArray:
     """Low-level ArrowDeviceArray wrapper
@@ -792,10 +821,8 @@ cdef class CDeviceArray:
 
     @property
     def array(self) -> CArray:
-        # TODO: We lose access to the sync_event here, so we probably need to
-        # synchronize (or propagate it, or somehow prevent data access downstream)
         cdef CArray array = CArray(self, <uintptr_t>&self._ptr.array, self._schema)
-        array._set_device(self._ptr.device_type, self._ptr.device_id)
+        array._set_device(self._ptr.device_type, self._ptr.device_id, self._ptr.sync_event)
         return array
 
     def view(self) -> CArrayView:
