@@ -19,7 +19,7 @@ from typing import Any, Iterable, Literal, Tuple, Union
 
 from nanoarrow._array import CArray, CArrayBuilder, CArrayView
 from nanoarrow._buffer import CBuffer, CBufferBuilder, NoneAwareWrapperIterator
-from nanoarrow._device import Device, DEVICE_CPU
+from nanoarrow._device import DEVICE_CPU, Device
 from nanoarrow._schema import CSchema, CSchemaBuilder
 from nanoarrow._utils import obj_is_buffer, obj_is_capsule
 from nanoarrow.c_buffer import c_buffer
@@ -202,7 +202,7 @@ def c_array_from_buffers(
     children: Iterable[Any] = (),
     validation_level: Literal[None, "full", "default", "minimal", "none"] = None,
     move: bool = False,
-    device: Union[Device, None]=None
+    device: Union[Device, None] = None,
 ) -> CArray:
     """Create an ArrowArray wrapper from components
 

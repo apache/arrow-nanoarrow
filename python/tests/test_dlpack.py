@@ -16,7 +16,6 @@
 # under the License.
 
 import pytest
-
 from nanoarrow._buffer import CBuffer
 from nanoarrow._utils import obj_is_capsule
 
