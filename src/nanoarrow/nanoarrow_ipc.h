@@ -57,6 +57,10 @@
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcInputStreamMove)
 #define ArrowIpcArrayStreamReaderInit \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcArrayStreamReaderInit)
+#define ArrowIpcEncoderInit NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcEncoderInit)
+#define ArrowIpcEncoderReset NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcEncoderReset)
+#define ArrowIpcEncoderFinalizeBuffer \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcEncoderFinalizeBuffer)
 
 #endif
 
@@ -116,6 +120,18 @@ enum ArrowIpcCompressionType {
 
 /// \brief Checks the nanoarrow runtime to make sure the run/build versions match
 ArrowErrorCode ArrowIpcCheckRuntime(struct ArrowError* error);
+
+/// \brief Get the endianness of the current runtime
+static inline enum ArrowIpcEndianness ArrowIpcSystemEndianness(void) {
+  uint32_t check = 1;
+  char first_byte;
+  memcpy(&first_byte, &check, sizeof(char));
+  if (first_byte) {
+    return NANOARROW_IPC_ENDIANNESS_LITTLE;
+  } else {
+    return NANOARROW_IPC_ENDIANNESS_BIG;
+  }
+}
 
 /// \brief A structure representing a reference-counted buffer that may be passed to
 /// ArrowIpcDecoderDecodeArrayFromShared().
@@ -379,6 +395,44 @@ ArrowErrorCode ArrowIpcArrayStreamReaderInit(
     struct ArrowArrayStream* out, struct ArrowIpcInputStream* input_stream,
     struct ArrowIpcArrayStreamReaderOptions* options);
 
+/// \brief Encoder for Arrow IPC messages
+///
+/// This structure is intended to be allocated by the caller,
+/// initialized using ArrowIpcEncoderInit(), and released with
+/// ArrowIpcEncoderReset().
+struct ArrowIpcEncoder {
+  /// \brief Compression to encode in the next RecordBatch message
+  enum ArrowIpcCompressionType codec;
+
+  /// \brief Finalized body length of the most recently encoded RecordBatch message
+  int64_t body_length;
+
+  /// \brief Callback invoked against each buffer to be encoded.
+  ///
+  /// Encoding of buffers is left as a callback to accommodate dissociated data storage.
+  /// One implementation of this callback might copy all buffers into a contiguous body
+  /// for use in an arrow IPC stream, another implementation might store offsets and
+  /// lengths relative to a known arena.
+  ArrowErrorCode (*encode_buffer)(struct ArrowBufferView buffer_view,
+                                  struct ArrowIpcEncoder* encoder, int64_t* offset,
+                                  int64_t* length, struct ArrowError* error);
+
+  /// \brief Pointer to arbitrary data used by encode_buffer()
+  void* encode_buffer_state;
+
+  /// \brief Private resources managed by this library
+  void* private_data;
+};
+
+/// \brief Initialize an encoder
+ArrowErrorCode ArrowIpcEncoderInit(struct ArrowIpcEncoder* encoder);
+
+/// \brief Release all resources attached to an encoder
+void ArrowIpcEncoderReset(struct ArrowIpcEncoder* encoder);
+
+/// \brief Finalize the most recently encoded message to a buffer
+ArrowErrorCode ArrowIpcEncoderFinalizeBuffer(struct ArrowIpcEncoder* encoder,
+                                             struct ArrowBuffer* out);
 /// @}
 
 #ifdef __cplusplus

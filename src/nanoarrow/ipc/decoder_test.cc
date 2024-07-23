@@ -30,8 +30,7 @@
 
 using namespace arrow;
 
-// Copied from nanoarrow_ipc.c so we can test the internal state
-// of the decoder
+// Copied from decoder.c so we can test the internal state
 extern "C" {
 struct ArrowIpcField {
   struct ArrowArrayView* array_view;
@@ -49,17 +48,6 @@ struct ArrowIpcDecoderPrivate {
   int64_t n_buffers;
   const void* last_message;
 };
-}
-
-static enum ArrowIpcEndianness ArrowIpcSystemEndianness(void) {
-  uint32_t check = 1;
-  char first_byte;
-  memcpy(&first_byte, &check, sizeof(char));
-  if (first_byte) {
-    return NANOARROW_IPC_ENDIANNESS_LITTLE;
-  } else {
-    return NANOARROW_IPC_ENDIANNESS_BIG;
-  }
 }
 
 TEST(NanoarrowIpcCheckRuntime, CheckRuntime) {

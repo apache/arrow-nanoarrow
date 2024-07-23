@@ -42,6 +42,22 @@ inline void release_pointer(struct ArrowIpcDecoder* data) {
 }
 
 template <>
+inline void init_pointer(struct ArrowIpcEncoder* data) {
+  data->private_data = nullptr;
+}
+
+template <>
+inline void move_pointer(struct ArrowIpcEncoder* src, struct ArrowIpcEncoder* dst) {
+  memcpy(dst, src, sizeof(struct ArrowIpcEncoder));
+  src->private_data = nullptr;
+}
+
+template <>
+inline void release_pointer(struct ArrowIpcEncoder* data) {
+  ArrowIpcEncoderReset(data);
+}
+
+template <>
 inline void init_pointer(struct ArrowIpcInputStream* data) {
   data->release = nullptr;
 }
@@ -76,6 +92,9 @@ namespace ipc {
 
 /// \brief Class wrapping a unique struct ArrowIpcDecoder
 using UniqueDecoder = internal::Unique<struct ArrowIpcDecoder>;
+
+/// \brief Class wrapping a unique struct ArrowIpcEncoder
+using UniqueEncoder = internal::Unique<struct ArrowIpcEncoder>;
 
 /// \brief Class wrapping a unique struct ArrowIpcInputStream
 using UniqueInputStream = internal::Unique<struct ArrowIpcInputStream>;

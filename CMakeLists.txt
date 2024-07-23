@@ -223,8 +223,9 @@ if(NANOARROW_IPC)
   endif()
 
   if(NOT NANOARROW_BUNDLE)
-    set(NANOARROW_IPC_BUILD_SOURCES src/nanoarrow/ipc/decoder.c
-                                    src/nanoarrow/ipc/reader.c)
+    set(NANOARROW_IPC_BUILD_SOURCES
+        src/nanoarrow/ipc/decoder.c src/nanoarrow/ipc/encoder.c
+        src/nanoarrow/ipc/reader.c)
   endif()
 
   add_library(nanoarrow_ipc ${NANOARROW_IPC_BUILD_SOURCES})
@@ -418,51 +419,37 @@ if(NANOARROW_BUILD_TESTS)
     endif()
 
     enable_testing()
-
-    add_executable(nanoarrow_ipc_decoder_test src/nanoarrow/ipc/decoder_test.cc)
-    add_executable(nanoarrow_ipc_reader_test src/nanoarrow/ipc/reader_test.cc)
-    add_executable(nanoarrow_ipc_files_test src/nanoarrow/ipc/files_test.cc)
-    add_executable(nanoarrow_ipc_hpp_test src/nanoarrow/ipc/ipc_hpp_test.cc)
+    include(GoogleTest)
 
     if(NANOARROW_CODE_COVERAGE)
       target_compile_options(ipc_coverage_config INTERFACE -O0 -g --coverage)
       target_link_options(ipc_coverage_config INTERFACE --coverage)
       target_link_libraries(nanoarrow_ipc PRIVATE ipc_coverage_config)
     endif()
-    target_link_libraries(nanoarrow_ipc_decoder_test
-                          nanoarrow_ipc
-                          nanoarrow
-                          flatccrt
-                          ${NANOARROW_ARROW_TARGET}
-                          gtest_main
-                          ipc_coverage_config)
-    target_link_libraries(nanoarrow_ipc_reader_test
-                          nanoarrow_ipc
-                          nanoarrow
-                          flatccrt
-                          gtest_main
-                          ipc_coverage_config)
-    target_link_libraries(nanoarrow_ipc_files_test
-                          nanoarrow_ipc
-                          nanoarrow
-                          flatccrt
-                          ${NANOARROW_ARROW_TARGET}
-                          nlohmann_json
-                          ZLIB::ZLIB
-                          gtest_main
-                          ipc_coverage_config)
-    target_link_libraries(nanoarrow_ipc_hpp_test
-                          nanoarrow_ipc
-                          nanoarrow
-                          ${NANOARROW_ARROW_TARGET}
-                          gtest_main
-                          ipc_coverage_config)
 
-    include(GoogleTest)
-    gtest_discover_tests(nanoarrow_ipc_decoder_test)
-    gtest_discover_tests(nanoarrow_ipc_reader_test)
-    gtest_discover_tests(nanoarrow_ipc_files_test)
-    gtest_discover_tests(nanoarrow_ipc_hpp_test)
+    foreach(name
+            decoder
+            encoder
+            reader
+            files
+            ipc_hpp)
+      add_executable(nanoarrow_ipc_${name}_test src/nanoarrow/ipc/${name}_test.cc)
+
+      target_link_libraries(nanoarrow_ipc_${name}_test
+                            nanoarrow_ipc
+                            nanoarrow
+                            ${NANOARROW_ARROW_TARGET}
+                            gtest_main
+                            ipc_coverage_config)
+
+      if(NOT (name MATCHES "_hpp_"))
+        target_link_libraries(nanoarrow_ipc_${name}_test flatccrt)
+      endif()
+
+      gtest_discover_tests(nanoarrow_ipc_${name}_test)
+    endforeach()
+
+    target_link_libraries(nanoarrow_ipc_files_test nlohmann_json ZLIB::ZLIB)
   endif()
 
   if(NANOARROW_DEVICE)
