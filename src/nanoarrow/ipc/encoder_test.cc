@@ -15,25 +15,18 @@
 // specific language governing permissions and limitations
 // under the License.
 
-#include <arrow/array.h>
-#include <arrow/c/bridge.h>
-#include <arrow/compute/api.h>
-#include <arrow/io/memory.h>
-#include <arrow/ipc/api.h>
-#include <arrow/util/key_value_metadata.h>
 #include <gtest/gtest.h>
 
 #include "flatcc/flatcc_builder.h"
 #include "nanoarrow/nanoarrow.hpp"
 #include "nanoarrow/nanoarrow_ipc.hpp"
 
-using namespace arrow;
-
 // Copied from encoder.c so we can test the internal state
 extern "C" {
 struct ArrowIpcEncoderPrivate {
   flatcc_builder_t builder;
-  struct ArrowBuffer buffers, nodes;
+  struct ArrowBuffer buffers;
+  struct ArrowBuffer nodes;
 };
 }
 

@@ -59,11 +59,12 @@
 
 struct ArrowIpcEncoderPrivate {
   flatcc_builder_t builder;
-  struct ArrowBuffer buffers, nodes;
+  struct ArrowBuffer buffers;
+  struct ArrowBuffer nodes;
 };
 
 ArrowErrorCode ArrowIpcEncoderInit(struct ArrowIpcEncoder* encoder) {
-  NANOARROW_DCHECK(encoder);
+  NANOARROW_DCHECK(encoder != NULL);
   memset(encoder, 0, sizeof(struct ArrowIpcEncoder));
   encoder->encode_buffer = NULL;
   encoder->encode_buffer_state = NULL;
@@ -71,16 +72,17 @@ ArrowErrorCode ArrowIpcEncoderInit(struct ArrowIpcEncoder* encoder) {
   encoder->private_data = ArrowMalloc(sizeof(struct ArrowIpcEncoderPrivate));
   struct ArrowIpcEncoderPrivate* private =
       (struct ArrowIpcEncoderPrivate*)encoder->private_data;
-  ArrowBufferInit(&private->buffers);
-  ArrowBufferInit(&private->nodes);
   if (flatcc_builder_init(&private->builder) == -1) {
+    ArrowFree(private);
     return ESPIPE;
   }
+  ArrowBufferInit(&private->buffers);
+  ArrowBufferInit(&private->nodes);
   return NANOARROW_OK;
 }
 
 void ArrowIpcEncoderReset(struct ArrowIpcEncoder* encoder) {
-  NANOARROW_DCHECK(encoder && encoder->private_data);
+  NANOARROW_DCHECK(encoder != NULL && encoder->private_data != NULL);
   struct ArrowIpcEncoderPrivate* private =
       (struct ArrowIpcEncoderPrivate*)encoder->private_data;
   flatcc_builder_clear(&private->builder);
@@ -92,17 +94,24 @@ void ArrowIpcEncoderReset(struct ArrowIpcEncoder* encoder) {
 
 ArrowErrorCode ArrowIpcEncoderFinalizeBuffer(struct ArrowIpcEncoder* encoder,
                                              struct ArrowBuffer* out) {
-  NANOARROW_DCHECK(encoder && encoder->private_data && out);
+  NANOARROW_DCHECK(encoder != NULL && encoder->private_data != NULL && out != NULL);
   struct ArrowIpcEncoderPrivate* private =
       (struct ArrowIpcEncoderPrivate*)encoder->private_data;
-  ArrowBufferReset(out);
-  size_t size = flatcc_builder_get_buffer_size(&private->builder);
+
+  int64_t size = (int64_t)flatcc_builder_get_buffer_size(&private->builder);
   if (size == 0) {
     // Finalizing an empty flatcc_builder_t triggers an assertion
-    return NANOARROW_OK;
+    return ArrowBufferResize(out, 0, 0);
   }
 
-  out->size_bytes = out->capacity_bytes = (int64_t)size;
-  out->data = (uint8_t*)flatcc_builder_finalize_buffer(&private->builder, &size);
-  return out->data ? NANOARROW_OK : ENOMEM;
+  void* data = flatcc_builder_get_direct_buffer(&private->builder, NULL);
+  if (data == NULL) {
+    return ENOMEM;
+  }
+  NANOARROW_RETURN_NOT_OK(ArrowBufferResize(out, size, 0));
+  memcpy(out->data, data, size);
+
+  // don't deallocate yet, just wipe the builder's current Message
+  flatcc_builder_reset(&private->builder);
+  return NANOARROW_OK;
 }

@@ -401,13 +401,10 @@ ArrowErrorCode ArrowIpcArrayStreamReaderInit(
 /// initialized using ArrowIpcEncoderInit(), and released with
 /// ArrowIpcEncoderReset().
 struct ArrowIpcEncoder {
-  /// \brief Compression to encode in the next RecordBatch message
+  /// \brief Compression to encode in the next RecordBatch message.
   enum ArrowIpcCompressionType codec;
 
-  /// \brief Finalized body length of the most recently encoded RecordBatch message
-  int64_t body_length;
-
-  /// \brief Callback invoked against each buffer to be encoded.
+  /// \brief Callback invoked against each buffer to be encoded
   ///
   /// Encoding of buffers is left as a callback to accommodate dissociated data storage.
   /// One implementation of this callback might copy all buffers into a contiguous body
@@ -420,17 +417,28 @@ struct ArrowIpcEncoder {
   /// \brief Pointer to arbitrary data used by encode_buffer()
   void* encode_buffer_state;
 
+  /// \brief Finalized body length of the most recently encoded RecordBatch message
+  ///
+  /// (This is initially 0 and encode_buffer() is expected to update it. After all
+  /// buffers are encoded, this will be written to the RecordBatch's .bodyLength)
+  int64_t body_length;
+
   /// \brief Private resources managed by this library
   void* private_data;
 };
 
 /// \brief Initialize an encoder
+///
+/// If NANOARROW_OK is returned, the caller must call ArrowIpcEncoderReset()
+/// to release resources allocated by this function.
 ArrowErrorCode ArrowIpcEncoderInit(struct ArrowIpcEncoder* encoder);
 
 /// \brief Release all resources attached to an encoder
 void ArrowIpcEncoderReset(struct ArrowIpcEncoder* encoder);
 
 /// \brief Finalize the most recently encoded message to a buffer
+///
+/// The output buffer will be resized and the encoded message copied in.
 ArrowErrorCode ArrowIpcEncoderFinalizeBuffer(struct ArrowIpcEncoder* encoder,
                                              struct ArrowBuffer* out);
 /// @}
