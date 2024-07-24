@@ -438,7 +438,7 @@ void ArrowIpcEncoderReset(struct ArrowIpcEncoder* encoder);
 
 /// \brief Finalize the most recently encoded message to a buffer
 ///
-/// The output buffer will be resized and the encoded message copied in.
+/// The bytes of the encoded message will be appended to the provided buffer.
 ArrowErrorCode ArrowIpcEncoderFinalizeBuffer(struct ArrowIpcEncoder* encoder,
                                              struct ArrowBuffer* out);
 /// @}
