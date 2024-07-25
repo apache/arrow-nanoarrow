@@ -510,6 +510,7 @@ if(NANOARROW_BUILD_TESTS)
 
     target_link_libraries(nanoarrow_ipc_files_test nanoarrow_testing ZLIB::ZLIB
                           nanoarrow_coverage_config)
+    target_link_libraries(nanoarrow_ipc_decoder_test gmock_main)
   endif()
 
   if(NANOARROW_DEVICE)

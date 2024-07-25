@@ -21,6 +21,7 @@
 #include <arrow/c/bridge.h>
 #include <arrow/ipc/api.h>
 #include <arrow/util/key_value_metadata.h>
+#include <gmock/gmock-matchers.h>
 #include <gtest/gtest.h>
 
 // For bswap32()
@@ -759,6 +760,132 @@ TEST_P(ArrowTypeParameterizedTestFixture, NanoarrowIpcArrowArrayRoundtrip) {
 
   ArrowSchemaRelease(&schema);
   ArrowIpcDecoderReset(&decoder);
+}
+
+struct ArrowArrayViewEqualTo {
+  const struct ArrowArrayView* expected;
+
+  using is_gtest_matcher = void;
+
+  bool MatchAndExplain(const struct ArrowArrayView* actual, std::ostream* os) const {
+    return MatchAndExplain({}, actual, expected, os);
+  }
+
+  static bool MatchAndExplain(std::vector<int> field_path,
+                              const struct ArrowArrayView* actual,
+                              const struct ArrowArrayView* expected, std::ostream* os) {
+    auto prefixed = [&]() -> std::ostream& {
+      if (!field_path.empty()) {
+        for (int i : field_path) {
+          *os << "." << i;
+        }
+        *os << ":";
+      }
+      return *os;
+    };
+
+    NANOARROW_DCHECK(actual->offset == 0);
+    NANOARROW_DCHECK(expected->offset == 0);
+
+    if (actual->length != expected->length) {
+      prefixed() << "expected length=" << expected->length << "\n";
+      prefixed() << "  actual length=" << actual->length << "\n";
+      return false;
+    }
+
+    auto null_count = [](const struct ArrowArrayView* a) {
+      return a->null_count != -1 ? a->null_count : ArrowArrayViewComputeNullCount(a);
+    };
+    if (null_count(actual) != null_count(expected)) {
+      prefixed() << "expected null_count=" << null_count(expected) << "\n";
+      prefixed() << "  actual null_count=" << null_count(actual) << "\n";
+      return false;
+    }
+
+    for (int64_t i = 0; actual->layout.buffer_type[i] != NANOARROW_BUFFER_TYPE_NONE &&
+                        i < NANOARROW_MAX_FIXED_BUFFERS;
+         ++i) {
+      auto a_buf = actual->buffer_views[i];
+      auto e_buf = expected->buffer_views[i];
+      if (a_buf.size_bytes != e_buf.size_bytes) {
+        prefixed() << "expected buffer[" << i << "].size=" << e_buf.size_bytes << "\n";
+        prefixed() << "  actual buffer[" << i << "].size=" << a_buf.size_bytes << "\n";
+        return false;
+      }
+      if (memcmp(a_buf.data.data, e_buf.data.data, a_buf.size_bytes) != 0) {
+        prefixed() << "expected buffer[" << i << "]'s data to match\n";
+        return false;
+      }
+    }
+
+    field_path.push_back(0);
+    for (int64_t i = 0; i < actual->n_children; ++i) {
+      field_path.back() = i;
+      if (!MatchAndExplain(field_path, actual->children[i], expected->children[i], os)) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  void DescribeTo(std::ostream* os) const { *os << "is equivalent to the array view"; }
+  void DescribeNegationTo(std::ostream* os) const {
+    *os << "is not equivalent to the array view";
+  }
+};
+
+TEST_P(ArrowTypeParameterizedTestFixture, NanoarrowIpcNanoarrowArrayRoundtrip) {
+  struct ArrowError error;
+  nanoarrow::UniqueSchema schema;
+  ASSERT_TRUE(
+      arrow::ExportSchema(arrow::Schema({arrow::field("", GetParam())}), schema.get())
+          .ok());
+
+  // now make one empty struct array with this schema and another with all zeroes
+  nanoarrow::UniqueArray empty_array, zero_array;
+  for (auto* array : {empty_array.get(), zero_array.get()}) {
+    ASSERT_EQ(ArrowArrayInitFromSchema(array, schema.get(), nullptr), NANOARROW_OK);
+    ASSERT_EQ(ArrowArrayStartAppending(array), NANOARROW_OK);
+    if (array == zero_array.get()) {
+      ASSERT_EQ(ArrowArrayAppendEmpty(array, 5), NANOARROW_OK);
+    }
+    ASSERT_EQ(ArrowArrayFinishBuildingDefault(array, nullptr), NANOARROW_OK);
+
+    nanoarrow::UniqueArrayView array_view;
+    ASSERT_EQ(ArrowArrayViewInitFromSchema(array_view.get(), schema.get(), &error),
+              NANOARROW_OK);
+    ASSERT_EQ(ArrowArrayViewSetArray(array_view.get(), array, &error), NANOARROW_OK)
+        << error.message;
+
+    nanoarrow::ipc::UniqueEncoder encoder;
+    EXPECT_EQ(ArrowIpcEncoderInit(encoder.get()), NANOARROW_OK);
+
+    nanoarrow::UniqueBuffer buffer, body_buffer;
+    ArrowIpcEncoderBuildContiguousBodyBuffer(encoder.get(), body_buffer.get());
+    EXPECT_EQ(ArrowIpcEncoderEncodeRecordBatch(encoder.get(), array_view.get(), &error),
+              NANOARROW_OK)
+        << error.message;
+    EXPECT_EQ(
+        ArrowIpcEncoderFinalizeBuffer(encoder.get(), /*encapsulate=*/true, buffer.get()),
+        NANOARROW_OK);
+
+    nanoarrow::ipc::UniqueDecoder decoder;
+    ArrowIpcDecoderInit(decoder.get());
+    EXPECT_EQ(ArrowIpcDecoderSetSchema(decoder.get(), schema.get(), &error), NANOARROW_OK)
+        << error.message;
+    EXPECT_EQ(ArrowIpcDecoderDecodeHeader(decoder.get(),
+                                          {buffer->data, buffer->size_bytes}, &error),
+              NANOARROW_OK)
+        << error.message;
+
+    struct ArrowArrayView* roundtripped;
+    ASSERT_EQ(ArrowIpcDecoderDecodeArrayView(decoder.get(),
+                                             {body_buffer->data, body_buffer->size_bytes},
+                                             -1, &roundtripped, nullptr),
+              NANOARROW_OK);
+
+    EXPECT_THAT(roundtripped, ArrowArrayViewEqualTo{array_view.get()});
+  }
 }
 
 INSTANTIATE_TEST_SUITE_P(

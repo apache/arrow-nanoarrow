@@ -63,6 +63,10 @@
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcEncoderFinalizeBuffer)
 #define ArrowIpcEncoderEncodeSchema \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcEncoderEncodeSchema)
+#define ArrowIpcEncoderBuildContiguousBodyBuffer \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcEncoderBuildContiguousBodyBuffer)
+#define ArrowIpcEncoderEncodeRecordBatch \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcEncoderEncodeRecordBatch)
 #define ArrowIpcOutputStreamInitBuffer \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcOutputStreamInitBuffer)
 #define ArrowIpcOutputStreamInitFile \
@@ -214,7 +218,7 @@ void ArrowIpcDecoderReset(struct ArrowIpcDecoder* decoder);
 
 /// \brief Peek at a message header
 ///
-/// The first 8 bytes of an Arrow IPC message are 0xFFFFFF followed by the size
+/// The first 8 bytes of an Arrow IPC message are 0xFFFFFFFF followed by the size
 /// of the header as a little-endian 32-bit integer. ArrowIpcDecoderPeekHeader() reads
 /// these bytes and returns ESPIPE if there are not enough remaining bytes in data to read
 /// the entire header message, EINVAL if the first 8 bytes are not valid, ENODATA if the
@@ -461,6 +465,21 @@ ArrowErrorCode ArrowIpcEncoderFinalizeBuffer(struct ArrowIpcEncoder* encoder,
 ArrowErrorCode ArrowIpcEncoderEncodeSchema(struct ArrowIpcEncoder* encoder,
                                            const struct ArrowSchema* schema,
                                            struct ArrowError* error);
+/// \brief Set the encoder to concatenate encoded buffers into body_buffer
+///
+/// encoder->encode_buffer_state will point to the provided ArrowBuffer.
+/// The contiguous body buffer will be appended to this during
+/// ArrowIpcEncoderEncodeRecordBatch.
+void ArrowIpcEncoderBuildContiguousBodyBuffer(struct ArrowIpcEncoder* encoder,
+                                              struct ArrowBuffer* body_buffer);
+
+/// \brief Encode a struct typed ArrayView to a flatbuffer RecordBatch, embedded in a
+/// Message.
+///
+/// Returns ENOMEM if allocation fails, NANOARROW_OK otherwise.
+ArrowErrorCode ArrowIpcEncoderEncodeRecordBatch(struct ArrowIpcEncoder* encoder,
+                                                const struct ArrowArrayView* array_view,
+                                                struct ArrowError* error);
 
 /// \brief An user-extensible output data sink
 struct ArrowIpcOutputStream {

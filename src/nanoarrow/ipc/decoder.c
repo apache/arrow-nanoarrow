@@ -1657,9 +1657,16 @@ static ArrowErrorCode ArrowIpcDecoderDecodeArrayViewInternal(
     return EINVAL;
   }
 
+  // RecordBatch messages don't count the root node but decoder->fields does
+  // (decoder->fields[0] is the root field)
+  if (field_i + 1 >= private_data->n_fields) {
+    ArrowErrorSet(error, "cannot decode column %" PRId64 "; there are only %" PRId64,
+                  field_i, private_data->n_fields - 1);
+    return EINVAL;
+  }
+
   ns(RecordBatch_table_t) batch = (ns(RecordBatch_table_t))private_data->last_message;
 
-  // RecordBatch messages don't count the root node but decoder->fields does
   struct ArrowIpcField* root = private_data->fields + field_i + 1;
 
   struct ArrowIpcArraySetter setter;
