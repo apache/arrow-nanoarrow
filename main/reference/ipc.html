@@ -554,6 +554,12 @@ document.write(`
 </dd></dl>
 
 <dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv424ArrowIpcSystemEndiannessv">
+<span id="_CPPv324ArrowIpcSystemEndiannessv"></span><span id="_CPPv224ArrowIpcSystemEndiannessv"></span><span id="ArrowIpcSystemEndianness__void"></span><span class="target" id="group__nanoarrow__ipc_1gab055dade9937fb05c12abec2dd7d471d"></span><span class="k"><span class="pre">static</span></span><span class="w"> </span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="k"><span class="pre">enum</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv418ArrowIpcEndianness" title="ArrowIpcEndianness"><span class="n"><span class="pre">ArrowIpcEndianness</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">ArrowIpcSystemEndianness</span></span></span><span class="sig-paren">(</span><span class="kt"><span class="pre">void</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv424ArrowIpcSystemEndiannessv" title="Link to this definition">#</a><br /></dt>
+<dd><p>Get the endianness of the current runtime. </p>
+</dd></dl>
+
+<dl class="cpp function">
 <dt class="sig sig-object cpp" id="_CPPv424ArrowIpcSharedBufferInitP20ArrowIpcSharedBufferP11ArrowBuffer">
 <span id="_CPPv324ArrowIpcSharedBufferInitP20ArrowIpcSharedBufferP11ArrowBuffer"></span><span id="_CPPv224ArrowIpcSharedBufferInitP20ArrowIpcSharedBufferP11ArrowBuffer"></span><span id="ArrowIpcSharedBufferInit__ArrowIpcSharedBufferP.ArrowBufferP"></span><span class="target" id="group__nanoarrow__ipc_1ga9ee9e1dc573c951f2523883297f8e0b6"></span><span class="n"><span class="pre">ArrowErrorCode</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">ArrowIpcSharedBufferInit</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv420ArrowIpcSharedBuffer" title="ArrowIpcSharedBuffer"><span class="n"><span class="pre">ArrowIpcSharedBuffer</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">shared</span></span>, <span class="k"><span class="pre">struct</span></span><span class="w"> </span><span class="n"><span class="pre">ArrowBuffer</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">src</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv424ArrowIpcSharedBufferInitP20ArrowIpcSharedBufferP11ArrowBuffer" title="Link to this definition">#</a><br /></dt>
 <dd><p>Initialize the contents of a <a class="reference internal" href="#struct_arrow_ipc_shared_buffer"><span class="std std-ref">ArrowIpcSharedBuffer</span></a> struct. </p>
@@ -683,6 +689,26 @@ document.write(`
 <p>The stream of bytes must begin with a Schema message and be followed by zero or more RecordBatch messages as described in the Arrow IPC stream format specification. Returns NANOARROW_OK on success. If NANOARROW_OK is returned, the ArrowArrayStream takes ownership of input_stream and the caller is responsible for releasing out. </p>
 </dd></dl>
 
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv419ArrowIpcEncoderInitP15ArrowIpcEncoder">
+<span id="_CPPv319ArrowIpcEncoderInitP15ArrowIpcEncoder"></span><span id="_CPPv219ArrowIpcEncoderInitP15ArrowIpcEncoder"></span><span id="ArrowIpcEncoderInit__ArrowIpcEncoderP"></span><span class="target" id="group__nanoarrow__ipc_1gaadfe882155e9215178c3e21e4f212ed7"></span><span class="n"><span class="pre">ArrowErrorCode</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">ArrowIpcEncoderInit</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv415ArrowIpcEncoder" title="ArrowIpcEncoder"><span class="n"><span class="pre">ArrowIpcEncoder</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">encoder</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv419ArrowIpcEncoderInitP15ArrowIpcEncoder" title="Link to this definition">#</a><br /></dt>
+<dd><p>Initialize an encoder. </p>
+<p>If NANOARROW_OK is returned, the caller must call <a class="reference internal" href="#group__nanoarrow__ipc_1gac28252286237ba1b3a235a0345bbe3d1"><span class="std std-ref">ArrowIpcEncoderReset()</span></a> to release resources allocated by this function. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv420ArrowIpcEncoderResetP15ArrowIpcEncoder">
+<span id="_CPPv320ArrowIpcEncoderResetP15ArrowIpcEncoder"></span><span id="_CPPv220ArrowIpcEncoderResetP15ArrowIpcEncoder"></span><span id="ArrowIpcEncoderReset__ArrowIpcEncoderP"></span><span class="target" id="group__nanoarrow__ipc_1gac28252286237ba1b3a235a0345bbe3d1"></span><span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">ArrowIpcEncoderReset</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv415ArrowIpcEncoder" title="ArrowIpcEncoder"><span class="n"><span class="pre">ArrowIpcEncoder</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">encoder</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv420ArrowIpcEncoderResetP15ArrowIpcEncoder" title="Link to this definition">#</a><br /></dt>
+<dd><p>Release all resources attached to an encoder. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv429ArrowIpcEncoderFinalizeBufferP15ArrowIpcEncoderP11ArrowBuffer">
+<span id="_CPPv329ArrowIpcEncoderFinalizeBufferP15ArrowIpcEncoderP11ArrowBuffer"></span><span id="_CPPv229ArrowIpcEncoderFinalizeBufferP15ArrowIpcEncoderP11ArrowBuffer"></span><span id="ArrowIpcEncoderFinalizeBuffer__ArrowIpcEncoderP.ArrowBufferP"></span><span class="target" id="group__nanoarrow__ipc_1gae7799f65e3b74bbf2729495bfe14707b"></span><span class="n"><span class="pre">ArrowErrorCode</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">ArrowIpcEncoderFinalizeBuffer</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv415ArrowIpcEncoder" title="ArrowIpcEncoder"><span class="n"><span class="pre">ArrowIpcEncoder</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">encoder</span></span>, <span class="k"><span class="pre">struct</span></span><span class="w"> </span><span class="n"><span class="pre">ArrowBuffer</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">out</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv429ArrowIpcEncoderFinalizeBufferP15ArrowIpcEncoderP11ArrowBuffer" title="Link to this definition">#</a><br /></dt>
+<dd><p>Finalize the most recently encoded message to a buffer. </p>
+<p>The bytes of the encoded message will be appended to the provided buffer. </p>
+</dd></dl>
+
 </div>
 <dl class="cpp struct">
 <dt class="sig sig-object cpp" id="_CPPv420ArrowIpcSharedBuffer">
@@ -809,6 +835,50 @@ document.write(`
 </div>
 </dd></dl>
 
+<dl class="cpp struct">
+<dt class="sig sig-object cpp" id="_CPPv415ArrowIpcEncoder">
+<span id="_CPPv315ArrowIpcEncoder"></span><span id="_CPPv215ArrowIpcEncoder"></span><span id="ArrowIpcEncoder"></span><span class="target" id="struct_arrow_ipc_encoder"></span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">ArrowIpcEncoder</span></span></span><a class="headerlink" href="#_CPPv415ArrowIpcEncoder" title="Link to this definition">#</a><br /></dt>
+<dd><div class="docutils container">
+<em>#include &lt;nanoarrow_ipc.h&gt;</em></div>
+<p>Encoder for Arrow IPC messages. </p>
+<p>This structure is intended to be allocated by the caller, initialized using <a class="reference internal" href="#group__nanoarrow__ipc_1gaadfe882155e9215178c3e21e4f212ed7"><span class="std std-ref">ArrowIpcEncoderInit()</span></a>, and released with <a class="reference internal" href="#group__nanoarrow__ipc_1gac28252286237ba1b3a235a0345bbe3d1"><span class="std std-ref">ArrowIpcEncoderReset()</span></a>. </p>
+<div class="breathe-sectiondef docutils container">
+<p class="breathe-sectiondef-title rubric" id="breathe-section-title-public-members">Public Members</p>
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4N15ArrowIpcEncoder5codecE">
+<span id="_CPPv3N15ArrowIpcEncoder5codecE"></span><span id="_CPPv2N15ArrowIpcEncoder5codecE"></span><span id="ArrowIpcEncoder::codec__ArrowIpcCompressionType"></span><span class="target" id="struct_arrow_ipc_encoder_1a982847c09e5c50b25c2cc6899754b19f"></span><span class="k"><span class="pre">enum</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv423ArrowIpcCompressionType" title="ArrowIpcCompressionType"><span class="n"><span class="pre">ArrowIpcCompressionType</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">codec</span></span></span><a class="headerlink" href="#_CPPv4N15ArrowIpcEncoder5codecE" title="Link to this definition">#</a><br /></dt>
+<dd><p>Compression to encode in the next RecordBatch message. </p>
+</dd></dl>
+
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4N15ArrowIpcEncoder13encode_bufferE">
+<span id="_CPPv3N15ArrowIpcEncoder13encode_bufferE"></span><span id="_CPPv2N15ArrowIpcEncoder13encode_bufferE"></span><span class="target" id="struct_arrow_ipc_encoder_1af6aa42efbbdbd4e5acc060074ce64119"></span><span class="n"><span class="pre">ArrowErrorCode</span></span><span class="w"> </span><span class="p"><span class="pre">(</span></span><span class="p"><span class="pre">*</span></span><span class="sig-name descname"><span class="n"><span class="pre">encode_buffer</span></span></span><span class="p"><span class="pre">)</span></span><span class="p"><span class="pre">(</span></span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><span class="n"><span class="pre">ArrowBufferView</span></span><span class="w"> </span><span class="n"><span class="pre">buffer_view</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv415ArrowIpcEncoder" title="ArrowIpcEncoder"><span class="n"><span class="pre">ArrowIpcEncoder</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">encoder</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="n"><span class="pre">int64_t</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">offset</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="n"><span class="pre">int64_t</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">length</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><span class="n"><span class="pre">ArrowError</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">error</span></span><span class="p"><span class="pre">)</span></span><a class="headerlink" href="#_CPPv4N15ArrowIpcEncoder13encode_bufferE" title="Link to this definition">#</a><br /></dt>
+<dd><p>Callback invoked against each buffer to be encoded. </p>
+<p>Encoding of buffers is left as a callback to accommodate dissociated data storage. One implementation of this callback might copy all buffers into a contiguous body for use in an arrow IPC stream, another implementation might store offsets and lengths relative to a known arena. </p>
+</dd></dl>
+
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4N15ArrowIpcEncoder19encode_buffer_stateE">
+<span id="_CPPv3N15ArrowIpcEncoder19encode_buffer_stateE"></span><span id="_CPPv2N15ArrowIpcEncoder19encode_buffer_stateE"></span><span id="ArrowIpcEncoder::encode_buffer_state__voidP"></span><span class="target" id="struct_arrow_ipc_encoder_1a996fe0ce8cdfdec38ef3a1924a81c069"></span><span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="sig-name descname"><span class="n"><span class="pre">encode_buffer_state</span></span></span><a class="headerlink" href="#_CPPv4N15ArrowIpcEncoder19encode_buffer_stateE" title="Link to this definition">#</a><br /></dt>
+<dd><p>Pointer to arbitrary data used by <a class="reference internal" href="#struct_arrow_ipc_encoder_1af6aa42efbbdbd4e5acc060074ce64119"><span class="std std-ref">encode_buffer()</span></a></p>
+</dd></dl>
+
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4N15ArrowIpcEncoder11body_lengthE">
+<span id="_CPPv3N15ArrowIpcEncoder11body_lengthE"></span><span id="_CPPv2N15ArrowIpcEncoder11body_lengthE"></span><span id="ArrowIpcEncoder::body_length__int64_t"></span><span class="target" id="struct_arrow_ipc_encoder_1afcba218a6128adc3f7d94b73432c50e5"></span><span class="n"><span class="pre">int64_t</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">body_length</span></span></span><a class="headerlink" href="#_CPPv4N15ArrowIpcEncoder11body_lengthE" title="Link to this definition">#</a><br /></dt>
+<dd><p>Finalized body length of the most recently encoded RecordBatch message. </p>
+<p>(This is initially 0 and <a class="reference internal" href="#struct_arrow_ipc_encoder_1af6aa42efbbdbd4e5acc060074ce64119"><span class="std std-ref">encode_buffer()</span></a> is expected to update it. After all buffers are encoded, this will be written to the RecordBatch’s .bodyLength) </p>
+</dd></dl>
+
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4N15ArrowIpcEncoder12private_dataE">
+<span id="_CPPv3N15ArrowIpcEncoder12private_dataE"></span><span id="_CPPv2N15ArrowIpcEncoder12private_dataE"></span><span id="ArrowIpcEncoder::private_data__voidP"></span><span class="target" id="struct_arrow_ipc_encoder_1a84655c3db1b57bebc3c5ddee67cf0d67"></span><span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="sig-name descname"><span class="n"><span class="pre">private_data</span></span></span><a class="headerlink" href="#_CPPv4N15ArrowIpcEncoder12private_dataE" title="Link to this definition">#</a><br /></dt>
+<dd><p>Private resources managed by this library. </p>
+</dd></dl>
+
+</div>
+</dd></dl>
+
 </dd></dl>
 
 </section>
@@ -824,6 +894,12 @@ document.write(`
 <dt class="sig sig-object cpp" id="_CPPv413UniqueDecoder">
 <span id="_CPPv313UniqueDecoder"></span><span id="_CPPv213UniqueDecoder"></span><span class="target" id="group__nanoarrow__ipc__hpp-unique_1ga8e49ccb04c056f739bb40de41a7f3537"></span><span class="k"><span class="pre">using</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">UniqueDecoder</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="n"><span class="pre">internal</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">Unique</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv415ArrowIpcDecoder" title="ArrowIpcDecoder"><span class="n"><span class="pre">ArrowIpcDecoder</span></span></a><span class="p"><span class="pre">&gt;</span></span><a class="headerlink" href="#_CPPv413UniqueDecoder" title="Link to this definition">#</a><br /></dt>
 <dd><p>Class wrapping a unique struct <a class="reference internal" href="#struct_arrow_ipc_decoder"><span class="std std-ref">ArrowIpcDecoder</span></a>. </p>
+</dd></dl>
+
+<dl class="cpp type">
+<dt class="sig sig-object cpp" id="_CPPv413UniqueEncoder">
+<span id="_CPPv313UniqueEncoder"></span><span id="_CPPv213UniqueEncoder"></span><span class="target" id="group__nanoarrow__ipc__hpp-unique_1ga7d8001dff97da64dce4f8a13521bbaa5"></span><span class="k"><span class="pre">using</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">UniqueEncoder</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="n"><span class="pre">internal</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">Unique</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv415ArrowIpcEncoder" title="ArrowIpcEncoder"><span class="n"><span class="pre">ArrowIpcEncoder</span></span></a><span class="p"><span class="pre">&gt;</span></span><a class="headerlink" href="#_CPPv413UniqueEncoder" title="Link to this definition">#</a><br /></dt>
+<dd><p>Class wrapping a unique struct <a class="reference internal" href="#struct_arrow_ipc_encoder"><span class="std std-ref">ArrowIpcEncoder</span></a>. </p>
 </dd></dl>
 
 <dl class="cpp type">
@@ -915,6 +991,7 @@ document.write(`
 </ul>
 </li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv420ArrowIpcCheckRuntimeP10ArrowError"><code class="docutils literal notranslate"><span class="pre">ArrowIpcCheckRuntime()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv424ArrowIpcSystemEndiannessv"><code class="docutils literal notranslate"><span class="pre">ArrowIpcSystemEndianness()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv424ArrowIpcSharedBufferInitP20ArrowIpcSharedBufferP11ArrowBuffer"><code class="docutils literal notranslate"><span class="pre">ArrowIpcSharedBufferInit()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv425ArrowIpcSharedBufferResetP20ArrowIpcSharedBuffer"><code class="docutils literal notranslate"><span class="pre">ArrowIpcSharedBufferReset()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv432ArrowIpcSharedBufferIsThreadSafev"><code class="docutils literal notranslate"><span class="pre">ArrowIpcSharedBufferIsThreadSafe()</span></code></a></li>
@@ -933,6 +1010,9 @@ document.write(`
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv429ArrowIpcInputStreamInitBufferP19ArrowIpcInputStreamP11ArrowBuffer"><code class="docutils literal notranslate"><span class="pre">ArrowIpcInputStreamInitBuffer()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv427ArrowIpcInputStreamInitFileP19ArrowIpcInputStreamPvi"><code class="docutils literal notranslate"><span class="pre">ArrowIpcInputStreamInitFile()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv429ArrowIpcArrayStreamReaderInitP16ArrowArrayStreamP19ArrowIpcInputStreamP32ArrowIpcArrayStreamReaderOptions"><code class="docutils literal notranslate"><span class="pre">ArrowIpcArrayStreamReaderInit()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv419ArrowIpcEncoderInitP15ArrowIpcEncoder"><code class="docutils literal notranslate"><span class="pre">ArrowIpcEncoderInit()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv420ArrowIpcEncoderResetP15ArrowIpcEncoder"><code class="docutils literal notranslate"><span class="pre">ArrowIpcEncoderReset()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv429ArrowIpcEncoderFinalizeBufferP15ArrowIpcEncoderP11ArrowBuffer"><code class="docutils literal notranslate"><span class="pre">ArrowIpcEncoderFinalizeBuffer()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv420ArrowIpcSharedBuffer"><code class="docutils literal notranslate"><span class="pre">ArrowIpcSharedBuffer</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv415ArrowIpcDecoder"><code class="docutils literal notranslate"><span class="pre">ArrowIpcDecoder</span></code></a><ul class="nav section-nav flex-column">
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N15ArrowIpcDecoder12message_typeE"><code class="docutils literal notranslate"><span class="pre">ArrowIpcDecoder::message_type</span></code></a></li>
@@ -956,10 +1036,19 @@ document.write(`
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N32ArrowIpcArrayStreamReaderOptions18use_shared_buffersE"><code class="docutils literal notranslate"><span class="pre">ArrowIpcArrayStreamReaderOptions::use_shared_buffers</span></code></a></li>
 </ul>
 </li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv415ArrowIpcEncoder"><code class="docutils literal notranslate"><span class="pre">ArrowIpcEncoder</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N15ArrowIpcEncoder5codecE"><code class="docutils literal notranslate"><span class="pre">ArrowIpcEncoder::codec</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N15ArrowIpcEncoder13encode_bufferE"><code class="docutils literal notranslate"><span class="pre">ArrowIpcEncoder::encode_buffer</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N15ArrowIpcEncoder19encode_buffer_stateE"><code class="docutils literal notranslate"><span class="pre">ArrowIpcEncoder::encode_buffer_state</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N15ArrowIpcEncoder11body_lengthE"><code class="docutils literal notranslate"><span class="pre">ArrowIpcEncoder::body_length</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N15ArrowIpcEncoder12private_dataE"><code class="docutils literal notranslate"><span class="pre">ArrowIpcEncoder::private_data</span></code></a></li>
+</ul>
+</li>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#c-helpers">C++ Helpers</a><ul class="visible nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv413UniqueDecoder"><code class="docutils literal notranslate"><span class="pre">UniqueDecoder</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv413UniqueEncoder"><code class="docutils literal notranslate"><span class="pre">UniqueEncoder</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv417UniqueInputStream"><code class="docutils literal notranslate"><span class="pre">UniqueInputStream</span></code></a></li>
 </ul>
 </li>
