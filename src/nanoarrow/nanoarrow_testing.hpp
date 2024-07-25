@@ -2916,6 +2916,152 @@ class TestingJSONComparison {
 
 /// @}
 
+namespace dsl {
+/// \defgroup nanoarrow_testing-schema Schema factory DSL
+///
+/// @{
+
+/// \brief An alias to express a sequence of key value pairs.
+///
+/// Each pair is a string formatted like "key=value".
+using metadata = std::vector<std::string>;
+
+/// \brief A wrapper around UniqueSchema with easy constructors
+class schema;
+
+/// \brief Alias schema to readably tag a vector of schemas
+using children = std::vector<schema>;
+
+/// \brief A wrapper around schema to readably tag a dictionary
+struct dictionary;
+
+class schema {
+ public:
+  schema(schema const& other) : unique_schema{std::move(other.unique_schema)} {}
+  schema(schema&& other) = default;
+
+  schema(UniqueSchema unique_schema) : unique_schema{std::move(unique_schema)} {}
+
+  template <typename... Args>
+  schema(Args... args) {
+    ArrowSchemaInit(get());
+    get()->private_data = new Private;
+    get()->release = [](struct ArrowSchema* schema) {
+      delete static_cast<Private*>(schema->private_data);
+    };
+    set(std::move(args)...);
+  }
+
+ private:
+  mutable UniqueSchema unique_schema;
+
+  struct Private {
+    std::vector<std::string> strings{"", "", ""};
+    std::vector<schema> schemas;
+    std::vector<struct ArrowSchema*> children;
+
+    std::string& format() { return strings[0]; }
+    std::string& name() { return strings[1]; }
+    std::string& metadata() { return strings[2]; }
+  };
+
+  Private* get_private() { return static_cast<Private*>(get()->private_data); }
+  ArrowSchema* get() { return unique_schema.get(); }
+
+  void set() {
+    if (get()->n_children != 0) {
+      // finalize children
+      get_private()->children.resize(get()->n_children);
+
+      int i = 0;
+      for (auto& child : get_private()->children) {
+        child = get_private()->schemas[i++].get();
+      }
+      get()->children = get_private()->children.data();
+    }
+
+    if (get()->n_children == 0 && get_private()->schemas.size() == 1) {
+      // finalize dictionary
+      get()->dictionary = get_private()->schemas.back().get();
+    }
+
+    if (get_private()->format().empty()) {
+      // if format was not set, then set it to struct now
+      get_private()->format() = "+s";
+    }
+
+    // set string pointers in the actual ArrowSchema
+    get()->format = get_private()->format().c_str();
+    get()->name = get_private()->name().c_str();
+    get()->metadata = get_private()->metadata().c_str();
+  }
+
+  template <typename... Args>
+  void set(std::string format_or_name, Args... args) {
+    (get_private()->format().empty()  // assign to format if it's empty
+         ? get_private()->format()
+         : get_private()->name()) = std::move(format_or_name);
+  }
+
+  template <typename... Args>
+  void set(int64_t flags, Args... args) {
+    get()->flags = flags;
+    set(std::move(args)...);
+  }
+
+  template <typename... Args>
+  void set(dictionary d, Args... args);
+
+  template <typename... Args>
+  void set(children c, Args... args) {
+    NANOARROW_DCHECK(get_private()->schemas.empty());
+    get()->n_children = c.size();
+    get_private()->schemas = std::move(c);
+    set(std::move(args)...);
+  }
+
+  template <typename... Args>
+  void set(metadata m, Args... args) {
+    std::string metadata_buf;
+    auto append_int32 = [&](size_t i) {
+      auto i32 = static_cast<int32_t>(i);
+      char chars[sizeof(int32_t)];
+      memcpy(&chars, &i32, sizeof(int32_t));
+      metadata_buf.append(chars, sizeof(int32_t));
+    };
+    append_int32(m.size());
+    for (const std::string& kv : m) {
+      size_t key_size = kv.find_first_of('=');
+      if (key_size == std::string::npos) {
+        continue;
+      }
+      append_int32(key_size);
+      metadata_buf.append(kv.data(), key_size);
+
+      size_t value_size = kv.size() - key_size - 1;
+      append_int32(value_size);
+      metadata_buf.append(kv.data() + key_size + 1, value_size);
+    }
+    get_private()->strings[2] = std::move(metadata_buf);
+    get()->metadata = get_private()->strings.back().c_str();
+
+    set(std::move(args)...);
+  }
+};
+
+struct dictionary {
+  nanoarrow::testing::dsl::schema schema;
+};
+
+template <typename... Args>
+void schema::set(dictionary d, Args... args) {
+  NANOARROW_DCHECK(get_private()->schemas.empty());
+  get_private()->schemas.push_back(std::move(d.schema));
+  set(std::move(args)...);
+}
+/// @}
+}  // namespace dsl
+
 }  // namespace testing
 }  // namespace nanoarrow
 
