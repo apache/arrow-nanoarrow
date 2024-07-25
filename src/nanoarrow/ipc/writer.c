@@ -25,6 +25,8 @@
 
 void ArrowIpcOutputStreamMove(struct ArrowIpcOutputStream* src,
                               struct ArrowIpcOutputStream* dst) {
+  NANOARROW_DCHECK(src != NULL && dst != NULL);
+
   memcpy(dst, src, sizeof(struct ArrowIpcOutputStream));
   src->release = NULL;
 }
@@ -55,6 +57,8 @@ static void ArrowIpcOutputStreamBufferRelease(struct ArrowIpcOutputStream* strea
 
 ArrowErrorCode ArrowIpcOutputStreamInitBuffer(struct ArrowIpcOutputStream* stream,
                                               struct ArrowBuffer* output) {
+  NANOARROW_DCHECK(stream != NULL && output != NULL);
+
   struct ArrowIpcOutputStreamBufferPrivate* private_data =
       (struct ArrowIpcOutputStreamBufferPrivate*)ArrowMalloc(
           sizeof(struct ArrowIpcOutputStreamBufferPrivate));
@@ -130,6 +134,7 @@ static ArrowErrorCode ArrowIpcOutputStreamFileWrite(struct ArrowIpcOutputStream*
 
 ArrowErrorCode ArrowIpcOutputStreamInitFile(struct ArrowIpcOutputStream* stream,
                                             void* file_ptr, int close_on_release) {
+  NANOARROW_DCHECK(stream != NULL);
   if (file_ptr == NULL) {
     return EINVAL;
   }
@@ -149,4 +154,157 @@ ArrowErrorCode ArrowIpcOutputStreamInitFile(struct ArrowIpcOutputStream* stream,
   stream->release = &ArrowIpcOutputStreamFileRelease;
   stream->private_data = private_data;
   return NANOARROW_OK;
+}
+
+struct ArrowIpcArrayStreamWriterPrivate {
+  struct ArrowArrayStream in;
+  struct ArrowIpcOutputStream output_stream;
+  struct ArrowIpcEncoder encoder;
+  struct ArrowSchema schema;
+  struct ArrowArray array;
+  struct ArrowArrayView array_view;
+  struct ArrowBuffer buffer;
+  struct ArrowBuffer body_buffer;
+  int64_t buffer_cursor;
+  int64_t body_buffer_cursor;
+};
+
+ArrowErrorCode ArrowIpcArrayStreamWriterInit(struct ArrowIpcArrayStreamWriter* writer,
+                                             struct ArrowArrayStream* in,
+                                             struct ArrowIpcOutputStream* output_stream) {
+  NANOARROW_DCHECK(writer != NULL && in != NULL && output_stream != NULL);
+
+  struct ArrowIpcArrayStreamWriterPrivate* private =
+      (struct ArrowIpcArrayStreamWriterPrivate*)ArrowMalloc(
+          sizeof(struct ArrowIpcArrayStreamWriterPrivate));
+
+  if (private == NULL) {
+    return ENOMEM;
+  }
+
+  NANOARROW_RETURN_NOT_OK(ArrowIpcEncoderInit(&private->encoder));
+  ArrowIpcOutputStreamMove(output_stream, &private->output_stream);
+  ArrowArrayStreamMove(in, &private->in);
+  private->schema.release = NULL;
+  private->array.release = NULL;
+  ArrowArrayViewInitFromType(&private->array_view, NANOARROW_TYPE_UNINITIALIZED);
+  ArrowBufferInit(&private->buffer);
+  ArrowBufferInit(&private->body_buffer);
+  private->buffer_cursor = 0;
+  private->body_buffer_cursor = 0;
+
+  writer->finished = 0;
+  writer->private_data = private;
+  return NANOARROW_OK;
+}
+
+void ArrowIpcArrayStreamWriterReset(struct ArrowIpcArrayStreamWriter* writer) {
+  NANOARROW_DCHECK(writer != NULL);
+
+  struct ArrowIpcArrayStreamWriterPrivate* private =
+      (struct ArrowIpcArrayStreamWriterPrivate*)writer->private_data;
+
+  if (private != NULL) {
+    ArrowIpcEncoderReset(&private->encoder);
+    ArrowArrayStreamRelease(&private->in);
+    private->output_stream.release(&private->output_stream);
+    if (private->schema.release != NULL) {
+      ArrowSchemaRelease(&private->schema);
+    }
+    if (private->array.release != NULL) {
+      ArrowArrayRelease(&private->array);
+    }
+    ArrowArrayViewReset(&private->array_view);
+    ArrowBufferReset(&private->buffer);
+    ArrowBufferReset(&private->body_buffer);
+
+    ArrowFree(private);
+  }
+  memset(writer, 0, sizeof(struct ArrowIpcArrayStreamWriter));
+}
+
+static ArrowErrorCode ArrowIpcArrayStreamWriterPush(
+    struct ArrowIpcArrayStreamWriterPrivate* private, struct ArrowBuffer* buffer,
+    int* had_bytes_to_push, struct ArrowError* error) {
+  int64_t* cursor = buffer == &private->buffer  //
+                        ? &private->buffer_cursor
+                        : &private->body_buffer_cursor;
+
+  *had_bytes_to_push = *cursor < buffer->size_bytes;
+  if (*had_bytes_to_push) {
+    // bytes remain in the buffer; push those
+    int64_t bytes_written;
+    NANOARROW_RETURN_NOT_OK(private->output_stream.write(
+        &private->output_stream, buffer->data + *cursor, buffer->size_bytes - *cursor,
+        &bytes_written, error));
+    *cursor += bytes_written;
+
+    if (*cursor == buffer->size_bytes) {
+      *cursor = buffer->size_bytes = 0;
+    }
+  }
+  return NANOARROW_OK;
+}
+
+ArrowErrorCode ArrowIpcArrayStreamWriterWriteSome(
+    struct ArrowIpcArrayStreamWriter* writer, struct ArrowError* error) {
+  NANOARROW_DCHECK(writer != NULL && writer->private_data != NULL);
+
+  if (writer->finished) {
+    ArrowErrorSet(error, "ArrowIpcArrayStreamWriterWriteSome on a finished writer");
+    return EINVAL;
+  }
+
+  struct ArrowIpcArrayStreamWriterPrivate* private =
+      (struct ArrowIpcArrayStreamWriterPrivate*)writer->private_data;
+
+  int had_bytes_to_push = 0;
+
+  NANOARROW_RETURN_NOT_OK(ArrowIpcArrayStreamWriterPush(private, &private->buffer,
+                                                        &had_bytes_to_push, error));
+  if (had_bytes_to_push) {
+    return NANOARROW_OK;
+  }
+  // buffer has no bytes to push, try body_buffer
+  NANOARROW_RETURN_NOT_OK(ArrowIpcArrayStreamWriterPush(private, &private->body_buffer,
+                                                        &had_bytes_to_push, error));
+  if (had_bytes_to_push) {
+    return NANOARROW_OK;
+  }
+
+  // get the next Message
+  if (private->schema.release == NULL) {
+    // The schema message has not been buffered yet; do that now.
+    NANOARROW_RETURN_NOT_OK(
+        ArrowArrayStreamGetSchema(&private->in, &private->schema, error));
+    NANOARROW_RETURN_NOT_OK(
+        ArrowIpcEncoderEncodeSchema(&private->encoder, &private->schema, error));
+    NANOARROW_RETURN_NOT_OK(
+        ArrowArrayViewInitFromSchema(&private->array_view, &private->schema, error));
+  } else {
+    // Get the next array from the stream
+    NANOARROW_RETURN_NOT_OK(  // XXX does private->array maybe need to be released?
+        ArrowArrayStreamGetNext(&private->in, &private->array, error));
+    if (private->array.release == NULL) {
+      // The stream is complete, signal the end to the caller
+      writer->finished = 1;
+      return NANOARROW_OK;
+    }
+
+    NANOARROW_RETURN_NOT_OK(
+        ArrowArrayViewSetArray(&private->array_view, &private->array, error));
+
+    NANOARROW_RETURN_NOT_OK(ArrowIpcEncoderEncodeSimpleRecordBatch(
+        &private->encoder, &private->array_view, &private->body_buffer, error));
+  }
+
+  NANOARROW_RETURN_NOT_OK_WITH_ERROR(
+      ArrowIpcEncoderFinalizeBuffer(&private->encoder, /*encapsulate=*/1,
+                                    &private->buffer),
+      error);
+  NANOARROW_DCHECK(private->buffer.size_bytes % 8 == 0);
+  NANOARROW_DCHECK(private->body_buffer.size_bytes % 8 == 0);
+  // Since we just finalized it, buffer won't be empty
+  return ArrowIpcArrayStreamWriterPush(private, &private->buffer, &had_bytes_to_push,
+                                       error);
 }

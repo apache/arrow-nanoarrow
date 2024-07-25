@@ -531,7 +531,6 @@ static ArrowErrorCode ArrowIpcEncoderEncodeRecordBatch(
     const struct ArrowArrayView* array_view, struct ArrowError* error) {
   NANOARROW_DCHECK(encoder != NULL && encoder->private_data != NULL &&
                    buffer_encoder != NULL && buffer_encoder->encode_buffer != NULL);
-
   if (array_view->null_count != 0 && ArrowArrayViewComputeNullCount(array_view) != 0) {
     ArrowErrorSet(error,
                   "RecordBatches cannot be constructed from arrays with top level nulls");

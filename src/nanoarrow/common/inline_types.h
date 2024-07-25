@@ -314,7 +314,7 @@ static inline void ArrowErrorSetString(struct ArrowError* error, const char* src
 #define NANOARROW_DCHECK(EXPR) _NANOARROW_DCHECK_IMPL(EXPR, #EXPR)
 #else
 #define NANOARROW_ASSERT_OK(EXPR) (void)(EXPR)
-#define NANOARROW_DCHECK(EXPR)
+#define NANOARROW_DCHECK(EXPR) (void)(EXPR)
 #endif
 
 static inline void ArrowSchemaMove(struct ArrowSchema* src, struct ArrowSchema* dst) {

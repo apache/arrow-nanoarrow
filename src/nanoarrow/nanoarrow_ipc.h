@@ -71,6 +71,12 @@
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcOutputStreamInitFile)
 #define ArrowIpcOutputStreamMove \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcOutputStreamMove)
+#define ArrowIpcArrayStreamWriterInit \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcArrayStreamWriterInit)
+#define ArrowIpcArrayStreamWriterReset \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcArrayStreamWriterReset)
+#define ArrowIpcArrayStreamWriterWriteSome \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcArrayStreamWriterWriteSome)
 
 #endif
 
@@ -491,6 +497,47 @@ ArrowErrorCode ArrowIpcOutputStreamInitBuffer(struct ArrowIpcOutputStream* strea
 /// close_on_release and handle closing the file independently from stream.
 ArrowErrorCode ArrowIpcOutputStreamInitFile(struct ArrowIpcOutputStream* stream,
                                             void* file_ptr, int close_on_release);
+
+/// \brief A stream writer which encodes ArrowArrays into an IPC byte stream
+///
+/// This structure is intended to be allocated by the caller,
+/// initialized using ArrowIpcArrayStreamWriterInit(), and released with
+/// ArrowIpcArrayStreamWriterReset().
+///
+/// Note: although ArrowArrayStream is a sufficient interface to wrap a stream reader,
+/// a stream writer cannot be wrapped as an ArrowArrayStream.
+struct ArrowIpcArrayStreamWriter {
+  /// \brief Set to non-zero after the writer is finished.
+  int finished;
+
+  /// \brief Private resources managed by this library
+  void* private_data;
+};
+
+/// \brief Initialize an output stream of bytes from an ArrowArrayStream
+///
+/// The writer will not pull from the input array stream or push to the
+/// output stream until ArrowIpcArrayStreamWriterContinue().
+///
+/// Returns NANOARROW_OK on success. If NANOARROW_OK is returned the writer
+/// takes ownership of both the input array stream and the output byte stream
+/// and the caller is responsible for releasing the writer by calling
+/// ArrowIpcArrayStreamWriterReset().
+ArrowErrorCode ArrowIpcArrayStreamWriterInit(struct ArrowIpcArrayStreamWriter* writer,
+                                             struct ArrowArrayStream* in,
+                                             struct ArrowIpcOutputStream* output_stream);
+
+/// \brief Release all resources attached to a writer
+void ArrowIpcArrayStreamWriterReset(struct ArrowIpcArrayStreamWriter* writer);
+
+/// \brief Write some bytes into the output byte stream
+///
+/// The stream will first be queried for its Schema, then for all the RecordBatches in the
+/// stream, each of which will be encoded and pushed into the output byte stream.
+///
+/// Errors are propagated from the underlying streams.
+ArrowErrorCode ArrowIpcArrayStreamWriterWriteSome(
+    struct ArrowIpcArrayStreamWriter* writer, struct ArrowError* error);
 /// @}
 
 #ifdef __cplusplus
