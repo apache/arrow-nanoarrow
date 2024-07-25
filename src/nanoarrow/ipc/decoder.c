@@ -110,17 +110,6 @@ ArrowErrorCode ArrowIpcCheckRuntime(struct ArrowError* error) {
   return NANOARROW_OK;
 }
 
-static enum ArrowIpcEndianness ArrowIpcSystemEndianness(void) {
-  uint32_t check = 1;
-  char first_byte;
-  memcpy(&first_byte, &check, sizeof(char));
-  if (first_byte) {
-    return NANOARROW_IPC_ENDIANNESS_LITTLE;
-  } else {
-    return NANOARROW_IPC_ENDIANNESS_BIG;
-  }
-}
-
 #if NANOARROW_IPC_USE_STDATOMIC
 struct ArrowIpcSharedBufferPrivate {
   struct ArrowBuffer src;
