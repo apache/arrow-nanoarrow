@@ -2005,11 +2005,6 @@ ArrowErrorCode SetArrayColumn(const json& value, const ArrowSchema* schema,
     buffer_view->size_bytes = buffer->size_bytes;
   }
 
-  // The null type doesn't have any buffers but we can set the null_count
-  if (array_view->storage_type == NANOARROW_TYPE_NA) {
-    array_view->null_count = array_view->length;
-  }
-
   array_view->null_count = ArrowArrayViewComputeNullCount(array_view);
 
   // If there is a dictionary associated with schema, parse its value into dictionary
