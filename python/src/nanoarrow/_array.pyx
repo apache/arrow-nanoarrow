@@ -629,7 +629,11 @@ cdef class CArrayBuilder:
         return self
 
     def resolve_null_count(self) -> CArrayBuilder:
-        """Ensure the output null count is synchronized with existing buffers"""
+        """Ensure the output null count is synchronized with existing buffers
+
+        Note that this will not attempt to access non-CPU buffers such that
+        :attr:`null_count` might still be -1 after calling this method.
+        """
         self.c_array._assert_valid()
 
         # This doesn't apply to unions. We currently don't have a schema view
@@ -686,7 +690,7 @@ cdef class CArrayBuilder:
             raise IndexError("i must be >= 0 and <= 3")
 
         if buffer._device != self._device:
-            raise ValueError("Can't source and buffer device not identical")
+            raise ValueError("Source device and buffer device not identical")
 
         self.c_array._assert_valid()
         if not move:
@@ -767,6 +771,10 @@ cdef class CArrayBuilder:
         return out
 
     def finish_device(self):
+        """Finish building this array and export to an ArrowDeviceArray
+
+        Calls :meth:`finish`, propagating device information into an ArrowDeviceArray.
+        """
         cdef CArray array = self.finish()
 
         cdef ArrowDeviceArray* device_array_ptr

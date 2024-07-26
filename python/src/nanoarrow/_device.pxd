@@ -17,6 +17,8 @@
 
 # cython: language_level = 3
 
+from libc.stdint cimport uintptr_t
+
 from nanoarrow_device_c cimport ArrowDevice
 
 cdef class Device:
@@ -28,3 +30,4 @@ cdef class CSharedSyncEvent:
     cdef void* sync_event
 
     cdef synchronize(self)
+    cdef synchronize_stream(self, uintptr_t stream)
