@@ -61,6 +61,8 @@
 #define ArrowIpcEncoderReset NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcEncoderReset)
 #define ArrowIpcEncoderFinalizeBuffer \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcEncoderFinalizeBuffer)
+#define ArrowIpcEncoderEncodeSchema \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcEncoderEncodeSchema)
 
 #endif
 
@@ -443,8 +445,7 @@ void ArrowIpcEncoderReset(struct ArrowIpcEncoder* encoder);
 ///
 /// The bytes of the encoded message will be appended to the provided buffer.
 ArrowErrorCode ArrowIpcEncoderFinalizeBuffer(struct ArrowIpcEncoder* encoder,
-                                             char encapsulate,
-                                             struct ArrowBuffer* out);
+                                             char encapsulate, struct ArrowBuffer* out);
 
 /// \brief Encode an ArrowSchema
 ///
