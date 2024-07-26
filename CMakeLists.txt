@@ -478,7 +478,7 @@ if(NANOARROW_BUILD_TESTS)
       gtest_discover_tests(nanoarrow_ipc_${name}_test)
     endforeach()
 
-    target_link_libraries(nanoarrow_ipc_files_test nlohmann_json ZLIB::ZLIB)
+    target_link_libraries(nanoarrow_ipc_files_test nanoarrow_testing ZLIB::ZLIB)
   endif()
 
   if(NANOARROW_DEVICE)
