@@ -28,7 +28,7 @@ def check_dlpack_export(view, expected_arr):
     # Check device spec
     assert view.__dlpack_device__() == (1, 0)
 
-    # Check capsule exprort
+    # Check capsule export
     capsule = view.__dlpack__()
     assert obj_is_capsule(capsule, "dltensor") is True
 
