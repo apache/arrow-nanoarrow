@@ -1913,16 +1913,14 @@ TEST(SchemaDsl, Basic) {
   using namespace nanoarrow::testing::dsl;
 
   schema{children{
-      {"i", "i32",
+      {"i", "int32 field name",
        metadata{
            "some_key=some_value",
        }},
-      {"i", "i32",
-       dictionary{{"u"}},
+      {"i", dictionary{"u"}, "dictionary field name",
        metadata{
            "some_key=some_value",
        },
        ARROW_FLAG_NULLABLE},
   }};
 }
-

@@ -2933,10 +2933,15 @@ class schema;
 using children = std::vector<schema>;
 
 /// \brief A wrapper around schema to readably tag a dictionary
-struct dictionary;
+struct dictionary : UniqueSchema {
+  template <typename... Args>
+  explicit dictionary(Args... args);
+};
 
 class schema {
  public:
+  friend struct dictionary;
+
   schema(schema const& other) : unique_schema{std::move(other.unique_schema)} {}
   schema(schema&& other) = default;
 
@@ -2956,51 +2961,31 @@ class schema {
   mutable UniqueSchema unique_schema;
 
   struct Private {
-    std::vector<std::string> strings{"", "", ""};
+    std::string format;
+    std::string name;
+    std::string metadata;
+
     std::vector<schema> schemas;
     std::vector<struct ArrowSchema*> children;
-
-    std::string& format() { return strings[0]; }
-    std::string& name() { return strings[1]; }
-    std::string& metadata() { return strings[2]; }
+    UniqueSchema dictionary;
   };
 
   Private* get_private() { return static_cast<Private*>(get()->private_data); }
   ArrowSchema* get() { return unique_schema.get(); }
 
   void set() {
-    if (get()->n_children != 0) {
-      // finalize children
-      get_private()->children.resize(get()->n_children);
-
-      int i = 0;
-      for (auto& child : get_private()->children) {
-        child = get_private()->schemas[i++].get();
-      }
-      get()->children = get_private()->children.data();
-    }
-
-    if (get()->n_children == 0 && get_private()->schemas.size() == 1) {
-      // finalize dictionary
-      get()->dictionary = get_private()->schemas.back().get();
-    }
-
-    if (get_private()->format().empty()) {
-      // if format was not set, then set it to struct now
-      get_private()->format() = "+s";
-    }
-
     // set string pointers in the actual ArrowSchema
-    get()->format = get_private()->format().c_str();
-    get()->name = get_private()->name().c_str();
-    get()->metadata = get_private()->metadata().c_str();
+    // if format was not set, then set it to struct now
+    get()->format = get_private()->format.empty() ? "+s" : get_private()->format.c_str();
+    get()->name = get_private()->name.c_str();
+    get()->metadata = get_private()->metadata.c_str();
   }
 
   template <typename... Args>
   void set(std::string format_or_name, Args... args) {
-    (get_private()->format().empty()  // assign to format if it's empty
-         ? get_private()->format()
-         : get_private()->name()) = std::move(format_or_name);
+    (get_private()->format.empty()  // assign to format if it's empty
+         ? get_private()->format
+         : get_private()->name) = std::move(format_or_name);
   }
 
   template <typename... Args>
@@ -3010,13 +2995,22 @@ class schema {
   }
 
   template <typename... Args>
-  void set(dictionary d, Args... args);
+  void set(dictionary d, Args... args) {
+    get_private()->dictionary = std::move(d);
+    set(std::move(args)...);
+  }
 
   template <typename... Args>
   void set(children c, Args... args) {
-    NANOARROW_DCHECK(get_private()->schemas.empty());
     get()->n_children = c.size();
+    get_private()->children.resize(c.size());
+    get()->children = get_private()->children.data();
     get_private()->schemas = std::move(c);
+
+    int i = 0;
+    for (auto& child : get_private()->children) {
+      child = get_private()->schemas[i++].get();
+    }
     set(std::move(args)...);
   }
 
@@ -3042,23 +3036,17 @@ class schema {
       append_int32(value_size);
       metadata_buf.append(kv.data() + key_size + 1, value_size);
     }
-    get_private()->strings[2] = std::move(metadata_buf);
-    get()->metadata = get_private()->strings.back().c_str();
+    get_private()->metadata = std::move(metadata_buf);
+    get()->metadata = get_private()->metadata.c_str();
 
     set(std::move(args)...);
   }
 };
 
-struct dictionary {
-  nanoarrow::testing::dsl::schema schema;
-};
-
 template <typename... Args>
-void schema::set(dictionary d, Args... args) {
-  NANOARROW_DCHECK(get_private()->schemas.empty());
-  get_private()->schemas.push_back(std::move(d.schema));
-  set(std::move(args)...);
-}
+dictionary::dictionary(Args... args)
+    : UniqueSchema{std::move(schema{std::move(args)...}.unique_schema)} {}
+
 /// @}
 }  // namespace dsl
 
