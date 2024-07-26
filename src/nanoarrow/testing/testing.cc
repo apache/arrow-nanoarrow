@@ -2003,20 +2003,14 @@ ArrowErrorCode SetArrayColumn(const json& value, const ArrowSchema* schema,
     ArrowBufferView* buffer_view = array_view->buffer_views + i;
     buffer_view->data.as_uint8 = buffer->data;
     buffer_view->size_bytes = buffer->size_bytes;
-
-    // If this is a validity buffer, set the null_count
-    if (array_view->layout.buffer_type[i] == NANOARROW_BUFFER_TYPE_VALIDITY &&
-        _ArrowBytesForBits(array_view->length) <= buffer_view->size_bytes) {
-      array_view->null_count =
-          array_view->length -
-          ArrowBitCountSet(buffer_view->data.as_uint8, 0, array_view->length);
-    }
   }
 
   // The null type doesn't have any buffers but we can set the null_count
   if (array_view->storage_type == NANOARROW_TYPE_NA) {
     array_view->null_count = array_view->length;
   }
+
+  array_view->null_count = ArrowArrayViewComputeNullCount(array_view);
 
   // If there is a dictionary associated with schema, parse its value into dictionary
   if (schema->dictionary != nullptr) {
