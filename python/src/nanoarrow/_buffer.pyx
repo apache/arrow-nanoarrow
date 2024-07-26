@@ -56,6 +56,7 @@ from nanoarrow_c cimport (
 
 from nanoarrow_device_c cimport (
     ARROW_DEVICE_CPU,
+    ARROW_DEVICE_CUDA,
     ArrowDevice,
 )
 
@@ -176,11 +177,31 @@ cdef object view_to_dlpack(CBufferView view, stream=None):
     Py_INCREF(view)
     dlm_tensor.deleter = view_dlpack_deleter
 
-    # Make the buffer safe to consume
-    if stream is not None:
-        view._event.synchronize_stream(stream)
-    else:
-        view._event.synchronize()
+    # stream has a DLPack + device specific interpretation
+
+    # nanoarrow_device needs a CUstream* (i.e., a CUstream_st**), but dlpack
+    # gives us a CUstream_st*.
+    cdef void* cuda_pstream
+
+    if view._event.device is DEVICE_CPU:
+        if stream is not None and stream != -1:
+            raise ValueError("dlpack stream must be None or -1 for the CPU device")
+    elif view._event.device.device_type_id == ARROW_DEVICE_CUDA:
+        if stream == 0:
+            raise ValueError("dlpack stream value of 0 is not permitted for CUDA")
+        elif stream == -1:
+            # Sentinel for "do not synchronize"
+            pass
+        elif stream in (1, 2):
+            # Technically we are mixing the per-thread and legacy default streams here;
+            # however, the nanoarrow_device API currently has no mechanism to expose
+            # a pointer these streams specifically.
+            cuda_pstream = <void*>0
+            view._event.synchronize_stream(<uintptr_t>&cuda_pstream)
+        else:
+            # Otherwise, this is a CUstream** (i.e., CUstream_st*)
+            cuda_pstream = <void*><uintptr_t>stream
+            view._event.synchronize_stream(<uintptr_t>&cuda_pstream)
 
     return PyCapsule_New(dlm_tensor, 'dltensor', pycapsule_dlpack_deleter)
 

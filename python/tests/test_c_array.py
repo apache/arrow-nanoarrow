@@ -22,6 +22,7 @@ import pytest
 from nanoarrow._array import CArrayBuilder
 from nanoarrow._utils import NanoarrowException
 from nanoarrow.c_schema import c_schema_view
+from nanoarrow import device
 
 import nanoarrow as na
 
@@ -518,6 +519,17 @@ def test_c_array_from_buffers_validation():
             validation_level=validation_level,
         )
         assert c_array.length == 2
+
+
+def test_c_array_from_buffers_device():
+    c_device_array = na.c_array_from_buffers(
+        na.uint8(), 5, [None, b"12345"], device=device.cpu()
+    )
+    assert isinstance(c_device_array, device.CDeviceArray)
+
+    c_array = na.c_array(c_device_array)
+    assert c_array.length == 5
+    assert bytes(c_array.view().buffer(1)) == b"12345"
 
 
 def test_c_array_timestamp_seconds():
