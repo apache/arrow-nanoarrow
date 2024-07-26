@@ -469,6 +469,99 @@ TEST_P(ArrowTypeParameterizedTestFixture, NanoarrowIpcArrowTypeRoundtrip) {
   ArrowIpcDecoderReset(&decoder);
 }
 
+std::string ArrowSchemaMetadataToString(const char* metadata) {
+  struct ArrowMetadataReader reader;
+  struct ArrowStringView key;
+  struct ArrowStringView value;
+  NANOARROW_DCHECK(ArrowMetadataReaderInit(&reader, metadata) == NANOARROW_OK);
+
+  bool comma = false;
+  std::string out;
+  while (ArrowMetadataReaderRead(&reader, &key, &value) == NANOARROW_OK) {
+    if (comma) {
+      out += ", ";
+    }
+    comma = true;
+
+    out.append(key.data, key.size_bytes);
+    out += "=";
+    out.append(key.data, key.size_bytes);
+  }
+  return out;
+}
+
+std::string ArrowSchemaToString(const struct ArrowSchema* schema) {
+  std::string out;
+  size_t n = 1024;
+  while (out.size() < n) {
+    out.resize(n);
+    n = ArrowSchemaToString(schema, out.data(), out.size(), /*recursive=*/false);
+  }
+
+  std::string metadata = ArrowSchemaMetadataToString(schema->metadata);
+  if (!metadata.empty()) {
+    out += "{" + metadata + "}";
+  }
+
+  bool comma = false;
+  if (schema->format[0] == '+') {
+    out += "<";
+    for (int64_t i = 0; i < schema->n_children; ++i) {
+      if (comma) {
+        out += ", ";
+      }
+      comma = true;
+
+      auto* child = schema->children[i];
+      if (child && child->name[0] != '\0') {
+        out += child->name;
+        out += ": ";
+      }
+      out += ArrowSchemaToString(schema->children[i]);
+    }
+    out += ">";
+  }
+
+  return out;
+}
+
+TEST_P(ArrowTypeParameterizedTestFixture, NanoarrowIpcNanoarrowTypeRoundtrip) {
+  arrow::Schema dummy_schema({arrow::field("", GetParam())});
+
+  nanoarrow::UniqueSchema schema;
+  ASSERT_TRUE(arrow::ExportSchema(dummy_schema, schema.get()).ok());
+
+  nanoarrow::ipc::UniqueEncoder encoder;
+  EXPECT_EQ(ArrowIpcEncoderInit(encoder.get()), NANOARROW_OK);
+
+  struct ArrowError error;
+  EXPECT_EQ(ArrowIpcEncoderEncodeSchema(encoder.get(), schema.get(), &error),
+            NANOARROW_OK)
+      << error.message;
+
+  nanoarrow::UniqueBuffer buffer;
+  EXPECT_EQ(
+      ArrowIpcEncoderFinalizeBuffer(encoder.get(), /*encapsulate=*/true, buffer.get()),
+      NANOARROW_OK);
+
+  struct ArrowBufferView buffer_view;
+  buffer_view.data.data = buffer->data;
+  buffer_view.size_bytes = buffer->size_bytes;
+
+  nanoarrow::ipc::UniqueDecoder decoder;
+  ArrowIpcDecoderInit(decoder.get());
+  ASSERT_EQ(ArrowIpcDecoderVerifyHeader(decoder.get(), buffer_view, nullptr),
+            NANOARROW_OK);
+  ASSERT_EQ(ArrowIpcDecoderDecodeHeader(decoder.get(), buffer_view, nullptr),
+            NANOARROW_OK);
+
+  nanoarrow::UniqueSchema roundtripped;
+  ASSERT_EQ(ArrowIpcDecoderDecodeSchema(decoder.get(), roundtripped.get(), nullptr),
+            NANOARROW_OK);
+
+  EXPECT_EQ(ArrowSchemaToString(roundtripped.get()), ArrowSchemaToString(schema.get()));
+}
+
 TEST(NanoarrowIpcTest, NanoarrowIpcDecodeSimpleRecordBatchFromShared) {
   struct ArrowIpcDecoder decoder;
   struct ArrowError error;
@@ -685,7 +778,8 @@ INSTANTIATE_TEST_SUITE_P(
         arrow::duration(arrow::TimeUnit::SECOND), arrow::duration(arrow::TimeUnit::MILLI),
         arrow::duration(arrow::TimeUnit::MICRO), arrow::duration(arrow::TimeUnit::NANO),
         arrow::month_interval(), arrow::day_time_interval(),
-        arrow::month_day_nano_interval(),
+        arrow::month_day_nano_interval(), arrow::list(arrow::int32()),
+        arrow::list(arrow::field("", arrow::int32())),
         arrow::list(arrow::field("some_custom_name", arrow::int32())),
         arrow::large_list(arrow::field("some_custom_name", arrow::int32())),
         arrow::fixed_size_list(arrow::field("some_custom_name", arrow::int32()), 123),
@@ -743,20 +837,11 @@ TEST_P(ArrowSchemaParameterizedTestFixture, NanoarrowIpcArrowSchemaRoundtrip) {
   ASSERT_TRUE(maybe_schema.ok());
 
   // Better failure message if we first check for string equality
-  EXPECT_EQ(maybe_schema.ValueUnsafe()->ToString(), arrow_schema->ToString());
+  EXPECT_EQ(maybe_schema.ValueUnsafe()->ToString(/*show_metadata=*/true),
+            arrow_schema->ToString(/*show_metadata=*/true));
   EXPECT_TRUE(maybe_schema.ValueUnsafe()->Equals(arrow_schema, true));
 
   ArrowIpcDecoderReset(&decoder);
-}
-
-std::string ArrowSchemaToString(const struct ArrowSchema* schema) {
-  std::string out;
-  size_t n = 1024;
-  while (out.size() < n) {
-    out.resize(n);
-    n = ArrowSchemaToString(schema, out.data(), out.size(), /*recursive=*/true);
-  }
-  return out;
 }
 
 TEST_P(ArrowSchemaParameterizedTestFixture, NanoarrowIpcNanoarrowSchemaRoundtrip) {
