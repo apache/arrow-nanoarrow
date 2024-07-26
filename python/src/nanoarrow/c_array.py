@@ -243,6 +243,10 @@ def c_array_from_buffers(
     move : bool, optional
         Use ``True`` to move ownership of any input buffers or children to the
         output array.
+    device : Device, optional
+        An explicit device to use when constructing this array. If specified,
+        this function will construct a :class:`CDeviceArray`; if unspecified,
+        this function will construct a :class:`CArray` on the CPU device.
 
     Examples
     --------
@@ -261,7 +265,10 @@ def c_array_from_buffers(
     - children[0]:
     """
     if device is None:
+        explicit_device = False
         device = DEVICE_CPU
+    else:
+        explicit_device = True
 
     schema = c_schema(schema)
     builder = CArrayBuilder.allocate(device)
@@ -285,6 +292,11 @@ def c_array_from_buffers(
     # the objects in the input children would be marked released).
     n_children = 0
     for child_src in children:
+        if device is not DEVICE_CPU:
+            raise NotImplementedError(
+                "Setting children of a non-CPU array is not yet supported"
+            )
+
         # If we're setting a CArray from something else, we can avoid an extra
         # level of Python wrapping by using move=True
         move = move or not isinstance(child_src, CArray)
@@ -302,8 +314,9 @@ def c_array_from_buffers(
     # Calculates the null count if -1 (and if applicable)
     builder.resolve_null_count()
 
-    # Validate + finish
-    if device is DEVICE_CPU:
+    # Validate + finish. If device is specified (even CPU), always
+    # return a device array.
+    if not explicit_device:
         return builder.finish(validation_level=validation_level)
     else:
         return builder.finish_device()

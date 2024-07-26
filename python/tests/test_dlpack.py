@@ -85,6 +85,3 @@ def test_dlpack_not_supported():
         ValueError, match="Bit-packed boolean data type not supported by DLPack."
     ):
         view.__dlpack_device__()
-
-    with pytest.raises(NotImplementedError, match="Only stream=None is supported."):
-        view.__dlpack__(stream=3)

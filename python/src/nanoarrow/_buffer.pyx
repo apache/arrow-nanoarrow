@@ -152,7 +152,7 @@ cdef int dlpack_data_type_to_arrow(DLDataType dtype):
 
     raise ValueError("Can't convert dlpack data type to Arrow type")
 
-cdef object view_to_dlpack(CBufferView view):
+cdef object view_to_dlpack(CBufferView view, stream=None):
     # Define DLDevice and DLDataType struct and
     # with that check for data type support first
     cdef DLDevice device = view_to_dlpack_device(view)
@@ -175,6 +175,12 @@ cdef object view_to_dlpack(CBufferView view):
     dlm_tensor.manager_ctx = <void*>view
     Py_INCREF(view)
     dlm_tensor.deleter = view_dlpack_deleter
+
+    # Make the buffer safe to consume
+    if stream is not None:
+        view._event.synchronize_stream(stream)
+    else:
+        view._event.synchronize()
 
     return PyCapsule_New(dlm_tensor, 'dltensor', pycapsule_dlpack_deleter)
 
@@ -485,7 +491,7 @@ cdef class CBufferView:
         Parameters
         ----------
         stream : int, optional
-            A Python integer representing a pointer to a stream. Currently not supported.
+            A Python integer representing a pointer to a stream.
             Stream is provided by the consumer to the producer to instruct the producer
             to ensure that operations can safely be performed on the array.
 
@@ -495,13 +501,7 @@ cdef class CBufferView:
             A DLPack capsule for the array, pointing to a DLManagedTensor.
         """
         # Note: parent offset not applied!
-
-        if stream is None:
-            return view_to_dlpack(self)
-        else:
-            raise NotImplementedError(
-                "Only stream=None is supported."
-            )
+        return view_to_dlpack(self, stream)
 
 
     def __dlpack_device__(self):

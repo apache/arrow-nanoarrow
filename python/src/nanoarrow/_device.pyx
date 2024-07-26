@@ -141,3 +141,9 @@ cdef class CSharedSyncEvent:
         error.raise_message_not_ok("ArrowDevice::synchronize_event", code)
 
         self.sync_event = NULL
+
+    cdef synchronize_stream(self, uintptr_t stream):
+        cdef Error error = Error()
+        cdef ArrowDevice* c_device = self.device._ptr
+        cdef int code = c_device.synchronize_event(c_device, self.sync_event, <void*>stream, &error.c_error)
+        error.raise_message_not_ok("ArrowDevice::synchronize_event with stream", code)
