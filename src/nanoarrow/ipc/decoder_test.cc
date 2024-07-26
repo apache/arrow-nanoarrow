@@ -26,7 +26,7 @@
 // For bswap32()
 #include "flatcc/portable/pendian.h"
 
-#include "nanoarrow/nanoarrow_ipc.h"
+#include "nanoarrow/nanoarrow_ipc.hpp"
 
 using namespace arrow;
 
@@ -747,6 +747,53 @@ TEST_P(ArrowSchemaParameterizedTestFixture, NanoarrowIpcArrowSchemaRoundtrip) {
   EXPECT_TRUE(maybe_schema.ValueUnsafe()->Equals(arrow_schema, true));
 
   ArrowIpcDecoderReset(&decoder);
+}
+
+std::string ArrowSchemaToString(const struct ArrowSchema* schema) {
+  std::string out;
+  size_t n = 1024;
+  while (out.size() < n) {
+    out.resize(n);
+    n = ArrowSchemaToString(schema, out.data(), out.size(), /*recursive=*/true);
+  }
+  return out;
+}
+
+TEST_P(ArrowSchemaParameterizedTestFixture, NanoarrowIpcNanoarrowSchemaRoundtrip) {
+  const std::shared_ptr<arrow::Schema>& arrow_schema = GetParam();
+
+  nanoarrow::UniqueSchema schema;
+  ASSERT_TRUE(arrow::ExportSchema(*arrow_schema, schema.get()).ok());
+
+  nanoarrow::ipc::UniqueEncoder encoder;
+  EXPECT_EQ(ArrowIpcEncoderInit(encoder.get()), NANOARROW_OK);
+
+  struct ArrowError error;
+  EXPECT_EQ(ArrowIpcEncoderEncodeSchema(encoder.get(), schema.get(), &error),
+            NANOARROW_OK)
+      << error.message;
+
+  nanoarrow::UniqueBuffer buffer;
+  EXPECT_EQ(
+      ArrowIpcEncoderFinalizeBuffer(encoder.get(), /*encapsulate=*/true, buffer.get()),
+      NANOARROW_OK);
+
+  struct ArrowBufferView buffer_view;
+  buffer_view.data.data = buffer->data;
+  buffer_view.size_bytes = buffer->size_bytes;
+
+  nanoarrow::ipc::UniqueDecoder decoder;
+  ArrowIpcDecoderInit(decoder.get());
+  ASSERT_EQ(ArrowIpcDecoderVerifyHeader(decoder.get(), buffer_view, nullptr),
+            NANOARROW_OK);
+  ASSERT_EQ(ArrowIpcDecoderDecodeHeader(decoder.get(), buffer_view, nullptr),
+            NANOARROW_OK);
+
+  nanoarrow::UniqueSchema roundtripped;
+  ASSERT_EQ(ArrowIpcDecoderDecodeSchema(decoder.get(), roundtripped.get(), nullptr),
+            NANOARROW_OK);
+
+  EXPECT_EQ(ArrowSchemaToString(roundtripped.get()), ArrowSchemaToString(schema.get()));
 }
 
 INSTANTIATE_TEST_SUITE_P(
