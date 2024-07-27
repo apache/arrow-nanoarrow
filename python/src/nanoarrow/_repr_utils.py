@@ -185,7 +185,8 @@ def buffer_view_repr(buffer_view, max_char_width=80):
             + buffer_view_preview_cpu(buffer_view, max_char_width - len(prefix) - 2)
         )
     else:
-        return prefix
+        dev_info = f"<{buffer_view.device.device_type}/{buffer_view.device.device_id}>"
+        return prefix + dev_info
 
 
 def buffer_view_preview_cpu(buffer_view, max_char_width):
