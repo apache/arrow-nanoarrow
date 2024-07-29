@@ -471,13 +471,15 @@ TEST_P(ArrowTypeParameterizedTestFixture, NanoarrowIpcArrowTypeRoundtrip) {
 
 std::string ArrowSchemaMetadataToString(const char* metadata) {
   struct ArrowMetadataReader reader;
-  struct ArrowStringView key;
-  struct ArrowStringView value;
-  NANOARROW_DCHECK(ArrowMetadataReaderInit(&reader, metadata) == NANOARROW_OK);
+  auto st = ArrowMetadataReaderInit(&reader, metadata);
+  NANOARROW_DCHECK(st == NANOARROW_OK);
 
   bool comma = false;
   std::string out;
-  while (ArrowMetadataReaderRead(&reader, &key, &value) == NANOARROW_OK) {
+  while (reader.remaining_keys > 0) {
+    struct ArrowStringView key, value;
+    auto st = ArrowMetadataReaderRead(&reader, &key, &value);
+    NANOARROW_DCHECK(st == NANOARROW_OK);
     if (comma) {
       out += ", ";
     }
@@ -485,7 +487,7 @@ std::string ArrowSchemaMetadataToString(const char* metadata) {
 
     out.append(key.data, key.size_bytes);
     out += "=";
-    out.append(key.data, key.size_bytes);
+    out.append(value.data, value.size_bytes);
   }
   return out;
 }
@@ -526,10 +528,10 @@ std::string ArrowSchemaToString(const struct ArrowSchema* schema) {
 }
 
 TEST_P(ArrowTypeParameterizedTestFixture, NanoarrowIpcNanoarrowTypeRoundtrip) {
-  arrow::Schema dummy_schema({arrow::field("", GetParam())});
-
   nanoarrow::UniqueSchema schema;
-  ASSERT_TRUE(arrow::ExportSchema(dummy_schema, schema.get()).ok());
+  ASSERT_TRUE(
+      arrow::ExportSchema(arrow::Schema({arrow::field("", GetParam())}), schema.get())
+          .ok());
 
   nanoarrow::ipc::UniqueEncoder encoder;
   EXPECT_EQ(ArrowIpcEncoderInit(encoder.get()), NANOARROW_OK);
