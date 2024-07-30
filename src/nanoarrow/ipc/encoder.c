@@ -65,11 +65,13 @@ void ArrowIpcEncoderReset(struct ArrowIpcEncoder* encoder) {
   NANOARROW_DCHECK(encoder != NULL && encoder->private_data != NULL);
   struct ArrowIpcEncoderPrivate* private =
       (struct ArrowIpcEncoderPrivate*)encoder->private_data;
-  flatcc_builder_clear(&private->builder);
-  ArrowBufferReset(&private->nodes);
-  ArrowBufferReset(&private->buffers);
-  ArrowFree(private);
-  memset(encoder, 0, sizeof(struct ArrowIpcEncoder));
+  if (private != NULL) {
+    flatcc_builder_clear(&private->builder);
+    ArrowBufferReset(&private->nodes);
+    ArrowBufferReset(&private->buffers);
+    ArrowFree(private);
+    memset(encoder, 0, sizeof(struct ArrowIpcEncoder));
+  }
 }
 
 ArrowErrorCode ArrowIpcEncoderFinalizeBuffer(struct ArrowIpcEncoder* encoder,

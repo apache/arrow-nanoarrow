@@ -205,6 +205,7 @@ def bundle_nanoarrow_ipc(
             src_dir / "ipc" / "decoder.c",
             src_dir / "ipc" / "encoder.c",
             src_dir / "ipc" / "reader.c",
+            src_dir / "ipc" / "writer.c",
         ]
     )
     nanoarrow_ipc_c = nanoarrow_ipc_c.replace(

@@ -82,7 +82,9 @@ if get_option('ipc')
     nanoarrow_ipc_lib = library(
         'nanoarrow_ipc',
         'src/nanoarrow/ipc/decoder.c',
+        'src/nanoarrow/ipc/encoder.c',
         'src/nanoarrow/ipc/reader.c',
+        'src/nanoarrow/ipc/writer.c',
         dependencies: [nanoarrow_dep, flatcc_dep],
         install: true,
     )

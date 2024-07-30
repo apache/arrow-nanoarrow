@@ -76,6 +76,25 @@ inline void release_pointer(struct ArrowIpcInputStream* data) {
   }
 }
 
+template <>
+inline void init_pointer(struct ArrowIpcOutputStream* data) {
+  data->release = nullptr;
+}
+
+template <>
+inline void move_pointer(struct ArrowIpcOutputStream* src,
+                         struct ArrowIpcOutputStream* dst) {
+  memcpy(dst, src, sizeof(struct ArrowIpcOutputStream));
+  src->release = nullptr;
+}
+
+template <>
+inline void release_pointer(struct ArrowIpcOutputStream* data) {
+  if (data->release != nullptr) {
+    data->release(data);
+  }
+}
+
 }  // namespace internal
 }  // namespace nanoarrow
 
@@ -98,6 +117,9 @@ using UniqueEncoder = internal::Unique<struct ArrowIpcEncoder>;
 
 /// \brief Class wrapping a unique struct ArrowIpcInputStream
 using UniqueInputStream = internal::Unique<struct ArrowIpcInputStream>;
+
+/// \brief Class wrapping a unique struct ArrowIpcOutputStream
+using UniqueOutputStream = internal::Unique<struct ArrowIpcOutputStream>;
 
 /// @}
 
