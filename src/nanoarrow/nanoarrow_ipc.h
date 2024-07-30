@@ -494,7 +494,7 @@ ArrowErrorCode ArrowIpcOutputStreamInitBuffer(struct ArrowIpcOutputStream* strea
 /// if file_ptr fails to close. If this behaviour is needed, pass false to
 /// close_on_release and handle closing the file independently from stream.
 ArrowErrorCode ArrowIpcOutputStreamInitFile(struct ArrowIpcOutputStream* stream,
-                                           void* file_ptr, int close_on_release);
+                                            void* file_ptr, int close_on_release);
 /// @}
 
 #ifdef __cplusplus
