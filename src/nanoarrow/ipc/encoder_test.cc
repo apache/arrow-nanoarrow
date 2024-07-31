@@ -40,9 +40,9 @@ TEST(NanoarrowIpcTest, NanoarrowIpcEncoderConstruction) {
   EXPECT_EQ(encoder->encode_buffer, nullptr);
   EXPECT_EQ(encoder->encode_buffer_state, nullptr);
 
-  auto* priv = static_cast<struct ArrowIpcEncoderPrivate*>(encoder->private_data);
-  ASSERT_NE(priv, nullptr);
-  for (auto* b : {&priv->buffers, &priv->nodes}) {
+  auto* p = static_cast<struct ArrowIpcEncoderPrivate*>(encoder->private_data);
+  ASSERT_NE(p, nullptr);
+  for (auto* b : {&p->buffers, &p->nodes}) {
     // Buffers are empty but initialized with the default allocator
     EXPECT_EQ(b->size_bytes, 0);
 
@@ -52,11 +52,26 @@ TEST(NanoarrowIpcTest, NanoarrowIpcEncoderConstruction) {
 
   // Empty buffer works
   nanoarrow::UniqueBuffer buffer;
-  EXPECT_EQ(ArrowIpcEncoderFinalizeBuffer(encoder.get(), buffer.get()), NANOARROW_OK);
+  EXPECT_EQ(
+      ArrowIpcEncoderFinalizeBuffer(encoder.get(), /*encapsulate=*/false, buffer.get()),
+      NANOARROW_OK);
   EXPECT_EQ(buffer->size_bytes, 0);
+  EXPECT_EQ(
+      ArrowIpcEncoderFinalizeBuffer(encoder.get(), /*encapsulate=*/true, buffer.get()),
+      NANOARROW_OK);
+  EXPECT_EQ(buffer->size_bytes, 8);
 
   // Append a string (finalizing an empty buffer is an error for flatcc_builder_t)
-  EXPECT_NE(flatcc_builder_create_string_str(&priv->builder, "hello world"), 0);
-  EXPECT_EQ(ArrowIpcEncoderFinalizeBuffer(encoder.get(), buffer.get()), NANOARROW_OK);
+  EXPECT_NE(flatcc_builder_create_string_str(&p->builder, "hello world"), 0);
+  EXPECT_EQ(
+      ArrowIpcEncoderFinalizeBuffer(encoder.get(), /*encapsulate=*/false, buffer.get()),
+      NANOARROW_OK);
   EXPECT_GT(buffer->size_bytes, sizeof("hello world"));
+
+  EXPECT_NE(flatcc_builder_create_string_str(&p->builder, "hello world"), 0);
+  EXPECT_EQ(
+      ArrowIpcEncoderFinalizeBuffer(encoder.get(), /*encapsulate=*/true, buffer.get()),
+      NANOARROW_OK);
+  EXPECT_GT(buffer->size_bytes, 8 + sizeof("hello world"));
+  EXPECT_EQ(buffer->size_bytes % 8, 0);
 }
