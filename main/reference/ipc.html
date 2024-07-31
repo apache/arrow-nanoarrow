@@ -673,6 +673,7 @@ document.write(`
 <dt class="sig sig-object cpp" id="_CPPv429ArrowIpcInputStreamInitBufferP19ArrowIpcInputStreamP11ArrowBuffer">
 <span id="_CPPv329ArrowIpcInputStreamInitBufferP19ArrowIpcInputStreamP11ArrowBuffer"></span><span id="_CPPv229ArrowIpcInputStreamInitBufferP19ArrowIpcInputStreamP11ArrowBuffer"></span><span id="ArrowIpcInputStreamInitBuffer__ArrowIpcInputStreamP.ArrowBufferP"></span><span class="target" id="group__nanoarrow__ipc_1gaaaa9c7ecbbf422341880881287f821ea"></span><span class="n"><span class="pre">ArrowErrorCode</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">ArrowIpcInputStreamInitBuffer</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv419ArrowIpcInputStream" title="ArrowIpcInputStream"><span class="n"><span class="pre">ArrowIpcInputStream</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">stream</span></span>, <span class="k"><span class="pre">struct</span></span><span class="w"> </span><span class="n"><span class="pre">ArrowBuffer</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">input</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv429ArrowIpcInputStreamInitBufferP19ArrowIpcInputStreamP11ArrowBuffer" title="Link to this definition">#</a><br /></dt>
 <dd><p>Create an input stream from an ArrowBuffer. </p>
+<p>The stream takes ownership of the buffer and reads bytes from it. </p>
 </dd></dl>
 
 <dl class="cpp function">
@@ -715,6 +716,26 @@ document.write(`
 <span id="_CPPv327ArrowIpcEncoderEncodeSchemaP15ArrowIpcEncoderPK11ArrowSchemaP10ArrowError"></span><span id="_CPPv227ArrowIpcEncoderEncodeSchemaP15ArrowIpcEncoderPK11ArrowSchemaP10ArrowError"></span><span id="ArrowIpcEncoderEncodeSchema__ArrowIpcEncoderP.ArrowSchemaCP.ArrowErrorP"></span><span class="target" id="group__nanoarrow__ipc_1ga00072ca08e05923bb50de6112e722253"></span><span class="n"><span class="pre">ArrowErrorCode</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">ArrowIpcEncoderEncodeSchema</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv415ArrowIpcEncoder" title="ArrowIpcEncoder"><span class="n"><span class="pre">ArrowIpcEncoder</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">encoder</span></span>, <span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><span class="n"><span class="pre">ArrowSchema</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">schema</span></span>, <span class="k"><span class="pre">struct</span></span><span class="w"> </span><span class="n"><span class="pre">ArrowError</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">error</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv427ArrowIpcEncoderEncodeSchemaP15ArrowIpcEncoderPK11ArrowSchemaP10ArrowError" title="Link to this definition">#</a><br /></dt>
 <dd><p>Encode an ArrowSchema. </p>
 <p>Returns ENOMEM if allocation fails, NANOARROW_OK otherwise. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv424ArrowIpcOutputStreamMoveP20ArrowIpcOutputStreamP20ArrowIpcOutputStream">
+<span id="_CPPv324ArrowIpcOutputStreamMoveP20ArrowIpcOutputStreamP20ArrowIpcOutputStream"></span><span id="_CPPv224ArrowIpcOutputStreamMoveP20ArrowIpcOutputStreamP20ArrowIpcOutputStream"></span><span id="ArrowIpcOutputStreamMove__ArrowIpcOutputStreamP.ArrowIpcOutputStreamP"></span><span class="target" id="group__nanoarrow__ipc_1gad51a76f80c57e44264c945392bb189dd"></span><span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">ArrowIpcOutputStreamMove</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv420ArrowIpcOutputStream" title="ArrowIpcOutputStream"><span class="n"><span class="pre">ArrowIpcOutputStream</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">src</span></span>, <span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv420ArrowIpcOutputStream" title="ArrowIpcOutputStream"><span class="n"><span class="pre">ArrowIpcOutputStream</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">dst</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv424ArrowIpcOutputStreamMoveP20ArrowIpcOutputStreamP20ArrowIpcOutputStream" title="Link to this definition">#</a><br /></dt>
+<dd><p>Transfer ownership of an <a class="reference internal" href="#struct_arrow_ipc_output_stream"><span class="std std-ref">ArrowIpcOutputStream</span></a>. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv430ArrowIpcOutputStreamInitBufferP20ArrowIpcOutputStreamP11ArrowBuffer">
+<span id="_CPPv330ArrowIpcOutputStreamInitBufferP20ArrowIpcOutputStreamP11ArrowBuffer"></span><span id="_CPPv230ArrowIpcOutputStreamInitBufferP20ArrowIpcOutputStreamP11ArrowBuffer"></span><span id="ArrowIpcOutputStreamInitBuffer__ArrowIpcOutputStreamP.ArrowBufferP"></span><span class="target" id="group__nanoarrow__ipc_1ga5fb2c478615771599988ae84504869c7"></span><span class="n"><span class="pre">ArrowErrorCode</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">ArrowIpcOutputStreamInitBuffer</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv420ArrowIpcOutputStream" title="ArrowIpcOutputStream"><span class="n"><span class="pre">ArrowIpcOutputStream</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">stream</span></span>, <span class="k"><span class="pre">struct</span></span><span class="w"> </span><span class="n"><span class="pre">ArrowBuffer</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">output</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv430ArrowIpcOutputStreamInitBufferP20ArrowIpcOutputStreamP11ArrowBuffer" title="Link to this definition">#</a><br /></dt>
+<dd><p>Create an output stream from an ArrowBuffer. </p>
+<p>All bytes witten to the stream will be appended to the buffer. The stream does not take ownership of the buffer. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv428ArrowIpcOutputStreamInitFileP20ArrowIpcOutputStreamPvi">
+<span id="_CPPv328ArrowIpcOutputStreamInitFileP20ArrowIpcOutputStreamPvi"></span><span id="_CPPv228ArrowIpcOutputStreamInitFileP20ArrowIpcOutputStreamPvi"></span><span id="ArrowIpcOutputStreamInitFile__ArrowIpcOutputStreamP.voidP.i"></span><span class="target" id="group__nanoarrow__ipc_1ga4db0bd67565d6d57e2b062c6853dcb4d"></span><span class="n"><span class="pre">ArrowErrorCode</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">ArrowIpcOutputStreamInitFile</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv420ArrowIpcOutputStream" title="ArrowIpcOutputStream"><span class="n"><span class="pre">ArrowIpcOutputStream</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">stream</span></span>, <span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">file_ptr</span></span>, <span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">close_on_release</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv428ArrowIpcOutputStreamInitFileP20ArrowIpcOutputStreamPvi" title="Link to this definition">#</a><br /></dt>
+<dd><p>Create an output stream from a C FILE* pointer. </p>
+<p>Note that the <a class="reference internal" href="#struct_arrow_ipc_output_stream"><span class="std std-ref">ArrowIpcOutputStream</span></a> has no mechanism to communicate an error if file_ptr fails to close. If this behaviour is needed, pass false to close_on_release and handle closing the file independently from stream. </p>
 </dd></dl>
 
 </div>
@@ -887,6 +908,37 @@ document.write(`
 </div>
 </dd></dl>
 
+<dl class="cpp struct">
+<dt class="sig sig-object cpp" id="_CPPv420ArrowIpcOutputStream">
+<span id="_CPPv320ArrowIpcOutputStream"></span><span id="_CPPv220ArrowIpcOutputStream"></span><span id="ArrowIpcOutputStream"></span><span class="target" id="struct_arrow_ipc_output_stream"></span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">ArrowIpcOutputStream</span></span></span><a class="headerlink" href="#_CPPv420ArrowIpcOutputStream" title="Link to this definition">#</a><br /></dt>
+<dd><div class="docutils container">
+<em>#include &lt;nanoarrow_ipc.h&gt;</em></div>
+<p>An user-extensible output data sink. </p>
+<div class="breathe-sectiondef docutils container">
+<p class="breathe-sectiondef-title rubric" id="breathe-section-title-public-members">Public Members</p>
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4N20ArrowIpcOutputStream5writeE">
+<span id="_CPPv3N20ArrowIpcOutputStream5writeE"></span><span id="_CPPv2N20ArrowIpcOutputStream5writeE"></span><span class="target" id="struct_arrow_ipc_output_stream_1af9e2c1a7153f5d1c2c9330f3639dfec8"></span><span class="n"><span class="pre">ArrowErrorCode</span></span><span class="w"> </span><span class="p"><span class="pre">(</span></span><span class="p"><span class="pre">*</span></span><span class="sig-name descname"><span class="n"><span class="pre">write</span></span></span><span class="p"><span class="pre">)</span></span><span class="p"><span class="pre">(</span></span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv420ArrowIpcOutputStream" title="ArrowIpcOutputStream"><span class="n"><span class="pre">ArrowIpcOutputStream</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">stream</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">buf</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="n"><span class="pre">int64_t</span></span><span class="w"> </span><span class="n"><span class="pre">buf_size_bytes</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="n"><span class="pre">int64_t</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">size_written_out</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><span class="n"><span class="pre">ArrowError</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">error</span></span><span class="p"><span class="pre">)</span></span><a class="headerlink" href="#_CPPv4N20ArrowIpcOutputStream5writeE" title="Link to this definition">#</a><br /></dt>
+<dd><p>Write up to buf_size_bytes from stream into buf. </p>
+<p>The actual number of bytes written is placed in the value pointed to by size_read_out. Returns NANOARROW_OK on success. </p>
+</dd></dl>
+
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4N20ArrowIpcOutputStream7releaseE">
+<span id="_CPPv3N20ArrowIpcOutputStream7releaseE"></span><span id="_CPPv2N20ArrowIpcOutputStream7releaseE"></span><span class="target" id="struct_arrow_ipc_output_stream_1a1d6f799f4ca557a23768550e8c022a13"></span><span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="p"><span class="pre">(</span></span><span class="p"><span class="pre">*</span></span><span class="sig-name descname"><span class="n"><span class="pre">release</span></span></span><span class="p"><span class="pre">)</span></span><span class="p"><span class="pre">(</span></span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv420ArrowIpcOutputStream" title="ArrowIpcOutputStream"><span class="n"><span class="pre">ArrowIpcOutputStream</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">stream</span></span><span class="p"><span class="pre">)</span></span><a class="headerlink" href="#_CPPv4N20ArrowIpcOutputStream7releaseE" title="Link to this definition">#</a><br /></dt>
+<dd><p>Release the stream and any resources it may be holding. </p>
+<p>Release callback implementations must set the release member to NULL. Callers must check that the release callback is not NULL before calling read() or <a class="reference internal" href="#struct_arrow_ipc_output_stream_1a1d6f799f4ca557a23768550e8c022a13"><span class="std std-ref">release()</span></a>. </p>
+</dd></dl>
+
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4N20ArrowIpcOutputStream12private_dataE">
+<span id="_CPPv3N20ArrowIpcOutputStream12private_dataE"></span><span id="_CPPv2N20ArrowIpcOutputStream12private_dataE"></span><span id="ArrowIpcOutputStream::private_data__voidP"></span><span class="target" id="struct_arrow_ipc_output_stream_1a6f4c04f5c2cbbb20ab177eff9f40c75c"></span><span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="sig-name descname"><span class="n"><span class="pre">private_data</span></span></span><a class="headerlink" href="#_CPPv4N20ArrowIpcOutputStream12private_dataE" title="Link to this definition">#</a><br /></dt>
+<dd><p>Private implementation-defined data. </p>
+</dd></dl>
+
+</div>
+</dd></dl>
+
 </dd></dl>
 
 </section>
@@ -914,6 +966,12 @@ document.write(`
 <dt class="sig sig-object cpp" id="_CPPv417UniqueInputStream">
 <span id="_CPPv317UniqueInputStream"></span><span id="_CPPv217UniqueInputStream"></span><span class="target" id="group__nanoarrow__ipc__hpp-unique_1ga01cded4704dc447650624c061d1fe5db"></span><span class="k"><span class="pre">using</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">UniqueInputStream</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="n"><span class="pre">internal</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">Unique</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv419ArrowIpcInputStream" title="ArrowIpcInputStream"><span class="n"><span class="pre">ArrowIpcInputStream</span></span></a><span class="p"><span class="pre">&gt;</span></span><a class="headerlink" href="#_CPPv417UniqueInputStream" title="Link to this definition">#</a><br /></dt>
 <dd><p>Class wrapping a unique struct <a class="reference internal" href="#struct_arrow_ipc_input_stream"><span class="std std-ref">ArrowIpcInputStream</span></a>. </p>
+</dd></dl>
+
+<dl class="cpp type">
+<dt class="sig sig-object cpp" id="_CPPv418UniqueOutputStream">
+<span id="_CPPv318UniqueOutputStream"></span><span id="_CPPv218UniqueOutputStream"></span><span class="target" id="group__nanoarrow__ipc__hpp-unique_1ga812e2e601c4504e43139d284aca50040"></span><span class="k"><span class="pre">using</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">UniqueOutputStream</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="n"><span class="pre">internal</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">Unique</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv420ArrowIpcOutputStream" title="ArrowIpcOutputStream"><span class="n"><span class="pre">ArrowIpcOutputStream</span></span></a><span class="p"><span class="pre">&gt;</span></span><a class="headerlink" href="#_CPPv418UniqueOutputStream" title="Link to this definition">#</a><br /></dt>
+<dd><p>Class wrapping a unique struct <a class="reference internal" href="#struct_arrow_ipc_output_stream"><span class="std std-ref">ArrowIpcOutputStream</span></a>. </p>
 </dd></dl>
 
 </div>
@@ -1022,6 +1080,9 @@ document.write(`
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv420ArrowIpcEncoderResetP15ArrowIpcEncoder"><code class="docutils literal notranslate"><span class="pre">ArrowIpcEncoderReset()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv429ArrowIpcEncoderFinalizeBufferP15ArrowIpcEncodercP11ArrowBuffer"><code class="docutils literal notranslate"><span class="pre">ArrowIpcEncoderFinalizeBuffer()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv427ArrowIpcEncoderEncodeSchemaP15ArrowIpcEncoderPK11ArrowSchemaP10ArrowError"><code class="docutils literal notranslate"><span class="pre">ArrowIpcEncoderEncodeSchema()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv424ArrowIpcOutputStreamMoveP20ArrowIpcOutputStreamP20ArrowIpcOutputStream"><code class="docutils literal notranslate"><span class="pre">ArrowIpcOutputStreamMove()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv430ArrowIpcOutputStreamInitBufferP20ArrowIpcOutputStreamP11ArrowBuffer"><code class="docutils literal notranslate"><span class="pre">ArrowIpcOutputStreamInitBuffer()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv428ArrowIpcOutputStreamInitFileP20ArrowIpcOutputStreamPvi"><code class="docutils literal notranslate"><span class="pre">ArrowIpcOutputStreamInitFile()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv420ArrowIpcSharedBuffer"><code class="docutils literal notranslate"><span class="pre">ArrowIpcSharedBuffer</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv415ArrowIpcDecoder"><code class="docutils literal notranslate"><span class="pre">ArrowIpcDecoder</span></code></a><ul class="nav section-nav flex-column">
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N15ArrowIpcDecoder12message_typeE"><code class="docutils literal notranslate"><span class="pre">ArrowIpcDecoder::message_type</span></code></a></li>
@@ -1053,12 +1114,19 @@ document.write(`
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N15ArrowIpcEncoder12private_dataE"><code class="docutils literal notranslate"><span class="pre">ArrowIpcEncoder::private_data</span></code></a></li>
 </ul>
 </li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv420ArrowIpcOutputStream"><code class="docutils literal notranslate"><span class="pre">ArrowIpcOutputStream</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N20ArrowIpcOutputStream5writeE"><code class="docutils literal notranslate"><span class="pre">ArrowIpcOutputStream::write</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N20ArrowIpcOutputStream7releaseE"><code class="docutils literal notranslate"><span class="pre">ArrowIpcOutputStream::release</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N20ArrowIpcOutputStream12private_dataE"><code class="docutils literal notranslate"><span class="pre">ArrowIpcOutputStream::private_data</span></code></a></li>
+</ul>
+</li>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#c-helpers">C++ Helpers</a><ul class="visible nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv413UniqueDecoder"><code class="docutils literal notranslate"><span class="pre">UniqueDecoder</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv413UniqueEncoder"><code class="docutils literal notranslate"><span class="pre">UniqueEncoder</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv417UniqueInputStream"><code class="docutils literal notranslate"><span class="pre">UniqueInputStream</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv418UniqueOutputStream"><code class="docutils literal notranslate"><span class="pre">UniqueOutputStream</span></code></a></li>
 </ul>
 </li>
 </ul>
