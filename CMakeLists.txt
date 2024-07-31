@@ -225,7 +225,7 @@ if(NANOARROW_IPC)
   if(NOT NANOARROW_BUNDLE)
     set(NANOARROW_IPC_BUILD_SOURCES
         src/nanoarrow/ipc/decoder.c src/nanoarrow/ipc/encoder.c
-        src/nanoarrow/ipc/reader.c)
+        src/nanoarrow/ipc/reader.c src/nanoarrow/ipc/writer.c)
   endif()
 
   add_library(nanoarrow_ipc ${NANOARROW_IPC_BUILD_SOURCES})
@@ -431,6 +431,7 @@ if(NANOARROW_BUILD_TESTS)
             decoder
             encoder
             reader
+            writer
             files
             ipc_hpp)
       add_executable(nanoarrow_ipc_${name}_test src/nanoarrow/ipc/${name}_test.cc)

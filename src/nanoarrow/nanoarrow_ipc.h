@@ -63,6 +63,12 @@
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcEncoderFinalizeBuffer)
 #define ArrowIpcEncoderEncodeSchema \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcEncoderEncodeSchema)
+#define ArrowIpcOutputStreamInitBuffer \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcOutputStreamInitBuffer)
+#define ArrowIpcOutputStreamInitFile \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcOutputStreamInitFile)
+#define ArrowIpcOutputStreamMove \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcOutputStreamMove)
 
 #endif
 
@@ -357,6 +363,8 @@ void ArrowIpcInputStreamMove(struct ArrowIpcInputStream* src,
                              struct ArrowIpcInputStream* dst);
 
 /// \brief Create an input stream from an ArrowBuffer
+///
+/// The stream takes ownership of the buffer and reads bytes from it.
 ArrowErrorCode ArrowIpcInputStreamInitBuffer(struct ArrowIpcInputStream* stream,
                                              struct ArrowBuffer* input);
 
@@ -454,6 +462,45 @@ ArrowErrorCode ArrowIpcEncoderEncodeSchema(struct ArrowIpcEncoder* encoder,
                                            const struct ArrowSchema* schema,
                                            struct ArrowError* error);
 
+/// \brief An user-extensible output data sink
+struct ArrowIpcOutputStream {
+  /// \brief Write up to buf_size_bytes from stream into buf
+  ///
+  /// The actual number of bytes written is placed in the value pointed to by
+  /// size_read_out. Returns NANOARROW_OK on success.
+  ArrowErrorCode (*write)(struct ArrowIpcOutputStream* stream, const void* buf,
+                          int64_t buf_size_bytes, int64_t* size_written_out,
+                          struct ArrowError* error);
+
+  /// \brief Release the stream and any resources it may be holding
+  ///
+  /// Release callback implementations must set the release member to NULL.
+  /// Callers must check that the release callback is not NULL before calling
+  /// read() or release().
+  void (*release)(struct ArrowIpcOutputStream* stream);
+
+  /// \brief Private implementation-defined data
+  void* private_data;
+};
+
+/// \brief Transfer ownership of an ArrowIpcOutputStream
+void ArrowIpcOutputStreamMove(struct ArrowIpcOutputStream* src,
+                              struct ArrowIpcOutputStream* dst);
+
+/// \brief Create an output stream from an ArrowBuffer
+///
+/// All bytes witten to the stream will be appended to the buffer.
+/// The stream does not take ownership of the buffer.
+ArrowErrorCode ArrowIpcOutputStreamInitBuffer(struct ArrowIpcOutputStream* stream,
+                                              struct ArrowBuffer* output);
+
+/// \brief Create an output stream from a C FILE* pointer
+///
+/// Note that the ArrowIpcOutputStream has no mechanism to communicate an error
+/// if file_ptr fails to close. If this behaviour is needed, pass false to
+/// close_on_release and handle closing the file independently from stream.
+ArrowErrorCode ArrowIpcOutputStreamInitFile(struct ArrowIpcOutputStream* stream,
+                                            void* file_ptr, int close_on_release);
 /// @}
 
 #ifdef __cplusplus

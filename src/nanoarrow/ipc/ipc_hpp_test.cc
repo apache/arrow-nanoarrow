@@ -31,6 +31,18 @@ TEST(NanoarrowIpcHppTest, NanoarrowIpcHppTestUniqueDecoder) {
   EXPECT_EQ(decoder->private_data, nullptr);
 }
 
+TEST(NanoarrowIpcHppTest, NanoarrowIpcHppTestUniqueEncoder) {
+  nanoarrow::ipc::UniqueEncoder encoder;
+
+  EXPECT_EQ(encoder->private_data, nullptr);
+  ASSERT_EQ(ArrowIpcEncoderInit(encoder.get()), NANOARROW_OK);
+  EXPECT_NE(encoder->private_data, nullptr);
+
+  nanoarrow::ipc::UniqueEncoder encoder2 = std::move(encoder);
+  EXPECT_NE(encoder2->private_data, nullptr);
+  EXPECT_EQ(encoder->private_data, nullptr);
+}
+
 TEST(NanoarrowIpcHppTest, NanoarrowIpcHppTestUniqueInputStream) {
   nanoarrow::ipc::UniqueInputStream input;
   nanoarrow::UniqueBuffer buf;
@@ -43,4 +55,18 @@ TEST(NanoarrowIpcHppTest, NanoarrowIpcHppTestUniqueInputStream) {
   nanoarrow::ipc::UniqueInputStream input2 = std::move(input);
   EXPECT_NE(input2->release, nullptr);
   EXPECT_EQ(input->release, nullptr);
+}
+
+TEST(NanoarrowIpcHppTest, NanoarrowIpcHppTestUniqueOutputStream) {
+  nanoarrow::ipc::UniqueOutputStream output;
+  nanoarrow::UniqueBuffer buf;
+  ASSERT_EQ(ArrowBufferAppend(buf.get(), "abcdefg", 7), NANOARROW_OK);
+
+  EXPECT_EQ(output->release, nullptr);
+  ASSERT_EQ(ArrowIpcOutputStreamInitBuffer(output.get(), buf.get()), NANOARROW_OK);
+  EXPECT_NE(output->release, nullptr);
+
+  nanoarrow::ipc::UniqueOutputStream output2 = std::move(output);
+  EXPECT_NE(output2->release, nullptr);
+  EXPECT_EQ(output->release, nullptr);
 }
