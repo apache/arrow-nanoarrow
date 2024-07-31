@@ -62,7 +62,7 @@ ArrowErrorCode ArrowIpcEncoderInit(struct ArrowIpcEncoder* encoder) {
 }
 
 void ArrowIpcEncoderReset(struct ArrowIpcEncoder* encoder) {
-  NANOARROW_DCHECK(encoder != NULL && encoder->private_data != NULL);
+  NANOARROW_DCHECK(encoder != NULL);
   struct ArrowIpcEncoderPrivate* private =
       (struct ArrowIpcEncoderPrivate*)encoder->private_data;
   if (private != NULL) {

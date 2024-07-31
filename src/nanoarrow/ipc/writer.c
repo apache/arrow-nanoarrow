@@ -38,10 +38,10 @@ static ArrowErrorCode ArrowIpcOutputStreamBufferWrite(struct ArrowIpcOutputStrea
                                                       int64_t buf_size_bytes,
                                                       int64_t* size_written_out,
                                                       struct ArrowError* error) {
-  NANOARROW_UNUSED(error);
   struct ArrowIpcOutputStreamBufferPrivate* private_data =
       (struct ArrowIpcOutputStreamBufferPrivate*)stream->private_data;
-  NANOARROW_RETURN_NOT_OK(ArrowBufferAppend(private_data->output, buf, buf_size_bytes));
+  NANOARROW_RETURN_NOT_OK_WITH_ERROR(
+      ArrowBufferAppend(private_data->output, buf, buf_size_bytes), error);
   *size_written_out = buf_size_bytes;
   return NANOARROW_OK;
 }
