@@ -76,10 +76,11 @@ ArrowErrorCode ArrowIpcEncoderFinalizeBuffer(struct ArrowIpcEncoder* encoder,
   struct ArrowIpcEncoderPrivate* private =
       (struct ArrowIpcEncoderPrivate*)encoder->private_data;
 
-  int64_t size = (int64_t)flatcc_builder_get_buffer_size(&private->builder);
-  int32_t header[] = {-1, ArrowIpcSystemEndianness() == NANOARROW_IPC_ENDIANNESS_BIG
-                              ? bswap32((int32_t)size)
-                              : (int32_t)size};
+  int32_t size = (int32_t)flatcc_builder_get_buffer_size(&private->builder);
+  int32_t header[] = {-1, size};
+  if (ArrowIpcSystemEndianness() == NANOARROW_IPC_ENDIANNESS_BIG) {
+    header[1] = (int32_t)bswap32((uint32_t)size);
+  }
 
   if (size == 0) {
     // Finalizing an empty flatcc_builder_t triggers an assertion
