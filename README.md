@@ -73,6 +73,7 @@ python ci/scripts/bundle.py \
   --header-namespace= \
   --with-device \
   --with-ipc \
+  --with-testing \
   --with-flatcc
 ```
 
