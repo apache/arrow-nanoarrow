@@ -819,7 +819,7 @@ struct ArrowArrayViewEqualTo {
     }
 
     field_path.push_back(0);
-    for (int64_t i = 0; i < actual->n_children; ++i) {
+    for (int64_t i = 0; i < actual->n_children; i++) {
       field_path.back() = i;
       if (!MatchAndExplain(field_path, actual->children[i], expected->children[i], os)) {
         return false;
@@ -841,6 +841,10 @@ TEST_P(ArrowTypeParameterizedTestFixture, NanoarrowIpcNanoarrowArrayRoundtrip) {
       arrow::ExportSchema(arrow::Schema({arrow::field("", GetParam())}), schema.get())
           .ok());
 
+  nanoarrow::UniqueArrayView array_view;
+  ASSERT_EQ(ArrowArrayViewInitFromSchema(array_view.get(), schema.get(), &error),
+            NANOARROW_OK);
+
   // now make one empty struct array with this schema and another with all zeroes
   nanoarrow::UniqueArray empty_array, zero_array;
   for (auto* array : {empty_array.get(), zero_array.get()}) {
@@ -850,10 +854,6 @@ TEST_P(ArrowTypeParameterizedTestFixture, NanoarrowIpcNanoarrowArrayRoundtrip) {
       ASSERT_EQ(ArrowArrayAppendEmpty(array, 5), NANOARROW_OK);
     }
     ASSERT_EQ(ArrowArrayFinishBuildingDefault(array, nullptr), NANOARROW_OK);
-
-    nanoarrow::UniqueArrayView array_view;
-    ASSERT_EQ(ArrowArrayViewInitFromSchema(array_view.get(), schema.get(), &error),
-              NANOARROW_OK);
     ASSERT_EQ(ArrowArrayViewSetArray(array_view.get(), array, &error), NANOARROW_OK)
         << error.message;
 
@@ -861,8 +861,8 @@ TEST_P(ArrowTypeParameterizedTestFixture, NanoarrowIpcNanoarrowArrayRoundtrip) {
     EXPECT_EQ(ArrowIpcEncoderInit(encoder.get()), NANOARROW_OK);
 
     nanoarrow::UniqueBuffer buffer, body_buffer;
-    ArrowIpcEncoderBuildContiguousBodyBuffer(encoder.get(), body_buffer.get());
-    EXPECT_EQ(ArrowIpcEncoderEncodeRecordBatch(encoder.get(), array_view.get(), &error),
+    EXPECT_EQ(ArrowIpcEncoderEncodeSimpleRecordBatch(encoder.get(), array_view.get(),
+                                                     body_buffer.get(), &error),
               NANOARROW_OK)
         << error.message;
     EXPECT_EQ(
