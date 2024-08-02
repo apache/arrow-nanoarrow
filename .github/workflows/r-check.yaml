@@ -58,6 +58,7 @@ jobs:
           r-version: ${{ matrix.config.r }}
           http-user-agent: ${{ matrix.config.http-user-agent }}
           use-public-rspm: true
+          install-quarto: false
 
       # Check package install with extra warning flags except on Windows,
       # where the R headers cause some problems
