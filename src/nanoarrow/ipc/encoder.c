@@ -96,7 +96,6 @@ ArrowErrorCode ArrowIpcEncoderFinalizeBuffer(struct ArrowIpcEncoder* encoder,
     return encapsulate ? ArrowBufferAppend(out, &header, sizeof(header)) : NANOARROW_OK;
   }
 
-  int64_t i = out->size_bytes;
   if (encapsulate) {
     int64_t encapsulated_size =
         _ArrowRoundUpToMultipleOf8(sizeof(int32_t) + sizeof(int32_t) + size);
@@ -284,7 +283,7 @@ static ArrowErrorCode ArrowIpcEncodeFieldType(flatcc_builder_t* builder,
           int32_t* type_ids_32 = (int32_t*)ns(Union_typeIds_extend(builder, n));
           FLATCC_RETURN_IF_NULL(type_ids_32);
 
-          for (int i = 0; i < n; ++i) {
+          for (int i = 0; i < n; i++) {
             type_ids_32[i] = type_ids[i];
           }
           FLATCC_RETURN_UNLESS_0(Union_typeIds_end(builder));
@@ -343,7 +342,7 @@ static ArrowErrorCode ArrowIpcEncodeFields(flatcc_builder_t* builder,
                                            ns(Field_ref_t) *
                                                (*push_end)(flatcc_builder_t*),
                                            struct ArrowError* error) {
-  for (int i = 0; i < schema->n_children; ++i) {
+  for (int i = 0; i < schema->n_children; i++) {
     FLATCC_RETURN_UNLESS_0_NO_NS(push_start(builder));
     NANOARROW_RETURN_NOT_OK(ArrowIpcEncodeField(builder, schema->children[i], error));
     FLATCC_RETURN_IF_NULL(push_end(builder));
