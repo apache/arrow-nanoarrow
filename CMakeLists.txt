@@ -104,7 +104,7 @@ if(NANOARROW_BUNDLE)
   execute_process(COMMAND ${Python3_EXECUTABLE}
                           "${CMAKE_CURRENT_SOURCE_DIR}/ci/scripts/bundle.py"
                           "--output-dir" "${CMAKE_BINARY_DIR}/bundled"
-                          ${NANOARROW_BUNDLE_ARGS} COMMAND_ECHO STDERR)
+                          ${NANOARROW_BUNDLE_ARGS})
 
   set(NANOARROW_BUILD_INCLUDE_DIR "${CMAKE_BINARY_DIR}/bundled/include")
   set(NANOARROW_IPC_BUILD_SOURCES "${CMAKE_BINARY_DIR}/bundled/src/nanoarrow_ipc.c")
