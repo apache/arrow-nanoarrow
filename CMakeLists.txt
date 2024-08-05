@@ -293,7 +293,6 @@ if(NANOARROW_DEVICE)
                                                       ${NANOARROW_DEVICE_DEFS_CUDA})
   target_link_libraries(nanoarrow_device PRIVATE ${NANOARROW_DEVICE_LIBS_CUDA}
                                                  ${NANOARROW_DEVICE_LIBS_METAL})
-  target_compile_definitions(nanoarrow_device PUBLIC "$<$<CONFIG:Debug>:NANOARROW_DEBUG>")
 
   install(TARGETS nanoarrow_device DESTINATION lib)
   install(FILES src/nanoarrow/nanoarrow_device.h DESTINATION include/nanoarrow)
@@ -340,8 +339,6 @@ if(NANOARROW_BUILD_TESTS OR NANOARROW_BUILD_INTEGRATION_TESTS)
   target_link_libraries(nanoarrow_c_data_integration PRIVATE nanoarrow nanoarrow_testing)
 endif()
 
-target_compile_definitions(nanoarrow PUBLIC "$<$<CONFIG:Debug>:NANOARROW_DEBUG>")
-
 # Common configuration for all targets
 foreach(target
         nanoarrow
@@ -350,6 +347,8 @@ foreach(target
         nanoarrow_testing
         nanoarrow_c_data_integration)
   if(TARGET ${target})
+    target_compile_definitions(${target} PUBLIC "$<$<CONFIG:Debug>:NANOARROW_DEBUG>")
+
     install(TARGETS ${target}
             DESTINATION lib
             EXPORT nanoarrow-exports)
