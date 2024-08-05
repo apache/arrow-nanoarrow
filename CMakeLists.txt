@@ -145,41 +145,17 @@ target_include_directories(nanoarrow
                            PUBLIC $<BUILD_INTERFACE:${NANOARROW_BUILD_INCLUDE_DIR}>
                                   $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/src>
                                   $<INSTALL_INTERFACE:include>)
-target_compile_definitions(nanoarrow PUBLIC "$<$<CONFIG:Debug>:NANOARROW_DEBUG>")
-
-# Ensure targets/headers can be installed
-install(TARGETS nanoarrow
-        DESTINATION lib
-        EXPORT nanoarrow-exports)
-
 install(FILES ${NANOARROW_INSTALL_HEADERS} DESTINATION include/nanoarrow)
 
-if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-  if(CMAKE_C_COMPILER_ID STREQUAL "GNU")
-    target_compile_options(nanoarrow
-                           PRIVATE -Wall
-                                   -Werror
-                                   -Wextra
-                                   -Wpedantic
-                                   -Wno-type-limits
-                                   -Wmaybe-uninitialized
-                                   -Wunused-result
-                                   -Wconversion
-                                   -Wno-sign-conversion)
-  elseif(CMAKE_C_COMPILER_ID STREQUAL "AppleClang" OR CMAKE_C_COMPILER_ID STREQUAL
-                                                      "Clang")
-    target_compile_options(nanoarrow
-                           PRIVATE -Wall
-                                   -Werror
-                                   -Wextra
-                                   -Wpedantic
-                                   -Wdocumentation
-                                   -Wconversion
-                                   -Wno-sign-conversion)
-  endif()
-endif()
-
 if(NANOARROW_IPC)
+  # flatcc requires C11 for alignas() and static_assert() in flatcc_generated.h
+  # It may be possible to use C99 mode to build the runtime and/or generated header
+  # should this cause problems for users.
+  if(NOT DEFINED CMAKE_CXX_STANDARD)
+    set(CMAKE_C_STANDARD 11)
+    set(CMAKE_C_STANDARD_REQUIRED ON)
+  endif()
+
   # Add the flatcc (runtime) dependency
   set(FLATCC_RTONLY
       ON
@@ -206,6 +182,7 @@ if(NANOARROW_IPC)
     target_include_directories(flatccrt
                                PUBLIC $<BUILD_INTERFACE:${NANOARROW_FLATCC_INCLUDE_DIR}>
                                       $<INSTALL_INTERFACE:include>)
+    install(TARGETS flatccrt DESTINATION lib EXPORT nanoarrow-exports)
 
   elseif(NOT NANOARROW_FLATCC_ROOT_DIR)
     add_library(flatccrt STATIC IMPORTED)
@@ -236,7 +213,7 @@ if(NANOARROW_IPC)
   target_include_directories(nanoarrow_ipc
                              PUBLIC $<BUILD_INTERFACE:${NANOARROW_BUILD_INCLUDE_DIR}>
                                     $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/src>
-                                    $<BUILD_INTERFACE:${NANOARROW_IPC_FLATCC_INCLUDE_DIR}
+                                    $<BUILD_INTERFACE:${NANOARROW_IPC_FLATCC_INCLUDE_DIR}>
                                     $<INSTALL_INTERFACE:include>)
 
   install(TARGETS nanoarrow_ipc DESTINATION lib)
@@ -324,6 +301,7 @@ if(NANOARROW_TESTING
   endif()
 
   add_subdirectory("thirdparty/nlohmann_json")
+  install(TARGETS nlohmann_json DESTINATION lib EXPORT nanoarrow-exports)
 
   add_library(nanoarrow_testing src/nanoarrow/testing/testing.cc)
   target_include_directories(nanoarrow_testing
@@ -348,6 +326,42 @@ if(NANOARROW_BUILD_TESTS OR NANOARROW_BUILD_INTEGRATION_TESTS)
                                     $<INSTALL_INTERFACE:include>)
   target_link_libraries(nanoarrow_c_data_integration PRIVATE nanoarrow nanoarrow_testing)
 endif()
+
+target_compile_definitions(nanoarrow PUBLIC "$<$<CONFIG:Debug>:NANOARROW_DEBUG>")
+
+# Common configuration for all targets
+foreach(target nanoarrow nanoarrow_ipc nanoarrow_device nanoarrow_testing nanoarrow_c_data_integration)
+  if(TARGET ${target})
+    install(TARGETS ${target}
+            DESTINATION lib
+            EXPORT nanoarrow-exports)
+
+    if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+      if(CMAKE_C_COMPILER_ID STREQUAL "GNU")
+        target_compile_options(${target}
+                              PRIVATE -Wall
+                                      -Werror
+                                      -Wextra
+                                      -Wpedantic
+                                      -Wno-type-limits
+                                      -Wmaybe-uninitialized
+                                      -Wunused-result
+                                      -Wconversion
+                                      -Wno-sign-conversion)
+      elseif(CMAKE_C_COMPILER_ID STREQUAL "AppleClang" OR CMAKE_C_COMPILER_ID STREQUAL
+                                                          "Clang")
+        target_compile_options(${target}
+                              PRIVATE -Wall
+                                      -Werror
+                                      -Wextra
+                                      -Wpedantic
+                                      -Wdocumentation
+                                      -Wconversion
+                                      -Wno-sign-conversion)
+      endif()
+    endif()
+  endif()
+endforeach()
 
 if(NANOARROW_BUILD_TESTS)
   set(MEMORYCHECK_COMMAND_OPTIONS

@@ -1564,7 +1564,7 @@ ArrowErrorCode SetBufferBitmap(const json& value, ArrowBitmap* bitmap,
     // says [1, 0, 1]. Accept both for simplicity.
     NANOARROW_RETURN_NOT_OK(Check(item.is_boolean() || item.is_number_integer(), error,
                                   "bitmap item must be bool or integer"));
-    NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowBitmapAppend(bitmap, item.get<int>(), 1),
+    NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowBitmapAppend(bitmap, item.get<uint8_t>(), 1),
                                        error);
   }
 

@@ -62,6 +62,8 @@ static MTL::Buffer* ArrowDeviceMetalWrapBufferNonOwning(MTL::Device* mtl_device,
 static uint8_t* ArrowDeviceMetalAllocatorReallocate(
     struct ArrowBufferAllocator* allocator, uint8_t* ptr, int64_t old_size,
     int64_t new_size) {
+  NANOARROW_UNUSED(allocator);
+
   // Cache the page size from the system call
   static int pagesize = 0;
   if (pagesize == 0) {
@@ -103,6 +105,8 @@ static uint8_t* ArrowDeviceMetalAllocatorReallocate(
 
 static void ArrowDeviceMetalAllocatorFree(struct ArrowBufferAllocator* allocator,
                                           uint8_t* ptr, int64_t old_size) {
+  NANOARROW_UNUSED(allocator);
+  NANOARROW_UNUSED(old_size);
   free(ptr);
 }
 
@@ -188,6 +192,10 @@ static ArrowErrorCode ArrowDeviceMetalBufferInitAsync(struct ArrowDevice* device
                                                       struct ArrowDevice* device_dst,
                                                       struct ArrowBuffer* dst,
                                                       void* stream) {
+  if (stream != nullptr) {
+    return ENOTSUP;
+  }
+
   if (device_src->device_type == ARROW_DEVICE_CPU &&
       device_dst->device_type == ARROW_DEVICE_METAL) {
     struct ArrowBuffer tmp;
@@ -255,6 +263,10 @@ static ArrowErrorCode ArrowDeviceMetalBufferCopyAsync(struct ArrowDevice* device
                                                       struct ArrowDevice* device_dst,
                                                       struct ArrowBufferView dst,
                                                       void* stream) {
+  if (stream != nullptr) {
+    return ENOTSUP;
+  }
+
   // This is all just memcpy since it's all living in the same address space
   if (device_src->device_type == ARROW_DEVICE_CPU &&
       device_dst->device_type == ARROW_DEVICE_METAL) {
@@ -299,6 +311,8 @@ static int ArrowDeviceMetalCopyRequiredCpuToMetal(MTL::Device* mtl_device,
 static ArrowErrorCode ArrowDeviceMetalSynchronize(struct ArrowDevice* device,
                                                   void* sync_event, void* stream,
                                                   struct ArrowError* error) {
+  NANOARROW_UNUSED(device);
+  NANOARROW_UNUSED(error);
   // TODO: sync events for Metal are harder than for CUDA
   // https://developer.apple.com/documentation/metal/resource_synchronization/synchronizing_events_between_a_gpu_and_the_cpu?language=objc
   // It would be much easier if sync_event were a command buffer
