@@ -67,8 +67,8 @@ endif()
 
 add_library(nanoarrow_coverage_config INTERFACE)
 install(TARGETS nanoarrow_coverage_config
-            DESTINATION lib
-            EXPORT nanoarrow-exports)
+        DESTINATION lib
+        EXPORT nanoarrow-exports)
 
 if(NANOARROW_CODE_COVERAGE)
   target_compile_options(nanoarrow_coverage_config INTERFACE -O0 -g --coverage)
@@ -293,8 +293,9 @@ if(NANOARROW_DEVICE)
 
   target_compile_definitions(nanoarrow_device PRIVATE ${NANOARROW_DEVICE_DEFS_METAL}
                                                       ${NANOARROW_DEVICE_DEFS_CUDA})
-  target_link_libraries(nanoarrow_device PRIVATE ${NANOARROW_DEVICE_LIBS_CUDA}
-                                                 ${NANOARROW_DEVICE_LIBS_METAL} nanoarrow_coverage_config)
+  target_link_libraries(nanoarrow_device
+                        PRIVATE ${NANOARROW_DEVICE_LIBS_CUDA}
+                                ${NANOARROW_DEVICE_LIBS_METAL} nanoarrow_coverage_config)
 
   install(TARGETS nanoarrow_device DESTINATION lib)
   install(FILES src/nanoarrow/nanoarrow_device.h DESTINATION include/nanoarrow)
@@ -435,19 +436,28 @@ if(NANOARROW_BUILD_TESTS)
                         gmock_main
                         ${NANOARROW_ARROW_TARGET}
                         nanoarrow_coverage_config)
-  target_link_libraries(schema_test nanoarrow gtest_main ${NANOARROW_ARROW_TARGET} nanoarrow_coverage_config)
-  target_link_libraries(array_stream_test nanoarrow gtest_main gmock_main nanoarrow_coverage_config)
+  target_link_libraries(schema_test
+                        nanoarrow
+                        gtest_main
+                        ${NANOARROW_ARROW_TARGET}
+                        nanoarrow_coverage_config)
+  target_link_libraries(array_stream_test
+                        nanoarrow
+                        gtest_main
+                        gmock_main
+                        nanoarrow_coverage_config)
   target_link_libraries(nanoarrow_hpp_test
                         nanoarrow
                         gtest_main
                         gmock_main
                         nanoarrow_coverage_config)
-  target_link_libraries(nanoarrow_testing_test
-                        nanoarrow_testing
+  target_link_libraries(nanoarrow_testing_test nanoarrow_testing gtest_main
+                        nanoarrow_coverage_config)
+  target_link_libraries(c_data_integration_test
+                        nanoarrow
+                        nanoarrow_c_data_integration
                         gtest_main
                         nanoarrow_coverage_config)
-  target_link_libraries(c_data_integration_test nanoarrow nanoarrow_c_data_integration
-                        gtest_main nanoarrow_coverage_config)
 
   include(GoogleTest)
   # Some users have reported a timeout with the default value of 5
@@ -500,7 +510,8 @@ if(NANOARROW_BUILD_TESTS)
       gtest_discover_tests(nanoarrow_ipc_${name}_test)
     endforeach()
 
-    target_link_libraries(nanoarrow_ipc_files_test nanoarrow_testing ZLIB::ZLIB nanoarrow_coverage_config)
+    target_link_libraries(nanoarrow_ipc_files_test nanoarrow_testing ZLIB::ZLIB
+                          nanoarrow_coverage_config)
   endif()
 
   if(NANOARROW_DEVICE)
