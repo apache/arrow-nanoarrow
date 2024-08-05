@@ -15,6 +15,10 @@
 // specific language governing permissions and limitations
 // under the License.
 
-#define NS_PRIVATE_IMPLEMENTATION
-#define MTL_PRIVATE_IMPLEMENTATION
-#include "metal_impl.h"
+// We have no control over the Metal headers
+#pragma GCC diagnostic ignored "-Wgnu-anonymous-struct"
+#pragma GCC diagnostic ignored "-Wnested-anon-types"
+#pragma GCC diagnostic ignored "-Wignored-qualifiers"
+#pragma GCC diagnostic push
+#include <Metal/Metal.hpp>
+#pragma GCC diagnostic pop

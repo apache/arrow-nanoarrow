@@ -20,8 +20,7 @@
 #include <string.h>
 #include <unistd.h>
 
-#include <Metal/Metal.hpp>
-
+#include "nanoarrow/device/metal_impl.h"
 #include "nanoarrow/nanoarrow_device.hpp"
 
 // If non-null, caller must ->release() the return value. This doesn't
