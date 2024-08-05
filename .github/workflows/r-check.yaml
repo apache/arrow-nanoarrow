@@ -52,11 +52,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-
-      # r-lib/actions pinned because the latest action on the v2 branch requires
-      # quarto-dev actions which have not yet beeen whitelisted by Apache Infra
-      - uses: r-lib/actions/setup-pandoc@f4937e0dc26f9b99c969cd3e4ca943b576e7f991
-      - uses: r-lib/actions/setup-r@f4937e0dc26f9b99c969cd3e4ca943b576e7f991
+      - uses: r-lib/actions/setup-pandoc@v2
+      - uses: r-lib/actions/setup-r@v2
         with:
           r-version: ${{ matrix.config.r }}
           http-user-agent: ${{ matrix.config.http-user-agent }}
@@ -73,13 +70,15 @@ jobs:
           R CMD INSTALL r --preclean
         shell: bash
 
+      # r-lib/actions/setup-r-dependencies pinned because the latest action on the
+      # v2 branch requires quarto-dev actions which have not yet been whitelisted by Apache Infra
       - uses: r-lib/actions/setup-r-dependencies@f4937e0dc26f9b99c969cd3e4ca943b576e7f991
         with:
           extra-packages: any::rcmdcheck, arrow=?ignore-before-r=4.0.0
           needs: check
           working-directory: r
 
-      - uses: r-lib/actions/check-r-package@f4937e0dc26f9b99c969cd3e4ca943b576e7f991
+      - uses: r-lib/actions/check-r-package@v2
         env:
           ARROW_R_VERBOSE_TEST: "true"
           _R_CHECK_FORCE_SUGGESTS_: false
