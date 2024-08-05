@@ -71,7 +71,7 @@ jobs:
           use-public-rspm: true
           windows-path-include-rtools: false
           windows-path-include-mingw: false
-      - uses: r-lib/actions/setup-r-dependencies@v2
+      - uses: r-lib/actions/setup-r-dependencies@f4937e0dc26f9b99c969cd3e4ca943b576e7f991
         with:
           needs: check
           working-directory: src/r
