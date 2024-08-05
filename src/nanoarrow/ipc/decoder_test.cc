@@ -762,77 +762,28 @@ TEST_P(ArrowTypeParameterizedTestFixture, NanoarrowIpcArrowArrayRoundtrip) {
   ArrowIpcDecoderReset(&decoder);
 }
 
-struct ArrowArrayViewEqualTo {
-  const struct ArrowArrayView* expected;
+void AssertArrayViewIdentical(const struct ArrowArrayView* actual,
+                              const struct ArrowArrayView* expected) {
+  NANOARROW_DCHECK(actual->dictionary == nullptr);
+  NANOARROW_DCHECK(expected->dictionary == nullptr);
 
-  using is_gtest_matcher = void;
-
-  bool MatchAndExplain(const struct ArrowArrayView* actual, std::ostream* os) const {
-    return MatchAndExplain({}, actual, expected, os);
+  ASSERT_EQ(actual->storage_type, expected->storage_type);
+  ASSERT_EQ(actual->offset, expected->offset);
+  ASSERT_EQ(actual->length, expected->length);
+  for (int i = 0; i < 3; i++) {
+    auto a_buf = actual->buffer_views[i];
+    auto e_buf = expected->buffer_views[i];
+    ASSERT_EQ(a_buf.size_bytes, e_buf.size_bytes);
+    if (a_buf.size_bytes != 0) {
+      ASSERT_EQ(memcmp(a_buf.data.data, e_buf.data.data, a_buf.size_bytes), 0);
+    }
   }
 
-  static bool MatchAndExplain(std::vector<int> field_path,
-                              const struct ArrowArrayView* actual,
-                              const struct ArrowArrayView* expected, std::ostream* os) {
-    auto prefixed = [&]() -> std::ostream& {
-      if (!field_path.empty()) {
-        for (int i : field_path) {
-          *os << "." << i;
-        }
-        *os << ":";
-      }
-      return *os;
-    };
-
-    NANOARROW_DCHECK(actual->offset == 0);
-    NANOARROW_DCHECK(expected->offset == 0);
-
-    if (actual->length != expected->length) {
-      prefixed() << "expected length=" << expected->length << "\n";
-      prefixed() << "  actual length=" << actual->length << "\n";
-      return false;
-    }
-
-    auto null_count = [](const struct ArrowArrayView* a) {
-      return a->null_count != -1 ? a->null_count : ArrowArrayViewComputeNullCount(a);
-    };
-    if (null_count(actual) != null_count(expected)) {
-      prefixed() << "expected null_count=" << null_count(expected) << "\n";
-      prefixed() << "  actual null_count=" << null_count(actual) << "\n";
-      return false;
-    }
-
-    for (int64_t i = 0; actual->layout.buffer_type[i] != NANOARROW_BUFFER_TYPE_NONE &&
-                        i < NANOARROW_MAX_FIXED_BUFFERS;
-         ++i) {
-      auto a_buf = actual->buffer_views[i];
-      auto e_buf = expected->buffer_views[i];
-      if (a_buf.size_bytes != e_buf.size_bytes) {
-        prefixed() << "expected buffer[" << i << "].size=" << e_buf.size_bytes << "\n";
-        prefixed() << "  actual buffer[" << i << "].size=" << a_buf.size_bytes << "\n";
-        return false;
-      }
-      if (memcmp(a_buf.data.data, e_buf.data.data, a_buf.size_bytes) != 0) {
-        prefixed() << "expected buffer[" << i << "]'s data to match\n";
-        return false;
-      }
-    }
-
-    field_path.push_back(0);
-    for (int64_t i = 0; i < actual->n_children; i++) {
-      field_path.back() = i;
-      if (!MatchAndExplain(field_path, actual->children[i], expected->children[i], os)) {
-        return false;
-      }
-    }
-    return true;
+  ASSERT_EQ(actual->n_children, expected->n_children);
+  for (int i = 0; i < actual->n_children; i++) {
+    AssertArrayViewIdentical(actual->children[i], expected->children[i]);
   }
-
-  void DescribeTo(std::ostream* os) const { *os << "is equivalent to the array view"; }
-  void DescribeNegationTo(std::ostream* os) const {
-    *os << "is not equivalent to the array view";
-  }
-};
+}
 
 TEST_P(ArrowTypeParameterizedTestFixture, NanoarrowIpcNanoarrowArrayRoundtrip) {
   struct ArrowError error;
@@ -884,7 +835,7 @@ TEST_P(ArrowTypeParameterizedTestFixture, NanoarrowIpcNanoarrowArrayRoundtrip) {
                                              -1, &roundtripped, nullptr),
               NANOARROW_OK);
 
-    EXPECT_THAT(roundtripped, ArrowArrayViewEqualTo{array_view.get()});
+    AssertArrayViewIdentical(roundtripped, array_view.get());
   }
 }
 
