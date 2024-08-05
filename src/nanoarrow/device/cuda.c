@@ -518,7 +518,8 @@ static ArrowErrorCode ArrowDeviceCudaInitDevice(struct ArrowDevice* device,
   }
 
   CUdevice cu_device;
-  NANOARROW_CUDA_RETURN_NOT_OK(cuDeviceGet(&cu_device, device_id), "cuDeviceGet", error);
+  NANOARROW_CUDA_RETURN_NOT_OK(cuDeviceGet(&cu_device, (int)device_id), "cuDeviceGet",
+                               error);
 
   CUcontext cu_context;
   NANOARROW_CUDA_RETURN_NOT_OK(cuDevicePrimaryCtxRetain(&cu_context, cu_device),
