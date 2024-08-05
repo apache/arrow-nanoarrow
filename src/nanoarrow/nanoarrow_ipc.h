@@ -413,9 +413,6 @@ ArrowErrorCode ArrowIpcArrayStreamReaderInit(
 /// initialized using ArrowIpcEncoderInit(), and released with
 /// ArrowIpcEncoderReset().
 struct ArrowIpcEncoder {
-  /// \brief Compression to encode in the next RecordBatch message.
-  enum ArrowIpcCompressionType codec;
-
   /// \brief Private resources managed by this library
   void* private_data;
 };

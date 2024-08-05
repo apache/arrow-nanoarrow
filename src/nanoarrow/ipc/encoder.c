@@ -27,15 +27,15 @@
 
 #define ns(x) FLATBUFFERS_WRAP_NAMESPACE(org_apache_arrow_flatbuf, x)
 
-#define FLATCC_RETURN_UNLESS_0_NO_NS(x)                               \
+#define FLATCC_RETURN_UNLESS_0_NO_NS(x, error)                        \
   if ((x) != 0) {                                                     \
     ArrowErrorSet(error, "%s:%d: %s failed", __FILE__, __LINE__, #x); \
     return ENOMEM;                                                    \
   }
 
-#define FLATCC_RETURN_UNLESS_0(x) FLATCC_RETURN_UNLESS_0_NO_NS(ns(x))
+#define FLATCC_RETURN_UNLESS_0(x, error) FLATCC_RETURN_UNLESS_0_NO_NS(ns(x), error)
 
-#define FLATCC_RETURN_IF_NULL(x)                                        \
+#define FLATCC_RETURN_IF_NULL(x, error)                                 \
   if (!(x)) {                                                           \
     ArrowErrorSet(error, "%s:%d: %s was null", __FILE__, __LINE__, #x); \
     return ENOMEM;                                                      \
@@ -50,7 +50,6 @@ struct ArrowIpcEncoderPrivate {
 ArrowErrorCode ArrowIpcEncoderInit(struct ArrowIpcEncoder* encoder) {
   NANOARROW_DCHECK(encoder != NULL);
   memset(encoder, 0, sizeof(struct ArrowIpcEncoder));
-  encoder->codec = NANOARROW_IPC_COMPRESSION_TYPE_NONE;
   encoder->private_data = ArrowMalloc(sizeof(struct ArrowIpcEncoderPrivate));
   struct ArrowIpcEncoderPrivate* private =
       (struct ArrowIpcEncoderPrivate*)encoder->private_data;
@@ -85,8 +84,10 @@ ArrowErrorCode ArrowIpcEncoderFinalizeBuffer(struct ArrowIpcEncoder* encoder,
   struct ArrowIpcEncoderPrivate* private =
       (struct ArrowIpcEncoderPrivate*)encoder->private_data;
 
-  int32_t size = (int32_t)flatcc_builder_get_buffer_size(&private->builder);
-  int32_t header[] = {-1, size};
+  size_t size = flatcc_builder_get_buffer_size(&private->builder);
+  _NANOARROW_CHECK_RANGE(size, 0, INT32_MAX);
+
+  int32_t header[] = {-1, (int32_t)size};
   if (ArrowIpcSystemEndianness() == NANOARROW_IPC_ENDIANNESS_BIG) {
     header[1] = (int32_t)bswap32((uint32_t)size);
   }
@@ -105,8 +106,8 @@ ArrowErrorCode ArrowIpcEncoderFinalizeBuffer(struct ArrowIpcEncoder* encoder,
     NANOARROW_RETURN_NOT_OK(ArrowBufferReserve(out, size));
   }
 
-  void* data = flatcc_builder_copy_buffer(&private->builder, out->data + out->size_bytes,
-                                          (size_t)size);
+  void* data =
+      flatcc_builder_copy_buffer(&private->builder, out->data + out->size_bytes, size);
   NANOARROW_DCHECK(data != NULL);
   out->size_bytes += size;
 
@@ -127,176 +128,185 @@ static ArrowErrorCode ArrowIpcEncodeFieldType(flatcc_builder_t* builder,
                                               struct ArrowError* error) {
   switch (schema_view->type) {
     case NANOARROW_TYPE_NA:
-      FLATCC_RETURN_UNLESS_0(Field_type_Null_create(builder));
+      FLATCC_RETURN_UNLESS_0(Field_type_Null_create(builder), error);
       return NANOARROW_OK;
 
     case NANOARROW_TYPE_BOOL:
-      FLATCC_RETURN_UNLESS_0(Field_type_Bool_create(builder));
+      FLATCC_RETURN_UNLESS_0(Field_type_Bool_create(builder), error);
       return NANOARROW_OK;
 
     case NANOARROW_TYPE_UINT8:
     case NANOARROW_TYPE_INT8:
       FLATCC_RETURN_UNLESS_0(
-          Field_type_Int_create(builder, 8, schema_view->type == NANOARROW_TYPE_INT8));
+          Field_type_Int_create(builder, 8, schema_view->type == NANOARROW_TYPE_INT8),
+          error);
       return NANOARROW_OK;
 
     case NANOARROW_TYPE_UINT16:
     case NANOARROW_TYPE_INT16:
       FLATCC_RETURN_UNLESS_0(
-          Field_type_Int_create(builder, 16, schema_view->type == NANOARROW_TYPE_INT16));
+          Field_type_Int_create(builder, 16, schema_view->type == NANOARROW_TYPE_INT16),
+          error);
       return NANOARROW_OK;
 
     case NANOARROW_TYPE_UINT32:
     case NANOARROW_TYPE_INT32:
       FLATCC_RETURN_UNLESS_0(
-          Field_type_Int_create(builder, 32, schema_view->type == NANOARROW_TYPE_INT32));
+          Field_type_Int_create(builder, 32, schema_view->type == NANOARROW_TYPE_INT32),
+          error);
       return NANOARROW_OK;
 
     case NANOARROW_TYPE_UINT64:
     case NANOARROW_TYPE_INT64:
       FLATCC_RETURN_UNLESS_0(
-          Field_type_Int_create(builder, 64, schema_view->type == NANOARROW_TYPE_INT64));
+          Field_type_Int_create(builder, 64, schema_view->type == NANOARROW_TYPE_INT64),
+          error);
       return NANOARROW_OK;
 
     case NANOARROW_TYPE_HALF_FLOAT:
-      FLATCC_RETURN_UNLESS_0(
-          Field_type_FloatingPoint_create(builder, ns(Precision_HALF)));
+      FLATCC_RETURN_UNLESS_0(Field_type_FloatingPoint_create(builder, ns(Precision_HALF)),
+                             error);
       return NANOARROW_OK;
 
     case NANOARROW_TYPE_FLOAT:
       FLATCC_RETURN_UNLESS_0(
-          Field_type_FloatingPoint_create(builder, ns(Precision_SINGLE)));
+          Field_type_FloatingPoint_create(builder, ns(Precision_SINGLE)), error);
       return NANOARROW_OK;
 
     case NANOARROW_TYPE_DOUBLE:
       FLATCC_RETURN_UNLESS_0(
-          Field_type_FloatingPoint_create(builder, ns(Precision_DOUBLE)));
+          Field_type_FloatingPoint_create(builder, ns(Precision_DOUBLE)), error);
       return NANOARROW_OK;
 
     case NANOARROW_TYPE_DECIMAL128:
     case NANOARROW_TYPE_DECIMAL256:
-      FLATCC_RETURN_UNLESS_0(Field_type_Decimal_create(
-          builder, schema_view->decimal_precision, schema_view->decimal_scale,
-          schema_view->decimal_bitwidth));
+      FLATCC_RETURN_UNLESS_0(
+          Field_type_Decimal_create(builder, schema_view->decimal_precision,
+                                    schema_view->decimal_scale,
+                                    schema_view->decimal_bitwidth),
+          error);
       return NANOARROW_OK;
 
     case NANOARROW_TYPE_STRING:
-      FLATCC_RETURN_UNLESS_0(Field_type_Utf8_create(builder));
+      FLATCC_RETURN_UNLESS_0(Field_type_Utf8_create(builder), error);
       return NANOARROW_OK;
 
     case NANOARROW_TYPE_LARGE_STRING:
-      FLATCC_RETURN_UNLESS_0(Field_type_LargeUtf8_create(builder));
+      FLATCC_RETURN_UNLESS_0(Field_type_LargeUtf8_create(builder), error);
       return NANOARROW_OK;
 
     case NANOARROW_TYPE_BINARY:
-      FLATCC_RETURN_UNLESS_0(Field_type_Binary_create(builder));
+      FLATCC_RETURN_UNLESS_0(Field_type_Binary_create(builder), error);
       return NANOARROW_OK;
 
     case NANOARROW_TYPE_LARGE_BINARY:
-      FLATCC_RETURN_UNLESS_0(Field_type_LargeBinary_create(builder));
+      FLATCC_RETURN_UNLESS_0(Field_type_LargeBinary_create(builder), error);
       return NANOARROW_OK;
 
     case NANOARROW_TYPE_DATE32:
-      FLATCC_RETURN_UNLESS_0(Field_type_Date_create(builder, ns(DateUnit_DAY)));
+      FLATCC_RETURN_UNLESS_0(Field_type_Date_create(builder, ns(DateUnit_DAY)), error);
       return NANOARROW_OK;
 
     case NANOARROW_TYPE_DATE64:
-      FLATCC_RETURN_UNLESS_0(Field_type_Date_create(builder, ns(DateUnit_MILLISECOND)));
+      FLATCC_RETURN_UNLESS_0(Field_type_Date_create(builder, ns(DateUnit_MILLISECOND)),
+                             error);
       return NANOARROW_OK;
 
     case NANOARROW_TYPE_INTERVAL_MONTHS:
       FLATCC_RETURN_UNLESS_0(
-          Field_type_Interval_create(builder, ns(IntervalUnit_YEAR_MONTH)));
+          Field_type_Interval_create(builder, ns(IntervalUnit_YEAR_MONTH)), error);
       return NANOARROW_OK;
 
     case NANOARROW_TYPE_INTERVAL_DAY_TIME:
       FLATCC_RETURN_UNLESS_0(
-          Field_type_Interval_create(builder, ns(IntervalUnit_DAY_TIME)));
+          Field_type_Interval_create(builder, ns(IntervalUnit_DAY_TIME)), error);
       return NANOARROW_OK;
 
     case NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO:
       FLATCC_RETURN_UNLESS_0(
-          Field_type_Interval_create(builder, ns(IntervalUnit_MONTH_DAY_NANO)));
+          Field_type_Interval_create(builder, ns(IntervalUnit_MONTH_DAY_NANO)), error);
       return NANOARROW_OK;
 
     case NANOARROW_TYPE_TIMESTAMP:
-      FLATCC_RETURN_UNLESS_0(Field_type_Timestamp_start(builder));
+      FLATCC_RETURN_UNLESS_0(Field_type_Timestamp_start(builder), error);
+      FLATCC_RETURN_UNLESS_0(Timestamp_unit_add(builder, schema_view->time_unit), error);
       FLATCC_RETURN_UNLESS_0(
-          Timestamp_unit_add(builder, (ns(TimeUnit_enum_t))schema_view->time_unit));
-      FLATCC_RETURN_UNLESS_0(
-          Timestamp_timezone_create_str(builder, schema_view->timezone));
-      FLATCC_RETURN_UNLESS_0(Field_type_Timestamp_end(builder));
+          Timestamp_timezone_create_str(builder, schema_view->timezone), error);
+      FLATCC_RETURN_UNLESS_0(Field_type_Timestamp_end(builder), error);
       return NANOARROW_OK;
 
     case NANOARROW_TYPE_TIME32:
-      FLATCC_RETURN_UNLESS_0(Field_type_Time_create(
-          builder, (ns(TimeUnit_enum_t))schema_view->time_unit, 32));
+      FLATCC_RETURN_UNLESS_0(Field_type_Time_create(builder, schema_view->time_unit, 32),
+                             error);
       return NANOARROW_OK;
 
     case NANOARROW_TYPE_TIME64:
-      FLATCC_RETURN_UNLESS_0(Field_type_Time_create(
-          builder, (ns(TimeUnit_enum_t))schema_view->time_unit, 64));
+      FLATCC_RETURN_UNLESS_0(Field_type_Time_create(builder, schema_view->time_unit, 64),
+                             error);
       return NANOARROW_OK;
 
     case NANOARROW_TYPE_DURATION:
-      FLATCC_RETURN_UNLESS_0(Field_type_Duration_create(
-          builder, (ns(TimeUnit_enum_t))schema_view->time_unit));
+      FLATCC_RETURN_UNLESS_0(Field_type_Duration_create(builder, schema_view->time_unit),
+                             error);
       return NANOARROW_OK;
 
     case NANOARROW_TYPE_FIXED_SIZE_BINARY:
       FLATCC_RETURN_UNLESS_0(
-          Field_type_FixedSizeBinary_create(builder, schema_view->fixed_size));
+          Field_type_FixedSizeBinary_create(builder, schema_view->fixed_size), error);
       return NANOARROW_OK;
 
     case NANOARROW_TYPE_LIST:
-      FLATCC_RETURN_UNLESS_0(Field_type_List_create(builder));
+      FLATCC_RETURN_UNLESS_0(Field_type_List_create(builder), error);
       return NANOARROW_OK;
 
     case NANOARROW_TYPE_LARGE_LIST:
-      FLATCC_RETURN_UNLESS_0(Field_type_LargeList_create(builder));
+      FLATCC_RETURN_UNLESS_0(Field_type_LargeList_create(builder), error);
       return NANOARROW_OK;
 
     case NANOARROW_TYPE_FIXED_SIZE_LIST:
       FLATCC_RETURN_UNLESS_0(
-          Field_type_FixedSizeList_create(builder, schema_view->fixed_size));
+          Field_type_FixedSizeList_create(builder, schema_view->fixed_size), error);
       return NANOARROW_OK;
 
     case NANOARROW_TYPE_RUN_END_ENCODED:
-      FLATCC_RETURN_UNLESS_0(Field_type_RunEndEncoded_create(builder));
+      FLATCC_RETURN_UNLESS_0(Field_type_RunEndEncoded_create(builder), error);
       return NANOARROW_OK;
 
     case NANOARROW_TYPE_STRUCT:
-      FLATCC_RETURN_UNLESS_0(Field_type_Struct__create(builder));
+      FLATCC_RETURN_UNLESS_0(Field_type_Struct__create(builder), error);
       return NANOARROW_OK;
 
     case NANOARROW_TYPE_SPARSE_UNION:
     case NANOARROW_TYPE_DENSE_UNION: {
-      FLATCC_RETURN_UNLESS_0(Field_type_Union_start(builder));
+      FLATCC_RETURN_UNLESS_0(Field_type_Union_start(builder), error);
 
       FLATCC_RETURN_UNLESS_0(
-          Union_mode_add(builder, schema_view->type == NANOARROW_TYPE_DENSE_UNION));
+          Union_mode_add(builder, schema_view->type == NANOARROW_TYPE_DENSE_UNION),
+          error);
       if (schema_view->union_type_ids) {
         int8_t type_ids[128];
         int n = _ArrowParseUnionTypeIds(schema_view->union_type_ids, type_ids);
         if (n != 0) {
-          FLATCC_RETURN_UNLESS_0(Union_typeIds_start(builder));
+          FLATCC_RETURN_UNLESS_0(Union_typeIds_start(builder), error);
           int32_t* type_ids_32 = (int32_t*)ns(Union_typeIds_extend(builder, n));
-          FLATCC_RETURN_IF_NULL(type_ids_32);
+          FLATCC_RETURN_IF_NULL(type_ids_32, error);
 
           for (int i = 0; i < n; i++) {
             type_ids_32[i] = type_ids[i];
           }
-          FLATCC_RETURN_UNLESS_0(Union_typeIds_end(builder));
+          FLATCC_RETURN_UNLESS_0(Union_typeIds_end(builder), error);
         }
       }
 
-      FLATCC_RETURN_UNLESS_0(Field_type_Union_end(builder));
+      FLATCC_RETURN_UNLESS_0(Field_type_Union_end(builder), error);
       return NANOARROW_OK;
     }
 
     case NANOARROW_TYPE_MAP:
-      FLATCC_RETURN_UNLESS_0(Field_type_Map_create(
-          builder, schema_view->schema->flags & ARROW_FLAG_MAP_KEYS_SORTED));
+      FLATCC_RETURN_UNLESS_0(
+          Field_type_Map_create(builder,
+                                schema_view->schema->flags & ARROW_FLAG_MAP_KEYS_SORTED),
+          error);
       return NANOARROW_OK;
 
     case NANOARROW_TYPE_DICTIONARY:
@@ -327,11 +337,12 @@ static ArrowErrorCode ArrowIpcEncodeMetadata(flatcc_builder_t* builder,
     struct ArrowStringView key, value;
     NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowMetadataReaderRead(&metadata, &key, &value),
                                        error);
-    FLATCC_RETURN_UNLESS_0_NO_NS(push_start(builder));
-    FLATCC_RETURN_UNLESS_0(KeyValue_key_create_strn(builder, key.data, key.size_bytes));
+    FLATCC_RETURN_UNLESS_0_NO_NS(push_start(builder), error);
+    FLATCC_RETURN_UNLESS_0(KeyValue_key_create_strn(builder, key.data, key.size_bytes),
+                           error);
     FLATCC_RETURN_UNLESS_0(
-        KeyValue_value_create_strn(builder, value.data, value.size_bytes));
-    FLATCC_RETURN_IF_NULL(push_end(builder));
+        KeyValue_value_create_strn(builder, value.data, value.size_bytes), error);
+    FLATCC_RETURN_IF_NULL(push_end(builder), error);
   }
   return NANOARROW_OK;
 }
@@ -343,9 +354,9 @@ static ArrowErrorCode ArrowIpcEncodeFields(flatcc_builder_t* builder,
                                                (*push_end)(flatcc_builder_t*),
                                            struct ArrowError* error) {
   for (int i = 0; i < schema->n_children; i++) {
-    FLATCC_RETURN_UNLESS_0_NO_NS(push_start(builder));
+    FLATCC_RETURN_UNLESS_0_NO_NS(push_start(builder), error);
     NANOARROW_RETURN_NOT_OK(ArrowIpcEncodeField(builder, schema->children[i], error));
-    FLATCC_RETURN_IF_NULL(push_end(builder));
+    FLATCC_RETURN_IF_NULL(push_end(builder), error);
   }
   return NANOARROW_OK;
 }
@@ -353,28 +364,28 @@ static ArrowErrorCode ArrowIpcEncodeFields(flatcc_builder_t* builder,
 static ArrowErrorCode ArrowIpcEncodeField(flatcc_builder_t* builder,
                                           const struct ArrowSchema* schema,
                                           struct ArrowError* error) {
-  FLATCC_RETURN_UNLESS_0(Field_name_create_str(builder, schema->name));
-  FLATCC_RETURN_UNLESS_0(
-      Field_nullable_add(builder, schema->flags & ARROW_FLAG_NULLABLE));
+  FLATCC_RETURN_UNLESS_0(Field_name_create_str(builder, schema->name), error);
+  FLATCC_RETURN_UNLESS_0(Field_nullable_add(builder, schema->flags & ARROW_FLAG_NULLABLE),
+                         error);
 
   struct ArrowSchemaView schema_view;
   NANOARROW_RETURN_NOT_OK(ArrowSchemaViewInit(&schema_view, schema, error));
   NANOARROW_RETURN_NOT_OK(ArrowIpcEncodeFieldType(builder, &schema_view, error));
 
   if (schema->n_children != 0) {
-    FLATCC_RETURN_UNLESS_0(Field_children_start(builder));
+    FLATCC_RETURN_UNLESS_0(Field_children_start(builder), error);
     NANOARROW_RETURN_NOT_OK(ArrowIpcEncodeFields(builder, schema,
                                                  &ns(Field_children_push_start),
                                                  &ns(Field_children_push_end), error));
-    FLATCC_RETURN_UNLESS_0(Field_children_end(builder));
+    FLATCC_RETURN_UNLESS_0(Field_children_end(builder), error);
   }
 
   if (schema->metadata) {
-    FLATCC_RETURN_UNLESS_0(Field_custom_metadata_start(builder));
+    FLATCC_RETURN_UNLESS_0(Field_custom_metadata_start(builder), error);
     NANOARROW_RETURN_NOT_OK(
         ArrowIpcEncodeMetadata(builder, schema, &ns(Field_custom_metadata_push_start),
                                &ns(Field_custom_metadata_push_end), error));
-    FLATCC_RETURN_UNLESS_0(Field_custom_metadata_end(builder));
+    FLATCC_RETURN_UNLESS_0(Field_custom_metadata_end(builder), error);
   }
   return NANOARROW_OK;
 }
@@ -389,41 +400,38 @@ ArrowErrorCode ArrowIpcEncoderEncodeSchema(struct ArrowIpcEncoder* encoder,
 
   flatcc_builder_t* builder = &private->builder;
 
-  FLATCC_RETURN_UNLESS_0(Message_start_as_root(builder));
-  FLATCC_RETURN_UNLESS_0(Message_version_add(builder, ns(MetadataVersion_V5)));
+  FLATCC_RETURN_UNLESS_0(Message_start_as_root(builder), error);
+  FLATCC_RETURN_UNLESS_0(Message_version_add(builder, ns(MetadataVersion_V5)), error);
 
-  FLATCC_RETURN_UNLESS_0(Message_header_Schema_start(builder));
+  FLATCC_RETURN_UNLESS_0(Message_header_Schema_start(builder), error);
 
   if (ArrowIpcSystemEndianness() == NANOARROW_IPC_ENDIANNESS_LITTLE) {
-    FLATCC_RETURN_UNLESS_0(Schema_endianness_add(builder, ns(Endianness_Little)));
+    FLATCC_RETURN_UNLESS_0(Schema_endianness_add(builder, ns(Endianness_Little)), error);
   } else {
-    FLATCC_RETURN_UNLESS_0(Schema_endianness_add(builder, ns(Endianness_Big)));
+    FLATCC_RETURN_UNLESS_0(Schema_endianness_add(builder, ns(Endianness_Big)), error);
   }
 
-  FLATCC_RETURN_UNLESS_0(Schema_fields_start(builder));
+  FLATCC_RETURN_UNLESS_0(Schema_fields_start(builder), error);
   NANOARROW_RETURN_NOT_OK(ArrowIpcEncodeFields(builder, schema,
                                                &ns(Schema_fields_push_start),
                                                &ns(Schema_fields_push_end), error));
-  FLATCC_RETURN_UNLESS_0(Schema_fields_end(builder));
+  FLATCC_RETURN_UNLESS_0(Schema_fields_end(builder), error);
 
   if (schema->metadata) {
-    FLATCC_RETURN_UNLESS_0(Schema_custom_metadata_start(builder));
+    FLATCC_RETURN_UNLESS_0(Schema_custom_metadata_start(builder), error);
     NANOARROW_RETURN_NOT_OK(
         ArrowIpcEncodeMetadata(builder, schema, &ns(Schema_custom_metadata_push_start),
                                &ns(Schema_custom_metadata_push_end), error));
-    FLATCC_RETURN_UNLESS_0(Schema_custom_metadata_end(builder));
+    FLATCC_RETURN_UNLESS_0(Schema_custom_metadata_end(builder), error);
   }
 
-  FLATCC_RETURN_UNLESS_0(Schema_features_start(builder));
-  ns(Feature_enum_t)* features = ns(Schema_features_extend(builder, 1));
-  FLATCC_RETURN_IF_NULL(features);
-  features[0] = ns(Feature_COMPRESSED_BODY);
-  FLATCC_RETURN_UNLESS_0(Schema_features_end(builder));
+  FLATCC_RETURN_UNLESS_0(Schema_features_start(builder), error);
+  FLATCC_RETURN_UNLESS_0(Schema_features_end(builder), error);
 
-  FLATCC_RETURN_UNLESS_0(Message_header_Schema_end(builder));
+  FLATCC_RETURN_UNLESS_0(Message_header_Schema_end(builder), error);
 
-  FLATCC_RETURN_UNLESS_0(Message_bodyLength_add(builder, 0));
-  FLATCC_RETURN_IF_NULL(ns(Message_end_as_root(builder)));
+  FLATCC_RETURN_UNLESS_0(Message_bodyLength_add(builder, 0), error);
+  FLATCC_RETURN_IF_NULL(ns(Message_end_as_root(builder)), error);
   return NANOARROW_OK;
 }
 
@@ -457,11 +465,9 @@ static ArrowErrorCode ArrowIpcEncoderBuildContiguousBodyBufferCallback(
   struct ArrowBuffer* body_buffer =
       (struct ArrowBuffer*)buffer_encoder->encode_buffer_state;
 
-  int compressed_buffer_header =
-      encoder->codec != NANOARROW_IPC_COMPRESSION_TYPE_NONE ? sizeof(int64_t) : 0;
   int64_t old_size = body_buffer->size_bytes;
   int64_t buffer_begin = _ArrowRoundUpToMultipleOf8(old_size);
-  int64_t buffer_end = buffer_begin + compressed_buffer_header + buffer_view.size_bytes;
+  int64_t buffer_end = buffer_begin + buffer_view.size_bytes;
   int64_t new_size = _ArrowRoundUpToMultipleOf8(buffer_end);
 
   // reserve all the memory we'll need now
@@ -474,11 +480,6 @@ static ArrowErrorCode ArrowIpcEncoderBuildContiguousBodyBufferCallback(
   *offset = buffer_begin;
   *length = buffer_view.size_bytes;
 
-  if (compressed_buffer_header) {
-    // Signal that the buffer is not compressed; eventually we will set this to the
-    // decompressed length of an actually compressed buffer.
-    NANOARROW_RETURN_NOT_OK(ArrowBufferAppendInt64(body_buffer, -1));
-  }
   NANOARROW_RETURN_NOT_OK(
       ArrowBufferAppend(body_buffer, buffer_view.data.data, buffer_view.size_bytes));
 
@@ -545,16 +546,11 @@ static ArrowErrorCode ArrowIpcEncoderEncodeRecordBatch(
 
   flatcc_builder_t* builder = &private->builder;
 
-  FLATCC_RETURN_UNLESS_0(Message_start_as_root(builder));
-  FLATCC_RETURN_UNLESS_0(Message_version_add(builder, ns(MetadataVersion_V5)));
+  FLATCC_RETURN_UNLESS_0(Message_start_as_root(builder), error);
+  FLATCC_RETURN_UNLESS_0(Message_version_add(builder, ns(MetadataVersion_V5)), error);
 
-  FLATCC_RETURN_UNLESS_0(Message_header_RecordBatch_start(builder));
-  if (encoder->codec != NANOARROW_IPC_COMPRESSION_TYPE_NONE) {
-    FLATCC_RETURN_UNLESS_0(RecordBatch_compression_start(builder));
-    FLATCC_RETURN_UNLESS_0(BodyCompression_codec_add(builder, encoder->codec));
-    FLATCC_RETURN_UNLESS_0(RecordBatch_compression_end(builder));
-  }
-  FLATCC_RETURN_UNLESS_0(RecordBatch_length_add(builder, array_view->length));
+  FLATCC_RETURN_UNLESS_0(Message_header_RecordBatch_start(builder), error);
+  FLATCC_RETURN_UNLESS_0(RecordBatch_length_add(builder, array_view->length), error);
 
   ArrowBufferResize(&private->buffers, 0, 0);
   ArrowBufferResize(&private->nodes, 0, 0);
@@ -562,16 +558,19 @@ static ArrowErrorCode ArrowIpcEncoderEncodeRecordBatch(
       encoder, buffer_encoder, array_view, &private->buffers, &private->nodes, error));
 
   FLATCC_RETURN_UNLESS_0(RecordBatch_nodes_create(  //
-      builder, (struct ns(FieldNode)*)private->nodes.data,
-      private->nodes.size_bytes / sizeof(struct ns(FieldNode))));
+                             builder, (struct ns(FieldNode)*)private->nodes.data,
+                             private->nodes.size_bytes / sizeof(struct ns(FieldNode))),
+                         error);
   FLATCC_RETURN_UNLESS_0(RecordBatch_buffers_create(  //
-      builder, (struct ns(Buffer)*)private->buffers.data,
-      private->buffers.size_bytes / sizeof(struct ns(Buffer))));
+                             builder, (struct ns(Buffer)*)private->buffers.data,
+                             private->buffers.size_bytes / sizeof(struct ns(Buffer))),
+                         error);
 
-  FLATCC_RETURN_UNLESS_0(Message_header_RecordBatch_end(builder));
+  FLATCC_RETURN_UNLESS_0(Message_header_RecordBatch_end(builder), error);
 
-  FLATCC_RETURN_UNLESS_0(Message_bodyLength_add(builder, buffer_encoder->body_length));
-  FLATCC_RETURN_IF_NULL(ns(Message_end_as_root(builder)));
+  FLATCC_RETURN_UNLESS_0(Message_bodyLength_add(builder, buffer_encoder->body_length),
+                         error);
+  FLATCC_RETURN_IF_NULL(ns(Message_end_as_root(builder)), error);
   return NANOARROW_OK;
 }
 
