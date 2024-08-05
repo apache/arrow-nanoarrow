@@ -85,6 +85,9 @@ struct ArrowDeviceCudaAllocatorPrivate {
 
 static void ArrowDeviceCudaDeallocator(struct ArrowBufferAllocator* allocator,
                                        uint8_t* ptr, int64_t old_size) {
+  NANOARROW_UNUSED(ptr);
+  NANOARROW_UNUSED(old_size);
+
   struct ArrowDeviceCudaAllocatorPrivate* allocator_private =
       (struct ArrowDeviceCudaAllocatorPrivate*)allocator->private_data;
 
