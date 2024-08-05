@@ -172,7 +172,7 @@ if get_option('tests')
         name + '-test',
         sources: 'src/nanoarrow/common/' + name.replace('-', '_') + '_test.cc',
         include_directories: incdir,
-        dependencies: [nanoarrow_testing_dep, nanoarrow_dep, arrow_dep, gtest_dep, gmock_dep],
+        dependencies: [nanoarrow_testing_dep, arrow_dep, gtest_dep, gmock_dep],
     )
     test(name, exc)
   endforeach
@@ -180,12 +180,12 @@ if get_option('tests')
   testing_test = executable('nanoarrow-testing-test',
                             'src/nanoarrow/testing/testing_test.cc',
                             include_directories: incdir,
-                            dependencies: [nanoarrow_testing_dep, nanoarrow_dep, arrow_dep, gtest_dep])
+                            dependencies: [nanoarrow_testing_dep, arrow_dep, gtest_dep])
 
   c_data_integration_test = executable('c-data-integration-test',
                                        'src/nanoarrow/integration/c_data_integration_test.cc',
                                        link_with: [c_data_integration_lib],
-                                       dependencies: [nanoarrow_testing_dep, nanoarrow_dep, arrow_dep, gtest_dep],
+                                       dependencies: [nanoarrow_testing_dep, arrow_dep, gtest_dep],
                                        include_directories: incdir)
   test('c-data-integration', c_data_integration_test)
 
@@ -210,7 +210,6 @@ if get_option('tests')
               'deps': [
                   nanoarrow_testing_dep,
                   nanoarrow_ipc_dep,
-                  nanoarrow_dep,
                   zlib_dep,
                   arrow_dep,
                   gtest_dep,
@@ -219,7 +218,7 @@ if get_option('tests')
           },
           'ipc-hpp': {
               'src': 'ipc_hpp',
-              'deps': [nanoarrow_testing_dep, nanoarrow_ipc_dep, nanoarrow_dep, gtest_dep],
+              'deps': [nanoarrow_testing_dep, nanoarrow_ipc_dep, gtest_dep],
               'timeout': 30,
           },
       }
@@ -241,7 +240,7 @@ if get_option('tests')
           'nanoarrow-' + device_test.replace('_', '-') + '-test',
           'src/nanoarrow/device/' + device_test + '_test.cc',
           link_with: nanoarrow_device_lib,
-          dependencies: [nanoarrow_testing_dep, nanoarrow_dep, gtest_dep])
+          dependencies: [nanoarrow_testing_dep, gtest_dep])
       test(device_test.replace('_', '-'), exc)
     endforeach
 
@@ -250,7 +249,7 @@ if get_option('tests')
           'nanoarrow-device-metal-test',
           'src/nanoarrow/device/metal_test.cc',
           link_with: nanoarrow_device_lib,
-          dependencies: [nanoarrow_testing_dep, nanoarrow_dep, gtest_dep, metal_cpp_dep])
+          dependencies: [nanoarrow_testing_dep, gtest_dep, metal_cpp_dep])
       test('nanoarrow-device-metal', exc)
     endif
   endif
@@ -267,7 +266,7 @@ if get_option('apps')
   executable(
       'dump_stream',
       'src/apps/dump_stream.c',
-      dependencies: [nanoarrow_ipc_dep, nanoarrow_dep]
+      dependencies: [nanoarrow_ipc_dep]
   )
   endif
 endif
