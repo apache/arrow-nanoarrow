@@ -85,7 +85,7 @@ ArrowErrorCode ArrowIpcEncoderFinalizeBuffer(struct ArrowIpcEncoder* encoder,
       (struct ArrowIpcEncoderPrivate*)encoder->private_data;
 
   size_t size = flatcc_builder_get_buffer_size(&private->builder);
-  _NANOARROW_CHECK_RANGE(size, 0, INT32_MAX);
+  _NANOARROW_CHECK_UPPER_LIMIT(size, INT32_MAX);
 
   int32_t header[] = {-1, (int32_t)size};
   if (ArrowIpcSystemEndianness() == NANOARROW_IPC_ENDIANNESS_BIG) {
@@ -109,6 +109,7 @@ ArrowErrorCode ArrowIpcEncoderFinalizeBuffer(struct ArrowIpcEncoder* encoder,
   void* data =
       flatcc_builder_copy_buffer(&private->builder, out->data + out->size_bytes, size);
   NANOARROW_DCHECK(data != NULL);
+  NANOARROW_UNUSED(data);
   out->size_bytes += size;
 
   if (encapsulate) {
