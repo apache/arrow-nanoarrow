@@ -21,8 +21,6 @@
 
 #include "nanoarrow/nanoarrow_ipc.hpp"
 
-using nanoarrow::literals::operator""_asv;
-
 TEST(NanoarrowIpcWriter, OutputStreamBuffer) {
   struct ArrowError error;
 
@@ -47,9 +45,10 @@ TEST(NanoarrowIpcWriter, OutputStreamBuffer) {
 
   EXPECT_EQ(output->size_bytes, header.size() + 4 * message.size());
 
-  std::string output_str(output->size_bytes, '\0');
+  std::vector<char> output_str(output->size_bytes, '\0');
   memcpy(output_str.data(), output->data, output->size_bytes);
-  EXPECT_EQ(output_str, header + message + message + message + message);
+  EXPECT_EQ(std::string(output_str.data(), output_str.size()),
+            header + message + message + message + message);
 }
 
 TEST(NanoarrowIpcWriter, OutputStreamFile) {
@@ -81,10 +80,11 @@ TEST(NanoarrowIpcWriter, OutputStreamFile) {
 
   // Read back the whole file
   fseek(file_ptr, 0, SEEK_END);
-  std::string buffer(static_cast<size_t>(ftell(file_ptr)), '\0');
+  std::vector<char> buffer(static_cast<size_t>(ftell(file_ptr)), '\0');
   rewind(file_ptr);
   ASSERT_EQ(fread(buffer.data(), 1, buffer.size(), file_ptr), buffer.size());
 
   EXPECT_EQ(buffer.size(), 6 + 4 * message.size());
-  EXPECT_EQ(buffer, "HELLO " + message + message + message + message);
+  EXPECT_EQ(std::string(buffer.data(), buffer.size()),
+            "HELLO " + message + message + message + message);
 }
