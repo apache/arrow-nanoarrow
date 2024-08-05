@@ -29,9 +29,11 @@ project(
     ]
 )
 
-if meson.get_compiler('cpp').get_id() == 'gcc' or meson.get_compiler('cpp').get_id() == 'clang'
-  add_project_arguments(['-fvisibility=hidden'], language: 'cpp')
-endif
+# This bit depends on proper symbol exporting which hasn't yet been implemented
+# generally for all of nanoarrow's libraries
+# if meson.get_compiler('cpp').get_id() == 'gcc' or meson.get_compiler('cpp').get_id() == 'clang'
+#   add_project_arguments(['-fvisibility=hidden'], language: 'cpp')
+# endif
 
 nanoarrow_dep_args = []
 if host_machine.system() == 'windows' and get_option('default_library') == 'shared'
@@ -126,13 +128,27 @@ if needs_device
   )
 endif
 
-if get_option('tests') or get_option('integration_tests')
+needs_testing = get_option('testing') or get_option('tests')
+if needs_testing
   nlohmann_json_dep = dependency('nlohmann_json')
 
+  nanoarrow_testing_lib = library(
+      'nanoarrow_testing',
+      sources: ['src/nanoarrow/testing/testing.cc'],
+      dependencies: [nanoarrow_dep, nlohmann_json_dep],
+      include_directories: incdir,
+      install: true,
+  )
+
+  nanoarrow_testing_dep = declare_dependency(include_directories: [incdir],
+                                             link_with: nanoarrow_testing_lib,
+                                             dependencies: [nanoarrow_dep, nlohmann_json_dep])
+endif
+
+if get_option('tests') or get_option('integration_tests')
   c_data_integration_lib = library('nanoarrow_c_data_integration',
                                    'src/nanoarrow/integration/c_data_integration.cc',
-                                   link_with: nanoarrow_lib,
-                                   dependencies: [nlohmann_json_dep],
+                                   dependencies: [nanoarrow_testing_dep, nanoarrow_dep],
                                    include_directories: incdir)
 
 endif
@@ -148,50 +164,28 @@ if get_option('tests')
   arrow_dep = dependency('arrow')
   gtest_dep = dependency('gtest_main')
   gmock_dep = dependency('gmock')
-  nlohmann_json_dep = dependency('nlohmann_json')
 
-  nanoarrow_tests = {
-      'utils': {
-          'deps': [arrow_dep, gtest_dep, gmock_dep, nlohmann_json_dep],
-      },
-      'buffer': {
-          'deps': [arrow_dep, gtest_dep],
-      },
-      'array': {
-          'deps': [arrow_dep, gtest_dep, gmock_dep],
-      },
-      'schema': {
-          'deps': [arrow_dep, gtest_dep],
-      },
-      'array-stream': {
-          'deps': [arrow_dep, gtest_dep, gmock_dep],
-      },
-      'nanoarrow-hpp': {
-          'deps': [arrow_dep, gtest_dep, gmock_dep, nlohmann_json_dep],
-      },
-  }
+  nanoarrow_tests = ['utils', 'buffer', 'array', 'schema', 'array-stream', 'nanoarrow-hpp']
 
-  foreach name, config : nanoarrow_tests
+  foreach name : nanoarrow_tests
     exc = executable(
         name + '-test',
         sources: 'src/nanoarrow/common/' + name.replace('-', '_') + '_test.cc',
-        link_with: nanoarrow_lib,
         include_directories: incdir,
-        dependencies: config['deps'],
+        dependencies: [nanoarrow_testing_dep, arrow_dep, gtest_dep, gmock_dep],
     )
     test(name, exc)
   endforeach
 
   testing_test = executable('nanoarrow-testing-test',
                             'src/nanoarrow/testing/testing_test.cc',
-                            link_with: nanoarrow_lib,
                             include_directories: incdir,
-                            dependencies: [arrow_dep, gtest_dep, nlohmann_json_dep])
+                            dependencies: [nanoarrow_testing_dep, arrow_dep, gtest_dep])
 
   c_data_integration_test = executable('c-data-integration-test',
                                        'src/nanoarrow/integration/c_data_integration_test.cc',
-                                       link_with: c_data_integration_lib,
-                                       dependencies: [arrow_dep, gtest_dep],
+                                       link_with: [c_data_integration_lib],
+                                       dependencies: [nanoarrow_testing_dep, arrow_dep, gtest_dep],
                                        include_directories: incdir)
   test('c-data-integration', c_data_integration_test)
 
@@ -214,17 +208,17 @@ if get_option('tests')
           'ipc-files': {
               'src': 'files',
               'deps': [
+                  nanoarrow_testing_dep,
                   nanoarrow_ipc_dep,
                   zlib_dep,
                   arrow_dep,
                   gtest_dep,
-                  nlohmann_json_dep
               ],
               'timeout': 30,
           },
           'ipc-hpp': {
               'src': 'ipc_hpp',
-              'deps': [nanoarrow_ipc_dep, gtest_dep],
+              'deps': [nanoarrow_testing_dep, nanoarrow_ipc_dep, gtest_dep],
               'timeout': 30,
           },
       }
@@ -246,7 +240,7 @@ if get_option('tests')
           'nanoarrow-' + device_test.replace('_', '-') + '-test',
           'src/nanoarrow/device/' + device_test + '_test.cc',
           link_with: nanoarrow_device_lib,
-          dependencies: [nanoarrow_dep, gtest_dep])
+          dependencies: [nanoarrow_testing_dep, gtest_dep])
       test(device_test.replace('_', '-'), exc)
     endforeach
 
@@ -255,7 +249,7 @@ if get_option('tests')
           'nanoarrow-device-metal-test',
           'src/nanoarrow/device/metal_test.cc',
           link_with: nanoarrow_device_lib,
-          dependencies: [nanoarrow_dep, gtest_dep, metal_cpp_dep])
+          dependencies: [nanoarrow_testing_dep, gtest_dep, metal_cpp_dep])
       test('nanoarrow-device-metal', exc)
     endif
   endif
@@ -272,7 +266,7 @@ if get_option('apps')
   executable(
       'dump_stream',
       'src/apps/dump_stream.c',
-      dependencies: [nanoarrow_dep, nanoarrow_ipc_dep]
+      dependencies: [nanoarrow_ipc_dep]
   )
   endif
 endif
