@@ -226,18 +226,18 @@ static ArrowErrorCode ArrowIpcEncodeFieldType(flatcc_builder_t* builder,
       return NANOARROW_OK;
 
     case NANOARROW_TYPE_TIME32:
-      FLATCC_RETURN_UNLESS_0(
-          Field_type_Time_create(builder, (ns(TimeUnit_enum_t))schema_view->time_unit, 32));
+      FLATCC_RETURN_UNLESS_0(Field_type_Time_create(
+          builder, (ns(TimeUnit_enum_t))schema_view->time_unit, 32));
       return NANOARROW_OK;
 
     case NANOARROW_TYPE_TIME64:
-      FLATCC_RETURN_UNLESS_0(
-          Field_type_Time_create(builder, (ns(TimeUnit_enum_t))schema_view->time_unit, 64));
+      FLATCC_RETURN_UNLESS_0(Field_type_Time_create(
+          builder, (ns(TimeUnit_enum_t))schema_view->time_unit, 64));
       return NANOARROW_OK;
 
     case NANOARROW_TYPE_DURATION:
-      FLATCC_RETURN_UNLESS_0(
-          Field_type_Duration_create(builder, (ns(TimeUnit_enum_t))schema_view->time_unit));
+      FLATCC_RETURN_UNLESS_0(Field_type_Duration_create(
+          builder, (ns(TimeUnit_enum_t))schema_view->time_unit));
       return NANOARROW_OK;
 
     case NANOARROW_TYPE_FIXED_SIZE_BINARY:

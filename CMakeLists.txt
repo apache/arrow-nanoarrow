@@ -182,7 +182,9 @@ if(NANOARROW_IPC)
     target_include_directories(flatccrt
                                PUBLIC $<BUILD_INTERFACE:${NANOARROW_FLATCC_INCLUDE_DIR}>
                                       $<INSTALL_INTERFACE:include>)
-    install(TARGETS flatccrt DESTINATION lib EXPORT nanoarrow-exports)
+    install(TARGETS flatccrt
+            DESTINATION lib
+            EXPORT nanoarrow-exports)
 
   elseif(NOT NANOARROW_FLATCC_ROOT_DIR)
     add_library(flatccrt STATIC IMPORTED)
@@ -251,9 +253,14 @@ if(NANOARROW_DEVICE)
 
     set(NANOARROW_DEVICE_INCLUDE_METAL "${CMAKE_BINARY_DIR}/metal-cpp")
     add_library(nanoarrow_metal_impl src/nanoarrow/device/metal_impl.cc)
-    target_link_libraries(nanoarrow_metal_impl PRIVATE ${METAL_LIBRARY} ${FOUNDATION_LIBRARY} ${QUARTZ_CORE_LIBRARY})
-    target_include_directories(nanoarrow_metal_impl PRIVATE ${NANOARROW_DEVICE_INCLUDE_METAL})
-    install(TARGETS nanoarrow_metal_impl DESTINATION lib EXPORT nanoarrow-exports)
+    target_link_libraries(nanoarrow_metal_impl
+                          PRIVATE ${METAL_LIBRARY} ${FOUNDATION_LIBRARY}
+                                  ${QUARTZ_CORE_LIBRARY})
+    target_include_directories(nanoarrow_metal_impl
+                               PRIVATE ${NANOARROW_DEVICE_INCLUDE_METAL})
+    install(TARGETS nanoarrow_metal_impl
+            DESTINATION lib
+            EXPORT nanoarrow-exports)
 
     set(NANOARROW_DEVICE_SOURCES_METAL src/nanoarrow/device/metal.cc)
     set(NANOARROW_DEVICE_DEFS_METAL "NANOARROW_DEVICE_WITH_METAL")
@@ -284,7 +291,8 @@ if(NANOARROW_DEVICE)
 
   target_compile_definitions(nanoarrow_device PRIVATE ${NANOARROW_DEVICE_DEFS_METAL}
                                                       ${NANOARROW_DEVICE_DEFS_CUDA})
-  target_link_libraries(nanoarrow_device PRIVATE ${NANOARROW_DEVICE_LIBS_CUDA} ${NANOARROW_DEVICE_LIBS_METAL})
+  target_link_libraries(nanoarrow_device PRIVATE ${NANOARROW_DEVICE_LIBS_CUDA}
+                                                 ${NANOARROW_DEVICE_LIBS_METAL})
   target_compile_definitions(nanoarrow_device PUBLIC "$<$<CONFIG:Debug>:NANOARROW_DEBUG>")
 
   install(TARGETS nanoarrow_device DESTINATION lib)
@@ -304,7 +312,9 @@ if(NANOARROW_TESTING
   endif()
 
   add_subdirectory("thirdparty/nlohmann_json")
-  install(TARGETS nlohmann_json DESTINATION lib EXPORT nanoarrow-exports)
+  install(TARGETS nlohmann_json
+          DESTINATION lib
+          EXPORT nanoarrow-exports)
 
   add_library(nanoarrow_testing src/nanoarrow/testing/testing.cc)
   target_include_directories(nanoarrow_testing
@@ -333,7 +343,12 @@ endif()
 target_compile_definitions(nanoarrow PUBLIC "$<$<CONFIG:Debug>:NANOARROW_DEBUG>")
 
 # Common configuration for all targets
-foreach(target nanoarrow nanoarrow_ipc nanoarrow_device nanoarrow_testing nanoarrow_c_data_integration)
+foreach(target
+        nanoarrow
+        nanoarrow_ipc
+        nanoarrow_device
+        nanoarrow_testing
+        nanoarrow_c_data_integration)
   if(TARGET ${target})
     install(TARGETS ${target}
             DESTINATION lib
@@ -342,25 +357,25 @@ foreach(target nanoarrow nanoarrow_ipc nanoarrow_device nanoarrow_testing nanoar
     if(CMAKE_BUILD_TYPE STREQUAL "Debug")
       if(CMAKE_C_COMPILER_ID STREQUAL "GNU")
         target_compile_options(${target}
-                              PRIVATE -Wall
-                                      -Werror
-                                      -Wextra
-                                      -Wpedantic
-                                      -Wno-type-limits
-                                      -Wmaybe-uninitialized
-                                      -Wunused-result
-                                      -Wconversion
-                                      -Wno-sign-conversion)
+                               PRIVATE -Wall
+                                       -Werror
+                                       -Wextra
+                                       -Wpedantic
+                                       -Wno-type-limits
+                                       -Wmaybe-uninitialized
+                                       -Wunused-result
+                                       -Wconversion
+                                       -Wno-sign-conversion)
       elseif(CMAKE_C_COMPILER_ID STREQUAL "AppleClang" OR CMAKE_C_COMPILER_ID STREQUAL
                                                           "Clang")
         target_compile_options(${target}
-                              PRIVATE -Wall
-                                      -Werror
-                                      -Wextra
-                                      -Wpedantic
-                                      -Wdocumentation
-                                      -Wconversion
-                                      -Wno-sign-conversion)
+                               PRIVATE -Wall
+                                       -Werror
+                                       -Wextra
+                                       -Wpedantic
+                                       -Wdocumentation
+                                       -Wconversion
+                                       -Wno-sign-conversion)
       endif()
     endif()
   endif()
