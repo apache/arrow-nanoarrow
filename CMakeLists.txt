@@ -249,11 +249,15 @@ if(NANOARROW_DEVICE)
     find_library(QUARTZ_CORE_LIBRARY QuartzCore REQUIRED)
     message(STATUS "CoreFoundation framework found at '${QUARTZ_CORE_LIBRARY}'")
 
+    set(NANOARROW_DEVICE_INCLUDE_METAL "${CMAKE_BINARY_DIR}/metal-cpp")
+    add_library(nanoarrow_metal_impl src/nanoarrow/device/metal_impl.cc)
+    target_link_libraries(nanoarrow_metal_impl PRIVATE ${METAL_LIBRARY} ${FOUNDATION_LIBRARY} ${QUARTZ_CORE_LIBRARY})
+    target_include_directories(nanoarrow_metal_impl PRIVATE ${NANOARROW_DEVICE_INCLUDE_METAL})
+    install(TARGETS nanoarrow_metal_impl DESTINATION lib EXPORT nanoarrow-exports)
+
     set(NANOARROW_DEVICE_SOURCES_METAL src/nanoarrow/device/metal.cc)
-    set(NANOARROW_DEVICE_INCLUDE_METAL ${CMAKE_BINARY_DIR}/metal-cpp)
-    set(NANOARROW_DEVICE_LIBS_METAL ${METAL_LIBRARY} ${FOUNDATION_LIBRARY}
-                                    ${QUARTZ_CORE_LIBRARY})
     set(NANOARROW_DEVICE_DEFS_METAL "NANOARROW_DEVICE_WITH_METAL")
+    set(NANOARROW_DEVICE_LIBS_METAL nanoarrow_metal_impl)
   endif()
 
   if(NANOARROW_DEVICE_WITH_CUDA)
@@ -280,8 +284,7 @@ if(NANOARROW_DEVICE)
 
   target_compile_definitions(nanoarrow_device PRIVATE ${NANOARROW_DEVICE_DEFS_METAL}
                                                       ${NANOARROW_DEVICE_DEFS_CUDA})
-  target_link_libraries(nanoarrow_device PUBLIC ${NANOARROW_DEVICE_LIBS_METAL}
-                                                ${NANOARROW_DEVICE_LIBS_CUDA})
+  target_link_libraries(nanoarrow_device PRIVATE ${NANOARROW_DEVICE_LIBS_CUDA} ${NANOARROW_DEVICE_LIBS_METAL})
   target_compile_definitions(nanoarrow_device PUBLIC "$<$<CONFIG:Debug>:NANOARROW_DEBUG>")
 
   install(TARGETS nanoarrow_device DESTINATION lib)
