@@ -294,8 +294,8 @@ if(NANOARROW_DEVICE)
   target_compile_definitions(nanoarrow_device PRIVATE ${NANOARROW_DEVICE_DEFS_METAL}
                                                       ${NANOARROW_DEVICE_DEFS_CUDA})
   target_link_libraries(nanoarrow_device
-                        PRIVATE ${NANOARROW_DEVICE_LIBS_CUDA}
-                                ${NANOARROW_DEVICE_LIBS_METAL} nanoarrow_coverage_config)
+                        PUBLIC ${NANOARROW_DEVICE_LIBS_CUDA}
+                               ${NANOARROW_DEVICE_LIBS_METAL} nanoarrow_coverage_config)
 
   install(TARGETS nanoarrow_device DESTINATION lib)
   install(FILES src/nanoarrow/nanoarrow_device.h DESTINATION include/nanoarrow)
