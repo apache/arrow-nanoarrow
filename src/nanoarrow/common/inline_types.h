@@ -579,9 +579,6 @@ enum ArrowValidationLevel {
 /// \brief Comparison level enumerator
 /// \ingroup nanoarrow-utils
 enum ArrowCompareLevel {
-  /// \brief Consider arrays equal if buffers point to the same memory
-  /// location and have identical offset, null count, and length.
-  NANOARROW_COMPARE_SAME,
   /// \brief Consider arrays equal if buffers contain identical content
   /// and have identical offset, null count, and length.
   NANOARROW_COMPARE_IDENTICAL,
