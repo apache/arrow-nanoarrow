@@ -1489,7 +1489,7 @@ ArrowErrorCode ArrowArrayViewCompare(const struct ArrowArrayView* actual,
   state.level = level;
   state.is_equal = 1;
   ArrowBufferInit(&state.path);
-  ArrowErrorSet(&state.reason, "");
+  ArrowErrorInit(&state.reason);
 
   int result = ArrowArrayViewCompareImpl(actual, expected, &state, error);
   if (result != NANOARROW_OK) {
