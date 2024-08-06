@@ -98,6 +98,9 @@ struct ArrowIpcDecoderPrivate {
 };
 
 ArrowErrorCode ArrowIpcCheckRuntime(struct ArrowError* error) {
+  // Avoids an unused warning when bundling the header into nanoarrow_ipc.c
+  NANOARROW_UNUSED(flatbuffers_end);
+
   const char* nanoarrow_runtime_version = ArrowNanoarrowVersion();
   const char* nanoarrow_ipc_build_time_version = NANOARROW_VERSION;
 
