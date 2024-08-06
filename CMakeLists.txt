@@ -357,12 +357,28 @@ foreach(target
             EXPORT nanoarrow-exports)
 
     if(CMAKE_C_COMPILER_ID STREQUAL "GNU")
-      target_compile_options(${target} PRIVATE $<$<CONFIG:Debug>:-Wall -Werror -Wextra -Wpedantic -Wno-type-limits -Wmaybe-uninitialized -Wunused-result -Wconversion -Wno-sign-conversion>)
+      target_compile_options(${target}
+                             PRIVATE $<$<CONFIG:Debug>:-Wall
+                                     -Werror
+                                     -Wextra
+                                     -Wpedantic
+                                     -Wno-type-limits
+                                     -Wmaybe-uninitialized
+                                     -Wunused-result
+                                     -Wconversion
+                                     -Wno-sign-conversion>)
     elseif(CMAKE_C_COMPILER_ID STREQUAL "AppleClang" OR CMAKE_C_COMPILER_ID STREQUAL
                                                         "Clang")
-      target_compile_options(${target} PRIVATE $<$<CONFIG:Debug>:-Wall -Werror -Wextra -Wpedantic -Wdocumentation -Wconversion -Wno-sign-conversion>)
+      target_compile_options(${target}
+                             PRIVATE $<$<CONFIG:Debug>:-Wall
+                                     -Werror
+                                     -Wextra
+                                     -Wpedantic
+                                     -Wdocumentation
+                                     -Wconversion
+                                     -Wno-sign-conversion>)
     endif()
-    endif()
+  endif()
 endforeach()
 
 if(NANOARROW_BUILD_TESTS)
