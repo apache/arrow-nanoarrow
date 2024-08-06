@@ -1371,7 +1371,7 @@ ArrowErrorCode ArrowArrayViewCompareStructure(
   char child_id[128];
   child_id[0] = '\0';
   for (int64_t i = 0; i < actual->n_children; i++) {
-    snprintf(child_id, sizeof(child_id), ".%" PRId64, i);
+    snprintf(child_id, sizeof(child_id), ".children[%" PRId64 "]", i);
     state->path.size_bytes = path_size;
     NANOARROW_RETURN_NOT_OK(
         ArrowBufferAppendStringView(&state->path, ArrowCharView(child_id)));
@@ -1385,7 +1385,9 @@ ArrowErrorCode ArrowArrayViewCompareStructure(
   if (actual->dictionary != NULL) {
     state->path.size_bytes = path_size;
     NANOARROW_RETURN_NOT_OK(
-        ArrowBufferAppendStringView(&state->path, ArrowCharView("dictionary")));
+        ArrowBufferAppendStringView(&state->path, ArrowCharView(".dictionary")));
+    NANOARROW_RETURN_NOT_OK(
+        ArrowArrayViewCompareStructure(actual->dictionary, expected->dictionary, state));
     if (!state->is_equal) {
       return NANOARROW_OK;
     }
@@ -1399,7 +1401,7 @@ static ArrowErrorCode ArrowArrayViewCompareImpl(
     const struct ArrowArrayView* actual, const struct ArrowArrayView* expected,
     struct ArrowComparisonInternalState* state, struct ArrowError* error) {
   NANOARROW_RETURN_NOT_OK_WITH_ERROR(
-      ArrowBufferAppend(&state->path, "root", strlen("root")), error);
+      ArrowBufferAppendStringView(&state->path, ArrowCharView("root")), error);
   NANOARROW_RETURN_NOT_OK_WITH_ERROR(
       ArrowArrayViewCompareStructure(actual, expected, state), error);
 

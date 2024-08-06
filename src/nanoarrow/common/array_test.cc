@@ -1816,6 +1816,90 @@ TEST(ArrayTest, ArrayViewTestBasic) {
   ArrowArrayViewReset(&array_view);
 }
 
+TEST(ArrayTest, ArrayViewCompareTestStructure) {
+  struct ArrowError error;
+  struct ArrowArrayView actual;
+  struct ArrowArrayView expected;
+  int is_equal = -1;
+
+  ArrowArrayViewInitFromType(&actual, NANOARROW_TYPE_INT32);
+  ASSERT_EQ(ArrowArrayViewCompare(&actual, &actual, NANOARROW_COMPARE_IDENTICAL,
+                                  &is_equal, &error),
+            NANOARROW_OK);
+  EXPECT_EQ(is_equal, 1);
+
+  // Check non-equal storage type
+  is_equal = -1;
+  ArrowArrayViewInitFromType(&expected, NANOARROW_TYPE_STRING);
+  ASSERT_EQ(ArrowArrayViewCompare(&actual, &expected, NANOARROW_COMPARE_IDENTICAL,
+                                  &is_equal, &error),
+            NANOARROW_OK);
+  EXPECT_EQ(is_equal, 0);
+  EXPECT_STREQ(error.message, "root: actual->storage_type != expected->storage_type");
+
+  // Check non-equal numbers of children
+  is_equal = -1;
+  ArrowArrayViewReset(&actual);
+  ArrowArrayViewReset(&expected);
+  ArrowArrayViewInitFromType(&actual, NANOARROW_TYPE_STRUCT);
+  ArrowArrayViewInitFromType(&expected, NANOARROW_TYPE_STRUCT);
+  ASSERT_EQ(ArrowArrayViewAllocateChildren(&expected, 1), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayViewCompare(&actual, &expected, NANOARROW_COMPARE_IDENTICAL,
+                                  &is_equal, &error),
+            NANOARROW_OK);
+  EXPECT_EQ(is_equal, 0);
+  EXPECT_STREQ(error.message, "root: actual->n_children != expected->n_children");
+
+  // Check difference in children
+  is_equal = -1;
+  ASSERT_EQ(ArrowArrayViewAllocateChildren(&actual, 1), NANOARROW_OK);
+  ArrowArrayViewInitFromType(actual.children[0], NANOARROW_TYPE_STRING);
+  ArrowArrayViewInitFromType(expected.children[0], NANOARROW_TYPE_BINARY);
+  ASSERT_EQ(ArrowArrayViewCompare(&actual, &expected, NANOARROW_COMPARE_IDENTICAL,
+                                  &is_equal, &error),
+            NANOARROW_OK);
+  EXPECT_EQ(is_equal, 0);
+  EXPECT_STREQ(error.message,
+               "root.children[0]: actual->storage_type != expected->storage_type");
+
+  // Check presence/absence of dictionary
+  is_equal = -1;
+  ArrowArrayViewReset(&actual);
+  ArrowArrayViewReset(&expected);
+  ArrowArrayViewInitFromType(&actual, NANOARROW_TYPE_INT32);
+  ArrowArrayViewInitFromType(&expected, NANOARROW_TYPE_INT32);
+  ASSERT_EQ(ArrowArrayViewAllocateDictionary(&expected), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayViewCompare(&actual, &expected, NANOARROW_COMPARE_IDENTICAL,
+                                  &is_equal, &error),
+            NANOARROW_OK);
+  EXPECT_EQ(is_equal, 0);
+  EXPECT_STREQ(error.message,
+               "root: actual->dictionary == NULL && expected->dictionary != NULL");
+
+  is_equal = -1;
+  ASSERT_EQ(ArrowArrayViewCompare(&expected, &actual, NANOARROW_COMPARE_IDENTICAL,
+                                  &is_equal, &error),
+            NANOARROW_OK);
+  EXPECT_EQ(is_equal, 0);
+  EXPECT_STREQ(error.message,
+               "root: actual->dictionary != NULL && expected->dictionary == NULL");
+
+  // Check a difference in a dictionary
+  is_equal = -1;
+  ASSERT_EQ(ArrowArrayViewAllocateDictionary(&actual), NANOARROW_OK);
+  ArrowArrayViewInitFromType(actual.dictionary, NANOARROW_TYPE_STRING);
+  ArrowArrayViewInitFromType(expected.dictionary, NANOARROW_TYPE_BINARY);
+  ASSERT_EQ(ArrowArrayViewCompare(&actual, &expected, NANOARROW_COMPARE_IDENTICAL,
+                                  &is_equal, &error),
+            NANOARROW_OK);
+  EXPECT_EQ(is_equal, 0);
+  EXPECT_STREQ(error.message,
+               "root.dictionary: actual->storage_type != expected->storage_type");
+
+  ArrowArrayViewReset(&actual);
+  ArrowArrayViewReset(&expected);
+}
+
 TEST(ArrayTest, ArrayViewTestComputeNullCount) {
   struct ArrowError error;
 
