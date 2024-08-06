@@ -463,6 +463,8 @@ static ArrowErrorCode ArrowIpcEncoderBuildContiguousBodyBufferCallback(
     struct ArrowBufferView buffer_view, struct ArrowIpcEncoder* encoder,
     struct ArrowIpcBufferEncoder* buffer_encoder, int64_t* offset, int64_t* length,
     struct ArrowError* error) {
+  NANOARROW_UNUSED(encoder);
+
   struct ArrowBuffer* body_buffer =
       (struct ArrowBuffer*)buffer_encoder->encode_buffer_state;
 
@@ -472,21 +474,22 @@ static ArrowErrorCode ArrowIpcEncoderBuildContiguousBodyBufferCallback(
   int64_t new_size = _ArrowRoundUpToMultipleOf8(buffer_end);
 
   // reserve all the memory we'll need now
-  NANOARROW_RETURN_NOT_OK(ArrowBufferReserve(body_buffer, new_size - old_size));
+  NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowBufferReserve(body_buffer, new_size - old_size),
+                                     error);
 
   // zero padding up to the start of the buffer
-  NANOARROW_RETURN_NOT_OK(ArrowBufferAppendFill(body_buffer, 0, buffer_begin - old_size));
+  NANOARROW_ASSERT_OK(ArrowBufferAppendFill(body_buffer, 0, buffer_begin - old_size));
 
   // store offset and length of the buffer
   *offset = buffer_begin;
   *length = buffer_view.size_bytes;
 
-  NANOARROW_RETURN_NOT_OK(
+  NANOARROW_ASSERT_OK(
       ArrowBufferAppend(body_buffer, buffer_view.data.data, buffer_view.size_bytes));
 
   // zero padding after writing the buffer
   NANOARROW_DCHECK(body_buffer->size_bytes == buffer_end);
-  NANOARROW_RETURN_NOT_OK(ArrowBufferAppendFill(body_buffer, 0, new_size - buffer_end));
+  NANOARROW_ASSERT_OK(ArrowBufferAppendFill(body_buffer, 0, new_size - buffer_end));
 
   buffer_encoder->body_length = body_buffer->size_bytes;
   return NANOARROW_OK;
@@ -553,8 +556,8 @@ static ArrowErrorCode ArrowIpcEncoderEncodeRecordBatch(
   FLATCC_RETURN_UNLESS_0(Message_header_RecordBatch_start(builder), error);
   FLATCC_RETURN_UNLESS_0(RecordBatch_length_add(builder, array_view->length), error);
 
-  ArrowBufferResize(&private->buffers, 0, 0);
-  ArrowBufferResize(&private->nodes, 0, 0);
+  NANOARROW_ASSERT_OK(ArrowBufferResize(&private->buffers, 0, 0));
+  NANOARROW_ASSERT_OK(ArrowBufferResize(&private->nodes, 0, 0));
   NANOARROW_RETURN_NOT_OK(ArrowIpcEncoderEncodeRecordBatchImpl(
       encoder, buffer_encoder, array_view, &private->buffers, &private->nodes, error));
 
