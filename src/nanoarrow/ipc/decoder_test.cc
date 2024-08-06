@@ -493,12 +493,10 @@ std::string ArrowSchemaMetadataToString(const char* metadata) {
 }
 
 std::string ArrowSchemaToString(const struct ArrowSchema* schema) {
-  std::string out;
-  size_t n = 1024;
-  while (out.size() < n) {
-    out.resize(n);
-    n = ArrowSchemaToString(schema, out.data(), out.size(), /*recursive=*/false);
-  }
+  int64_t n = ArrowSchemaToString(schema, nullptr, 0, /*recursive=*/false);
+  std::vector<char> out_vec(n, '\0');
+  ArrowSchemaToString(schema, out_vec.data(), n, /*recursive=*/false);
+  std::string out(out_vec.data(), out_vec.size());
 
   std::string metadata = ArrowSchemaMetadataToString(schema->metadata);
   if (!metadata.empty()) {

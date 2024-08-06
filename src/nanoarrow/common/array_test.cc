@@ -1820,9 +1820,9 @@ TEST(ArrayTest, ArrayViewTestComputeNullCount) {
   struct ArrowError error;
 
   int32_t values[] = {17, 87, 23, 53};
-  uint8_t all_valid = 0b1111'1111;
-  uint8_t all_null = 0b0000'0000;
-  uint8_t half_valid = 0b1010'1010;
+  uint8_t all_valid = 0b11111111;
+  uint8_t all_null = 0b00000000;
+  uint8_t half_valid = 0b10101010;
   uint8_t* all_valid_because_missing = nullptr;
 
   const void* buffers[2];
@@ -1838,19 +1838,20 @@ TEST(ArrayTest, ArrayViewTestComputeNullCount) {
   array->dictionary = nullptr;
   array->release = [](struct ArrowArray*) {};
 
-  for (auto [buffer, null_count] : {
-           std::pair{&all_valid, int64_t(0)},
-           std::pair{&all_null, array->length},
-           std::pair{&half_valid, array->length / 2},
-           std::pair{all_valid_because_missing, int64_t(0)},
+  using test_pair = std::pair<uint8_t*, int64_t>;
+  for (const auto& item : {
+           test_pair{&all_valid, int64_t(0)},
+           test_pair{&all_null, array->length},
+           test_pair{&half_valid, array->length / 2},
+           test_pair{all_valid_because_missing, int64_t(0)},
        }) {
-    array->null_count = null_count;
-    buffers[0] = buffer;
+    array->null_count = item.second;
+    buffers[0] = item.first;
     nanoarrow::UniqueArrayView array_view;
     ArrowArrayViewInitFromType(array_view.get(), NANOARROW_TYPE_INT32);
     EXPECT_EQ(ArrowArrayViewSetArray(array_view.get(), array.get(), &error), NANOARROW_OK)
         << error.message;
-    EXPECT_EQ(ArrowArrayViewComputeNullCount(array_view.get()), null_count);
+    EXPECT_EQ(ArrowArrayViewComputeNullCount(array_view.get()), item.second);
   }
 
   array->length = 0;

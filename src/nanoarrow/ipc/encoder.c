@@ -401,8 +401,11 @@ ArrowErrorCode ArrowIpcEncoderEncodeSchema(struct ArrowIpcEncoder* encoder,
 
   FLATCC_RETURN_UNLESS_0(Message_header_Schema_start(builder));
 
-  FLATCC_RETURN_UNLESS_0(
-      Schema_endianness_add(builder, (ns(Endianness_enum_t))ArrowIpcSystemEndianness()));
+  if (ArrowIpcSystemEndianness() == NANOARROW_IPC_ENDIANNESS_LITTLE) {
+    FLATCC_RETURN_UNLESS_0(Schema_endianness_add(builder, ns(Endianness_Little)));
+  } else {
+    FLATCC_RETURN_UNLESS_0(Schema_endianness_add(builder, ns(Endianness_Big)));
+  }
 
   FLATCC_RETURN_UNLESS_0(Schema_fields_start(builder));
   NANOARROW_RETURN_NOT_OK(ArrowIpcEncodeFields(builder, schema,
