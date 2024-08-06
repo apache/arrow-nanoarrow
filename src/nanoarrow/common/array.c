@@ -1356,7 +1356,7 @@ struct ArrowComparisonInternalState {
 #define RETURN_NOT_EQUAL(state_, path_size_, condition_) \
   RETURN_NOT_EQUAL_IMPL(state_, path_size_, condition_, #condition_)
 
-ArrowErrorCode ArrowArrayViewCompareStructure(
+static ArrowErrorCode ArrowArrayViewCompareStructure(
     const struct ArrowArrayView* actual, const struct ArrowArrayView* expected,
     struct ArrowComparisonInternalState* state) {
   int64_t path_size = state->path.size_bytes;
