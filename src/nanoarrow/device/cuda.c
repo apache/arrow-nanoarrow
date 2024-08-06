@@ -85,6 +85,9 @@ struct ArrowDeviceCudaAllocatorPrivate {
 
 static void ArrowDeviceCudaDeallocator(struct ArrowBufferAllocator* allocator,
                                        uint8_t* ptr, int64_t old_size) {
+  NANOARROW_UNUSED(ptr);
+  NANOARROW_UNUSED(old_size);
+
   struct ArrowDeviceCudaAllocatorPrivate* allocator_private =
       (struct ArrowDeviceCudaAllocatorPrivate*)allocator->private_data;
 
@@ -515,7 +518,8 @@ static ArrowErrorCode ArrowDeviceCudaInitDevice(struct ArrowDevice* device,
   }
 
   CUdevice cu_device;
-  NANOARROW_CUDA_RETURN_NOT_OK(cuDeviceGet(&cu_device, device_id), "cuDeviceGet", error);
+  NANOARROW_CUDA_RETURN_NOT_OK(cuDeviceGet(&cu_device, (int)device_id), "cuDeviceGet",
+                               error);
 
   CUcontext cu_context;
   NANOARROW_CUDA_RETURN_NOT_OK(cuDevicePrimaryCtxRetain(&cu_context, cu_device),
