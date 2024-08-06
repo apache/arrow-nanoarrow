@@ -1336,14 +1336,8 @@ ArrowErrorCode ArrowArrayViewValidate(struct ArrowArrayView* array_view,
   return EINVAL;
 }
 
-enum ArrowComparisonLevel {
-  NANOARROW_COMPARE_SAME,
-  NANOARROW_COMPARE_IDENTICAL,
-  NANOARROW_COMPARE_STRUCTURE,
-};
-
 struct ArrowComparisonInternalState {
-  enum ArrowComparisonLevel level;
+  enum ArrowCompareLevel level;
   int is_equal;
   struct ArrowBuffer path;
   struct ArrowError reason;
@@ -1409,19 +1403,14 @@ static ArrowErrorCode ArrowArrayViewCompareImpl(
   NANOARROW_RETURN_NOT_OK_WITH_ERROR(
       ArrowArrayViewCompareStructure(actual, expected, state), error);
 
-  if (state->level == NANOARROW_COMPARE_STRUCTURE) {
-    return NANOARROW_OK;
-  }
-
-  ArrowErrorSet(error, "Comparison level not supported");
-  return ENOTSUP;
+  return NANOARROW_OK;
 }
 
 // Top-level entry point to take care of creating, cleaning up, and
 // propagating the ArrowComparisonInternalState to the caller
 ArrowErrorCode ArrowArrayViewCompare(const struct ArrowArrayView* actual,
                                      const struct ArrowArrayView* expected,
-                                     enum ArrowComparisonLevel level, int* out,
+                                     enum ArrowCompareLevel level, int* out,
                                      struct ArrowError* error) {
   struct ArrowComparisonInternalState state;
   state.level = level;
