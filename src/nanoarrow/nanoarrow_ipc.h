@@ -63,6 +63,8 @@
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcEncoderFinalizeBuffer)
 #define ArrowIpcEncoderEncodeSchema \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcEncoderEncodeSchema)
+#define ArrowIpcEncoderEncodeSimpleRecordBatch \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcEncoderEncodeSimpleRecordBatch)
 #define ArrowIpcOutputStreamInitBuffer \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcOutputStreamInitBuffer)
 #define ArrowIpcOutputStreamInitFile \
@@ -214,7 +216,7 @@ void ArrowIpcDecoderReset(struct ArrowIpcDecoder* decoder);
 
 /// \brief Peek at a message header
 ///
-/// The first 8 bytes of an Arrow IPC message are 0xFFFFFF followed by the size
+/// The first 8 bytes of an Arrow IPC message are 0xFFFFFFFF followed by the size
 /// of the header as a little-endian 32-bit integer. ArrowIpcDecoderPeekHeader() reads
 /// these bytes and returns ESPIPE if there are not enough remaining bytes in data to read
 /// the entire header message, EINVAL if the first 8 bytes are not valid, ENODATA if the
@@ -411,28 +413,6 @@ ArrowErrorCode ArrowIpcArrayStreamReaderInit(
 /// initialized using ArrowIpcEncoderInit(), and released with
 /// ArrowIpcEncoderReset().
 struct ArrowIpcEncoder {
-  /// \brief Compression to encode in the next RecordBatch message.
-  enum ArrowIpcCompressionType codec;
-
-  /// \brief Callback invoked against each buffer to be encoded
-  ///
-  /// Encoding of buffers is left as a callback to accommodate dissociated data storage.
-  /// One implementation of this callback might copy all buffers into a contiguous body
-  /// for use in an arrow IPC stream, another implementation might store offsets and
-  /// lengths relative to a known arena.
-  ArrowErrorCode (*encode_buffer)(struct ArrowBufferView buffer_view,
-                                  struct ArrowIpcEncoder* encoder, int64_t* offset,
-                                  int64_t* length, struct ArrowError* error);
-
-  /// \brief Pointer to arbitrary data used by encode_buffer()
-  void* encode_buffer_state;
-
-  /// \brief Finalized body length of the most recently encoded RecordBatch message
-  ///
-  /// (This is initially 0 and encode_buffer() is expected to update it. After all
-  /// buffers are encoded, this will be written to the RecordBatch's .bodyLength)
-  int64_t body_length;
-
   /// \brief Private resources managed by this library
   void* private_data;
 };
@@ -461,6 +441,16 @@ ArrowErrorCode ArrowIpcEncoderFinalizeBuffer(struct ArrowIpcEncoder* encoder,
 ArrowErrorCode ArrowIpcEncoderEncodeSchema(struct ArrowIpcEncoder* encoder,
                                            const struct ArrowSchema* schema,
                                            struct ArrowError* error);
+
+/// \brief Encode a struct typed ArrayView to a flatbuffer RecordBatch, embedded in a
+/// Message.
+///
+/// Body buffers are concatenated into a contiguous, padded body_buffer.
+///
+/// Returns ENOMEM if allocation fails, NANOARROW_OK otherwise.
+ArrowErrorCode ArrowIpcEncoderEncodeSimpleRecordBatch(
+    struct ArrowIpcEncoder* encoder, const struct ArrowArrayView* array_view,
+    struct ArrowBuffer* body_buffer, struct ArrowError* error);
 
 /// \brief An user-extensible output data sink
 struct ArrowIpcOutputStream {

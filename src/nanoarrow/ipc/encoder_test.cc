@@ -35,11 +35,6 @@ TEST(NanoarrowIpcTest, NanoarrowIpcEncoderConstruction) {
 
   EXPECT_EQ(ArrowIpcEncoderInit(encoder.get()), NANOARROW_OK);
 
-  EXPECT_EQ(encoder->codec, NANOARROW_IPC_COMPRESSION_TYPE_NONE);
-  EXPECT_EQ(encoder->body_length, 0);
-  EXPECT_EQ(encoder->encode_buffer, nullptr);
-  EXPECT_EQ(encoder->encode_buffer_state, nullptr);
-
   auto* p = static_cast<struct ArrowIpcEncoderPrivate*>(encoder->private_data);
   ASSERT_NE(p, nullptr);
   for (auto* b : {&p->buffers, &p->nodes}) {
