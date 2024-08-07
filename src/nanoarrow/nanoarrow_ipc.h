@@ -520,10 +520,9 @@ struct ArrowIpcWriter {
 /// \brief Initialize an output stream of bytes from an ArrowArrayStream
 ///
 /// Returns NANOARROW_OK on success. If NANOARROW_OK is returned the writer
-/// takes ownership of the output byte stream and the encoder, and the caller is
+/// takes ownership of the output byte stream, and the caller is
 /// responsible for releasing the writer by calling ArrowIpcWriterReset().
 ArrowErrorCode ArrowIpcWriterInit(struct ArrowIpcWriter* writer,
-                                  struct ArrowIpcEncoder* encoder,
                                   struct ArrowIpcOutputStream* output_stream);
 
 /// \brief Release all resources attached to a writer

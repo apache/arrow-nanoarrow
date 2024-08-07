@@ -451,8 +451,8 @@ static inline void ArrowBitClear(uint8_t* bits, int64_t i) {
 }
 
 static inline void ArrowBitSetTo(uint8_t* bits, int64_t i, uint8_t bit_is_set) {
-  bits[i / 8] ^=
-      ((uint8_t)(-((uint8_t)(bit_is_set != 0)) ^ bits[i / 8])) & _ArrowkBitmask[i % 8];
+  bits[i / 8] ^= (uint8_t)(((uint8_t)(-((uint8_t)(bit_is_set != 0)) ^ bits[i / 8])) &
+                           _ArrowkBitmask[i % 8]);
 }
 
 static inline void ArrowBitsSetTo(uint8_t* bits, int64_t start_offset, int64_t length,

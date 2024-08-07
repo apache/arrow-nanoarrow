@@ -201,12 +201,8 @@ class TestFile {
     nanoarrow::ipc::UniqueOutputStream output_stream;
     NANOARROW_RETURN_NOT_OK(ArrowIpcOutputStreamInitBuffer(output_stream.get(), buffer));
 
-    nanoarrow::ipc::UniqueEncoder encoder;
-    NANOARROW_RETURN_NOT_OK(ArrowIpcEncoderInit(encoder.get()));
-
     nanoarrow::ipc::UniqueWriter writer;
-    NANOARROW_RETURN_NOT_OK(
-        ArrowIpcWriterInit(writer.get(), encoder.get(), output_stream.get()));
+    NANOARROW_RETURN_NOT_OK(ArrowIpcWriterInit(writer.get(), output_stream.get()));
 
     nanoarrow::UniqueArrayView array_view;
     NANOARROW_RETURN_NOT_OK(
@@ -216,6 +212,7 @@ class TestFile {
     for (const auto& array : arrays) {
       NANOARROW_RETURN_NOT_OK(
           ArrowArrayViewSetArray(array_view.get(), array.get(), error));
+
       NANOARROW_RETURN_NOT_OK(
           ArrowIpcWriterWriteArrayView(writer.get(), array_view.get(), error));
     }

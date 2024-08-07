@@ -101,8 +101,7 @@ inline void init_pointer(struct ArrowIpcWriter* data) {
 }
 
 template <>
-inline void move_pointer(struct ArrowIpcWriter* src,
-                         struct ArrowIpcWriter* dst) {
+inline void move_pointer(struct ArrowIpcWriter* src, struct ArrowIpcWriter* dst) {
   memcpy(dst, src, sizeof(struct ArrowIpcWriter));
   src->private_data = nullptr;
 }
