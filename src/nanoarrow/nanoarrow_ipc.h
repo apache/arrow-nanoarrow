@@ -69,14 +69,18 @@
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcOutputStreamInitBuffer)
 #define ArrowIpcOutputStreamInitFile \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcOutputStreamInitFile)
+#define ArrowIpcOutputStreamWrite \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcOutputStreamWrite)
 #define ArrowIpcOutputStreamMove \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcOutputStreamMove)
-#define ArrowIpcArrayStreamWriterInit \
-  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcArrayStreamWriterInit)
-#define ArrowIpcArrayStreamWriterReset \
-  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcArrayStreamWriterReset)
-#define ArrowIpcArrayStreamWriterWriteSome \
-  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcArrayStreamWriterWriteSome)
+#define ArrowIpcWriterInit NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcWriterInit)
+#define ArrowIpcWriterReset NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcWriterReset)
+#define ArrowIpcWriterWriteSchema \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcWriterWriteSchema)
+#define ArrowIpcWriterWriteArrayView \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcWriterWriteArrayView)
+#define ArrowIpcWriterWriteArrayStream \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcWriterWriteArrayStream)
 
 #endif
 
@@ -498,48 +502,58 @@ ArrowErrorCode ArrowIpcOutputStreamInitBuffer(struct ArrowIpcOutputStream* strea
 ArrowErrorCode ArrowIpcOutputStreamInitFile(struct ArrowIpcOutputStream* stream,
                                             void* file_ptr, int close_on_release);
 
-/// \brief A stream writer which encodes ArrowArrays into an IPC byte stream
+/// \brief Write to a stream, trying again until all are written or the stream errors.
+ArrowErrorCode ArrowIpcOutputStreamWrite(struct ArrowIpcOutputStream* stream,
+                                         struct ArrowBufferView data,
+                                         struct ArrowError* error);
+
+/// \brief A stream writer which encodes Schemas and ArrowArrays into an IPC byte stream
 ///
 /// This structure is intended to be allocated by the caller,
-/// initialized using ArrowIpcArrayStreamWriterInit(), and released with
-/// ArrowIpcArrayStreamWriterReset().
-///
-/// Note: although ArrowArrayStream is a sufficient interface to wrap a stream reader,
-/// a stream writer cannot be wrapped as an ArrowArrayStream.
-struct ArrowIpcArrayStreamWriter {
-  /// \brief Set to non-zero after the writer is finished.
-  int finished;
-
+/// initialized using ArrowIpcWriterInit(), and released with
+/// ArrowIpcWriterReset().
+struct ArrowIpcWriter {
   /// \brief Private resources managed by this library
   void* private_data;
 };
 
 /// \brief Initialize an output stream of bytes from an ArrowArrayStream
 ///
-/// The writer will not pull from the input array stream or push to the
-/// output stream until ArrowIpcArrayStreamWriterContinue().
-///
 /// Returns NANOARROW_OK on success. If NANOARROW_OK is returned the writer
-/// takes ownership of both the input array stream and the output byte stream
-/// and the caller is responsible for releasing the writer by calling
-/// ArrowIpcArrayStreamWriterReset().
-ArrowErrorCode ArrowIpcArrayStreamWriterInit(struct ArrowIpcArrayStreamWriter* writer,
-                                             struct ArrowArrayStream* in,
-                                             struct ArrowIpcOutputStream* output_stream);
+/// takes ownership of the output byte stream and the encoder, and the caller is
+/// responsible for releasing the writer by calling ArrowIpcWriterReset().
+ArrowErrorCode ArrowIpcWriterInit(struct ArrowIpcWriter* writer,
+                                  struct ArrowIpcEncoder* encoder,
+                                  struct ArrowIpcOutputStream* output_stream);
 
 /// \brief Release all resources attached to a writer
-void ArrowIpcArrayStreamWriterReset(struct ArrowIpcArrayStreamWriter* writer);
+void ArrowIpcWriterReset(struct ArrowIpcWriter* writer);
 
-/// \brief Write some bytes into the output byte stream
+/// \brief Write a schema to the output byte stream
 ///
-/// The stream will first be queried for its Schema, then for all the RecordBatches in the
-/// stream, each of which will be encoded and pushed into the output byte stream.
+/// Errors are propagated from the underlying encoder and output byte stream.
+ArrowErrorCode ArrowIpcWriterWriteSchema(struct ArrowIpcWriter* writer,
+                                         const struct ArrowSchema* in,
+                                         struct ArrowError* error);
+
+/// \brief Write an array view to the output byte stream
 ///
-/// Errors are propagated from the underlying streams.
-ArrowErrorCode ArrowIpcArrayStreamWriterWriteSome(
-    struct ArrowIpcArrayStreamWriter* writer, struct ArrowError* error);
+/// The array view may be NULL, in which case an EOS will be written.
+/// The writer does not check that a schema was already written.
+///
+/// Errors are propagated from the underlying encoder and output byte stream,
+ArrowErrorCode ArrowIpcWriterWriteArrayView(struct ArrowIpcWriter* writer,
+                                            const struct ArrowArrayView* in,
+                                            struct ArrowError* error);
+
+/// \brief Write an entire stream (including EOS) to the output byte stream
+///
+/// Errors are propagated from the underlying encoder, array stream, and output byte
+/// stream.
+ArrowErrorCode ArrowIpcWriterWriteArrayStream(struct ArrowIpcWriter* writer,
+                                              struct ArrowArrayStream* in,
+                                              struct ArrowError* error);
 /// @}
-
 #ifdef __cplusplus
 }
 #endif

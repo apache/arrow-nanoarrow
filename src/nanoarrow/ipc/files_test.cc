@@ -194,58 +194,32 @@ class TestFile {
     return std::make_shared<io::BufferReader>(content_copy_wrapped);
   }
 
-  // Set a trivial release callback which won't free() anything
-  template <typename T>
-  static void SetTrivialRelease(void (**release)(T*)) {
-    *release = [](T* ptr) { ptr->release = nullptr; };
-  }
-
   ArrowErrorCode WriteNanoarrowStream(const nanoarrow::UniqueSchema& schema,
                                       const std::vector<nanoarrow::UniqueArray>& arrays,
                                       struct ArrowBuffer* buffer,
                                       struct ArrowError* error) {
-    struct {
-      const nanoarrow::UniqueSchema& schema;
-      const std::vector<nanoarrow::UniqueArray>& arrays;
-      size_t i = 0;
-    } stream_private{schema, arrays};
-
-    static auto get_private = [](struct ArrowArrayStream* stream) {
-      return static_cast<decltype(&stream_private)>(stream->private_data);
-    };
-
-    struct ArrowArrayStream in;
-    in.get_schema = [](struct ArrowArrayStream* stream, struct ArrowSchema* out) {
-      memcpy(out, get_private(stream)->schema.get(), sizeof(struct ArrowSchema));
-      SetTrivialRelease(&out->release);
-      return 0;
-    };
-    in.get_next = [](struct ArrowArrayStream* stream, struct ArrowArray* out) {
-      size_t i = get_private(stream)->i++;
-      out->release = nullptr;
-      if (i < get_private(stream)->arrays.size()) {
-        memcpy(out, get_private(stream)->arrays[i].get(), sizeof(struct ArrowArray));
-        SetTrivialRelease(&out->release);
-      }
-      return 0;
-    };
-    in.get_last_error = [](struct ArrowArrayStream*) { return "temp stream error"; };
-    in.private_data = &stream_private;
-    SetTrivialRelease(&in.release);
-
     nanoarrow::ipc::UniqueOutputStream output_stream;
     NANOARROW_RETURN_NOT_OK(ArrowIpcOutputStreamInitBuffer(output_stream.get(), buffer));
 
-    nanoarrow::ipc::UniqueArrayStreamWriter writer;
+    nanoarrow::ipc::UniqueEncoder encoder;
+    NANOARROW_RETURN_NOT_OK(ArrowIpcEncoderInit(encoder.get()));
+
+    nanoarrow::ipc::UniqueWriter writer;
     NANOARROW_RETURN_NOT_OK(
-        ArrowIpcArrayStreamWriterInit(writer.get(), &in, output_stream.get()));
+        ArrowIpcWriterInit(writer.get(), encoder.get(), output_stream.get()));
 
-    while (!writer->finished) {
-      NANOARROW_RETURN_NOT_OK(ArrowIpcArrayStreamWriterWriteSome(writer.get(), error));
+    nanoarrow::UniqueArrayView array_view;
+    NANOARROW_RETURN_NOT_OK(
+        ArrowArrayViewInitFromSchema(array_view.get(), schema.get(), error));
+
+    NANOARROW_RETURN_NOT_OK(ArrowIpcWriterWriteSchema(writer.get(), schema.get(), error));
+    for (const auto& array : arrays) {
+      NANOARROW_RETURN_NOT_OK(
+          ArrowArrayViewSetArray(array_view.get(), array.get(), error));
+      NANOARROW_RETURN_NOT_OK(
+          ArrowIpcWriterWriteArrayView(writer.get(), array_view.get(), error));
     }
-    writer.reset();
-
-    return NANOARROW_OK;
+    return ArrowIpcWriterWriteArrayView(writer.get(), nullptr, error);
   }
 
   void TestEqualsArrowCpp(const std::string& dir_prefix) {
