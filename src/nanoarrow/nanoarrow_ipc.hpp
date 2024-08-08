@@ -95,6 +95,22 @@ inline void release_pointer(struct ArrowIpcOutputStream* data) {
   }
 }
 
+template <>
+inline void init_pointer(struct ArrowIpcWriter* data) {
+  data->private_data = nullptr;
+}
+
+template <>
+inline void move_pointer(struct ArrowIpcWriter* src, struct ArrowIpcWriter* dst) {
+  memcpy(dst, src, sizeof(struct ArrowIpcWriter));
+  src->private_data = nullptr;
+}
+
+template <>
+inline void release_pointer(struct ArrowIpcWriter* data) {
+  ArrowIpcWriterReset(data);
+}
+
 }  // namespace internal
 }  // namespace nanoarrow
 
@@ -120,6 +136,9 @@ using UniqueInputStream = internal::Unique<struct ArrowIpcInputStream>;
 
 /// \brief Class wrapping a unique struct ArrowIpcOutputStream
 using UniqueOutputStream = internal::Unique<struct ArrowIpcOutputStream>;
+
+/// \brief Class wrapping a unique struct ArrowIpcWriter
+using UniqueWriter = internal::Unique<struct ArrowIpcWriter>;
 
 /// @}
 

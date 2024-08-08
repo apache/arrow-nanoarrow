@@ -230,24 +230,31 @@ static ArrowErrorCode ArrowIpcEncodeFieldType(flatcc_builder_t* builder,
 
     case NANOARROW_TYPE_TIMESTAMP:
       FLATCC_RETURN_UNLESS_0(Field_type_Timestamp_start(builder), error);
-      FLATCC_RETURN_UNLESS_0(Timestamp_unit_add(builder, schema_view->time_unit), error);
+      FLATCC_RETURN_UNLESS_0(
+          Timestamp_unit_add(builder, (ns(TimeUnit_enum_t))schema_view->time_unit),
+          error);
       FLATCC_RETURN_UNLESS_0(
           Timestamp_timezone_create_str(builder, schema_view->timezone), error);
       FLATCC_RETURN_UNLESS_0(Field_type_Timestamp_end(builder), error);
       return NANOARROW_OK;
 
     case NANOARROW_TYPE_TIME32:
-      FLATCC_RETURN_UNLESS_0(Field_type_Time_create(builder, schema_view->time_unit, 32),
-                             error);
+      FLATCC_RETURN_UNLESS_0(
+          Field_type_Time_create(builder, (ns(TimeUnit_enum_t))schema_view->time_unit,
+                                 32),
+          error);
       return NANOARROW_OK;
 
     case NANOARROW_TYPE_TIME64:
-      FLATCC_RETURN_UNLESS_0(Field_type_Time_create(builder, schema_view->time_unit, 64),
-                             error);
+      FLATCC_RETURN_UNLESS_0(
+          Field_type_Time_create(builder, (ns(TimeUnit_enum_t))schema_view->time_unit,
+                                 64),
+          error);
       return NANOARROW_OK;
 
     case NANOARROW_TYPE_DURATION:
-      FLATCC_RETURN_UNLESS_0(Field_type_Duration_create(builder, schema_view->time_unit),
+      FLATCC_RETURN_UNLESS_0(Field_type_Duration_create(
+                                 builder, (ns(TimeUnit_enum_t))schema_view->time_unit),
                              error);
       return NANOARROW_OK;
 
@@ -531,7 +538,6 @@ static ArrowErrorCode ArrowIpcEncoderEncodeRecordBatch(
     const struct ArrowArrayView* array_view, struct ArrowError* error) {
   NANOARROW_DCHECK(encoder != NULL && encoder->private_data != NULL &&
                    buffer_encoder != NULL && buffer_encoder->encode_buffer != NULL);
-
   if (array_view->null_count != 0 && ArrowArrayViewComputeNullCount(array_view) != 0) {
     ArrowErrorSet(error,
                   "RecordBatches cannot be constructed from arrays with top level nulls");
