@@ -225,6 +225,19 @@ if(NANOARROW_IPC)
           DESTINATION include/nanoarrow)
 endif()
 
+if(NANOARROW_IPC AND NANOARROW_BUILD_INTEGRATION_TESTS)
+  add_executable(nanoarrow_ipc_json_integration
+                 src/nanoarrow/ipc/json_integration.cc)
+  target_include_directories(nanoarrow_ipc_json_integration
+                             PUBLIC $<BUILD_INTERFACE:${NANOARROW_BUILD_INCLUDE_DIR}>
+                                    $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/src>
+                                    $<INSTALL_INTERFACE:include>)
+  target_link_libraries(nanoarrow_ipc_json_integration
+                        PRIVATE nanoarrow_testing
+                                nanoarrow_ipc
+                                flatccrt)
+endif()
+
 if(NANOARROW_DEVICE)
   if(NANOARROW_DEVICE_WITH_METAL)
     if(NOT EXISTS "${CMAKE_BINARY_DIR}/metal-cpp")
@@ -348,7 +361,8 @@ foreach(target
         nanoarrow_ipc
         nanoarrow_device
         nanoarrow_testing
-        nanoarrow_c_data_integration)
+        nanoarrow_c_data_integration
+        nanoarrow_ipc_json_integration)
   if(TARGET ${target})
     target_compile_definitions(${target} PUBLIC "$<$<CONFIG:Debug>:NANOARROW_DEBUG>")
 

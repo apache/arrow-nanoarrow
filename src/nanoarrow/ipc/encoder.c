@@ -45,6 +45,7 @@ struct ArrowIpcEncoderPrivate {
   flatcc_builder_t builder;
   struct ArrowBuffer buffers;
   struct ArrowBuffer nodes;
+  int encoding_footer;
 };
 
 ArrowErrorCode ArrowIpcEncoderInit(struct ArrowIpcEncoder* encoder) {
@@ -60,6 +61,7 @@ ArrowErrorCode ArrowIpcEncoderInit(struct ArrowIpcEncoder* encoder) {
     ArrowFree(private);
     return ESPIPE;
   }
+  private->encoding_footer = 0;
   ArrowBufferInit(&private->buffers);
   ArrowBufferInit(&private->nodes);
   return NANOARROW_OK;
@@ -412,10 +414,12 @@ ArrowErrorCode ArrowIpcEncoderEncodeSchema(struct ArrowIpcEncoder* encoder,
 
   flatcc_builder_t* builder = &private->builder;
 
-  FLATCC_RETURN_UNLESS_0(Message_start_as_root(builder), error);
-  FLATCC_RETURN_UNLESS_0(Message_version_add(builder, ns(MetadataVersion_V5)), error);
+  if (!private->encoding_footer) {
+    FLATCC_RETURN_UNLESS_0(Message_start_as_root(builder), error);
+    FLATCC_RETURN_UNLESS_0(Message_version_add(builder, ns(MetadataVersion_V5)), error);
 
-  FLATCC_RETURN_UNLESS_0(Message_header_Schema_start(builder), error);
+    FLATCC_RETURN_UNLESS_0(Message_header_Schema_start(builder), error);
+  }
 
   if (ArrowIpcSystemEndianness() == NANOARROW_IPC_ENDIANNESS_LITTLE) {
     FLATCC_RETURN_UNLESS_0(Schema_endianness_add(builder, ns(Endianness_Little)), error);
@@ -440,10 +444,12 @@ ArrowErrorCode ArrowIpcEncoderEncodeSchema(struct ArrowIpcEncoder* encoder,
   FLATCC_RETURN_UNLESS_0(Schema_features_start(builder), error);
   FLATCC_RETURN_UNLESS_0(Schema_features_end(builder), error);
 
-  FLATCC_RETURN_UNLESS_0(Message_header_Schema_end(builder), error);
+  if (!private->encoding_footer) {
+    FLATCC_RETURN_UNLESS_0(Message_header_Schema_end(builder), error);
 
-  FLATCC_RETURN_UNLESS_0(Message_bodyLength_add(builder, 0), error);
-  FLATCC_RETURN_IF_NULL(ns(Message_end_as_root(builder)), error);
+    FLATCC_RETURN_UNLESS_0(Message_bodyLength_add(builder, 0), error);
+    FLATCC_RETURN_IF_NULL(ns(Message_end_as_root(builder)), error);
+  }
   return NANOARROW_OK;
 }
 
