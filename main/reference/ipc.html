@@ -746,6 +746,47 @@ document.write(`
 <p>Note that the <a class="reference internal" href="#struct_arrow_ipc_output_stream"><span class="std std-ref">ArrowIpcOutputStream</span></a> has no mechanism to communicate an error if file_ptr fails to close. If this behaviour is needed, pass false to close_on_release and handle closing the file independently from stream. </p>
 </dd></dl>
 
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv425ArrowIpcOutputStreamWriteP20ArrowIpcOutputStream15ArrowBufferViewP10ArrowError">
+<span id="_CPPv325ArrowIpcOutputStreamWriteP20ArrowIpcOutputStream15ArrowBufferViewP10ArrowError"></span><span id="_CPPv225ArrowIpcOutputStreamWriteP20ArrowIpcOutputStream15ArrowBufferViewP10ArrowError"></span><span id="ArrowIpcOutputStreamWrite__ArrowIpcOutputStreamP.ArrowBufferView.ArrowErrorP"></span><span class="target" id="group__nanoarrow__ipc_1gad0a3a28186eae05e1bc2eed63a7e2a45"></span><span class="n"><span class="pre">ArrowErrorCode</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">ArrowIpcOutputStreamWrite</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv420ArrowIpcOutputStream" title="ArrowIpcOutputStream"><span class="n"><span class="pre">ArrowIpcOutputStream</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">stream</span></span>, <span class="k"><span class="pre">struct</span></span><span class="w"> </span><span class="n"><span class="pre">ArrowBufferView</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">data</span></span>, <span class="k"><span class="pre">struct</span></span><span class="w"> </span><span class="n"><span class="pre">ArrowError</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">error</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv425ArrowIpcOutputStreamWriteP20ArrowIpcOutputStream15ArrowBufferViewP10ArrowError" title="Link to this definition">#</a><br /></dt>
+<dd><p>Write to a stream, trying again until all are written or the stream errors. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv418ArrowIpcWriterInitP14ArrowIpcWriterP20ArrowIpcOutputStream">
+<span id="_CPPv318ArrowIpcWriterInitP14ArrowIpcWriterP20ArrowIpcOutputStream"></span><span id="_CPPv218ArrowIpcWriterInitP14ArrowIpcWriterP20ArrowIpcOutputStream"></span><span id="ArrowIpcWriterInit__ArrowIpcWriterP.ArrowIpcOutputStreamP"></span><span class="target" id="group__nanoarrow__ipc_1ga5bb79e194c08d710b368d0123305dca8"></span><span class="n"><span class="pre">ArrowErrorCode</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">ArrowIpcWriterInit</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv414ArrowIpcWriter" title="ArrowIpcWriter"><span class="n"><span class="pre">ArrowIpcWriter</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">writer</span></span>, <span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv420ArrowIpcOutputStream" title="ArrowIpcOutputStream"><span class="n"><span class="pre">ArrowIpcOutputStream</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">output_stream</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv418ArrowIpcWriterInitP14ArrowIpcWriterP20ArrowIpcOutputStream" title="Link to this definition">#</a><br /></dt>
+<dd><p>Initialize an output stream of bytes from an ArrowArrayStream. </p>
+<p>Returns NANOARROW_OK on success. If NANOARROW_OK is returned the writer takes ownership of the output byte stream, and the caller is responsible for releasing the writer by calling <a class="reference internal" href="#group__nanoarrow__ipc_1gabfd2c94f5f588b95529800039f37dc78"><span class="std std-ref">ArrowIpcWriterReset()</span></a>. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv419ArrowIpcWriterResetP14ArrowIpcWriter">
+<span id="_CPPv319ArrowIpcWriterResetP14ArrowIpcWriter"></span><span id="_CPPv219ArrowIpcWriterResetP14ArrowIpcWriter"></span><span id="ArrowIpcWriterReset__ArrowIpcWriterP"></span><span class="target" id="group__nanoarrow__ipc_1gabfd2c94f5f588b95529800039f37dc78"></span><span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">ArrowIpcWriterReset</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv414ArrowIpcWriter" title="ArrowIpcWriter"><span class="n"><span class="pre">ArrowIpcWriter</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">writer</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv419ArrowIpcWriterResetP14ArrowIpcWriter" title="Link to this definition">#</a><br /></dt>
+<dd><p>Release all resources attached to a writer. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv425ArrowIpcWriterWriteSchemaP14ArrowIpcWriterPK11ArrowSchemaP10ArrowError">
+<span id="_CPPv325ArrowIpcWriterWriteSchemaP14ArrowIpcWriterPK11ArrowSchemaP10ArrowError"></span><span id="_CPPv225ArrowIpcWriterWriteSchemaP14ArrowIpcWriterPK11ArrowSchemaP10ArrowError"></span><span id="ArrowIpcWriterWriteSchema__ArrowIpcWriterP.ArrowSchemaCP.ArrowErrorP"></span><span class="target" id="group__nanoarrow__ipc_1ga4267afe9163a170b3ef9dd530cfc840f"></span><span class="n"><span class="pre">ArrowErrorCode</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">ArrowIpcWriterWriteSchema</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv414ArrowIpcWriter" title="ArrowIpcWriter"><span class="n"><span class="pre">ArrowIpcWriter</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">writer</span></span>, <span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><span class="n"><span class="pre">ArrowSchema</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">in</span></span>, <span class="k"><span class="pre">struct</span></span><span class="w"> </span><span class="n"><span class="pre">ArrowError</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">error</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv425ArrowIpcWriterWriteSchemaP14ArrowIpcWriterPK11ArrowSchemaP10ArrowError" title="Link to this definition">#</a><br /></dt>
+<dd><p>Write a schema to the output byte stream. </p>
+<p>Errors are propagated from the underlying encoder and output byte stream. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv428ArrowIpcWriterWriteArrayViewP14ArrowIpcWriterPK14ArrowArrayViewP10ArrowError">
+<span id="_CPPv328ArrowIpcWriterWriteArrayViewP14ArrowIpcWriterPK14ArrowArrayViewP10ArrowError"></span><span id="_CPPv228ArrowIpcWriterWriteArrayViewP14ArrowIpcWriterPK14ArrowArrayViewP10ArrowError"></span><span id="ArrowIpcWriterWriteArrayView__ArrowIpcWriterP.ArrowArrayViewCP.ArrowErrorP"></span><span class="target" id="group__nanoarrow__ipc_1gad347b7960338e9d156b6c6563decab9e"></span><span class="n"><span class="pre">ArrowErrorCode</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">ArrowIpcWriterWriteArrayView</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv414ArrowIpcWriter" title="ArrowIpcWriter"><span class="n"><span class="pre">ArrowIpcWriter</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">writer</span></span>, <span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><span class="n"><span class="pre">ArrowArrayView</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">in</span></span>, <span class="k"><span class="pre">struct</span></span><span class="w"> </span><span class="n"><span class="pre">ArrowError</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">error</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv428ArrowIpcWriterWriteArrayViewP14ArrowIpcWriterPK14ArrowArrayViewP10ArrowError" title="Link to this definition">#</a><br /></dt>
+<dd><p>Write an array view to the output byte stream. </p>
+<p>The array view may be NULL, in which case an EOS will be written. The writer does not check that a schema was already written.</p>
+<p>Errors are propagated from the underlying encoder and output byte stream, </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv430ArrowIpcWriterWriteArrayStreamP14ArrowIpcWriterP16ArrowArrayStreamP10ArrowError">
+<span id="_CPPv330ArrowIpcWriterWriteArrayStreamP14ArrowIpcWriterP16ArrowArrayStreamP10ArrowError"></span><span id="_CPPv230ArrowIpcWriterWriteArrayStreamP14ArrowIpcWriterP16ArrowArrayStreamP10ArrowError"></span><span id="ArrowIpcWriterWriteArrayStream__ArrowIpcWriterP.ArrowArrayStreamP.ArrowErrorP"></span><span class="target" id="group__nanoarrow__ipc_1ga62123e24e30290dcffc54fcf6208594c"></span><span class="n"><span class="pre">ArrowErrorCode</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">ArrowIpcWriterWriteArrayStream</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv414ArrowIpcWriter" title="ArrowIpcWriter"><span class="n"><span class="pre">ArrowIpcWriter</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">writer</span></span>, <span class="k"><span class="pre">struct</span></span><span class="w"> </span><span class="n"><span class="pre">ArrowArrayStream</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">in</span></span>, <span class="k"><span class="pre">struct</span></span><span class="w"> </span><span class="n"><span class="pre">ArrowError</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">error</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv430ArrowIpcWriterWriteArrayStreamP14ArrowIpcWriterP16ArrowArrayStreamP10ArrowError" title="Link to this definition">#</a><br /></dt>
+<dd><p>Write an entire stream (including EOS) to the output byte stream. </p>
+<p>Errors are propagated from the underlying encoder, array stream, and output byte stream. </p>
+</dd></dl>
+
 </div>
 <dl class="cpp struct">
 <dt class="sig sig-object cpp" id="_CPPv420ArrowIpcSharedBuffer">
@@ -921,6 +962,24 @@ document.write(`
 </div>
 </dd></dl>
 
+<dl class="cpp struct">
+<dt class="sig sig-object cpp" id="_CPPv414ArrowIpcWriter">
+<span id="_CPPv314ArrowIpcWriter"></span><span id="_CPPv214ArrowIpcWriter"></span><span id="ArrowIpcWriter"></span><span class="target" id="struct_arrow_ipc_writer"></span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">ArrowIpcWriter</span></span></span><a class="headerlink" href="#_CPPv414ArrowIpcWriter" title="Link to this definition">#</a><br /></dt>
+<dd><div class="docutils container">
+<em>#include &lt;nanoarrow_ipc.h&gt;</em></div>
+<p>A stream writer which encodes Schemas and ArrowArrays into an IPC byte stream. </p>
+<p>This structure is intended to be allocated by the caller, initialized using <a class="reference internal" href="#group__nanoarrow__ipc_1ga5bb79e194c08d710b368d0123305dca8"><span class="std std-ref">ArrowIpcWriterInit()</span></a>, and released with <a class="reference internal" href="#group__nanoarrow__ipc_1gabfd2c94f5f588b95529800039f37dc78"><span class="std std-ref">ArrowIpcWriterReset()</span></a>. </p>
+<div class="breathe-sectiondef docutils container">
+<p class="breathe-sectiondef-title rubric" id="breathe-section-title-public-members">Public Members</p>
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4N14ArrowIpcWriter12private_dataE">
+<span id="_CPPv3N14ArrowIpcWriter12private_dataE"></span><span id="_CPPv2N14ArrowIpcWriter12private_dataE"></span><span id="ArrowIpcWriter::private_data__voidP"></span><span class="target" id="struct_arrow_ipc_writer_1aa0d45e7ad948b17a798a534ed641edc5"></span><span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="sig-name descname"><span class="n"><span class="pre">private_data</span></span></span><a class="headerlink" href="#_CPPv4N14ArrowIpcWriter12private_dataE" title="Link to this definition">#</a><br /></dt>
+<dd><p>Private resources managed by this library. </p>
+</dd></dl>
+
+</div>
+</dd></dl>
+
 </dd></dl>
 
 </section>
@@ -954,6 +1013,12 @@ document.write(`
 <dt class="sig sig-object cpp" id="_CPPv418UniqueOutputStream">
 <span id="_CPPv318UniqueOutputStream"></span><span id="_CPPv218UniqueOutputStream"></span><span class="target" id="group__nanoarrow__ipc__hpp-unique_1ga812e2e601c4504e43139d284aca50040"></span><span class="k"><span class="pre">using</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">UniqueOutputStream</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="n"><span class="pre">internal</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">Unique</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv420ArrowIpcOutputStream" title="ArrowIpcOutputStream"><span class="n"><span class="pre">ArrowIpcOutputStream</span></span></a><span class="p"><span class="pre">&gt;</span></span><a class="headerlink" href="#_CPPv418UniqueOutputStream" title="Link to this definition">#</a><br /></dt>
 <dd><p>Class wrapping a unique struct <a class="reference internal" href="#struct_arrow_ipc_output_stream"><span class="std std-ref">ArrowIpcOutputStream</span></a>. </p>
+</dd></dl>
+
+<dl class="cpp type">
+<dt class="sig sig-object cpp" id="_CPPv412UniqueWriter">
+<span id="_CPPv312UniqueWriter"></span><span id="_CPPv212UniqueWriter"></span><span class="target" id="group__nanoarrow__ipc__hpp-unique_1gafcf94e5b1bb6a1cf05c3381ddc7aaeb0"></span><span class="k"><span class="pre">using</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">UniqueWriter</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="n"><span class="pre">internal</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">Unique</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv414ArrowIpcWriter" title="ArrowIpcWriter"><span class="n"><span class="pre">ArrowIpcWriter</span></span></a><span class="p"><span class="pre">&gt;</span></span><a class="headerlink" href="#_CPPv412UniqueWriter" title="Link to this definition">#</a><br /></dt>
+<dd><p>Class wrapping a unique struct <a class="reference internal" href="#struct_arrow_ipc_writer"><span class="std std-ref">ArrowIpcWriter</span></a>. </p>
 </dd></dl>
 
 </div>
@@ -1066,6 +1131,12 @@ document.write(`
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv424ArrowIpcOutputStreamMoveP20ArrowIpcOutputStreamP20ArrowIpcOutputStream"><code class="docutils literal notranslate"><span class="pre">ArrowIpcOutputStreamMove()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv430ArrowIpcOutputStreamInitBufferP20ArrowIpcOutputStreamP11ArrowBuffer"><code class="docutils literal notranslate"><span class="pre">ArrowIpcOutputStreamInitBuffer()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv428ArrowIpcOutputStreamInitFileP20ArrowIpcOutputStreamPvi"><code class="docutils literal notranslate"><span class="pre">ArrowIpcOutputStreamInitFile()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv425ArrowIpcOutputStreamWriteP20ArrowIpcOutputStream15ArrowBufferViewP10ArrowError"><code class="docutils literal notranslate"><span class="pre">ArrowIpcOutputStreamWrite()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv418ArrowIpcWriterInitP14ArrowIpcWriterP20ArrowIpcOutputStream"><code class="docutils literal notranslate"><span class="pre">ArrowIpcWriterInit()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv419ArrowIpcWriterResetP14ArrowIpcWriter"><code class="docutils literal notranslate"><span class="pre">ArrowIpcWriterReset()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv425ArrowIpcWriterWriteSchemaP14ArrowIpcWriterPK11ArrowSchemaP10ArrowError"><code class="docutils literal notranslate"><span class="pre">ArrowIpcWriterWriteSchema()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv428ArrowIpcWriterWriteArrayViewP14ArrowIpcWriterPK14ArrowArrayViewP10ArrowError"><code class="docutils literal notranslate"><span class="pre">ArrowIpcWriterWriteArrayView()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv430ArrowIpcWriterWriteArrayStreamP14ArrowIpcWriterP16ArrowArrayStreamP10ArrowError"><code class="docutils literal notranslate"><span class="pre">ArrowIpcWriterWriteArrayStream()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv420ArrowIpcSharedBuffer"><code class="docutils literal notranslate"><span class="pre">ArrowIpcSharedBuffer</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv415ArrowIpcDecoder"><code class="docutils literal notranslate"><span class="pre">ArrowIpcDecoder</span></code></a><ul class="nav section-nav flex-column">
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N15ArrowIpcDecoder12message_typeE"><code class="docutils literal notranslate"><span class="pre">ArrowIpcDecoder::message_type</span></code></a></li>
@@ -1099,6 +1170,10 @@ document.write(`
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N20ArrowIpcOutputStream12private_dataE"><code class="docutils literal notranslate"><span class="pre">ArrowIpcOutputStream::private_data</span></code></a></li>
 </ul>
 </li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv414ArrowIpcWriter"><code class="docutils literal notranslate"><span class="pre">ArrowIpcWriter</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N14ArrowIpcWriter12private_dataE"><code class="docutils literal notranslate"><span class="pre">ArrowIpcWriter::private_data</span></code></a></li>
+</ul>
+</li>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#c-helpers">C++ Helpers</a><ul class="visible nav section-nav flex-column">
@@ -1106,6 +1181,7 @@ document.write(`
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv413UniqueEncoder"><code class="docutils literal notranslate"><span class="pre">UniqueEncoder</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv417UniqueInputStream"><code class="docutils literal notranslate"><span class="pre">UniqueInputStream</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv418UniqueOutputStream"><code class="docutils literal notranslate"><span class="pre">UniqueOutputStream</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv412UniqueWriter"><code class="docutils literal notranslate"><span class="pre">UniqueWriter</span></code></a></li>
 </ul>
 </li>
 </ul>
