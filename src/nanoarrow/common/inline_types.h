@@ -576,6 +576,14 @@ enum ArrowValidationLevel {
   NANOARROW_VALIDATION_LEVEL_FULL = 3
 };
 
+/// \brief Comparison level enumerator
+/// \ingroup nanoarrow-utils
+enum ArrowCompareLevel {
+  /// \brief Consider arrays equal if buffers contain identical content
+  /// and have identical offset, null count, and length.
+  NANOARROW_COMPARE_IDENTICAL,
+};
+
 /// \brief Get a string value of an enum ArrowTimeUnit value
 /// \ingroup nanoarrow-utils
 ///

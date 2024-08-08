@@ -128,6 +128,7 @@
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowArrayViewSetArrayMinimal)
 #define ArrowArrayViewValidate \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowArrayViewValidate)
+#define ArrowArrayViewCompare NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowArrayViewCompare)
 #define ArrowArrayViewReset NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowArrayViewReset)
 #define ArrowBasicArrayStreamInit \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowBasicArrayStreamInit)
@@ -1063,6 +1064,19 @@ ArrowErrorCode ArrowArrayViewSetArrayMinimal(struct ArrowArrayView* array_view,
 ArrowErrorCode ArrowArrayViewValidate(struct ArrowArrayView* array_view,
                                       enum ArrowValidationLevel validation_level,
                                       struct ArrowError* error);
+
+/// \brief Compare two ArrowArrayView objects for equality
+///
+/// Given two ArrowArrayView instances, place either 0 (not equal) and
+/// 1 (equal) at the address pointed to by out. If the comparison determines
+/// that actual and expected are not equal, a reason will be communicated via
+/// error if error is non-NULL.
+///
+/// Returns NANOARROW_OK if the comparison completed successfully.
+ArrowErrorCode ArrowArrayViewCompare(const struct ArrowArrayView* actual,
+                                     const struct ArrowArrayView* expected,
+                                     enum ArrowCompareLevel level, int* out,
+                                     struct ArrowError* error);
 
 /// \brief Reset the contents of an ArrowArrayView and frees resources
 void ArrowArrayViewReset(struct ArrowArrayView* array_view);
