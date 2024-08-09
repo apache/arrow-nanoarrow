@@ -1076,7 +1076,7 @@ ArrowErrorCode ArrowArrayViewValidate(struct ArrowArrayView* array_view,
 ArrowErrorCode ArrowArrayViewCompare(const struct ArrowArrayView* actual,
                                      const struct ArrowArrayView* expected,
                                      enum ArrowCompareLevel level, int* out,
-                                     struct ArrowError* error);
+                                     struct ArrowError* reason);
 
 /// \brief Reset the contents of an ArrowArrayView and frees resources
 void ArrowArrayViewReset(struct ArrowArrayView* array_view);

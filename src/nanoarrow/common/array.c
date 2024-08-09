@@ -1383,32 +1383,6 @@ NANOARROW_CHECK_PRINTF_ATTRIBUTE static void ArrowComparePrependPath(
 #define SET_NOT_EQUAL_AND_RETURN_IF(condition_, state_) \
   SET_NOT_EQUAL_AND_RETURN_IF_IMPL(condition_, state_, #condition_)
 
-static void ArrowArrayViewCompareStructure(const struct ArrowArrayView* actual,
-                                           const struct ArrowArrayView* expected,
-                                           struct ArrowComparisonInternalState* state) {
-  SET_NOT_EQUAL_AND_RETURN_IF(actual->storage_type != expected->storage_type, state);
-  SET_NOT_EQUAL_AND_RETURN_IF(actual->n_children != expected->n_children, state);
-  SET_NOT_EQUAL_AND_RETURN_IF(actual->dictionary == NULL && expected->dictionary != NULL,
-                              state);
-  SET_NOT_EQUAL_AND_RETURN_IF(actual->dictionary != NULL && expected->dictionary == NULL,
-                              state);
-
-  for (int64_t i = 0; i < actual->n_children; i++) {
-    ArrowArrayViewCompareStructure(actual->children[i], expected->children[i], state);
-    if (!state->is_equal) {
-      ArrowComparePrependPath(state->reason, ".children[%" PRId64 "]", i);
-    }
-  }
-
-  if (actual->dictionary != NULL) {
-    ArrowArrayViewCompareStructure(actual->dictionary, expected->dictionary, state);
-    if (!state->is_equal) {
-      ArrowComparePrependPath(state->reason, ".dictionary");
-      return;
-    }
-  }
-}
-
 static void ArrowArrayViewCompareBuffer(const struct ArrowArrayView* actual,
                                         const struct ArrowArrayView* expected, int i,
                                         struct ArrowComparisonInternalState* state) {
@@ -1427,6 +1401,13 @@ static void ArrowArrayViewCompareBuffer(const struct ArrowArrayView* actual,
 static void ArrowArrayViewCompareIdentical(const struct ArrowArrayView* actual,
                                            const struct ArrowArrayView* expected,
                                            struct ArrowComparisonInternalState* state) {
+  SET_NOT_EQUAL_AND_RETURN_IF(actual->storage_type != expected->storage_type, state);
+  SET_NOT_EQUAL_AND_RETURN_IF(actual->n_children != expected->n_children, state);
+  SET_NOT_EQUAL_AND_RETURN_IF(actual->dictionary == NULL && expected->dictionary != NULL,
+                              state);
+  SET_NOT_EQUAL_AND_RETURN_IF(actual->dictionary != NULL && expected->dictionary == NULL,
+                              state);
+
   SET_NOT_EQUAL_AND_RETURN_IF(actual->length != expected->length, state);
   SET_NOT_EQUAL_AND_RETURN_IF(actual->offset != expected->offset, state);
   SET_NOT_EQUAL_AND_RETURN_IF(actual->null_count != expected->null_count, state);
@@ -1461,23 +1442,18 @@ static void ArrowArrayViewCompareIdentical(const struct ArrowArrayView* actual,
 ArrowErrorCode ArrowArrayViewCompare(const struct ArrowArrayView* actual,
                                      const struct ArrowArrayView* expected,
                                      enum ArrowCompareLevel level, int* out,
-                                     struct ArrowError* error) {
+                                     struct ArrowError* reason) {
   struct ArrowComparisonInternalState state;
   state.level = level;
   state.is_equal = 1;
-  state.reason = error;
+  state.reason = reason;
 
-  ArrowArrayViewCompareStructure(actual, expected, &state);
-
-  if (state.is_equal) {
-    switch (level) {
-      case NANOARROW_COMPARE_IDENTICAL:
-        ArrowArrayViewCompareIdentical(actual, expected, &state);
-        break;
-      default:
-        ArrowErrorSet(error, "Unsupported comparison level");
-        return ENOTSUP;
-    }
+  switch (level) {
+    case NANOARROW_COMPARE_IDENTICAL:
+      ArrowArrayViewCompareIdentical(actual, expected, &state);
+      break;
+    default:
+      return EINVAL;
   }
 
   *out = state.is_equal;

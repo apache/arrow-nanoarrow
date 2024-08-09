@@ -580,7 +580,10 @@ enum ArrowValidationLevel {
 /// \ingroup nanoarrow-utils
 enum ArrowCompareLevel {
   /// \brief Consider arrays equal if buffers contain identical content
-  /// and have identical offset, null count, and length.
+  /// and have identical offset, null count, and length. Note that this is
+  /// a much stricter check than logical equality, which would take into
+  /// account potentially different content of null slots, arrays with a
+  /// non-zero offset, and other considerations.
   NANOARROW_COMPARE_IDENTICAL,
 };
 
