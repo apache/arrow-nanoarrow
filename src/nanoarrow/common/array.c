@@ -1376,16 +1376,16 @@ NANOARROW_CHECK_PRINTF_ATTRIBUTE static void ArrowComparePrependPath(
     if (cond_) {                                                 \
       ArrowErrorSet(state_->reason, ": %s", reason_);            \
       state_->is_equal = 0;                                      \
-      return NANOARROW_OK;                                       \
+      return;                                                    \
     }                                                            \
   } while (0)
 
 #define SET_NOT_EQUAL_AND_RETURN_IF(condition_, state_) \
   SET_NOT_EQUAL_AND_RETURN_IF_IMPL(condition_, state_, #condition_)
 
-static ArrowErrorCode ArrowArrayViewCompareStructure(
-    const struct ArrowArrayView* actual, const struct ArrowArrayView* expected,
-    struct ArrowComparisonInternalState* state) {
+static void ArrowArrayViewCompareStructure(const struct ArrowArrayView* actual,
+                                           const struct ArrowArrayView* expected,
+                                           struct ArrowComparisonInternalState* state) {
   SET_NOT_EQUAL_AND_RETURN_IF(actual->storage_type != expected->storage_type, state);
   SET_NOT_EQUAL_AND_RETURN_IF(actual->n_children != expected->n_children, state);
   SET_NOT_EQUAL_AND_RETURN_IF(actual->dictionary == NULL && expected->dictionary != NULL,
@@ -1394,29 +1394,24 @@ static ArrowErrorCode ArrowArrayViewCompareStructure(
                               state);
 
   for (int64_t i = 0; i < actual->n_children; i++) {
-    NANOARROW_RETURN_NOT_OK(ArrowArrayViewCompareStructure(actual->children[i],
-                                                           expected->children[i], state));
+    ArrowArrayViewCompareStructure(actual->children[i], expected->children[i], state);
     if (!state->is_equal) {
       ArrowComparePrependPath(state->reason, ".children[%" PRId64 "]", i);
-      return NANOARROW_OK;
     }
   }
 
   if (actual->dictionary != NULL) {
-    NANOARROW_RETURN_NOT_OK(
-        ArrowArrayViewCompareStructure(actual->dictionary, expected->dictionary, state));
+    ArrowArrayViewCompareStructure(actual->dictionary, expected->dictionary, state);
     if (!state->is_equal) {
       ArrowComparePrependPath(state->reason, ".dictionary");
-      return NANOARROW_OK;
+      return;
     }
   }
-
-  return NANOARROW_OK;
 }
 
-static ArrowErrorCode ArrowArrayViewCompareBuffer(
-    const struct ArrowArrayView* actual, const struct ArrowArrayView* expected, int i,
-    struct ArrowComparisonInternalState* state) {
+static void ArrowArrayViewCompareBuffer(const struct ArrowArrayView* actual,
+                                        const struct ArrowArrayView* expected, int i,
+                                        struct ArrowComparisonInternalState* state) {
   SET_NOT_EQUAL_AND_RETURN_IF(
       actual->buffer_views[i].size_bytes != expected->buffer_views[i].size_bytes, state);
 
@@ -1427,44 +1422,38 @@ static ArrowErrorCode ArrowArrayViewCompareBuffer(
                buffer_size) != 0,
         state);
   }
-
-  return NANOARROW_OK;
 }
 
-static ArrowErrorCode ArrowArrayViewCompareIdentical(
-    const struct ArrowArrayView* actual, const struct ArrowArrayView* expected,
-    struct ArrowComparisonInternalState* state) {
+static void ArrowArrayViewCompareIdentical(const struct ArrowArrayView* actual,
+                                           const struct ArrowArrayView* expected,
+                                           struct ArrowComparisonInternalState* state) {
   SET_NOT_EQUAL_AND_RETURN_IF(actual->length != expected->length, state);
   SET_NOT_EQUAL_AND_RETURN_IF(actual->offset != expected->offset, state);
   SET_NOT_EQUAL_AND_RETURN_IF(actual->null_count != expected->null_count, state);
 
   for (int i = 0; i < NANOARROW_MAX_FIXED_BUFFERS; i++) {
-    NANOARROW_RETURN_NOT_OK(ArrowArrayViewCompareBuffer(actual, expected, i, state));
+    ArrowArrayViewCompareBuffer(actual, expected, i, state);
     if (!state->is_equal) {
       ArrowComparePrependPath(state->reason, ".buffers[%d]", i);
-      return NANOARROW_OK;
+      return;
     }
   }
 
   for (int64_t i = 0; i < actual->n_children; i++) {
-    NANOARROW_RETURN_NOT_OK(ArrowArrayViewCompareIdentical(actual->children[i],
-                                                           expected->children[i], state));
+    ArrowArrayViewCompareIdentical(actual->children[i], expected->children[i], state);
     if (!state->is_equal) {
       ArrowComparePrependPath(state->reason, ".children[%" PRId64 "]", i);
-      return NANOARROW_OK;
+      return;
     }
   }
 
   if (actual->dictionary != NULL) {
-    NANOARROW_RETURN_NOT_OK(
-        ArrowArrayViewCompareIdentical(actual->dictionary, expected->dictionary, state));
+    ArrowArrayViewCompareIdentical(actual->dictionary, expected->dictionary, state);
     if (!state->is_equal) {
       ArrowComparePrependPath(state->reason, ".dictionary");
-      return NANOARROW_OK;
+      return;
     }
   }
-
-  return NANOARROW_OK;
 }
 
 // Top-level entry point to take care of creating, cleaning up, and
@@ -1478,14 +1467,12 @@ ArrowErrorCode ArrowArrayViewCompare(const struct ArrowArrayView* actual,
   state.is_equal = 1;
   state.reason = error;
 
-  NANOARROW_RETURN_NOT_OK_WITH_ERROR(
-      ArrowArrayViewCompareStructure(actual, expected, &state), error);
+  ArrowArrayViewCompareStructure(actual, expected, &state);
 
   if (state.is_equal) {
     switch (level) {
       case NANOARROW_COMPARE_IDENTICAL:
-        NANOARROW_RETURN_NOT_OK_WITH_ERROR(
-            ArrowArrayViewCompareIdentical(actual, expected, &state), error);
+        ArrowArrayViewCompareIdentical(actual, expected, &state);
         break;
       default:
         ArrowErrorSet(error, "Unsupported comparison level");
