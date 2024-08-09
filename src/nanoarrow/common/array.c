@@ -1343,7 +1343,7 @@ struct ArrowComparisonInternalState {
   struct ArrowError reason;
 };
 
-#define SET_NOT_EQUAL_AND_RETURN_IF_IMPL(state_, path_size_, cond_, reason_) \
+#define SET_NOT_EQUAL_AND_RETURN_IF_IMPL(cond_, state_, path_size_, reason_) \
   do {                                                                       \
     if (cond_) {                                                             \
       ArrowErrorSet(&state_->reason, "%s", reason_);                         \
@@ -1353,22 +1353,22 @@ struct ArrowComparisonInternalState {
     }                                                                        \
   } while (0)
 
-#define SET_NOT_EQUAL_AND_RETURN_IF(state_, path_size_, condition_) \
-  SET_NOT_EQUAL_AND_RETURN_IF_IMPL(state_, path_size_, condition_, #condition_)
+#define SET_NOT_EQUAL_AND_RETURN_IF(condition_, state_, path_size_) \
+  SET_NOT_EQUAL_AND_RETURN_IF_IMPL(condition_, state_, path_size_, #condition_)
 
 static ArrowErrorCode ArrowArrayViewCompareStructure(
     const struct ArrowArrayView* actual, const struct ArrowArrayView* expected,
     struct ArrowComparisonInternalState* state) {
   int64_t path_size = state->path.size_bytes;
 
-  SET_NOT_EQUAL_AND_RETURN_IF(state, path_size,
-                              actual->storage_type != expected->storage_type);
-  SET_NOT_EQUAL_AND_RETURN_IF(state, path_size,
-                              actual->n_children != expected->n_children);
-  SET_NOT_EQUAL_AND_RETURN_IF(state, path_size,
-                              actual->dictionary == NULL && expected->dictionary != NULL);
-  SET_NOT_EQUAL_AND_RETURN_IF(state, path_size,
-                              actual->dictionary != NULL && expected->dictionary == NULL);
+  SET_NOT_EQUAL_AND_RETURN_IF(actual->storage_type != expected->storage_type, state,
+                              path_size);
+  SET_NOT_EQUAL_AND_RETURN_IF(actual->n_children != expected->n_children, state,
+                              path_size);
+  SET_NOT_EQUAL_AND_RETURN_IF(actual->dictionary == NULL && expected->dictionary != NULL,
+                              state, path_size);
+  SET_NOT_EQUAL_AND_RETURN_IF(actual->dictionary != NULL && expected->dictionary == NULL,
+                              state, path_size);
 
   char child_id[128];
   for (int64_t i = 0; i < actual->n_children; i++) {
@@ -1402,10 +1402,10 @@ static ArrowErrorCode ArrowArrayViewCompareIdentical(
     struct ArrowComparisonInternalState* state) {
   int64_t path_size = state->path.size_bytes;
 
-  SET_NOT_EQUAL_AND_RETURN_IF(state, path_size, actual->length != expected->length);
-  SET_NOT_EQUAL_AND_RETURN_IF(state, path_size, actual->offset != expected->offset);
-  SET_NOT_EQUAL_AND_RETURN_IF(state, path_size,
-                              actual->null_count != expected->null_count);
+  SET_NOT_EQUAL_AND_RETURN_IF(actual->length != expected->length, state, path_size);
+  SET_NOT_EQUAL_AND_RETURN_IF(actual->offset != expected->offset, state, path_size);
+  SET_NOT_EQUAL_AND_RETURN_IF(actual->null_count != expected->null_count, state,
+                              path_size);
 
   char child_id[128];
   for (int i = 0; i < NANOARROW_MAX_FIXED_BUFFERS; i++) {
@@ -1415,17 +1415,17 @@ static ArrowErrorCode ArrowArrayViewCompareIdentical(
         ArrowBufferAppendStringView(&state->path, ArrowCharView(child_id)));
 
     SET_NOT_EQUAL_AND_RETURN_IF(
-        state, state->path.size_bytes,
-        actual->buffer_views[i].size_bytes != expected->buffer_views[i].size_bytes);
+        actual->buffer_views[i].size_bytes != expected->buffer_views[i].size_bytes, state,
+        state->path.size_bytes);
     int64_t buffer_size = actual->buffer_views[i].size_bytes;
     if (buffer_size == 0) {
       continue;
     }
 
     SET_NOT_EQUAL_AND_RETURN_IF(
-        state, state->path.size_bytes,
         memcmp(actual->buffer_views[i].data.data, expected->buffer_views[i].data.data,
-               buffer_size) != 0);
+               buffer_size) != 0,
+        state, state->path.size_bytes);
   }
 
   for (int64_t i = 0; i < actual->n_children; i++) {
