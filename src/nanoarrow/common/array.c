@@ -1343,30 +1343,32 @@ struct ArrowComparisonInternalState {
   struct ArrowError reason;
 };
 
-#define RETURN_NOT_EQUAL_IMPL(state_, path_size_, cond_, reason_) \
-  do {                                                            \
-    if (cond_) {                                                  \
-      ArrowErrorSet(&state_->reason, "%s", reason_);              \
-      state_->path.size_bytes = (path_size_);                     \
-      state_->is_equal = 0;                                       \
-      return NANOARROW_OK;                                        \
-    }                                                             \
+#define SET_NOT_EQUAL_AND_RETURN_IF_IMPL(state_, path_size_, cond_, reason_) \
+  do {                                                                       \
+    if (cond_) {                                                             \
+      ArrowErrorSet(&state_->reason, "%s", reason_);                         \
+      state_->path.size_bytes = (path_size_);                                \
+      state_->is_equal = 0;                                                  \
+      return NANOARROW_OK;                                                   \
+    }                                                                        \
   } while (0)
 
-#define RETURN_NOT_EQUAL(state_, path_size_, condition_) \
-  RETURN_NOT_EQUAL_IMPL(state_, path_size_, condition_, #condition_)
+#define SET_NOT_EQUAL_AND_RETURN_IF(state_, path_size_, condition_) \
+  SET_NOT_EQUAL_AND_RETURN_IF_IMPL(state_, path_size_, condition_, #condition_)
 
 static ArrowErrorCode ArrowArrayViewCompareStructure(
     const struct ArrowArrayView* actual, const struct ArrowArrayView* expected,
     struct ArrowComparisonInternalState* state) {
   int64_t path_size = state->path.size_bytes;
 
-  RETURN_NOT_EQUAL(state, path_size, actual->storage_type != expected->storage_type);
-  RETURN_NOT_EQUAL(state, path_size, actual->n_children != expected->n_children);
-  RETURN_NOT_EQUAL(state, path_size,
-                   actual->dictionary == NULL && expected->dictionary != NULL);
-  RETURN_NOT_EQUAL(state, path_size,
-                   actual->dictionary != NULL && expected->dictionary == NULL);
+  SET_NOT_EQUAL_AND_RETURN_IF(state, path_size,
+                              actual->storage_type != expected->storage_type);
+  SET_NOT_EQUAL_AND_RETURN_IF(state, path_size,
+                              actual->n_children != expected->n_children);
+  SET_NOT_EQUAL_AND_RETURN_IF(state, path_size,
+                              actual->dictionary == NULL && expected->dictionary != NULL);
+  SET_NOT_EQUAL_AND_RETURN_IF(state, path_size,
+                              actual->dictionary != NULL && expected->dictionary == NULL);
 
   char child_id[128];
   for (int64_t i = 0; i < actual->n_children; i++) {
@@ -1400,9 +1402,10 @@ static ArrowErrorCode ArrowArrayViewCompareIdentical(
     struct ArrowComparisonInternalState* state) {
   int64_t path_size = state->path.size_bytes;
 
-  RETURN_NOT_EQUAL(state, path_size, actual->length != expected->length);
-  RETURN_NOT_EQUAL(state, path_size, actual->offset != expected->offset);
-  RETURN_NOT_EQUAL(state, path_size, actual->null_count != expected->null_count);
+  SET_NOT_EQUAL_AND_RETURN_IF(state, path_size, actual->length != expected->length);
+  SET_NOT_EQUAL_AND_RETURN_IF(state, path_size, actual->offset != expected->offset);
+  SET_NOT_EQUAL_AND_RETURN_IF(state, path_size,
+                              actual->null_count != expected->null_count);
 
   char child_id[128];
   for (int i = 0; i < NANOARROW_MAX_FIXED_BUFFERS; i++) {
@@ -1411,7 +1414,7 @@ static ArrowErrorCode ArrowArrayViewCompareIdentical(
     NANOARROW_RETURN_NOT_OK(
         ArrowBufferAppendStringView(&state->path, ArrowCharView(child_id)));
 
-    RETURN_NOT_EQUAL(
+    SET_NOT_EQUAL_AND_RETURN_IF(
         state, state->path.size_bytes,
         actual->buffer_views[i].size_bytes != expected->buffer_views[i].size_bytes);
     int64_t buffer_size = actual->buffer_views[i].size_bytes;
@@ -1419,9 +1422,10 @@ static ArrowErrorCode ArrowArrayViewCompareIdentical(
       continue;
     }
 
-    RETURN_NOT_EQUAL(state, state->path.size_bytes,
-                     memcmp(actual->buffer_views[i].data.data,
-                            expected->buffer_views[i].data.data, buffer_size) != 0);
+    SET_NOT_EQUAL_AND_RETURN_IF(
+        state, state->path.size_bytes,
+        memcmp(actual->buffer_views[i].data.data, expected->buffer_views[i].data.data,
+               buffer_size) != 0);
   }
 
   for (int64_t i = 0; i < actual->n_children; i++) {
