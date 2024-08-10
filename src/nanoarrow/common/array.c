@@ -17,6 +17,7 @@
 
 #include <errno.h>
 #include <inttypes.h>
+#include <stdarg.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -1335,3 +1336,133 @@ ArrowErrorCode ArrowArrayViewValidate(struct ArrowArrayView* array_view,
   ArrowErrorSet(error, "validation_level not recognized");
   return EINVAL;
 }
+
+struct ArrowComparisonInternalState {
+  enum ArrowCompareLevel level;
+  int is_equal;
+  struct ArrowError* reason;
+};
+
+NANOARROW_CHECK_PRINTF_ATTRIBUTE static void ArrowComparePrependPath(
+    struct ArrowError* out, const char* fmt, ...) {
+  if (out == NULL) {
+    return;
+  }
+
+  char prefix[128];
+  prefix[0] = '\0';
+  va_list args;
+  va_start(args, fmt);
+  int prefix_len = vsnprintf(prefix, sizeof(prefix), fmt, args);
+  va_end(args);
+
+  if (prefix_len <= 0) {
+    return;
+  }
+
+  size_t out_len = strlen(out->message);
+  size_t out_len_to_move = sizeof(struct ArrowError) - prefix_len - 1;
+  if (out_len_to_move > out_len) {
+    out_len_to_move = out_len;
+  }
+
+  memmove(out->message + prefix_len, out->message, out_len_to_move);
+  memcpy(out->message, prefix, prefix_len);
+  out->message[out_len + prefix_len] = '\0';
+}
+
+#define SET_NOT_EQUAL_AND_RETURN_IF_IMPL(cond_, state_, reason_) \
+  do {                                                           \
+    if (cond_) {                                                 \
+      ArrowErrorSet(state_->reason, ": %s", reason_);            \
+      state_->is_equal = 0;                                      \
+      return;                                                    \
+    }                                                            \
+  } while (0)
+
+#define SET_NOT_EQUAL_AND_RETURN_IF(condition_, state_) \
+  SET_NOT_EQUAL_AND_RETURN_IF_IMPL(condition_, state_, #condition_)
+
+static void ArrowArrayViewCompareBuffer(const struct ArrowArrayView* actual,
+                                        const struct ArrowArrayView* expected, int i,
+                                        struct ArrowComparisonInternalState* state) {
+  SET_NOT_EQUAL_AND_RETURN_IF(
+      actual->buffer_views[i].size_bytes != expected->buffer_views[i].size_bytes, state);
+
+  int64_t buffer_size = actual->buffer_views[i].size_bytes;
+  if (buffer_size > 0) {
+    SET_NOT_EQUAL_AND_RETURN_IF(
+        memcmp(actual->buffer_views[i].data.data, expected->buffer_views[i].data.data,
+               buffer_size) != 0,
+        state);
+  }
+}
+
+static void ArrowArrayViewCompareIdentical(const struct ArrowArrayView* actual,
+                                           const struct ArrowArrayView* expected,
+                                           struct ArrowComparisonInternalState* state) {
+  SET_NOT_EQUAL_AND_RETURN_IF(actual->storage_type != expected->storage_type, state);
+  SET_NOT_EQUAL_AND_RETURN_IF(actual->n_children != expected->n_children, state);
+  SET_NOT_EQUAL_AND_RETURN_IF(actual->dictionary == NULL && expected->dictionary != NULL,
+                              state);
+  SET_NOT_EQUAL_AND_RETURN_IF(actual->dictionary != NULL && expected->dictionary == NULL,
+                              state);
+
+  SET_NOT_EQUAL_AND_RETURN_IF(actual->length != expected->length, state);
+  SET_NOT_EQUAL_AND_RETURN_IF(actual->offset != expected->offset, state);
+  SET_NOT_EQUAL_AND_RETURN_IF(actual->null_count != expected->null_count, state);
+
+  for (int i = 0; i < NANOARROW_MAX_FIXED_BUFFERS; i++) {
+    ArrowArrayViewCompareBuffer(actual, expected, i, state);
+    if (!state->is_equal) {
+      ArrowComparePrependPath(state->reason, ".buffers[%d]", i);
+      return;
+    }
+  }
+
+  for (int64_t i = 0; i < actual->n_children; i++) {
+    ArrowArrayViewCompareIdentical(actual->children[i], expected->children[i], state);
+    if (!state->is_equal) {
+      ArrowComparePrependPath(state->reason, ".children[%" PRId64 "]", i);
+      return;
+    }
+  }
+
+  if (actual->dictionary != NULL) {
+    ArrowArrayViewCompareIdentical(actual->dictionary, expected->dictionary, state);
+    if (!state->is_equal) {
+      ArrowComparePrependPath(state->reason, ".dictionary");
+      return;
+    }
+  }
+}
+
+// Top-level entry point to take care of creating, cleaning up, and
+// propagating the ArrowComparisonInternalState to the caller
+ArrowErrorCode ArrowArrayViewCompare(const struct ArrowArrayView* actual,
+                                     const struct ArrowArrayView* expected,
+                                     enum ArrowCompareLevel level, int* out,
+                                     struct ArrowError* reason) {
+  struct ArrowComparisonInternalState state;
+  state.level = level;
+  state.is_equal = 1;
+  state.reason = reason;
+
+  switch (level) {
+    case NANOARROW_COMPARE_IDENTICAL:
+      ArrowArrayViewCompareIdentical(actual, expected, &state);
+      break;
+    default:
+      return EINVAL;
+  }
+
+  *out = state.is_equal;
+  if (!state.is_equal) {
+    ArrowComparePrependPath(state.reason, "root");
+  }
+
+  return NANOARROW_OK;
+}
+
+#undef SET_NOT_EQUAL_AND_RETURN_IF
+#undef SET_NOT_EQUAL_AND_RETURN_IF_IMPL
