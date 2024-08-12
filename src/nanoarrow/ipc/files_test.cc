@@ -88,6 +88,16 @@ class TestFile {
     return path_.substr(0, dot_pos) + std::string(".json.gz");
   }
 
+  ArrowErrorCode GetArrowArrayStreamIPC(struct ArrowBuffer* content,
+                                        ArrowArrayStream* out, ArrowError* error) {
+    nanoarrow::ipc::UniqueInputStream input;
+    NANOARROW_RETURN_NOT_OK_WITH_ERROR(
+        ArrowIpcInputStreamInitBuffer(input.get(), content), error);
+    NANOARROW_RETURN_NOT_OK_WITH_ERROR(
+        ArrowIpcArrayStreamReaderInit(out, input.get(), nullptr), error);
+    return NANOARROW_OK;
+  }
+
   ArrowErrorCode GetArrowArrayStreamIPC(const std::string& dir_prefix,
                                         ArrowArrayStream* out, ArrowError* error) {
     std::stringstream path_builder;
@@ -96,12 +106,26 @@ class TestFile {
     // Read using nanoarrow_ipc
     nanoarrow::UniqueBuffer content;
     NANOARROW_RETURN_NOT_OK(ReadFileBuffer(path_builder.str(), content.get(), error));
+    return GetArrowArrayStreamIPC(content.get(), out, error);
+  }
 
-    struct ArrowIpcInputStream input;
-    NANOARROW_RETURN_NOT_OK_WITH_ERROR(
-        ArrowIpcInputStreamInitBuffer(&input, content.get()), error);
-    NANOARROW_RETURN_NOT_OK_WITH_ERROR(
-        ArrowIpcArrayStreamReaderInit(out, &input, nullptr), error);
+  ArrowErrorCode ReadArrowArrayStreamIPC(struct ArrowArrayStream* stream,
+                                         struct ArrowSchema* schema,
+                                         std::vector<nanoarrow::UniqueArray>* arrays,
+                                         ArrowError* error) {
+    NANOARROW_RETURN_NOT_OK(ArrowArrayStreamGetSchema(stream, schema, error));
+
+    while (true) {
+      nanoarrow::UniqueArray array;
+
+      NANOARROW_RETURN_NOT_OK(ArrowArrayStreamGetNext(stream, array.get(), error));
+
+      if (array->release == nullptr) {
+        break;
+      }
+
+      arrays->push_back(std::move(array));
+    }
     return NANOARROW_OK;
   }
 
@@ -111,21 +135,7 @@ class TestFile {
                                          ArrowError* error) {
     nanoarrow::UniqueArrayStream stream;
     NANOARROW_RETURN_NOT_OK(GetArrowArrayStreamIPC(dir_prefix, stream.get(), error));
-
-    NANOARROW_RETURN_NOT_OK(ArrowArrayStreamGetSchema(stream.get(), schema, error));
-
-    while (true) {
-      nanoarrow::UniqueArray array;
-
-      NANOARROW_RETURN_NOT_OK(ArrowArrayStreamGetNext(stream.get(), array.get(), error));
-
-      if (array->release == nullptr) {
-        break;
-      }
-
-      arrays->push_back(std::move(array));
-    }
-    return NANOARROW_OK;
+    return ReadArrowArrayStreamIPC(stream.get(), schema, arrays, error);
   }
 
   ArrowErrorCode GetArrowArrayStreamCheckJSON(const std::string& dir_prefix,
@@ -250,20 +260,36 @@ class TestFile {
 
     // Read the same file with Arrow C++
     auto maybe_table_arrow = ReadTable(io::ReadableFile::Open(path_builder.str()));
-    FAIL_RESULT_NOT_OK(maybe_table_arrow);
+    {
+      SCOPED_TRACE("Read the same file with Arrow C++");
+      FAIL_RESULT_NOT_OK(maybe_table_arrow);
+      AssertEqualsTable(std::move(schema), std::move(arrays),
+                        maybe_table_arrow.ValueUnsafe());
+    }
 
-    AssertEqualsTable(std::move(schema), std::move(arrays),
-                      maybe_table_arrow.ValueUnsafe());
+    auto maybe_table_roundtripped = ReadTable(BufferInputStream(roundtripped.get()));
+    {
+      SCOPED_TRACE("Read the roundtripped buffer using Arrow C++");
+      FAIL_RESULT_NOT_OK(maybe_table_roundtripped);
 
-    // Read the roundtripped buffer using nanoarrow
+      AssertEqualsTable(maybe_table_roundtripped.ValueUnsafe(),
+                        maybe_table_arrow.ValueUnsafe());
+    }
+
     nanoarrow::UniqueSchema roundtripped_schema;
     std::vector<nanoarrow::UniqueArray> roundtripped_arrays;
-    ASSERT_EQ(ReadArrowArrayStreamIPC(dir_prefix, roundtripped_schema.get(),
-                                      &roundtripped_arrays, &error),
-              NANOARROW_OK);
+    {
+      SCOPED_TRACE("Read the roundtripped buffer using nanoarrow");
+      nanoarrow::UniqueArrayStream array_stream;
+      ASSERT_EQ(GetArrowArrayStreamIPC(roundtripped.get(), array_stream.get(), &error),
+                NANOARROW_OK);
+      ASSERT_EQ(ReadArrowArrayStreamIPC(array_stream.get(), roundtripped_schema.get(),
+                                        &roundtripped_arrays, &error),
+                NANOARROW_OK);
 
-    AssertEqualsTable(std::move(roundtripped_schema), std::move(roundtripped_arrays),
-                      maybe_table_arrow.ValueUnsafe());
+      AssertEqualsTable(std::move(roundtripped_schema), std::move(roundtripped_arrays),
+                        maybe_table_arrow.ValueUnsafe());
+    }
   }
 
   Result<std::shared_ptr<Table>> ReadTable(
@@ -286,13 +312,18 @@ class TestFile {
     return Table::FromRecordBatches(std::move(arrow_schema), std::move(batches));
   }
 
+  void AssertEqualsTable(const std::shared_ptr<Table>& actual,
+                         const std::shared_ptr<Table>& expected) {
+    ASSERT_TRUE(actual->schema()->Equals(expected->schema(), true));
+    EXPECT_TRUE(actual->Equals(*expected, true));
+  }
+
   void AssertEqualsTable(nanoarrow::UniqueSchema schema,
                          std::vector<nanoarrow::UniqueArray> arrays,
                          const std::shared_ptr<Table>& expected) {
     auto maybe_table = ToTable(std::move(schema), std::move(arrays));
     FAIL_RESULT_NOT_OK(maybe_table);
-    ASSERT_TRUE(expected->schema()->Equals(maybe_table.ValueUnsafe()->schema(), true));
-    EXPECT_TRUE(maybe_table.ValueUnsafe()->Equals(*expected, true));
+    AssertEqualsTable(maybe_table.ValueUnsafe(), expected);
   }
 
   void TestIPCCheckJSON(const std::string& dir_prefix) {
