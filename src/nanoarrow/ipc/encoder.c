@@ -78,6 +78,18 @@ void ArrowIpcEncoderReset(struct ArrowIpcEncoder* encoder) {
   memset(encoder, 0, sizeof(struct ArrowIpcEncoder));
 }
 
+static ArrowErrorCode ArrowIpcEncoderWriteContinuationAndSize(struct ArrowBuffer* out,
+                                                              size_t size) {
+  _NANOARROW_CHECK_UPPER_LIMIT(size, INT32_MAX);
+  NANOARROW_RETURN_NOT_OK(ArrowBufferAppendInt32(out, -1));
+
+  if (ArrowIpcSystemEndianness() == NANOARROW_IPC_ENDIANNESS_BIG) {
+    return ArrowBufferAppendInt32(out, (int32_t)bswap32((uint32_t)size));
+  } else {
+    return ArrowBufferAppendInt32(out, (int32_t)size);
+  }
+}
+
 ArrowErrorCode ArrowIpcEncoderFinalizeBuffer(struct ArrowIpcEncoder* encoder,
                                              char encapsulate, struct ArrowBuffer* out) {
   NANOARROW_DCHECK(encoder != NULL && encoder->private_data != NULL && out != NULL);
@@ -85,25 +97,19 @@ ArrowErrorCode ArrowIpcEncoderFinalizeBuffer(struct ArrowIpcEncoder* encoder,
       (struct ArrowIpcEncoderPrivate*)encoder->private_data;
 
   size_t size = flatcc_builder_get_buffer_size(&private->builder);
-  _NANOARROW_CHECK_UPPER_LIMIT(size, INT32_MAX);
 
-  int32_t header[] = {-1, (int32_t)size};
-  if (ArrowIpcSystemEndianness() == NANOARROW_IPC_ENDIANNESS_BIG) {
-    header[1] = (int32_t)bswap32((uint32_t)size);
+  if (encapsulate) {
+    int64_t padded_size = _ArrowRoundUpToMultipleOf8(size);
+    NANOARROW_RETURN_NOT_OK(
+        ArrowBufferReserve(out, sizeof(int32_t) + sizeof(int32_t) + padded_size));
+    NANOARROW_ASSERT_OK(ArrowIpcEncoderWriteContinuationAndSize(out, padded_size));
+  } else {
+    NANOARROW_RETURN_NOT_OK(ArrowBufferReserve(out, size));
   }
 
   if (size == 0) {
     // Finalizing an empty flatcc_builder_t triggers an assertion
-    return encapsulate ? ArrowBufferAppend(out, &header, sizeof(header)) : NANOARROW_OK;
-  }
-
-  if (encapsulate) {
-    int64_t encapsulated_size =
-        _ArrowRoundUpToMultipleOf8(sizeof(int32_t) + sizeof(int32_t) + size);
-    NANOARROW_RETURN_NOT_OK(ArrowBufferReserve(out, encapsulated_size));
-    NANOARROW_RETURN_NOT_OK(ArrowBufferAppend(out, &header, sizeof(header)));
-  } else {
-    NANOARROW_RETURN_NOT_OK(ArrowBufferReserve(out, size));
+    return NANOARROW_OK;
   }
 
   void* data =
@@ -112,11 +118,9 @@ ArrowErrorCode ArrowIpcEncoderFinalizeBuffer(struct ArrowIpcEncoder* encoder,
   NANOARROW_UNUSED(data);
   out->size_bytes += size;
 
-  if (encapsulate) {
+  while (encapsulate && out->size_bytes % 8 != 0) {
     // zero padding bytes, if any
-    int64_t padded_size = _ArrowRoundUpToMultipleOf8(out->size_bytes);
-    memset(out->data + out->size_bytes, 0, padded_size - out->size_bytes);
-    out->size_bytes = padded_size;
+    out->data[out->size_bytes++] = 0;
   }
 
   // don't deallocate yet, just wipe the builder's current Message

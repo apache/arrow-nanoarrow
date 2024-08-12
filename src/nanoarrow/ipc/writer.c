@@ -270,6 +270,10 @@ ArrowErrorCode ArrowIpcWriterWriteArrayView(struct ArrowIpcWriter* writer,
 
   NANOARROW_RETURN_NOT_OK(ArrowIpcEncoderEncodeSimpleRecordBatch(
       &private->encoder, in, &private->body_buffer, error));
+  NANOARROW_RETURN_NOT_OK_WITH_ERROR(
+      ArrowIpcEncoderFinalizeBuffer(&private->encoder, /*encapsulate=*/1,
+                                    &private->buffer),
+      error);
 
   NANOARROW_RETURN_NOT_OK(ArrowIpcOutputStreamWrite(
       &private->output_stream, ArrowBufferToBufferView(&private->buffer), error));
