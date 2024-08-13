@@ -611,6 +611,188 @@ TEST(SchemaTest, SchemaCopyMetadata) {
   ArrowSchemaRelease(&schema);
 }
 
+TEST(SchemaTest, SchemaCompareIdenticalStructure) {
+  struct ArrowError error;
+  struct ArrowSchema actual;
+  struct ArrowSchema expected;
+  int is_equal = -1;
+
+  ASSERT_EQ(ArrowSchemaInitFromType(&actual, NANOARROW_TYPE_INT32), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaCompare(&actual, &actual, NANOARROW_COMPARE_IDENTICAL, &is_equal,
+                               &error),
+            NANOARROW_OK);
+  EXPECT_EQ(is_equal, 1);
+
+  // Check non-equal storage type
+  is_equal = -1;
+  ASSERT_EQ(ArrowSchemaInitFromType(&expected, NANOARROW_TYPE_STRING), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaCompare(&actual, &expected, NANOARROW_COMPARE_IDENTICAL, &is_equal,
+                               &error),
+            NANOARROW_OK);
+  EXPECT_EQ(is_equal, 0);
+  EXPECT_STREQ(error.message, "root: strcmp(actual->format, expected->format) != 0");
+
+  // Check non-equal numbers of children
+  is_equal = -1;
+  ArrowSchemaRelease(&actual);
+  ArrowSchemaRelease(&expected);
+  ASSERT_EQ(ArrowSchemaInitFromType(&actual, NANOARROW_TYPE_STRUCT), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaInitFromType(&expected, NANOARROW_TYPE_STRUCT), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaAllocateChildren(&expected, 1), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaCompare(&actual, &expected, NANOARROW_COMPARE_IDENTICAL, &is_equal,
+                               &error),
+            NANOARROW_OK);
+  EXPECT_EQ(is_equal, 0);
+  EXPECT_STREQ(error.message, "root: actual->n_children != expected->n_children");
+
+  // Check difference in children
+  is_equal = -1;
+  ASSERT_EQ(ArrowSchemaAllocateChildren(&actual, 1), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaInitFromType(actual.children[0], NANOARROW_TYPE_STRING),
+            NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaInitFromType(expected.children[0], NANOARROW_TYPE_BINARY),
+            NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaCompare(&actual, &expected, NANOARROW_COMPARE_IDENTICAL, &is_equal,
+                               &error),
+            NANOARROW_OK);
+  EXPECT_EQ(is_equal, 0);
+  EXPECT_STREQ(error.message,
+               "root.children[0]: strcmp(actual->format, expected->format) != 0");
+
+  // Check presence/absence of dictionary
+  is_equal = -1;
+  ArrowSchemaRelease(&actual);
+  ArrowSchemaRelease(&expected);
+  ASSERT_EQ(ArrowSchemaInitFromType(&actual, NANOARROW_TYPE_INT32), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaInitFromType(&expected, NANOARROW_TYPE_INT32), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaAllocateDictionary(&expected), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaCompare(&actual, &expected, NANOARROW_COMPARE_IDENTICAL, &is_equal,
+                               &error),
+            NANOARROW_OK);
+  EXPECT_EQ(is_equal, 0);
+  EXPECT_STREQ(error.message,
+               "root: actual->dictionary == NULL && expected->dictionary != NULL");
+
+  is_equal = -1;
+  ASSERT_EQ(ArrowSchemaCompare(&expected, &actual, NANOARROW_COMPARE_IDENTICAL, &is_equal,
+                               &error),
+            NANOARROW_OK);
+  EXPECT_EQ(is_equal, 0);
+  EXPECT_STREQ(error.message,
+               "root: actual->dictionary != NULL && expected->dictionary == NULL");
+
+  // Check a difference in a dictionary
+  is_equal = -1;
+  ASSERT_EQ(ArrowSchemaAllocateDictionary(&actual), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaInitFromType(actual.dictionary, NANOARROW_TYPE_STRING),
+            NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaInitFromType(expected.dictionary, NANOARROW_TYPE_BINARY),
+            NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaCompare(&actual, &expected, NANOARROW_COMPARE_IDENTICAL, &is_equal,
+                               &error),
+            NANOARROW_OK);
+  EXPECT_EQ(is_equal, 0);
+  EXPECT_STREQ(error.message,
+               "root.dictionary: strcmp(actual->format, expected->format) != 0");
+
+  ArrowSchemaRelease(&actual);
+  ArrowSchemaRelease(&expected);
+}
+
+TEST(SchemaTest, SchemaCompareIdenticalFormat) {
+  struct ArrowError error;
+  struct ArrowSchema actual;
+  struct ArrowSchema expected;
+  int is_equal = -1;
+
+  ArrowSchemaInit(&actual);
+  ArrowSchemaInit(&expected);
+
+  ASSERT_EQ(ArrowSchemaSetFormat(&actual, "foofy"), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaCompare(&actual, &expected, NANOARROW_COMPARE_IDENTICAL, &is_equal,
+                               &error),
+            NANOARROW_OK);
+  EXPECT_EQ(is_equal, 0);
+  EXPECT_STREQ(error.message, "root: actual->format != NULL && expected->format == NULL");
+
+  is_equal = -1;
+  ASSERT_EQ(ArrowSchemaSetFormat(&actual, NULL), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaSetFormat(&expected, "foofy"), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaCompare(&actual, &expected, NANOARROW_COMPARE_IDENTICAL, &is_equal,
+                               &error),
+            NANOARROW_OK);
+  EXPECT_EQ(is_equal, 0);
+  EXPECT_STREQ(error.message, "root: actual->format == NULL && expected->format != NULL");
+
+  is_equal = -1;
+  ASSERT_EQ(ArrowSchemaSetFormat(&actual, "foofy1"), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaSetFormat(&expected, "foofy2"), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaCompare(&actual, &expected, NANOARROW_COMPARE_IDENTICAL, &is_equal,
+                               &error),
+            NANOARROW_OK);
+  EXPECT_EQ(is_equal, 0);
+  EXPECT_STREQ(error.message, "root: strcmp(actual->format, expected->format) != 0");
+
+  // Ensure identical formats can compare as identical
+  is_equal = -1;
+  ASSERT_EQ(ArrowSchemaSetFormat(&actual, "foofy"), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaSetFormat(&expected, "foofy"), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaCompare(&actual, &expected, NANOARROW_COMPARE_IDENTICAL, &is_equal,
+                               &error),
+            NANOARROW_OK);
+  EXPECT_EQ(is_equal, 1);
+
+  ArrowSchemaRelease(&actual);
+  ArrowSchemaRelease(&expected);
+}
+
+TEST(SchemaTest, SchemaCompareIdenticalName) {
+  struct ArrowError error;
+  struct ArrowSchema actual;
+  struct ArrowSchema expected;
+  int is_equal = -1;
+
+  ArrowSchemaInit(&actual);
+  ArrowSchemaInit(&expected);
+
+  ASSERT_EQ(ArrowSchemaSetName(&actual, "foofy"), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaCompare(&actual, &expected, NANOARROW_COMPARE_IDENTICAL, &is_equal,
+                               &error),
+            NANOARROW_OK);
+  EXPECT_EQ(is_equal, 0);
+  EXPECT_STREQ(error.message, "root: actual->name != NULL && expected->name == NULL");
+
+  is_equal = -1;
+  ASSERT_EQ(ArrowSchemaSetName(&actual, NULL), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaSetName(&expected, "foofy"), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaCompare(&actual, &expected, NANOARROW_COMPARE_IDENTICAL, &is_equal,
+                               &error),
+            NANOARROW_OK);
+  EXPECT_EQ(is_equal, 0);
+  EXPECT_STREQ(error.message, "root: actual->name == NULL && expected->name != NULL");
+
+  is_equal = -1;
+  ASSERT_EQ(ArrowSchemaSetName(&actual, "foofy1"), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaSetName(&expected, "foofy2"), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaCompare(&actual, &expected, NANOARROW_COMPARE_IDENTICAL, &is_equal,
+                               &error),
+            NANOARROW_OK);
+  EXPECT_EQ(is_equal, 0);
+  EXPECT_STREQ(error.message, "root: strcmp(actual->name, expected->name) != 0");
+
+  // Ensure identical names compare as identical
+  is_equal = -1;
+  ASSERT_EQ(ArrowSchemaSetName(&actual, "foofy"), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaSetName(&expected, "foofy"), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaCompare(&actual, &expected, NANOARROW_COMPARE_IDENTICAL, &is_equal,
+                               &error),
+            NANOARROW_OK);
+  EXPECT_EQ(is_equal, 1);
+
+  ArrowSchemaRelease(&actual);
+  ArrowSchemaRelease(&expected);
+}
+
 TEST(SchemaViewTest, SchemaViewInitErrors) {
   struct ArrowSchema schema;
   struct ArrowSchemaView schema_view;
