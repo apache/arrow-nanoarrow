@@ -793,6 +793,83 @@ TEST(SchemaTest, SchemaCompareIdenticalName) {
   ArrowSchemaRelease(&expected);
 }
 
+TEST(SchemaTest, SchemaCompareIdenticalMetadata) {
+  struct ArrowError error;
+  struct ArrowSchema actual;
+  struct ArrowSchema expected;
+  int is_equal = -1;
+
+  // Create metadatas key=value and key=valuf
+  std::string simple_metadata = SimpleMetadata();
+  std::vector<char> other_metadata(simple_metadata.begin(), simple_metadata.end());
+  other_metadata[other_metadata.size() - 1] = 'f';
+
+  ArrowSchemaInit(&actual);
+  ArrowSchemaInit(&expected);
+
+  ASSERT_EQ(ArrowSchemaSetMetadata(&actual, simple_metadata.data()), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaCompare(&actual, &expected, NANOARROW_COMPARE_IDENTICAL, &is_equal,
+                               &error),
+            NANOARROW_OK);
+  EXPECT_EQ(is_equal, 0);
+  EXPECT_STREQ(error.message,
+               "root: actual->metadata != NULL && expected->metadata == NULL");
+
+  is_equal = -1;
+  ASSERT_EQ(ArrowSchemaSetMetadata(&actual, NULL), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaSetMetadata(&expected, simple_metadata.data()), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaCompare(&actual, &expected, NANOARROW_COMPARE_IDENTICAL, &is_equal,
+                               &error),
+            NANOARROW_OK);
+  EXPECT_EQ(is_equal, 0);
+  EXPECT_STREQ(error.message,
+               "root: actual->metadata == NULL && expected->metadata != NULL");
+
+  is_equal = -1;
+  ASSERT_EQ(ArrowSchemaSetMetadata(&actual, simple_metadata.data()), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaSetMetadata(&expected, other_metadata.data()), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaCompare(&actual, &expected, NANOARROW_COMPARE_IDENTICAL, &is_equal,
+                               &error),
+            NANOARROW_OK);
+  EXPECT_EQ(is_equal, 0);
+  EXPECT_STREQ(error.message,
+               "root: memcmp(actual->metadata, expected->metadata, "
+               "ArrowMetadataSizeOf(actual->metadata)) != 0");
+
+  // Ensure identical names compare as identical
+  is_equal = -1;
+  ASSERT_EQ(ArrowSchemaSetMetadata(&actual, simple_metadata.data()), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaSetMetadata(&expected, simple_metadata.data()), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaCompare(&actual, &expected, NANOARROW_COMPARE_IDENTICAL, &is_equal,
+                               &error),
+            NANOARROW_OK);
+  EXPECT_EQ(is_equal, 1);
+
+  ArrowSchemaRelease(&actual);
+  ArrowSchemaRelease(&expected);
+}
+
+TEST(SchemaTest, SchemaCompareIdenticalFlags) {
+  struct ArrowError error;
+  struct ArrowSchema actual;
+  struct ArrowSchema expected;
+  int is_equal = -1;
+
+  ArrowSchemaInit(&actual);
+  ArrowSchemaInit(&expected);
+
+  actual.flags = 0;
+  expected.flags = ARROW_FLAG_NULLABLE;
+  ASSERT_EQ(ArrowSchemaCompare(&actual, &expected, NANOARROW_COMPARE_IDENTICAL, &is_equal,
+                               &error),
+            NANOARROW_OK);
+  EXPECT_EQ(is_equal, 0);
+  EXPECT_STREQ(error.message, "root: actual->flags != expected->flags");
+
+  ArrowSchemaRelease(&actual);
+  ArrowSchemaRelease(&expected);
+}
+
 TEST(SchemaViewTest, SchemaViewInitErrors) {
   struct ArrowSchema schema;
   struct ArrowSchemaView schema_view;
