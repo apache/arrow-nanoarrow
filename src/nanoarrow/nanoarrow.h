@@ -46,6 +46,7 @@
 #define ArrowBufferDeallocator \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowBufferDeallocator)
 #define ArrowErrorSet NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowErrorSet)
+#define ArrowErrorPrefix NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowErrorPrefix)
 #define ArrowLayoutInit NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowLayoutInit)
 #define ArrowDecimalSetDigits NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowDecimalSetDigits)
 #define ArrowDecimalAppendDigitsToBuffer \
@@ -265,6 +266,12 @@ static inline void ArrowArrayStreamRelease(struct ArrowArrayStream* array_stream
 /// If error is NULL, this function does nothing and returns NANOARROW_OK.
 NANOARROW_CHECK_PRINTF_ATTRIBUTE int ArrowErrorSet(struct ArrowError* error,
                                                    const char* fmt, ...);
+
+/// \brief Prefix the contents of an existing error using printf syntax.
+///
+/// If error is NULL, this function does nothing and returns NANOARROW_OK.
+NANOARROW_CHECK_PRINTF_ATTRIBUTE int ArrowErrorPrefix(struct ArrowError* error,
+                                                      const char* fmt, ...);
 
 /// @}
 
