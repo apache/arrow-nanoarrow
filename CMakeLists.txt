@@ -226,16 +226,13 @@ if(NANOARROW_IPC)
 endif()
 
 if(NANOARROW_IPC AND NANOARROW_BUILD_INTEGRATION_TESTS)
-  add_executable(nanoarrow_ipc_json_integration
-                 src/nanoarrow/ipc/json_integration.cc)
+  add_executable(nanoarrow_ipc_json_integration src/nanoarrow/ipc/json_integration.cc)
   target_include_directories(nanoarrow_ipc_json_integration
                              PUBLIC $<BUILD_INTERFACE:${NANOARROW_BUILD_INCLUDE_DIR}>
                                     $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/src>
                                     $<INSTALL_INTERFACE:include>)
-  target_link_libraries(nanoarrow_ipc_json_integration
-                        PRIVATE nanoarrow_testing
-                                nanoarrow_ipc
-                                flatccrt)
+  target_link_libraries(nanoarrow_ipc_json_integration PRIVATE nanoarrow_testing
+                                                               nanoarrow_ipc flatccrt)
 endif()
 
 if(NANOARROW_DEVICE)

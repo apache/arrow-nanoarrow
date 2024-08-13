@@ -33,8 +33,7 @@ struct File {
     }
   }
 
-  ArrowErrorCode open(std::string path, std::string mode,
-                      struct ArrowError* error) {
+  ArrowErrorCode open(std::string path, std::string mode, struct ArrowError* error) {
     file_ = fopen(path.c_str(), mode.c_str());
     if (file_ != nullptr) {
       return NANOARROW_OK;
