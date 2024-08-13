@@ -418,6 +418,19 @@ ArrowErrorCode ArrowSchemaSetTypeUnion(struct ArrowSchema* schema, enum ArrowTyp
 ArrowErrorCode ArrowSchemaDeepCopy(const struct ArrowSchema* schema,
                                    struct ArrowSchema* schema_out);
 
+/// \brief Compare two ArrowSchema objects for equality
+///
+/// Given two ArrowArrayView instances, place either 0 (not equal) and
+/// 1 (equal) at the address pointed to by out. If the comparison determines
+/// that actual and expected are not equal, a reason will be communicated via
+/// reason if reason is non-NULL.
+///
+/// Returns NANOARROW_OK if the comparison completed successfully.
+ArrowErrorCode ArrowSchemaCompare(const struct ArrowSchema* actual,
+                                  const struct ArrowSchema* expected,
+                                  enum ArrowCompareLevel level, int* out,
+                                  struct ArrowError* reason);
+
 /// \brief Copy format into schema->format
 ///
 /// schema must have been allocated using ArrowSchemaInitFromType() or
@@ -1077,7 +1090,7 @@ ArrowErrorCode ArrowArrayViewValidate(struct ArrowArrayView* array_view,
 /// Given two ArrowArrayView instances, place either 0 (not equal) and
 /// 1 (equal) at the address pointed to by out. If the comparison determines
 /// that actual and expected are not equal, a reason will be communicated via
-/// error if error is non-NULL.
+/// reason if reason is non-NULL.
 ///
 /// Returns NANOARROW_OK if the comparison completed successfully.
 ArrowErrorCode ArrowArrayViewCompare(const struct ArrowArrayView* actual,

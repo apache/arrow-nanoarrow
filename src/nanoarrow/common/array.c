@@ -1337,7 +1337,7 @@ ArrowErrorCode ArrowArrayViewValidate(struct ArrowArrayView* array_view,
   return EINVAL;
 }
 
-struct ArrowComparisonInternalState {
+struct ArrowArrayViewComparisonInternalState {
   enum ArrowCompareLevel level;
   int is_equal;
   struct ArrowError* reason;
@@ -1355,9 +1355,9 @@ struct ArrowComparisonInternalState {
 #define SET_NOT_EQUAL_AND_RETURN_IF(condition_, state_) \
   SET_NOT_EQUAL_AND_RETURN_IF_IMPL(condition_, state_, #condition_)
 
-static void ArrowArrayViewCompareBuffer(const struct ArrowArrayView* actual,
-                                        const struct ArrowArrayView* expected, int i,
-                                        struct ArrowComparisonInternalState* state) {
+static void ArrowArrayViewCompareBuffer(
+    const struct ArrowArrayView* actual, const struct ArrowArrayView* expected, int i,
+    struct ArrowArrayViewComparisonInternalState* state) {
   SET_NOT_EQUAL_AND_RETURN_IF(
       actual->buffer_views[i].size_bytes != expected->buffer_views[i].size_bytes, state);
 
@@ -1370,9 +1370,9 @@ static void ArrowArrayViewCompareBuffer(const struct ArrowArrayView* actual,
   }
 }
 
-static void ArrowArrayViewCompareIdentical(const struct ArrowArrayView* actual,
-                                           const struct ArrowArrayView* expected,
-                                           struct ArrowComparisonInternalState* state) {
+static void ArrowArrayViewCompareIdentical(
+    const struct ArrowArrayView* actual, const struct ArrowArrayView* expected,
+    struct ArrowArrayViewComparisonInternalState* state) {
   SET_NOT_EQUAL_AND_RETURN_IF(actual->storage_type != expected->storage_type, state);
   SET_NOT_EQUAL_AND_RETURN_IF(actual->n_children != expected->n_children, state);
   SET_NOT_EQUAL_AND_RETURN_IF(actual->dictionary == NULL && expected->dictionary != NULL,
@@ -1415,7 +1415,7 @@ ArrowErrorCode ArrowArrayViewCompare(const struct ArrowArrayView* actual,
                                      const struct ArrowArrayView* expected,
                                      enum ArrowCompareLevel level, int* out,
                                      struct ArrowError* reason) {
-  struct ArrowComparisonInternalState state;
+  struct ArrowArrayViewComparisonInternalState state;
   state.level = level;
   state.is_equal = 1;
   state.reason = reason;
