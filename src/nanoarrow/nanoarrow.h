@@ -68,6 +68,7 @@
 #define ArrowSchemaSetTypeUnion \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowSchemaSetTypeUnion)
 #define ArrowSchemaDeepCopy NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowSchemaDeepCopy)
+#define ArrowSchemaCompare NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowSchemaCompare)
 #define ArrowSchemaSetFormat NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowSchemaSetFormat)
 #define ArrowSchemaSetName NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowSchemaSetName)
 #define ArrowSchemaSetMetadata \
