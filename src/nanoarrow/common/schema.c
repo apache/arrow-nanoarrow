@@ -631,9 +631,9 @@ struct ArrowSchemaComparisonInternalState {
 #define SET_NOT_EQUAL_AND_RETURN_IF(condition_, state_) \
   SET_NOT_EQUAL_AND_RETURN_IF_IMPL(condition_, state_, #condition_)
 
-void ArrowSchemaCompareIdentical(const struct ArrowSchema* actual,
-                                 const struct ArrowSchema* expected,
-                                 struct ArrowSchemaComparisonInternalState* state) {
+static void ArrowSchemaCompareIdentical(
+    const struct ArrowSchema* actual, const struct ArrowSchema* expected,
+    struct ArrowSchemaComparisonInternalState* state) {
   SET_NOT_EQUAL_AND_RETURN_IF(actual->format == NULL && expected->format != NULL, state);
   SET_NOT_EQUAL_AND_RETURN_IF(actual->format != NULL && expected->format == NULL, state);
   if (actual->format != NULL) {
