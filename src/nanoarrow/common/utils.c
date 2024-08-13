@@ -49,8 +49,8 @@ ArrowErrorCode ArrowErrorSet(struct ArrowError* error, const char* fmt, ...) {
   }
 }
 
-NANOARROW_CHECK_PRINTF_ATTRIBUTE ArrowErrorCode ArrowErrorPrefix(
-    struct ArrowError* error, const char* fmt, ...) {
+NANOARROW_CHECK_PRINTF_ATTRIBUTE ArrowErrorCode ArrowErrorPrefix(struct ArrowError* error,
+                                                                 const char* fmt, ...) {
   if (error == NULL) {
     return NANOARROW_OK;
   }
