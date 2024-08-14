@@ -243,7 +243,6 @@ class Stream:
 
 
 class Writer:
-
     def __init__(self):
         self._writer = None
         self._desc = None
