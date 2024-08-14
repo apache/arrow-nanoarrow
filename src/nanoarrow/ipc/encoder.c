@@ -16,7 +16,6 @@
 // under the License.
 
 #include <errno.h>
-#include <inttypes.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -404,21 +403,17 @@ static ArrowErrorCode ArrowIpcEncodeField(flatcc_builder_t* builder,
   return NANOARROW_OK;
 }
 
-ArrowErrorCode ArrowIpcEncoderEncodeSchema(struct ArrowIpcEncoder* encoder,
+static ArrowErrorCode ArrowIpcEncodeSchema(flatcc_builder_t* builder,
                                            const struct ArrowSchema* schema,
                                            struct ArrowError* error) {
-  NANOARROW_DCHECK(encoder != NULL && encoder->private_data != NULL && schema != NULL);
+  NANOARROW_DCHECK(schema->release != NULL);
 
-  struct ArrowIpcEncoderPrivate* private =
-      (struct ArrowIpcEncoderPrivate*)encoder->private_data;
-
-  flatcc_builder_t* builder = &private->builder;
-
-  if (!private->encoding_footer) {
-    FLATCC_RETURN_UNLESS_0(Message_start_as_root(builder), error);
-    FLATCC_RETURN_UNLESS_0(Message_version_add(builder, ns(MetadataVersion_V5)), error);
-
-    FLATCC_RETURN_UNLESS_0(Message_header_Schema_start(builder), error);
+  if (strcmp(schema->format, "+s") != 0) {
+    ArrowErrorSet(
+        error,
+        "Cannot encode schema with format '%s'; top level schema must have struct type",
+        schema->format);
+    return EINVAL;
   }
 
   if (ArrowIpcSystemEndianness() == NANOARROW_IPC_ENDIANNESS_LITTLE) {
@@ -444,12 +439,30 @@ ArrowErrorCode ArrowIpcEncoderEncodeSchema(struct ArrowIpcEncoder* encoder,
   FLATCC_RETURN_UNLESS_0(Schema_features_start(builder), error);
   FLATCC_RETURN_UNLESS_0(Schema_features_end(builder), error);
 
-  if (!private->encoding_footer) {
-    FLATCC_RETURN_UNLESS_0(Message_header_Schema_end(builder), error);
+  return NANOARROW_OK;
+}
 
-    FLATCC_RETURN_UNLESS_0(Message_bodyLength_add(builder, 0), error);
-    FLATCC_RETURN_IF_NULL(ns(Message_end_as_root(builder)), error);
-  }
+ArrowErrorCode ArrowIpcEncoderEncodeSchema(struct ArrowIpcEncoder* encoder,
+                                           const struct ArrowSchema* schema,
+                                           struct ArrowError* error) {
+  NANOARROW_DCHECK(encoder != NULL && encoder->private_data != NULL && schema != NULL);
+
+  struct ArrowIpcEncoderPrivate* private =
+      (struct ArrowIpcEncoderPrivate*)encoder->private_data;
+
+  flatcc_builder_t* builder = &private->builder;
+
+  FLATCC_RETURN_UNLESS_0(Message_start_as_root(builder), error);
+
+  FLATCC_RETURN_UNLESS_0(Message_version_add(builder, ns(MetadataVersion_V5)), error);
+
+  FLATCC_RETURN_UNLESS_0(Message_header_Schema_start(builder), error);
+  NANOARROW_RETURN_NOT_OK(ArrowIpcEncodeSchema(builder, schema, error));
+  FLATCC_RETURN_UNLESS_0(Message_header_Schema_end(builder), error);
+
+  FLATCC_RETURN_UNLESS_0(Message_bodyLength_add(builder, 0), error);
+
+  FLATCC_RETURN_IF_NULL(ns(Message_end_as_root(builder)), error);
   return NANOARROW_OK;
 }
 
@@ -607,4 +620,54 @@ ArrowErrorCode ArrowIpcEncoderEncodeSimpleRecordBatch(
   };
 
   return ArrowIpcEncoderEncodeRecordBatch(encoder, &buffer_encoder, array_view, error);
+}
+
+void ArrowIpcFooterInit(struct ArrowIpcFooter* footer) {
+  footer->schema.release = NULL;
+  ArrowBufferInit(&footer->record_batch_blocks);
+}
+
+void ArrowIpcFooterReset(struct ArrowIpcFooter* footer) {
+  if (footer->schema.release != NULL) {
+    ArrowSchemaRelease(&footer->schema);
+  }
+  ArrowBufferReset(&footer->record_batch_blocks);
+}
+
+ArrowErrorCode ArrowIpcEncoderEncodeFooter(struct ArrowIpcEncoder* encoder,
+                                           const struct ArrowIpcFooter* footer,
+                                           struct ArrowError* error) {
+  NANOARROW_DCHECK(encoder != NULL && encoder->private_data != NULL && footer != NULL);
+
+  struct ArrowIpcEncoderPrivate* private =
+      (struct ArrowIpcEncoderPrivate*)encoder->private_data;
+
+  flatcc_builder_t* builder = &private->builder;
+
+  FLATCC_RETURN_UNLESS_0(Footer_start_as_root(builder), error);
+
+  FLATCC_RETURN_UNLESS_0(Footer_version_add(builder, ns(MetadataVersion_V5)), error);
+
+  FLATCC_RETURN_UNLESS_0(Footer_schema_start(builder), error);
+  NANOARROW_RETURN_NOT_OK(ArrowIpcEncodeSchema(builder, &footer->schema, error));
+  FLATCC_RETURN_UNLESS_0(Footer_schema_end(builder), error);
+
+  const struct ArrowIpcFileBlock* blocks =
+      (struct ArrowIpcFileBlock*)footer->record_batch_blocks.data;
+  int64_t n_blocks =
+      footer->record_batch_blocks.size_bytes / sizeof(struct ArrowIpcFileBlock);
+
+  FLATCC_RETURN_UNLESS_0(Footer_recordBatches_start(builder), error);
+  struct ns(Block)* flatcc_RecordBatch_blocks =
+      ns(Footer_recordBatches_extend(builder, n_blocks));
+  FLATCC_RETURN_IF_NULL(flatcc_RecordBatch_blocks, error);
+  for (int64_t i = 0; i < n_blocks; i++) {
+    struct ns(Block) block = {blocks[i].offset, (int32_t)blocks[i].metadata_length,
+                              blocks[i].body_length};
+    flatcc_RecordBatch_blocks[i] = block;
+  }
+  FLATCC_RETURN_UNLESS_0(Footer_recordBatches_end(builder), error);
+
+  FLATCC_RETURN_IF_NULL(ns(Footer_end_as_root(builder)), error);
+  return NANOARROW_OK;
 }

@@ -16,7 +16,6 @@
 // under the License.
 
 #include <errno.h>
-#include <inttypes.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -33,6 +32,19 @@ void ArrowIpcOutputStreamMove(struct ArrowIpcOutputStream* src,
 
   memcpy(dst, src, sizeof(struct ArrowIpcOutputStream));
   src->release = NULL;
+}
+
+ArrowErrorCode ArrowIpcOutputStreamWrite(struct ArrowIpcOutputStream* stream,
+                                         struct ArrowBufferView data,
+                                         struct ArrowError* error) {
+  while (data.size_bytes != 0) {
+    int64_t bytes_written = 0;
+    NANOARROW_RETURN_NOT_OK(stream->write(stream, data.data.as_uint8, data.size_bytes,
+                                          &bytes_written, error));
+    data.size_bytes -= bytes_written;
+    data.data.as_uint8 += bytes_written;
+  }
+  return NANOARROW_OK;
 }
 
 struct ArrowIpcOutputStreamBufferPrivate {
@@ -166,21 +178,10 @@ struct ArrowIpcWriterPrivate {
   struct ArrowBuffer buffer;
   struct ArrowBuffer body_buffer;
 
-  struct ns(Block) last_block;
+  int writing_file;
+  int64_t bytes_written;
+  struct ArrowIpcFooter footer;
 };
-
-ArrowErrorCode ArrowIpcOutputStreamWrite(struct ArrowIpcOutputStream* stream,
-                                         struct ArrowBufferView data,
-                                         struct ArrowError* error) {
-  while (data.size_bytes != 0) {
-    int64_t bytes_written = 0;
-    NANOARROW_RETURN_NOT_OK(stream->write(stream, data.data.as_uint8, data.size_bytes,
-                                          &bytes_written, error));
-    data.size_bytes -= bytes_written;
-    data.data.as_uint8 += bytes_written;
-  }
-  return NANOARROW_OK;
-}
 
 ArrowErrorCode ArrowIpcWriterInit(struct ArrowIpcWriter* writer,
                                   struct ArrowIpcOutputStream* output_stream) {
@@ -198,7 +199,9 @@ ArrowErrorCode ArrowIpcWriterInit(struct ArrowIpcWriter* writer,
   ArrowBufferInit(&private->buffer);
   ArrowBufferInit(&private->body_buffer);
 
-  memset(&private->last_block, 0, sizeof(private->last_block));
+  private->writing_file = 0;
+  private->bytes_written = 0;
+  ArrowIpcFooterInit(&private->footer);
 
   writer->private_data = private;
   return NANOARROW_OK;
@@ -215,6 +218,8 @@ void ArrowIpcWriterReset(struct ArrowIpcWriter* writer) {
     private->output_stream.release(&private->output_stream);
     ArrowBufferReset(&private->buffer);
     ArrowBufferReset(&private->body_buffer);
+
+    ArrowIpcFooterReset(&private->footer);
 
     ArrowFree(private);
   }
@@ -249,9 +254,6 @@ ArrowErrorCode ArrowIpcWriterWriteSchema(struct ArrowIpcWriter* writer,
   struct ArrowIpcWriterPrivate* private =
       (struct ArrowIpcWriterPrivate*)writer->private_data;
 
-  private->last_block.offset += private->buffer.size_bytes;
-  private->last_block.offset += private->body_buffer.size_bytes;
-
   NANOARROW_ASSERT_OK(ArrowBufferResize(&private->buffer, 0, 0));
 
   NANOARROW_RETURN_NOT_OK(ArrowIpcEncoderEncodeSchema(&private->encoder, in, error));
@@ -260,8 +262,11 @@ ArrowErrorCode ArrowIpcWriterWriteSchema(struct ArrowIpcWriter* writer,
                                     &private->buffer),
       error);
 
-  private->last_block.metaDataLength = (int32_t) private->buffer.size_bytes;
-  private->last_block.bodyLength = 0;
+  if (private->writing_file) {
+    NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowSchemaDeepCopy(in, &private->footer.schema),
+                                       error);
+  }
+  private->bytes_written += private->buffer.size_bytes;
 
   return ArrowIpcOutputStreamWrite(&private->output_stream,
                                    ArrowBufferToBufferView(&private->buffer), error);
@@ -280,9 +285,6 @@ ArrowErrorCode ArrowIpcWriterWriteArrayView(struct ArrowIpcWriter* writer,
     return ArrowIpcOutputStreamWrite(&private->output_stream, eos_view, error);
   }
 
-  private->last_block.offset += private->buffer.size_bytes;
-  private->last_block.offset += private->body_buffer.size_bytes;
-
   NANOARROW_ASSERT_OK(ArrowBufferResize(&private->buffer, 0, 0));
   NANOARROW_ASSERT_OK(ArrowBufferResize(&private->body_buffer, 0, 0));
 
@@ -293,8 +295,18 @@ ArrowErrorCode ArrowIpcWriterWriteArrayView(struct ArrowIpcWriter* writer,
                                     &private->buffer),
       error);
 
-  private->last_block.metaDataLength = (int32_t) private->buffer.size_bytes;
-  private->last_block.bodyLength = private->body_buffer.size_bytes;
+  if (private->writing_file) {
+    struct ArrowIpcFileBlock block = {
+        .offset = private->bytes_written,
+        .metadata_length = private->buffer.size_bytes,
+        .body_length = private->body_buffer.size_bytes,
+    };
+    NANOARROW_RETURN_NOT_OK_WITH_ERROR(
+        ArrowBufferAppend(&private->footer.record_batch_blocks, &block, sizeof(block)),
+        error);
+  }
+  private->bytes_written += private->buffer.size_bytes;
+  private->bytes_written += private->body_buffer.size_bytes;
 
   NANOARROW_RETURN_NOT_OK(ArrowIpcOutputStreamWrite(
       &private->output_stream, ArrowBufferToBufferView(&private->buffer), error));
@@ -348,5 +360,62 @@ ArrowErrorCode ArrowIpcWriterWriteArrayStream(struct ArrowIpcWriter* writer,
   }
 
   ArrowArrayViewReset(&array_view);
+  return NANOARROW_OK;
+}
+
+ArrowErrorCode ArrowIpcWriterStartFile(struct ArrowIpcWriter* writer,
+                                       struct ArrowError* error) {
+  NANOARROW_DCHECK(writer != NULL && writer->private_data != NULL);
+
+  struct ArrowIpcWriterPrivate* private =
+      (struct ArrowIpcWriterPrivate*)writer->private_data;
+
+  NANOARROW_DCHECK(!private->writing_file && private->bytes_written == 0);
+
+  struct ArrowBufferView magic = {
+      .data.data = NANOARROW_IPC_FILE_PADDED_MAGIC,
+      .size_bytes = sizeof(NANOARROW_IPC_FILE_PADDED_MAGIC),
+  };
+  NANOARROW_RETURN_NOT_OK(
+      ArrowIpcOutputStreamWrite(&private->output_stream, magic, error));
+
+  private->writing_file = 1;
+  private->bytes_written = magic.size_bytes;
+  return NANOARROW_OK;
+}
+
+ArrowErrorCode ArrowIpcWriterFinalizeFile(struct ArrowIpcWriter* writer,
+                                          struct ArrowError* error) {
+  NANOARROW_DCHECK(writer != NULL && writer->private_data != NULL);
+
+  struct ArrowIpcWriterPrivate* private =
+      (struct ArrowIpcWriterPrivate*)writer->private_data;
+
+  NANOARROW_DCHECK(private->writing_file);
+
+  NANOARROW_ASSERT_OK(ArrowBufferResize(&private->buffer, 0, 0));
+  NANOARROW_RETURN_NOT_OK(
+      ArrowIpcEncoderEncodeFooter(&private->encoder, &private->footer, error));
+  NANOARROW_RETURN_NOT_OK_WITH_ERROR(
+      ArrowIpcEncoderFinalizeBuffer(&private->encoder, /*encapsulate=*/0,
+                                    &private->buffer),
+      error);
+
+  _NANOARROW_CHECK_RANGE(private->buffer.size_bytes, 0, INT32_MAX);
+  int32_t size = (int32_t) private->buffer.size_bytes;
+  struct ArrowStringView magic = ArrowCharView(NANOARROW_IPC_FILE_PADDED_MAGIC);
+
+  // just append to private->buffer instead of queueing two more tiny writes
+  NANOARROW_RETURN_NOT_OK_WITH_ERROR(
+      ArrowBufferReserve(&private->buffer, sizeof(size) + magic.size_bytes), error);
+
+  if (ArrowIpcSystemEndianness() == NANOARROW_IPC_ENDIANNESS_BIG) {
+    size = (int32_t)bswap32((uint32_t)size);
+  }
+  NANOARROW_ASSERT_OK(ArrowBufferAppendInt32(&private->buffer, size));
+  NANOARROW_ASSERT_OK(ArrowBufferAppendStringView(&private->buffer, magic));
+
+  NANOARROW_RETURN_NOT_OK(ArrowIpcOutputStreamWrite(
+      &private->output_stream, ArrowBufferToBufferView(&private->buffer), error));
   return NANOARROW_OK;
 }

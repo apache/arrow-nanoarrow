@@ -42,6 +42,22 @@ inline void release_pointer(struct ArrowIpcDecoder* data) {
 }
 
 template <>
+inline void init_pointer(struct ArrowIpcFooter* data) {
+  ArrowIpcFooterInit(data);
+}
+
+template <>
+inline void move_pointer(struct ArrowIpcFooter* src, struct ArrowIpcFooter* dst) {
+  ArrowSchemaMove(&src->schema, &dst->schema);
+  ArrowBufferMove(&src->record_batch_blocks, &dst->record_batch_blocks);
+}
+
+template <>
+inline void release_pointer(struct ArrowIpcFooter* data) {
+  ArrowIpcFooterReset(data);
+}
+
+template <>
 inline void init_pointer(struct ArrowIpcEncoder* data) {
   data->private_data = nullptr;
 }
@@ -127,6 +143,9 @@ namespace ipc {
 
 /// \brief Class wrapping a unique struct ArrowIpcDecoder
 using UniqueDecoder = internal::Unique<struct ArrowIpcDecoder>;
+
+/// \brief Class wrapping a unique struct ArrowIpcFooter
+using UniqueFooter = internal::Unique<struct ArrowIpcFooter>;
 
 /// \brief Class wrapping a unique struct ArrowIpcEncoder
 using UniqueEncoder = internal::Unique<struct ArrowIpcEncoder>;

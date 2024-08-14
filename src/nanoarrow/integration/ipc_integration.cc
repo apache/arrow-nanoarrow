@@ -18,47 +18,89 @@
 #include <cstdlib>
 #include <fstream>
 
+#include <gmock/gmock.h>
+#include <gtest/gtest.h>
 #include <nanoarrow/nanoarrow_ipc.hpp>
 #include <nanoarrow/nanoarrow_testing.hpp>
 
-#include "flatcc/flatcc_builder.h"
-#include "nanoarrow/ipc/flatcc_generated.h"
+std::string GetEnv(char const* name) {
+  char const* val = std::getenv(name);
+  return val ? val : "";
+}
 
-#define ns(x) FLATBUFFERS_WRAP_NAMESPACE(org_apache_arrow_flatbuf, x)
+constexpr auto kUsage = R"(USAGE:
+  # assert that f.arrow reads identical to f.json
+  env COMMAND=VALIDATE    \
+      ARROW_PATH=f.arrow  \
+      JSON_PATH=f.json    \
+      nanoarrow_ipc_json_integration
 
-#define FLATCC_RETURN_UNLESS_0_NO_NS(x, error)                        \
-  if ((x) != 0) {                                                     \
-    ArrowErrorSet(error, "%s:%d: %s failed", __FILE__, __LINE__, #x); \
-    return ENOMEM;                                                    \
+  # produce f.arrow from f.json
+  env COMMAND=JSON_TO_ARROW  \
+      ARROW_PATH=f.arrow     \
+      JSON_PATH=f.json       \
+      nanoarrow_ipc_json_integration
+
+  # copy f.stream into f.arrow
+  env COMMAND=STREAM_TO_FILE  \
+      ARROW_PATH=f.arrow      \
+      nanoarrow_ipc_json_integration < f.stream
+
+  # copy f.arrow into f.stream
+  env COMMAND=FILE_TO_STREAM  \
+      ARROW_PATH=f.arrow      \
+      nanoarrow_ipc_json_integration > f.stream
+
+  # run all internal test cases
+  nanoarrow_ipc_json_integration
+)";
+
+ArrowErrorCode Validate(struct ArrowError*);
+ArrowErrorCode JsonToArrow(struct ArrowError*);
+ArrowErrorCode StreamToFile(struct ArrowError*);
+ArrowErrorCode FileToStream(struct ArrowError*);
+
+int main(int argc, char** argv) try {
+  std::string command = GetEnv("COMMAND");
+
+  ArrowErrorCode error_code;
+  struct ArrowError error;
+
+  if (command == "VALIDATE") {
+    std::cout << "Validating that " << GetEnv("ARROW_PATH") << " reads identical to "
+              << GetEnv("JSON_PATH") << std::endl;
+
+    error_code = Validate(&error);
+  } else if (command == "JSON_TO_ARROW") {
+    std::cout << "Producing " << GetEnv("ARROW_PATH") << " from " << GetEnv("JSON_PATH")
+              << std::endl;
+
+    error_code = JsonToArrow(&error);
+  } else if (command == "STREAM_TO_FILE") {
+    error_code = StreamToFile(&error);
+  } else if (command == "FILE_TO_STREAM") {
+    error_code = FileToStream(&error);
+  } else {
+    if (argc == 1 || argv[1] == std::string{"-h"} || argv[1] == std::string{"--help"}) {
+      // skip printing usage if for example --gtest_list_tests is used;
+      // that command obviously doesn't need the extra noise
+      std::cerr << kUsage;
+    }
+    testing::InitGoogleTest(&argc, argv);
+    return RUN_ALL_TESTS();
   }
 
-#define FLATCC_RETURN_UNLESS_0(x, error) FLATCC_RETURN_UNLESS_0_NO_NS(ns(x), error)
-
-#define FLATCC_RETURN_IF_NULL(x, error)                                 \
-  if (!(x)) {                                                           \
-    ArrowErrorSet(error, "%s:%d: %s was null", __FILE__, __LINE__, #x); \
-    return ENOMEM;                                                      \
+  if (error_code != NANOARROW_OK) {
+    std::cerr << "Command " << command << " failed (" << error_code << "="
+              << strerror(error_code) << "): " << error.message << std::endl;
   }
-
-struct ArrowIpcEncoderPrivate {
-  flatcc_builder_t builder;
-  struct ArrowBuffer buffers;
-  struct ArrowBuffer nodes;
-  int encoding_footer;
-};
-
-struct ArrowIpcWriterPrivate {
-  struct ArrowIpcEncoder encoder;
-  struct ArrowIpcOutputStream output_stream;
-  struct ArrowBuffer buffer;
-  struct ArrowBuffer body_buffer;
-
-  struct ns(Block) last_block;
-};
+  return error_code;
+} catch (std::exception const& e) {
+  std::cerr << "Uncaught exception: " << e.what() << std::endl;
+  return 1;
+}
 
 struct File {
-  File() = default;
-
   ~File() {
     if (file_ != nullptr) {
       fclose(file_);
@@ -74,19 +116,23 @@ struct File {
     return EINVAL;
   }
 
+  std::string read() const {
+    fseek(file_, 0, SEEK_END);
+    std::string contents(ftell(file_), '\0');
+    rewind(file_);
+
+    size_t bytes_read = 0;
+    while (bytes_read < contents.size()) {
+      bytes_read +=
+          fread(contents.data() + bytes_read, 1, contents.size() - bytes_read, file_);
+    }
+    return contents;
+  }
+
   operator FILE*() const { return file_; }
 
-  FILE* file_;
+  FILE* file_ = nullptr;
 };
-
-constexpr char kPaddedMagic[8] = "ARROW1\0";
-
-std::string ReadFileIntoString(std::string const& path) {
-  std::ifstream stream{path};
-  std::string contents(stream.seekg(0, std::ios_base::end).tellg(), '\0');
-  stream.seekg(0).read(contents.data(), contents.size());
-  return contents;
-}
 
 struct MaterializedArrayStream {
   nanoarrow::UniqueSchema schema;
@@ -107,7 +153,11 @@ struct MaterializedArrayStream {
     return NANOARROW_OK;
   }
 
-  ArrowErrorCode FromJson(std::string const& json, struct ArrowError* error) {
+  ArrowErrorCode FromJsonFile(std::string const& path, struct ArrowError* error) {
+    File json_file;
+    NANOARROW_RETURN_NOT_OK(json_file.open(path, "r", error));
+    auto json = json_file.read();
+
     nanoarrow::testing::TestingJSONReader reader;
     nanoarrow::UniqueArrayStream array_stream;
     NANOARROW_RETURN_NOT_OK(
@@ -123,15 +173,18 @@ struct MaterializedArrayStream {
     // Footer).
     File ipc_file;
     NANOARROW_RETURN_NOT_OK(ipc_file.open(path, "rb", error));
+    return FromIpcFile(ipc_file, error);
+  }
 
-    char prefix[sizeof(kPaddedMagic)] = {};
+  ArrowErrorCode FromIpcFile(FILE* ipc_file, struct ArrowError* error) {
+    char prefix[sizeof(NANOARROW_IPC_FILE_PADDED_MAGIC)] = {};
     if (fread(&prefix, 1, sizeof(prefix), ipc_file) < sizeof(prefix)) {
       ArrowErrorSet(error, "Expected file of more than %lu bytes, got %ld",
                     sizeof(prefix), ftell(ipc_file));
       return EINVAL;
     }
 
-    if (memcmp(&prefix, kPaddedMagic, sizeof(prefix)) != 0) {
+    if (memcmp(&prefix, NANOARROW_IPC_FILE_PADDED_MAGIC, sizeof(prefix)) != 0) {
       ArrowErrorSet(error, "File did not begin with 'ARROW1\\0\\0'");
       return EINVAL;
     }
@@ -151,11 +204,15 @@ struct MaterializedArrayStream {
     return From(array_stream.get(), error);
   }
 
-  ArrowErrorCode Write(struct ArrowIpcOutputStream* output_stream,
-                       struct ArrowError* error, struct ArrowBuffer* blocks = nullptr) {
+  ArrowErrorCode Write(struct ArrowIpcOutputStream* output_stream, bool write_file,
+                       struct ArrowError* error) {
     nanoarrow::ipc::UniqueWriter writer;
     NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowIpcWriterInit(writer.get(), output_stream),
                                        error);
+
+    if (write_file) {
+      NANOARROW_RETURN_NOT_OK(ArrowIpcWriterStartFile(writer.get(), error));
+    }
 
     NANOARROW_RETURN_NOT_OK(ArrowIpcWriterWriteSchema(writer.get(), schema.get(), error));
 
@@ -168,21 +225,15 @@ struct MaterializedArrayStream {
           ArrowArrayViewSetArray(array_view.get(), batch.get(), error));
       NANOARROW_RETURN_NOT_OK(
           ArrowIpcWriterWriteArrayView(writer.get(), array_view.get(), error));
-
-      if (blocks == nullptr) {
-        continue;
-      }
-      auto block = static_cast<ArrowIpcWriterPrivate*>(writer->private_data)->last_block;
-
-      // Offsets are written relative to the stream, so we need to adjust them to
-      // account for the leading padded magic
-      block.offset += sizeof(kPaddedMagic);
-
-      NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowBufferAppend(blocks, &block, sizeof(block)),
-                                         error);
     }
 
-    return ArrowIpcWriterWriteArrayView(writer.get(), nullptr, error);
+    NANOARROW_RETURN_NOT_OK(ArrowIpcWriterWriteArrayView(writer.get(), nullptr, error));
+
+    if (write_file) {
+      NANOARROW_RETURN_NOT_OK(ArrowIpcWriterFinalizeFile(writer.get(), error));
+    }
+
+    return NANOARROW_OK;
   }
 
   ArrowErrorCode WriteIpcFile(std::string const& path, struct ArrowError* error) {
@@ -199,73 +250,14 @@ struct MaterializedArrayStream {
                                      /*close_on_release=*/false),
         error);
 
-    struct ArrowBufferView magic = {{kPaddedMagic}, sizeof(kPaddedMagic)};
-    NANOARROW_RETURN_NOT_OK(ArrowIpcOutputStreamWrite(output_stream.get(), magic, error));
-
-    nanoarrow::UniqueBuffer blocks;
-    NANOARROW_RETURN_NOT_OK(Write(output_stream.get(), error, blocks.get()));
-
-    nanoarrow::ipc::UniqueEncoder encoder;
-    NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowIpcEncoderInit(encoder.get()), error);
-
-    auto* builder = &static_cast<ArrowIpcEncoderPrivate*>(encoder->private_data)->builder;
-
-    FLATCC_RETURN_UNLESS_0(Footer_start_as_root(builder), error);
-
-    FLATCC_RETURN_UNLESS_0(Footer_version_add(builder, ns(MetadataVersion_V5)), error);
-
-    static_cast<ArrowIpcEncoderPrivate*>(encoder->private_data)->encoding_footer = 1;
-    FLATCC_RETURN_UNLESS_0(Footer_schema_start(builder), error);
-    NANOARROW_RETURN_NOT_OK(
-        ArrowIpcEncoderEncodeSchema(encoder.get(), schema.get(), error));
-    FLATCC_RETURN_UNLESS_0(Footer_schema_end(builder), error);
-
-    FLATCC_RETURN_UNLESS_0(
-        Footer_recordBatches_create(builder,  //
-                                    reinterpret_cast<struct ns(Block)*>(blocks->data),
-                                    blocks->size_bytes / sizeof(struct ns(Block))),
-        error);
-
-    FLATCC_RETURN_IF_NULL(ns(Footer_end_as_root(builder)), error);
-
-    nanoarrow::UniqueBuffer footer_buffer;
-    NANOARROW_RETURN_NOT_OK_WITH_ERROR(
-        ArrowIpcEncoderFinalizeBuffer(encoder.get(), /*encapsulate=*/false,
-                                      footer_buffer.get()),
-        error);
-
-    NANOARROW_RETURN_NOT_OK_WITH_ERROR(
-        ArrowIpcOutputStreamInitFile(output_stream.get(), ipc_file,
-                                     /*close_on_release=*/false),
-        error);
-
-    NANOARROW_RETURN_NOT_OK_WITH_ERROR(
-        ArrowBufferAppendInt32(footer_buffer.get(),
-                               static_cast<int32_t>(footer_buffer->size_bytes)),
-        error);
-    NANOARROW_RETURN_NOT_OK_WITH_ERROR(
-        ArrowBufferAppend(footer_buffer.get(), kPaddedMagic, strlen(kPaddedMagic)),
-        error);
-
-    struct ArrowBufferView footer = {{footer_buffer->data}, footer_buffer->size_bytes};
-    NANOARROW_RETURN_NOT_OK(
-        ArrowIpcOutputStreamWrite(output_stream.get(), footer, error));
-
-    return NANOARROW_OK;
+    return Write(output_stream.get(), /*write_file=*/true, error);
   }
 };
-
-std::string GetEnv(char const* name) {
-  if (char const* val = std::getenv(name)) {
-    return val;
-  }
-  return "";
-}
 
 ArrowErrorCode Validate(struct ArrowError* error) {
   auto json_path = GetEnv("JSON_PATH");
   MaterializedArrayStream json_table;
-  NANOARROW_RETURN_NOT_OK(json_table.FromJson(ReadFileIntoString(json_path), error));
+  NANOARROW_RETURN_NOT_OK(json_table.FromJsonFile(json_path, error));
 
   auto arrow_path = GetEnv("ARROW_PATH");
   MaterializedArrayStream arrow_table;
@@ -309,7 +301,7 @@ ArrowErrorCode Validate(struct ArrowError* error) {
 
 ArrowErrorCode JsonToArrow(struct ArrowError* error) {
   MaterializedArrayStream table;
-  NANOARROW_RETURN_NOT_OK(table.FromJson(ReadFileIntoString(GetEnv("JSON_PATH")), error));
+  NANOARROW_RETURN_NOT_OK(table.FromJsonFile(GetEnv("JSON_PATH"), error));
   return table.WriteIpcFile(GetEnv("ARROW_PATH"), error);
 }
 
@@ -342,61 +334,40 @@ ArrowErrorCode FileToStream(struct ArrowError* error) {
                                    /*close_on_release=*/true),
       error);
 
-  return table.Write(output_stream.get(), error);
+  return table.Write(output_stream.get(), /*write_file=*/false, error);
 }
 
-int main() try {
-  std::string command = GetEnv("COMMAND");
-
-  ArrowErrorCode error_code;
-  struct ArrowError error;
-  if (command == "VALIDATE") {
-    std::cout << "Validating that " << GetEnv("ARROW_PATH") << " reads identical to "
-              << GetEnv("JSON_PATH") << std::endl;
-
-    error_code = Validate(&error);
-  } else if (command == "JSON_TO_ARROW") {
-    std::cout << "Producing " << GetEnv("ARROW_PATH") << " from " << GetEnv("JSON_PATH")
-              << std::endl;
-
-    error_code = JsonToArrow(&error);
-  } else if (command == "STREAM_TO_FILE") {
-    error_code = StreamToFile(&error);
-  } else if (command == "FILE_TO_STREAM") {
-    error_code = FileToStream(&error);
-  } else {
-    std::cerr << R"(USAGE:
-  # assert that f.arrow reads identical to f.json
-  env COMMAND=VALIDATE    \
-      ARROW_PATH=f.arrow  \
-      JSON_PATH=f.json    \
-      nanoarrow_ipc_json_integration
-
-  # produce f.arrow from f.json
-  env COMMAND=JSON_TO_ARROW  \
-      ARROW_PATH=f.arrow     \
-      JSON_PATH=f.json       \
-      nanoarrow_ipc_json_integration
-
-  # copy f.stream into f.arrow
-  env COMMAND=STREAM_TO_FILE  \
-      ARROW_PATH=f.arrow      \
-      nanoarrow_ipc_json_integration < f.stream
-
-  # copy f.arrow into f.stream
-  env COMMAND=FILE_TO_STREAM  \
-      ARROW_PATH=f.arrow      \
-      nanoarrow_ipc_json_integration > f.stream
-)";
-    return EINVAL;
+TEST(Integration, ErrorMessages) {
+  MaterializedArrayStream table;
+  {
+    struct ArrowError error {};
+    EXPECT_NE(table.FromJsonFile(__FILE__, &error), NANOARROW_OK);
+    EXPECT_THAT(std::string(error.message),
+                testing::HasSubstr("syntax error while parsing value"));
   }
 
-  if (error_code != NANOARROW_OK) {
-    std::cerr << "Command " << command << " failed (" << error_code << "="
-              << strerror(error_code) << "): " << error.message << std::endl;
+  {
+    struct ArrowError error {};
+    EXPECT_NE(table.FromIpcFile(__FILE__, &error), NANOARROW_OK);
+    EXPECT_THAT(std::string(error.message),
+                testing::HasSubstr("File did not begin with 'ARROW1"));
   }
-  return error_code;
-} catch (std::exception const& e) {
-  std::cerr << "Uncaught exception: " << e.what() << std::endl;
-  return 1;
+
+  {
+    struct ArrowError error {};
+    EXPECT_NE(table.FromJsonFile(__FILE__ + std::string(".phony"), &error), NANOARROW_OK);
+    EXPECT_THAT(std::string(error.message),
+                testing::MatchesRegex(
+                    R"(Opening file '.*/ipc_integration.cc.phony' failed with errno=2)"));
+  }
+
+  {
+    struct ArrowError error {};
+    File tmp{tmpfile()};
+    EXPECT_EQ(fwrite("yo", 1, sizeof("yo"), tmp), sizeof("yo"));
+    EXPECT_NE(table.FromIpcFile(tmp, &error), NANOARROW_OK);
+    EXPECT_THAT(std::string(error.message),
+                testing::HasSubstr("Expected file of more than 8 bytes, got 3"));
+  }
 }
+

@@ -417,6 +417,36 @@ ArrowErrorCode ArrowIpcArrayStreamReaderInit(
     struct ArrowArrayStream* out, struct ArrowIpcInputStream* input_stream,
     struct ArrowIpcArrayStreamReaderOptions* options);
 
+/// \brief The magic which appears at the beginning and end of an IPC file, 0-padded.
+#define NANOARROW_IPC_FILE_PADDED_MAGIC "ARROW1\0"
+
+/// \brief Represents a byte range in an IPC file.
+struct ArrowIpcFileBlock {
+  /// \brief offset relative to the first byte of the file.
+  int64_t offset;
+  /// \brief length of encapsulated metadata Message (including padding)
+  int64_t metadata_length;
+  /// \brief length of contiguous body buffers (including padding)
+  int64_t body_length;
+};
+
+/// \brief A Footer for use in an IPC file
+///
+/// This structure is intended to be allocated by the caller, initialized using
+/// ArrowIpcFooterInit(), and released with ArrowIpcFooterReset().
+struct ArrowIpcFooter {
+  /// \brief the Footer's embedded Schema
+  struct ArrowSchema schema;
+  /// \brief all blocks containing RecordBatch Messages
+  struct ArrowBuffer record_batch_blocks;
+};
+
+/// \brief Initialize a Footer
+void ArrowIpcFooterInit(struct ArrowIpcFooter* footer);
+
+/// \brief Release all resources attached to an footer
+void ArrowIpcFooterReset(struct ArrowIpcFooter* footer);
+
 /// \brief Encoder for Arrow IPC messages
 ///
 /// This structure is intended to be allocated by the caller,
@@ -461,6 +491,16 @@ ArrowErrorCode ArrowIpcEncoderEncodeSchema(struct ArrowIpcEncoder* encoder,
 ArrowErrorCode ArrowIpcEncoderEncodeSimpleRecordBatch(
     struct ArrowIpcEncoder* encoder, const struct ArrowArrayView* array_view,
     struct ArrowBuffer* body_buffer, struct ArrowError* error);
+
+/// \brief Encode a Footer for use in an IPC file
+///
+/// \warning This API is currently only public for use in integration testing;
+///          use at your own risk.
+///
+/// Returns ENOMEM if allocation fails, NANOARROW_OK otherwise.
+ArrowErrorCode ArrowIpcEncoderEncodeFooter(struct ArrowIpcEncoder* encoder,
+                                           const struct ArrowIpcFooter* footer,
+                                           struct ArrowError* error);
 
 /// \brief An user-extensible output data sink
 struct ArrowIpcOutputStream {
@@ -552,6 +592,18 @@ ArrowErrorCode ArrowIpcWriterWriteArrayView(struct ArrowIpcWriter* writer,
 ArrowErrorCode ArrowIpcWriterWriteArrayStream(struct ArrowIpcWriter* writer,
                                               struct ArrowArrayStream* in,
                                               struct ArrowError* error);
+
+/// \brief Start writing an IPC file
+///
+/// Writes the Arrow IPC magic and sets the writer up to track written blocks.
+ArrowErrorCode ArrowIpcWriterStartFile(struct ArrowIpcWriter* writer,
+                                       struct ArrowError* error);
+
+/// \brief Finish writing an IPC file
+///
+/// Writes the IPC file's Footer, footer size, and ending magic.
+ArrowErrorCode ArrowIpcWriterFinalizeFile(struct ArrowIpcWriter* writer,
+                                          struct ArrowError* error);
 /// @}
 #ifdef __cplusplus
 }
