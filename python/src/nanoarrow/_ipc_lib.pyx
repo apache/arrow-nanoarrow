@@ -48,8 +48,24 @@ cdef extern from "nanoarrow_ipc.h" nogil:
         ArrowArrayStream* out, ArrowIpcInputStream* input_stream,
         ArrowIpcArrayStreamReaderOptions* options)
 
+    struct ArrowIpcOutputStream:
+        ArrowErrorCode (*write)(ArrowIpcOutputStream* stream, const void* buf,
+                                int64_t buf_size_bytes, int64_t* size_written_out,
+                                ArrowError* error)
+        void (*release)(ArrowIpcOutputStream* stream)
+        void* private_data
 
-cdef class PyInputStreamPrivate:
+    struct ArrowIpcWriter:
+        void* private_data
+
+    ArrowErrorCode ArrowIpcWriterInit(ArrowIpcWriter* writer,
+                                      ArrowIpcOutputStream* output_stream)
+    void ArrowIpcWriterReset(ArrowIpcWriter* writer)
+    ArrowErrorCode ArrowIpcWriterWriteArrayStream(ArrowIpcWriter* writer,
+                                                  ArrowArrayStream* in_,
+                                                  ArrowError* error)
+
+cdef class PyStreamPrivate:
     cdef object _obj
     cdef bint _close_obj
     cdef void* _addr
@@ -126,6 +142,41 @@ cdef void py_input_stream_release(ArrowIpcInputStream* stream) noexcept nogil:
     stream.release = NULL
 
 
+
+cdef ArrowErrorCode py_output_stream_write(ArrowIpcOutputStream* stream, const void* buf,
+                                           int64_t buf_size_bytes, int64_t* size_written_out,
+                                           ArrowError* error) noexcept nogil:
+
+    with gil:
+        stream_private = <object>stream.private_data
+        stream_private.set_buffer(<uintptr_t>buf, buf_size_bytes)
+
+        try:
+            raise NotImplementedError()
+        except Exception as e:
+            cls = type(e).__name__.encode()
+            msg = str(e).encode()
+            snprintf(
+                error.message,
+                sizeof(error.message),
+                "%s: %s",
+                <const char*>cls,
+                <const char*>msg
+            )
+            return EIO
+
+cdef void py_output_stream_release(ArrowIpcOutputStream* stream) noexcept nogil:
+    with gil:
+        stream_private = <object>stream.private_data
+        if stream_private.close_obj:
+            stream_private.obj.close()
+
+        Py_DECREF(stream_private)
+
+    stream.private_data = NULL
+    stream.release = NULL
+
+
 cdef class CIpcInputStream:
     cdef ArrowIpcInputStream _stream
 
@@ -150,7 +201,7 @@ cdef class CIpcInputStream:
     @staticmethod
     def from_readable(obj, close_obj=False):
         cdef CIpcInputStream stream = CIpcInputStream()
-        cdef PyInputStreamPrivate private_data = PyInputStreamPrivate(obj, close_obj)
+        cdef PyStreamPrivate private_data = PyStreamPrivate(obj, close_obj)
 
         stream._stream.private_data = <PyObject*>private_data
         Py_INCREF(private_data)
@@ -166,3 +217,36 @@ def init_array_stream(CIpcInputStream input_stream, uintptr_t out):
     cdef int code = ArrowIpcArrayStreamReaderInit(out_ptr, &input_stream._stream, NULL)
     if code != NANOARROW_OK:
         raise RuntimeError(f"ArrowIpcArrayStreamReaderInit() failed with code [{code}]")
+
+
+cdef class CIpcOutputStream:
+    cdef ArrowIpcOutputStream _stream
+
+    def __cinit__(self):
+        self._stream.release = NULL
+
+    def is_valid(self):
+        return self._stream.release != NULL
+
+    def __dealloc__(self):
+        # Duplicating release() to avoid Python API calls in the deallocator
+        if self._stream.release != NULL:
+            self._stream.release(&self._stream)
+
+    def release(self):
+        if self._stream.release != NULL:
+            self._stream.release(&self._stream)
+            return True
+        else:
+            return False
+
+    @staticmethod
+    def from_writable(obj, close_obj=False):
+        cdef CIpcOutputStream stream = CIpcOutputStream()
+        cdef PyStreamPrivate private_data = PyStreamPrivate(obj, close_obj)
+
+        stream._stream.private_data = <PyObject*>private_data
+        Py_INCREF(private_data)
+        stream._stream.write = &py_output_stream_write
+        stream._stream.release = &py_output_stream_release
+        return stream
