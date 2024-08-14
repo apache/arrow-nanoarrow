@@ -18,8 +18,14 @@
 import io
 
 from nanoarrow._array_stream import CArrayStream
-from nanoarrow._ipc_lib import CIpcInputStream, init_array_stream
+from nanoarrow._ipc_lib import (
+    CIpcInputStream,
+    CIpcOutputStream,
+    CIpcWriter,
+    init_array_stream,
+)
 from nanoarrow._utils import obj_is_buffer
+from nanoarrow.array_stream import c_array_stream
 
 from nanoarrow import _repr_utils
 
@@ -234,6 +240,41 @@ class Stream:
             return f"<{class_label} {self._desc}>"
         else:
             return f"<{class_label} <invalid>>"
+
+
+class Writer:
+
+    def __init__(self):
+        self._writer = None
+        self._desc = None
+
+    def _is_valid(self) -> bool:
+        return self._writer is not None and self._writer.is_valid()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args, **kwargs):
+        if self._writer is not None:
+            self._writer.release()
+
+    def write(self, obj, schema=None):
+        if not self._is_valid():
+            raise ValueError("Can't write to released Writer")
+
+        # Until we wire up array view/schema interface
+        stream = c_array_stream(obj, schema=schema)
+        with self, stream:
+            self._writer.write_stream(stream._addr())
+
+    @staticmethod
+    def from_writable(obj):
+        out = Writer()
+        stream = CIpcOutputStream.from_writable(obj, close_obj=False)
+        out._desc = repr(obj)
+
+        out._writer = CIpcWriter(stream)
+        return out
 
 
 # A self-contained example whose value is the serialized verison of

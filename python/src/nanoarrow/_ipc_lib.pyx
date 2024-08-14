@@ -31,6 +31,8 @@ from nanoarrow_c cimport (
     ArrowArrayStream,
 )
 
+from nanoarrow._utils cimport Error
+
 
 cdef extern from "nanoarrow_ipc.h" nogil:
     struct ArrowIpcInputStream:
@@ -250,3 +252,32 @@ cdef class CIpcOutputStream:
         stream._stream.write = &py_output_stream_write
         stream._stream.release = &py_output_stream_release
         return stream
+
+
+cdef class CIpcWriter:
+    cdef ArrowIpcWriter _writer
+
+    def __cinit__(self, CIpcOutputStream stream):
+        self._writer.private_data = NULL
+        if not stream.is_valid():
+            raise ValueError("Can't create writer from released stream")
+
+        cdef int code = ArrowIpcWriterInit(&self._writer, &stream._stream)
+        Error.raise_error_not_ok("ArrowIpcWriterInit()", code)
+
+    def is_valid(self):
+        return self._writer.private_data != NULL
+
+    def __dealloc__(self):
+        if self._writer.private_data != NULL:
+            ArrowIpcWriterReset(&self._writer)
+
+    def release(self):
+        if self._writer.private_data != NULL:
+            ArrowIpcWriterReset(&self._writer)
+
+    def write_stream(self, uintptr_t stream):
+        cdef ArrowArrayStream* array_stream = <ArrowArrayStream*>stream
+        cdef Error error = Error()
+        cdef int code = ArrowIpcWriterWriteArrayStream(&self._writer, array_stream, &error.c_error)
+        error.raise_message_not_ok("ArrowIpcWriterWriteArrayStream()", code)
