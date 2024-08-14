@@ -166,8 +166,7 @@ struct ArrowIpcWriterPrivate {
   struct ArrowBuffer buffer;
   struct ArrowBuffer body_buffer;
 
-  int64_t offset;
-  struct ArrowBuffer blocks;
+  struct ns(Block) last_block;
 };
 
 ArrowErrorCode ArrowIpcOutputStreamWrite(struct ArrowIpcOutputStream* stream,
@@ -199,8 +198,7 @@ ArrowErrorCode ArrowIpcWriterInit(struct ArrowIpcWriter* writer,
   ArrowBufferInit(&private->buffer);
   ArrowBufferInit(&private->body_buffer);
 
-  private->offset = 0;
-  ArrowBufferInit(&private->blocks);
+  memset(&private->last_block, 0, sizeof(private->last_block));
 
   writer->private_data = private;
   return NANOARROW_OK;
@@ -217,8 +215,6 @@ void ArrowIpcWriterReset(struct ArrowIpcWriter* writer) {
     private->output_stream.release(&private->output_stream);
     ArrowBufferReset(&private->buffer);
     ArrowBufferReset(&private->body_buffer);
-
-    ArrowBufferReset(&private->blocks);
 
     ArrowFree(private);
   }
@@ -253,14 +249,19 @@ ArrowErrorCode ArrowIpcWriterWriteSchema(struct ArrowIpcWriter* writer,
   struct ArrowIpcWriterPrivate* private =
       (struct ArrowIpcWriterPrivate*)writer->private_data;
 
+  private->last_block.offset += private->buffer.size_bytes;
+  private->last_block.offset += private->body_buffer.size_bytes;
+
   NANOARROW_ASSERT_OK(ArrowBufferResize(&private->buffer, 0, 0));
+
   NANOARROW_RETURN_NOT_OK(ArrowIpcEncoderEncodeSchema(&private->encoder, in, error));
   NANOARROW_RETURN_NOT_OK_WITH_ERROR(
       ArrowIpcEncoderFinalizeBuffer(&private->encoder, /*encapsulate=*/1,
                                     &private->buffer),
       error);
 
-  private->offset += private->buffer.size_bytes;
+  private->last_block.metaDataLength = (int32_t) private->buffer.size_bytes;
+  private->last_block.bodyLength = 0;
 
   return ArrowIpcOutputStreamWrite(&private->output_stream,
                                    ArrowBufferToBufferView(&private->buffer), error);
@@ -279,6 +280,9 @@ ArrowErrorCode ArrowIpcWriterWriteArrayView(struct ArrowIpcWriter* writer,
     return ArrowIpcOutputStreamWrite(&private->output_stream, eos_view, error);
   }
 
+  private->last_block.offset += private->buffer.size_bytes;
+  private->last_block.offset += private->body_buffer.size_bytes;
+
   NANOARROW_ASSERT_OK(ArrowBufferResize(&private->buffer, 0, 0));
   NANOARROW_ASSERT_OK(ArrowBufferResize(&private->body_buffer, 0, 0));
 
@@ -289,10 +293,8 @@ ArrowErrorCode ArrowIpcWriterWriteArrayView(struct ArrowIpcWriter* writer,
                                     &private->buffer),
       error);
 
-  struct ns(Block) block = {private->offset, (int32_t) private->buffer.size_bytes,
-                            private->body_buffer.size_bytes};
-  private->offset += private->buffer.size_bytes + private->body_buffer.size_bytes;
-  NANOARROW_RETURN_NOT_OK(ArrowBufferAppend(&private->blocks, &block, sizeof(block)));
+  private->last_block.metaDataLength = (int32_t) private->buffer.size_bytes;
+  private->last_block.bodyLength = private->body_buffer.size_bytes;
 
   NANOARROW_RETURN_NOT_OK(ArrowIpcOutputStreamWrite(
       &private->output_stream, ArrowBufferToBufferView(&private->buffer), error));

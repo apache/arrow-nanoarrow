@@ -24,6 +24,38 @@
 #include "flatcc/flatcc_builder.h"
 #include "nanoarrow/ipc/flatcc_generated.h"
 
+#define ns(x) FLATBUFFERS_WRAP_NAMESPACE(org_apache_arrow_flatbuf, x)
+
+#define FLATCC_RETURN_UNLESS_0_NO_NS(x, error)                        \
+  if ((x) != 0) {                                                     \
+    ArrowErrorSet(error, "%s:%d: %s failed", __FILE__, __LINE__, #x); \
+    return ENOMEM;                                                    \
+  }
+
+#define FLATCC_RETURN_UNLESS_0(x, error) FLATCC_RETURN_UNLESS_0_NO_NS(ns(x), error)
+
+#define FLATCC_RETURN_IF_NULL(x, error)                                 \
+  if (!(x)) {                                                           \
+    ArrowErrorSet(error, "%s:%d: %s was null", __FILE__, __LINE__, #x); \
+    return ENOMEM;                                                      \
+  }
+
+struct ArrowIpcEncoderPrivate {
+  flatcc_builder_t builder;
+  struct ArrowBuffer buffers;
+  struct ArrowBuffer nodes;
+  int encoding_footer;
+};
+
+struct ArrowIpcWriterPrivate {
+  struct ArrowIpcEncoder encoder;
+  struct ArrowIpcOutputStream output_stream;
+  struct ArrowBuffer buffer;
+  struct ArrowBuffer body_buffer;
+
+  struct ns(Block) last_block;
+};
+
 struct File {
   File() = default;
 
@@ -47,18 +79,6 @@ struct File {
   FILE* file_;
 };
 
-struct Table {
-  nanoarrow::UniqueSchema schema;
-  std::vector<nanoarrow::UniqueArray> batches;
-};
-
-std::string GetEnv(char const* name) {
-  if (char const* val = std::getenv(name)) {
-    return val;
-  }
-  return "";
-}
-
 constexpr char kPaddedMagic[8] = "ARROW1\0";
 
 std::string ReadFileIntoString(std::string const& path) {
@@ -68,210 +88,188 @@ std::string ReadFileIntoString(std::string const& path) {
   return contents;
 }
 
-ArrowErrorCode ReadTableFromArrayStream(struct ArrowArrayStream* stream, Table* table,
-                                        struct ArrowError* error) {
-  NANOARROW_RETURN_NOT_OK(ArrowArrayStreamGetSchema(stream, table->schema.get(), error));
+struct MaterializedArrayStream {
+  nanoarrow::UniqueSchema schema;
+  std::vector<nanoarrow::UniqueArray> batches;
 
-  while (true) {
-    nanoarrow::UniqueArray batch;
-    NANOARROW_RETURN_NOT_OK(ArrowArrayStreamGetNext(stream, batch.get(), error));
-    if (batch->release == nullptr) {
-      break;
+  ArrowErrorCode From(struct ArrowArrayStream* stream, struct ArrowError* error) {
+    NANOARROW_RETURN_NOT_OK(ArrowArrayStreamGetSchema(stream, schema.get(), error));
+
+    while (true) {
+      nanoarrow::UniqueArray batch;
+      NANOARROW_RETURN_NOT_OK(ArrowArrayStreamGetNext(stream, batch.get(), error));
+      if (batch->release == nullptr) {
+        break;
+      }
+      batches.push_back(std::move(batch));
     }
-    table->batches.push_back(std::move(batch));
+
+    return NANOARROW_OK;
   }
 
-  return NANOARROW_OK;
-}
-
-ArrowErrorCode ReadTableFromJson(std::string const& json, Table* table,
-                                 struct ArrowError* error) {
-  nanoarrow::testing::TestingJSONReader reader;
-  nanoarrow::UniqueArrayStream array_stream;
-  NANOARROW_RETURN_NOT_OK(
-      reader.ReadDataFile(json, array_stream.get(), reader.kNumBatchReadAll, error));
-  return ReadTableFromArrayStream(array_stream.get(), table, error);
-}
-
-ArrowErrorCode ReadTableFromIpcFile(std::string const& path, Table* table,
-                                    struct ArrowError* error) {
-  // FIXME this API needs to be public; it's a bit smelly to pretend that we support
-  // reading files when this bespoke program is the only one which can do it
-  //
-  // For now: just check the first 8 bytes of the file and read a stream (ignoring the
-  // Footer).
-  File ipc_file;
-  NANOARROW_RETURN_NOT_OK(ipc_file.open(path, "rb", error));
-
-  char prefix[sizeof(kPaddedMagic)] = {};
-  if (fread(&prefix, 1, sizeof(prefix), ipc_file) < sizeof(prefix)) {
-    ArrowErrorSet(error, "Expected file of more than %lu bytes, got %ld", sizeof(prefix),
-                  ftell(ipc_file));
-    return EINVAL;
-  }
-
-  if (memcmp(&prefix, kPaddedMagic, sizeof(prefix)) != 0) {
-    ArrowErrorSet(error, "File did not begin with 'ARROW1\\0\\0'");
-    return EINVAL;
-  }
-
-  nanoarrow::ipc::UniqueInputStream input_stream;
-  NANOARROW_RETURN_NOT_OK_WITH_ERROR(
-      ArrowIpcInputStreamInitFile(input_stream.get(), ipc_file,
-                                  /*close_on_release=*/false),
-      error);
-
-  nanoarrow::UniqueArrayStream array_stream;
-  NANOARROW_RETURN_NOT_OK_WITH_ERROR(
-      ArrowIpcArrayStreamReaderInit(array_stream.get(), input_stream.get(),
-                                    /*options=*/nullptr),
-      error);
-
-  return ReadTableFromArrayStream(array_stream.get(), table, error);
-}
-
-ArrowErrorCode WriteTableAsStream(Table const& table,
-                                  struct ArrowIpcOutputStream* output_stream,
-                                  struct ArrowError* error,
-                                  struct ArrowBuffer* blocks = nullptr) {
-  nanoarrow::ipc::UniqueWriter writer;
-  NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowIpcWriterInit(writer.get(), output_stream),
-                                     error);
-
-  NANOARROW_RETURN_NOT_OK(
-      ArrowIpcWriterWriteSchema(writer.get(), table.schema.get(), error));
-
-  nanoarrow::UniqueArrayView array_view;
-  NANOARROW_RETURN_NOT_OK(
-      ArrowArrayViewInitFromSchema(array_view.get(), table.schema.get(), error));
-
-  for (const auto& batch : table.batches) {
-    NANOARROW_RETURN_NOT_OK(ArrowArrayViewSetArray(array_view.get(), batch.get(), error));
+  ArrowErrorCode FromJson(std::string const& json, struct ArrowError* error) {
+    nanoarrow::testing::TestingJSONReader reader;
+    nanoarrow::UniqueArrayStream array_stream;
     NANOARROW_RETURN_NOT_OK(
-        ArrowIpcWriterWriteArrayView(writer.get(), array_view.get(), error));
+        reader.ReadDataFile(json, array_stream.get(), reader.kNumBatchReadAll, error));
+    return From(array_stream.get(), error);
   }
 
-  if (blocks != nullptr) {
-    struct ArrowIpcWriterPrivate {
-      struct ArrowIpcEncoder encoder;
-      struct ArrowIpcOutputStream output_stream;
-      struct ArrowBuffer buffer;
-      struct ArrowBuffer body_buffer;
+  ArrowErrorCode FromIpcFile(std::string const& path, struct ArrowError* error) {
+    // FIXME this API needs to be public; it's a bit smelly to pretend that we support
+    // reading files when this bespoke program is the only one which can do it
+    //
+    // For now: just check the first 8 bytes of the file and read a stream (ignoring the
+    // Footer).
+    File ipc_file;
+    NANOARROW_RETURN_NOT_OK(ipc_file.open(path, "rb", error));
 
-      int64_t offset;
-      struct ArrowBuffer blocks;
-    };
-    ArrowBufferMove(&static_cast<ArrowIpcWriterPrivate*>(writer->private_data)->blocks,
-                    blocks);
+    char prefix[sizeof(kPaddedMagic)] = {};
+    if (fread(&prefix, 1, sizeof(prefix), ipc_file) < sizeof(prefix)) {
+      ArrowErrorSet(error, "Expected file of more than %lu bytes, got %ld",
+                    sizeof(prefix), ftell(ipc_file));
+      return EINVAL;
+    }
+
+    if (memcmp(&prefix, kPaddedMagic, sizeof(prefix)) != 0) {
+      ArrowErrorSet(error, "File did not begin with 'ARROW1\\0\\0'");
+      return EINVAL;
+    }
+
+    nanoarrow::ipc::UniqueInputStream input_stream;
+    NANOARROW_RETURN_NOT_OK_WITH_ERROR(
+        ArrowIpcInputStreamInitFile(input_stream.get(), ipc_file,
+                                    /*close_on_release=*/false),
+        error);
+
+    nanoarrow::UniqueArrayStream array_stream;
+    NANOARROW_RETURN_NOT_OK_WITH_ERROR(
+        ArrowIpcArrayStreamReaderInit(array_stream.get(), input_stream.get(),
+                                      /*options=*/nullptr),
+        error);
+
+    return From(array_stream.get(), error);
   }
 
-  return ArrowIpcWriterWriteArrayView(writer.get(), nullptr, error);
-}
+  ArrowErrorCode Write(struct ArrowIpcOutputStream* output_stream,
+                       struct ArrowError* error, struct ArrowBuffer* blocks = nullptr) {
+    nanoarrow::ipc::UniqueWriter writer;
+    NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowIpcWriterInit(writer.get(), output_stream),
+                                       error);
 
-ArrowErrorCode WriteTableToIpcFile(std::string const& path, Table const& table,
-                                   struct ArrowError* error) {
-  // FIXME this API needs to be public; it's a bit smelly to pretend that we support
-  // writing files when this bespoke program is the only one which can do it
-  //
-  // For now: just write the leading magic, the stream + EOS, and a manual Footer.
-  File ipc_file;
-  NANOARROW_RETURN_NOT_OK(ipc_file.open(path, "wb", error));
+    NANOARROW_RETURN_NOT_OK(ArrowIpcWriterWriteSchema(writer.get(), schema.get(), error));
 
-  nanoarrow::ipc::UniqueOutputStream output_stream;
-  NANOARROW_RETURN_NOT_OK_WITH_ERROR(
-      ArrowIpcOutputStreamInitFile(output_stream.get(), ipc_file,
-                                   /*close_on_release=*/false),
-      error);
+    nanoarrow::UniqueArrayView array_view;
+    NANOARROW_RETURN_NOT_OK(
+        ArrowArrayViewInitFromSchema(array_view.get(), schema.get(), error));
 
-  struct ArrowBufferView magic = {{kPaddedMagic}, sizeof(kPaddedMagic)};
-  NANOARROW_RETURN_NOT_OK(ArrowIpcOutputStreamWrite(output_stream.get(), magic, error));
+    for (const auto& batch : batches) {
+      NANOARROW_RETURN_NOT_OK(
+          ArrowArrayViewSetArray(array_view.get(), batch.get(), error));
+      NANOARROW_RETURN_NOT_OK(
+          ArrowIpcWriterWriteArrayView(writer.get(), array_view.get(), error));
 
-  nanoarrow::UniqueBuffer blocks;
-  NANOARROW_RETURN_NOT_OK(
-      WriteTableAsStream(table, output_stream.get(), error, blocks.get()));
+      if (blocks == nullptr) {
+        continue;
+      }
+      auto block = static_cast<ArrowIpcWriterPrivate*>(writer->private_data)->last_block;
 
-  nanoarrow::ipc::UniqueEncoder encoder;
-  NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowIpcEncoderInit(encoder.get()), error);
+      // Offsets are written relative to the stream, so we need to adjust them to
+      // account for the leading padded magic
+      block.offset += sizeof(kPaddedMagic);
 
-#define ns(x) FLATBUFFERS_WRAP_NAMESPACE(org_apache_arrow_flatbuf, x)
+      NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowBufferAppend(blocks, &block, sizeof(block)),
+                                         error);
+    }
 
-#define FLATCC_RETURN_UNLESS_0_NO_NS(x, error)                        \
-  if ((x) != 0) {                                                     \
-    ArrowErrorSet(error, "%s:%d: %s failed", __FILE__, __LINE__, #x); \
-    return ENOMEM;                                                    \
+    return ArrowIpcWriterWriteArrayView(writer.get(), nullptr, error);
   }
 
-#define FLATCC_RETURN_UNLESS_0(x, error) FLATCC_RETURN_UNLESS_0_NO_NS(ns(x), error)
+  ArrowErrorCode WriteIpcFile(std::string const& path, struct ArrowError* error) {
+    // FIXME this API needs to be public; it's a bit smelly to pretend that we support
+    // writing files when this bespoke program is the only one which can do it
+    //
+    // For now: just write the leading magic, the stream + EOS, and a manual Footer.
+    File ipc_file;
+    NANOARROW_RETURN_NOT_OK(ipc_file.open(path, "wb", error));
 
-#define FLATCC_RETURN_IF_NULL(x, error)                                 \
-  if (!(x)) {                                                           \
-    ArrowErrorSet(error, "%s:%d: %s was null", __FILE__, __LINE__, #x); \
-    return ENOMEM;                                                      \
+    nanoarrow::ipc::UniqueOutputStream output_stream;
+    NANOARROW_RETURN_NOT_OK_WITH_ERROR(
+        ArrowIpcOutputStreamInitFile(output_stream.get(), ipc_file,
+                                     /*close_on_release=*/false),
+        error);
+
+    struct ArrowBufferView magic = {{kPaddedMagic}, sizeof(kPaddedMagic)};
+    NANOARROW_RETURN_NOT_OK(ArrowIpcOutputStreamWrite(output_stream.get(), magic, error));
+
+    nanoarrow::UniqueBuffer blocks;
+    NANOARROW_RETURN_NOT_OK(Write(output_stream.get(), error, blocks.get()));
+
+    nanoarrow::ipc::UniqueEncoder encoder;
+    NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowIpcEncoderInit(encoder.get()), error);
+
+    auto* builder = &static_cast<ArrowIpcEncoderPrivate*>(encoder->private_data)->builder;
+
+    FLATCC_RETURN_UNLESS_0(Footer_start_as_root(builder), error);
+
+    FLATCC_RETURN_UNLESS_0(Footer_version_add(builder, ns(MetadataVersion_V5)), error);
+
+    static_cast<ArrowIpcEncoderPrivate*>(encoder->private_data)->encoding_footer = 1;
+    FLATCC_RETURN_UNLESS_0(Footer_schema_start(builder), error);
+    NANOARROW_RETURN_NOT_OK(
+        ArrowIpcEncoderEncodeSchema(encoder.get(), schema.get(), error));
+    FLATCC_RETURN_UNLESS_0(Footer_schema_end(builder), error);
+
+    FLATCC_RETURN_UNLESS_0(
+        Footer_recordBatches_create(builder,  //
+                                    reinterpret_cast<struct ns(Block)*>(blocks->data),
+                                    blocks->size_bytes / sizeof(struct ns(Block))),
+        error);
+
+    FLATCC_RETURN_IF_NULL(ns(Footer_end_as_root(builder)), error);
+
+    nanoarrow::UniqueBuffer footer_buffer;
+    NANOARROW_RETURN_NOT_OK_WITH_ERROR(
+        ArrowIpcEncoderFinalizeBuffer(encoder.get(), /*encapsulate=*/false,
+                                      footer_buffer.get()),
+        error);
+
+    NANOARROW_RETURN_NOT_OK_WITH_ERROR(
+        ArrowIpcOutputStreamInitFile(output_stream.get(), ipc_file,
+                                     /*close_on_release=*/false),
+        error);
+
+    NANOARROW_RETURN_NOT_OK_WITH_ERROR(
+        ArrowBufferAppendInt32(footer_buffer.get(),
+                               static_cast<int32_t>(footer_buffer->size_bytes)),
+        error);
+    NANOARROW_RETURN_NOT_OK_WITH_ERROR(
+        ArrowBufferAppend(footer_buffer.get(), kPaddedMagic, strlen(kPaddedMagic)),
+        error);
+
+    struct ArrowBufferView footer = {{footer_buffer->data}, footer_buffer->size_bytes};
+    NANOARROW_RETURN_NOT_OK(
+        ArrowIpcOutputStreamWrite(output_stream.get(), footer, error));
+
+    return NANOARROW_OK;
   }
+};
 
-  struct ArrowIpcEncoderPrivate {
-    flatcc_builder_t builder;
-    struct ArrowBuffer buffers;
-    struct ArrowBuffer nodes;
-    int encoding_footer;
-  };
-
-  auto* builder = &static_cast<ArrowIpcEncoderPrivate*>(encoder->private_data)->builder;
-
-  FLATCC_RETURN_UNLESS_0(Footer_start_as_root(builder), error);
-
-  FLATCC_RETURN_UNLESS_0(Footer_version_add(builder, ns(MetadataVersion_V5)), error);
-
-  static_cast<ArrowIpcEncoderPrivate*>(encoder->private_data)->encoding_footer = 1;
-  FLATCC_RETURN_UNLESS_0(Footer_schema_start(builder), error);
-  NANOARROW_RETURN_NOT_OK(
-      ArrowIpcEncoderEncodeSchema(encoder.get(), table.schema.get(), error));
-  FLATCC_RETURN_UNLESS_0(Footer_schema_end(builder), error);
-
-  auto* blocks_ptr = reinterpret_cast<struct ns(Block)*>(blocks->data);
-  int64_t n = blocks->size_bytes / sizeof(struct ns(Block));
-  for (int i = 0; i < n; i++) {
-    // Offsets were written relative to the stream, so we need to adjust them to account
-    // for the leading padded magic
-    blocks_ptr[i].offset += sizeof(kPaddedMagic);
+std::string GetEnv(char const* name) {
+  if (char const* val = std::getenv(name)) {
+    return val;
   }
-  FLATCC_RETURN_UNLESS_0(Footer_recordBatches_create(builder, blocks_ptr, n), error);
-
-  FLATCC_RETURN_IF_NULL(ns(Footer_end_as_root(builder)), error);
-
-  nanoarrow::UniqueBuffer footer_buffer;
-  NANOARROW_RETURN_NOT_OK_WITH_ERROR(
-      ArrowIpcEncoderFinalizeBuffer(encoder.get(), /*encapsulate=*/false,
-                                    footer_buffer.get()),
-      error);
-
-  NANOARROW_RETURN_NOT_OK_WITH_ERROR(
-      ArrowIpcOutputStreamInitFile(output_stream.get(), ipc_file,
-                                   /*close_on_release=*/false),
-      error);
-
-  NANOARROW_RETURN_NOT_OK_WITH_ERROR(
-      ArrowBufferAppendInt32(footer_buffer.get(),
-                             static_cast<int32_t>(footer_buffer->size_bytes)),
-      error);
-  NANOARROW_RETURN_NOT_OK_WITH_ERROR(
-      ArrowBufferAppend(footer_buffer.get(), kPaddedMagic, strlen(kPaddedMagic)), error);
-
-  struct ArrowBufferView footer = {{footer_buffer->data}, footer_buffer->size_bytes};
-  NANOARROW_RETURN_NOT_OK(ArrowIpcOutputStreamWrite(output_stream.get(), footer, error));
-
-  return NANOARROW_OK;
+  return "";
 }
 
 ArrowErrorCode Validate(struct ArrowError* error) {
   auto json_path = GetEnv("JSON_PATH");
-  Table json_table;
-  NANOARROW_RETURN_NOT_OK(
-      ReadTableFromJson(ReadFileIntoString(json_path), &json_table, error));
+  MaterializedArrayStream json_table;
+  NANOARROW_RETURN_NOT_OK(json_table.FromJson(ReadFileIntoString(json_path), error));
 
   auto arrow_path = GetEnv("ARROW_PATH");
-  Table arrow_table;
-  NANOARROW_RETURN_NOT_OK(ReadTableFromIpcFile(arrow_path, &arrow_table, error));
+  MaterializedArrayStream arrow_table;
+  NANOARROW_RETURN_NOT_OK(arrow_table.FromIpcFile(arrow_path, error));
 
   nanoarrow::testing::TestingJSONComparison comparison;
   NANOARROW_RETURN_NOT_OK(
@@ -310,10 +308,9 @@ ArrowErrorCode Validate(struct ArrowError* error) {
 }
 
 ArrowErrorCode JsonToArrow(struct ArrowError* error) {
-  Table table;
-  NANOARROW_RETURN_NOT_OK(
-      ReadTableFromJson(ReadFileIntoString(GetEnv("JSON_PATH")), &table, error));
-  return WriteTableToIpcFile(GetEnv("ARROW_PATH"), table, error);
+  MaterializedArrayStream table;
+  NANOARROW_RETURN_NOT_OK(table.FromJson(ReadFileIntoString(GetEnv("JSON_PATH")), error));
+  return table.WriteIpcFile(GetEnv("ARROW_PATH"), error);
 }
 
 ArrowErrorCode StreamToFile(struct ArrowError* error) {
@@ -329,14 +326,14 @@ ArrowErrorCode StreamToFile(struct ArrowError* error) {
                                     /*options=*/nullptr),
       error);
 
-  Table table;
-  NANOARROW_RETURN_NOT_OK(ReadTableFromArrayStream(array_stream.get(), &table, error));
-  return WriteTableToIpcFile(GetEnv("ARROW_PATH"), table, error);
+  MaterializedArrayStream table;
+  NANOARROW_RETURN_NOT_OK(table.From(array_stream.get(), error));
+  return table.WriteIpcFile(GetEnv("ARROW_PATH"), error);
 }
 
 ArrowErrorCode FileToStream(struct ArrowError* error) {
-  Table table;
-  NANOARROW_RETURN_NOT_OK(ReadTableFromIpcFile(GetEnv("ARROW_PATH"), &table, error));
+  MaterializedArrayStream table;
+  NANOARROW_RETURN_NOT_OK(table.FromIpcFile(GetEnv("ARROW_PATH"), error));
 
   // wrap stdout into ArrowIpcOutputStream
   nanoarrow::ipc::UniqueOutputStream output_stream;
@@ -345,7 +342,7 @@ ArrowErrorCode FileToStream(struct ArrowError* error) {
                                    /*close_on_release=*/true),
       error);
 
-  return WriteTableAsStream(table, output_stream.get(), error);
+  return table.Write(output_stream.get(), error);
 }
 
 int main() try {
