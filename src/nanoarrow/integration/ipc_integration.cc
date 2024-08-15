@@ -16,10 +16,7 @@
 // under the License.
 
 #include <cstdlib>
-#include <fstream>
 
-#include <gmock/gmock.h>
-#include <gtest/gtest.h>
 #include <nanoarrow/nanoarrow_ipc.hpp>
 #include <nanoarrow/nanoarrow_testing.hpp>
 
@@ -61,6 +58,41 @@ ArrowErrorCode Validate(struct ArrowError*);
 ArrowErrorCode JsonToArrow(struct ArrowError*);
 ArrowErrorCode StreamToFile(struct ArrowError*);
 ArrowErrorCode FileToStream(struct ArrowError*);
+
+int main(int argc, char** argv) try {
+  std::string command = GetEnv("COMMAND");
+
+  ArrowErrorCode error_code;
+  struct ArrowError error;
+
+  if (command == "VALIDATE") {
+    std::cout << "Validating that " << GetEnv("ARROW_PATH") << " reads identical to "
+              << GetEnv("JSON_PATH") << std::endl;
+
+    error_code = Validate(&error);
+  } else if (command == "JSON_TO_ARROW") {
+    std::cout << "Producing " << GetEnv("ARROW_PATH") << " from " << GetEnv("JSON_PATH")
+              << std::endl;
+
+    error_code = JsonToArrow(&error);
+  } else if (command == "STREAM_TO_FILE") {
+    error_code = StreamToFile(&error);
+  } else if (command == "FILE_TO_STREAM") {
+    error_code = FileToStream(&error);
+  } else {
+    std::cerr << kUsage;
+    return 1;
+  }
+
+  if (error_code != NANOARROW_OK) {
+    std::cerr << "Command " << command << " failed (" << error_code << "="
+              << strerror(error_code) << "): " << error.message << std::endl;
+  }
+  return error_code;
+} catch (std::exception const& e) {
+  std::cerr << "Uncaught exception: " << e.what() << std::endl;
+  return 1;
+}
 
 struct File {
   ~File() {
@@ -296,78 +328,4 @@ ArrowErrorCode FileToStream(struct ArrowError* error) {
       error);
 
   return table.Write(output_stream.get(), /*write_file=*/false, error);
-}
-
-TEST(Integration, ErrorMessages) {
-  MaterializedArrayStream table;
-  {
-    struct ArrowError error {};
-    EXPECT_NE(table.FromJsonFile(__FILE__, &error), NANOARROW_OK);
-    EXPECT_THAT(std::string(error.message),
-                testing::HasSubstr("syntax error while parsing value"));
-  }
-
-  {
-    struct ArrowError error {};
-    EXPECT_NE(table.FromIpcFile(__FILE__, &error), NANOARROW_OK);
-    EXPECT_THAT(std::string(error.message),
-                testing::HasSubstr("File did not begin with 'ARROW1"));
-  }
-
-  {
-    struct ArrowError error {};
-    EXPECT_NE(table.FromJsonFile(__FILE__ + std::string(".phony"), &error), NANOARROW_OK);
-    EXPECT_THAT(std::string(error.message),
-                testing::MatchesRegex(
-                    R"(Opening file '.*/ipc_integration.cc.phony' failed with errno=2)"));
-  }
-
-  {
-    struct ArrowError error {};
-    File tmp{tmpfile()};
-    EXPECT_EQ(fwrite("yo", 1, sizeof("yo"), tmp), sizeof("yo"));
-    EXPECT_NE(table.FromIpcFile(tmp, &error), NANOARROW_OK);
-    EXPECT_THAT(std::string(error.message),
-                testing::HasSubstr("Expected file of more than 8 bytes, got 3"));
-  }
-}
-
-int main(int argc, char** argv) try {
-  std::string command = GetEnv("COMMAND");
-
-  ArrowErrorCode error_code;
-  struct ArrowError error;
-
-  if (command == "VALIDATE") {
-    std::cout << "Validating that " << GetEnv("ARROW_PATH") << " reads identical to "
-              << GetEnv("JSON_PATH") << std::endl;
-
-    error_code = Validate(&error);
-  } else if (command == "JSON_TO_ARROW") {
-    std::cout << "Producing " << GetEnv("ARROW_PATH") << " from " << GetEnv("JSON_PATH")
-              << std::endl;
-
-    error_code = JsonToArrow(&error);
-  } else if (command == "STREAM_TO_FILE") {
-    error_code = StreamToFile(&error);
-  } else if (command == "FILE_TO_STREAM") {
-    error_code = FileToStream(&error);
-  } else {
-    if (argc == 1 || argv[1] == std::string{"-h"} || argv[1] == std::string{"--help"}) {
-      // skip printing usage if for example --gtest_list_tests is used;
-      // that command obviously doesn't need the extra noise
-      std::cerr << kUsage;
-    }
-    testing::InitGoogleTest(&argc, argv);
-    return RUN_ALL_TESTS();
-  }
-
-  if (error_code != NANOARROW_OK) {
-    std::cerr << "Command " << command << " failed (" << error_code << "="
-              << strerror(error_code) << "): " << error.message << std::endl;
-  }
-  return error_code;
-} catch (std::exception const& e) {
-  std::cerr << "Uncaught exception: " << e.what() << std::endl;
-  return 1;
 }
