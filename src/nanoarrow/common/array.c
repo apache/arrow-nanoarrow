@@ -103,6 +103,16 @@ static ArrowErrorCode ArrowArraySetStorageType(struct ArrowArray* array,
     case NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO:
     case NANOARROW_TYPE_FIXED_SIZE_BINARY:
     case NANOARROW_TYPE_DENSE_UNION:
+    // These are not technically "storage" in the sense that they do not appear
+    // in the ArrowSchemaView's storage_type member; however, excluding them here
+    // would cause more confusion than forcing these types to go through
+    // ArrowArrayInitFromSchema().
+    case NANOARROW_TYPE_DURATION:
+    case NANOARROW_TYPE_TIMESTAMP:
+    case NANOARROW_TYPE_TIME32:
+    case NANOARROW_TYPE_TIME64:
+    case NANOARROW_TYPE_DATE32:
+    case NANOARROW_TYPE_DATE64:
       array->n_buffers = 2;
       break;
 
