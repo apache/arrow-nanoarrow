@@ -296,9 +296,10 @@ ArrowErrorCode ArrowIpcWriterWriteArrayView(struct ArrowIpcWriter* writer,
       error);
 
   if (private->writing_file) {
+    _NANOARROW_CHECK_RANGE(private->buffer.size_bytes, 0, INT32_MAX);
     struct ArrowIpcFileBlock block = {
         .offset = private->bytes_written,
-        .metadata_length = private->buffer.size_bytes,
+        .metadata_length = (int32_t) private->buffer.size_bytes,
         .body_length = private->body_buffer.size_bytes,
     };
     NANOARROW_RETURN_NOT_OK_WITH_ERROR(

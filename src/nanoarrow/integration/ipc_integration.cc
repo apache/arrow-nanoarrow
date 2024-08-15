@@ -123,8 +123,7 @@ struct File {
 
     size_t bytes_read = 0;
     while (bytes_read < contents.size()) {
-      bytes_read +=
-          fread(contents.data() + bytes_read, 1, contents.size() - bytes_read, file_);
+      bytes_read += fread(&contents[bytes_read], 1, contents.size() - bytes_read, file_);
     }
     return contents;
   }
@@ -370,4 +369,3 @@ TEST(Integration, ErrorMessages) {
                 testing::HasSubstr("Expected file of more than 8 bytes, got 3"));
   }
 }
-

@@ -231,8 +231,13 @@ if(NANOARROW_IPC AND (NANOARROW_BUILD_INTEGRATION_TESTS OR NANOARROW_BUILD_TESTS
                              PUBLIC $<BUILD_INTERFACE:${NANOARROW_BUILD_INCLUDE_DIR}>
                                     $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/src>
                                     $<INSTALL_INTERFACE:include>)
-  target_link_libraries(nanoarrow_ipc_integration PRIVATE nanoarrow_testing
-                                                          nanoarrow_ipc flatccrt gtest gmock)
+  target_link_libraries(nanoarrow_ipc_integration
+                        PRIVATE nanoarrow_testing
+                                nanoarrow_ipc
+                                flatccrt
+                                gtest
+                                gmock
+                                nanoarrow_coverage_config)
 endif()
 
 if(NANOARROW_DEVICE)

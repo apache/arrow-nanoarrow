@@ -78,7 +78,8 @@ TEST(NanoarrowIpcTest, NanoarrowIpcFooterEncoding) {
   ASSERT_EQ(ArrowIpcEncoderInit(encoder.get()), NANOARROW_OK);
 
   nanoarrow::ipc::UniqueFooter footer;
-  ASSERT_EQ(ArrowSchemaInitFromType(&footer->schema, NANOARROW_TYPE_STRUCT), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaInitFromType(&footer->schema, NANOARROW_TYPE_STRUCT),
+            NANOARROW_OK);
 
   nanoarrow::UniqueBuffer footer_buffer, raw_schema_buffer;
   struct ArrowError error;
@@ -86,16 +87,16 @@ TEST(NanoarrowIpcTest, NanoarrowIpcFooterEncoding) {
   EXPECT_EQ(ArrowIpcEncoderEncodeFooter(encoder.get(), footer.get(), &error),
             NANOARROW_OK)
       << error.message;
-  EXPECT_EQ(
-      ArrowIpcEncoderFinalizeBuffer(encoder.get(), /*encapsulate=*/false, footer_buffer.get()),
-      NANOARROW_OK);
+  EXPECT_EQ(ArrowIpcEncoderFinalizeBuffer(encoder.get(), /*encapsulate=*/false,
+                                          footer_buffer.get()),
+            NANOARROW_OK);
 
   EXPECT_EQ(ArrowIpcEncoderEncodeSchema(encoder.get(), &footer->schema, &error),
             NANOARROW_OK)
       << error.message;
-  EXPECT_EQ(
-      ArrowIpcEncoderFinalizeBuffer(encoder.get(), /*encapsulate=*/false, raw_schema_buffer.get()),
-      NANOARROW_OK);
+  EXPECT_EQ(ArrowIpcEncoderFinalizeBuffer(encoder.get(), /*encapsulate=*/false,
+                                          raw_schema_buffer.get()),
+            NANOARROW_OK);
 
   EXPECT_GT(footer_buffer->size_bytes, raw_schema_buffer->size_bytes);
 }

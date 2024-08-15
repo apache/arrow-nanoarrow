@@ -662,8 +662,11 @@ ArrowErrorCode ArrowIpcEncoderEncodeFooter(struct ArrowIpcEncoder* encoder,
       ns(Footer_recordBatches_extend(builder, n_blocks));
   FLATCC_RETURN_IF_NULL(flatcc_RecordBatch_blocks, error);
   for (int64_t i = 0; i < n_blocks; i++) {
-    struct ns(Block) block = {blocks[i].offset, (int32_t)blocks[i].metadata_length,
-                              blocks[i].body_length};
+    struct ns(Block) block = {
+        blocks[i].offset,
+        blocks[i].metadata_length,
+        blocks[i].body_length,
+    };
     flatcc_RecordBatch_blocks[i] = block;
   }
   FLATCC_RETURN_UNLESS_0(Footer_recordBatches_end(builder), error);
