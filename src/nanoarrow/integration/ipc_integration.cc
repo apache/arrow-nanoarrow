@@ -62,46 +62,6 @@ ArrowErrorCode JsonToArrow(struct ArrowError*);
 ArrowErrorCode StreamToFile(struct ArrowError*);
 ArrowErrorCode FileToStream(struct ArrowError*);
 
-int main(int argc, char** argv) try {
-  std::string command = GetEnv("COMMAND");
-
-  ArrowErrorCode error_code;
-  struct ArrowError error;
-
-  if (command == "VALIDATE") {
-    std::cout << "Validating that " << GetEnv("ARROW_PATH") << " reads identical to "
-              << GetEnv("JSON_PATH") << std::endl;
-
-    error_code = Validate(&error);
-  } else if (command == "JSON_TO_ARROW") {
-    std::cout << "Producing " << GetEnv("ARROW_PATH") << " from " << GetEnv("JSON_PATH")
-              << std::endl;
-
-    error_code = JsonToArrow(&error);
-  } else if (command == "STREAM_TO_FILE") {
-    error_code = StreamToFile(&error);
-  } else if (command == "FILE_TO_STREAM") {
-    error_code = FileToStream(&error);
-  } else {
-    if (argc == 1 || argv[1] == std::string{"-h"} || argv[1] == std::string{"--help"}) {
-      // skip printing usage if for example --gtest_list_tests is used;
-      // that command obviously doesn't need the extra noise
-      std::cerr << kUsage;
-    }
-    testing::InitGoogleTest(&argc, argv);
-    return RUN_ALL_TESTS();
-  }
-
-  if (error_code != NANOARROW_OK) {
-    std::cerr << "Command " << command << " failed (" << error_code << "="
-              << strerror(error_code) << "): " << error.message << std::endl;
-  }
-  return error_code;
-} catch (std::exception const& e) {
-  std::cerr << "Uncaught exception: " << e.what() << std::endl;
-  return 1;
-}
-
 struct File {
   ~File() {
     if (file_ != nullptr) {
@@ -370,4 +330,44 @@ TEST(Integration, ErrorMessages) {
     EXPECT_THAT(std::string(error.message),
                 testing::HasSubstr("Expected file of more than 8 bytes, got 3"));
   }
+}
+
+int main(int argc, char** argv) try {
+  std::string command = GetEnv("COMMAND");
+
+  ArrowErrorCode error_code;
+  struct ArrowError error;
+
+  if (command == "VALIDATE") {
+    std::cout << "Validating that " << GetEnv("ARROW_PATH") << " reads identical to "
+              << GetEnv("JSON_PATH") << std::endl;
+
+    error_code = Validate(&error);
+  } else if (command == "JSON_TO_ARROW") {
+    std::cout << "Producing " << GetEnv("ARROW_PATH") << " from " << GetEnv("JSON_PATH")
+              << std::endl;
+
+    error_code = JsonToArrow(&error);
+  } else if (command == "STREAM_TO_FILE") {
+    error_code = StreamToFile(&error);
+  } else if (command == "FILE_TO_STREAM") {
+    error_code = FileToStream(&error);
+  } else {
+    if (argc == 1 || argv[1] == std::string{"-h"} || argv[1] == std::string{"--help"}) {
+      // skip printing usage if for example --gtest_list_tests is used;
+      // that command obviously doesn't need the extra noise
+      std::cerr << kUsage;
+    }
+    testing::InitGoogleTest(&argc, argv);
+    return RUN_ALL_TESTS();
+  }
+
+  if (error_code != NANOARROW_OK) {
+    std::cerr << "Command " << command << " failed (" << error_code << "="
+              << strerror(error_code) << "): " << error.message << std::endl;
+  }
+  return error_code;
+} catch (std::exception const& e) {
+  std::cerr << "Uncaught exception: " << e.what() << std::endl;
+  return 1;
 }
