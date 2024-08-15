@@ -787,6 +787,20 @@ document.write(`
 <p>Errors are propagated from the underlying encoder, array stream, and output byte stream. </p>
 </dd></dl>
 
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv423ArrowIpcWriterStartFileP14ArrowIpcWriterP10ArrowError">
+<span id="_CPPv323ArrowIpcWriterStartFileP14ArrowIpcWriterP10ArrowError"></span><span id="_CPPv223ArrowIpcWriterStartFileP14ArrowIpcWriterP10ArrowError"></span><span id="ArrowIpcWriterStartFile__ArrowIpcWriterP.ArrowErrorP"></span><span class="target" id="group__nanoarrow__ipc_1gaf5898fd271ec76cf56f8d6d55b5521e0"></span><span class="n"><span class="pre">ArrowErrorCode</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">ArrowIpcWriterStartFile</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv414ArrowIpcWriter" title="ArrowIpcWriter"><span class="n"><span class="pre">ArrowIpcWriter</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">writer</span></span>, <span class="k"><span class="pre">struct</span></span><span class="w"> </span><span class="n"><span class="pre">ArrowError</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">error</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv423ArrowIpcWriterStartFileP14ArrowIpcWriterP10ArrowError" title="Link to this definition">#</a><br /></dt>
+<dd><p>Start writing an IPC file. </p>
+<p>Writes the Arrow IPC magic and sets the writer up to track written blocks. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv426ArrowIpcWriterFinalizeFileP14ArrowIpcWriterP10ArrowError">
+<span id="_CPPv326ArrowIpcWriterFinalizeFileP14ArrowIpcWriterP10ArrowError"></span><span id="_CPPv226ArrowIpcWriterFinalizeFileP14ArrowIpcWriterP10ArrowError"></span><span id="ArrowIpcWriterFinalizeFile__ArrowIpcWriterP.ArrowErrorP"></span><span class="target" id="group__nanoarrow__ipc_1gade66ef48f224e45ac2f292452417c9c1"></span><span class="n"><span class="pre">ArrowErrorCode</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">ArrowIpcWriterFinalizeFile</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv414ArrowIpcWriter" title="ArrowIpcWriter"><span class="n"><span class="pre">ArrowIpcWriter</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">writer</span></span>, <span class="k"><span class="pre">struct</span></span><span class="w"> </span><span class="n"><span class="pre">ArrowError</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">error</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv426ArrowIpcWriterFinalizeFileP14ArrowIpcWriterP10ArrowError" title="Link to this definition">#</a><br /></dt>
+<dd><p>Finish writing an IPC file. </p>
+<p>Writes the IPC file’s Footer, footer size, and ending magic. </p>
+</dd></dl>
+
 </div>
 <dl class="cpp struct">
 <dt class="sig sig-object cpp" id="_CPPv420ArrowIpcSharedBuffer">
@@ -998,6 +1012,12 @@ document.write(`
 </dd></dl>
 
 <dl class="cpp type">
+<dt class="sig sig-object cpp" id="_CPPv412UniqueFooter">
+<span id="_CPPv312UniqueFooter"></span><span id="_CPPv212UniqueFooter"></span><span class="target" id="group__nanoarrow__ipc__hpp-unique_1gac08aad661c0ba6d741b72b438bfa40d6"></span><span class="k"><span class="pre">using</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">UniqueFooter</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="n"><span class="pre">internal</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">Unique</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><span class="n"><span class="pre">ArrowIpcFooter</span></span><span class="p"><span class="pre">&gt;</span></span><a class="headerlink" href="#_CPPv412UniqueFooter" title="Link to this definition">#</a><br /></dt>
+<dd><p>Class wrapping a unique struct ArrowIpcFooter. </p>
+</dd></dl>
+
+<dl class="cpp type">
 <dt class="sig sig-object cpp" id="_CPPv413UniqueEncoder">
 <span id="_CPPv313UniqueEncoder"></span><span id="_CPPv213UniqueEncoder"></span><span class="target" id="group__nanoarrow__ipc__hpp-unique_1ga7d8001dff97da64dce4f8a13521bbaa5"></span><span class="k"><span class="pre">using</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">UniqueEncoder</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="n"><span class="pre">internal</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">Unique</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv415ArrowIpcEncoder" title="ArrowIpcEncoder"><span class="n"><span class="pre">ArrowIpcEncoder</span></span></a><span class="p"><span class="pre">&gt;</span></span><a class="headerlink" href="#_CPPv413UniqueEncoder" title="Link to this definition">#</a><br /></dt>
 <dd><p>Class wrapping a unique struct <a class="reference internal" href="#struct_arrow_ipc_encoder"><span class="std std-ref">ArrowIpcEncoder</span></a>. </p>
@@ -1137,6 +1157,8 @@ document.write(`
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv425ArrowIpcWriterWriteSchemaP14ArrowIpcWriterPK11ArrowSchemaP10ArrowError"><code class="docutils literal notranslate"><span class="pre">ArrowIpcWriterWriteSchema()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv428ArrowIpcWriterWriteArrayViewP14ArrowIpcWriterPK14ArrowArrayViewP10ArrowError"><code class="docutils literal notranslate"><span class="pre">ArrowIpcWriterWriteArrayView()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv430ArrowIpcWriterWriteArrayStreamP14ArrowIpcWriterP16ArrowArrayStreamP10ArrowError"><code class="docutils literal notranslate"><span class="pre">ArrowIpcWriterWriteArrayStream()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv423ArrowIpcWriterStartFileP14ArrowIpcWriterP10ArrowError"><code class="docutils literal notranslate"><span class="pre">ArrowIpcWriterStartFile()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv426ArrowIpcWriterFinalizeFileP14ArrowIpcWriterP10ArrowError"><code class="docutils literal notranslate"><span class="pre">ArrowIpcWriterFinalizeFile()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv420ArrowIpcSharedBuffer"><code class="docutils literal notranslate"><span class="pre">ArrowIpcSharedBuffer</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv415ArrowIpcDecoder"><code class="docutils literal notranslate"><span class="pre">ArrowIpcDecoder</span></code></a><ul class="nav section-nav flex-column">
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N15ArrowIpcDecoder12message_typeE"><code class="docutils literal notranslate"><span class="pre">ArrowIpcDecoder::message_type</span></code></a></li>
@@ -1178,6 +1200,7 @@ document.write(`
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#c-helpers">C++ Helpers</a><ul class="visible nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv413UniqueDecoder"><code class="docutils literal notranslate"><span class="pre">UniqueDecoder</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv412UniqueFooter"><code class="docutils literal notranslate"><span class="pre">UniqueFooter</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv413UniqueEncoder"><code class="docutils literal notranslate"><span class="pre">UniqueEncoder</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv417UniqueInputStream"><code class="docutils literal notranslate"><span class="pre">UniqueInputStream</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv418UniqueOutputStream"><code class="docutils literal notranslate"><span class="pre">UniqueOutputStream</span></code></a></li>
