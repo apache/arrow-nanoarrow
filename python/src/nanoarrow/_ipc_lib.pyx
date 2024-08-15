@@ -72,12 +72,14 @@ cdef class PyStreamPrivate:
     cdef bint _close_obj
     cdef void* _addr
     cdef Py_ssize_t _size_bytes
+    cdef bint _buffer_readonly
 
-    def __cinit__(self, obj, close_obj=False):
+    def __cinit__(self, obj, bint buffer_readonly, bint close_obj=False):
         self._obj = obj
         self._close_obj = close_obj
         self._addr = NULL
         self._size_bytes = 0
+        self._buffer_readonly = buffer_readonly
 
     @property
     def obj(self):
@@ -96,14 +98,16 @@ cdef class PyStreamPrivate:
         return self._size_bytes
 
     # Implement the buffer protocol so that this object can be used as
-    # the argument to xxx.readinto(). This ensures that no extra copies
-    # (beyond any buffering done by the upstream file-like object) are held
-    # since the upstream object has access to the preallocated output buffer.
-    # In this case, the preallocation is done by the ArrowArrayStream
+    # the argument to xxx.readinto() or xxx.write(). This ensures that
+    # no extra copies (beyond any buffering done by the upstream file-like object)
+    # are held since the upstream object has access to the preallocated output buffer.
+    # In the read case, the preallocation is done by the ArrowArrayStream
     # implementation before issuing each read call (two per message, with
     # an extra call for a RecordBatch message to get the actual buffer data).
+    # In the write case, this will be a view of whatever information was provided to
+    # the write callback.
     def __getbuffer__(self, Py_buffer* buffer, int flags):
-        PyBuffer_FillInfo(buffer, self, self._addr, self._size_bytes, 0, flags)
+        PyBuffer_FillInfo(buffer, self, self._addr, self._size_bytes, self._buffer_readonly, flags)
 
     def __releasebuffer__(self, Py_buffer* buffer):
         pass
@@ -154,7 +158,7 @@ cdef ArrowErrorCode py_output_stream_write(ArrowIpcOutputStream* stream, const v
         stream_private.set_buffer(<uintptr_t>buf, buf_size_bytes)
 
         try:
-            raise NotImplementedError()
+            size_written_out[0] = stream_private.obj.write(stream_private)
         except Exception as e:
             cls = type(e).__name__.encode()
             msg = str(e).encode()
@@ -203,7 +207,11 @@ cdef class CIpcInputStream:
     @staticmethod
     def from_readable(obj, close_obj=False):
         cdef CIpcInputStream stream = CIpcInputStream()
-        cdef PyStreamPrivate private_data = PyStreamPrivate(obj, close_obj)
+        cdef PyStreamPrivate private_data = PyStreamPrivate(
+            obj,
+            buffer_readonly=False,
+            close_obj=close_obj
+        )
 
         stream._stream.private_data = <PyObject*>private_data
         Py_INCREF(private_data)
@@ -245,7 +253,11 @@ cdef class CIpcOutputStream:
     @staticmethod
     def from_writable(obj, close_obj=False):
         cdef CIpcOutputStream stream = CIpcOutputStream()
-        cdef PyStreamPrivate private_data = PyStreamPrivate(obj, close_obj)
+        cdef PyStreamPrivate private_data = PyStreamPrivate(
+            obj,
+            buffer_readonly=True,
+            close_obj=close_obj
+        )
 
         stream._stream.private_data = <PyObject*>private_data
         Py_INCREF(private_data)
