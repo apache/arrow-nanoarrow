@@ -26,6 +26,7 @@ from nanoarrow._ipc_lib import (
 )
 from nanoarrow._utils import obj_is_buffer
 from nanoarrow.array_stream import c_array_stream
+from nanoarrow.iterator import ArrayViewBaseIterator
 
 from nanoarrow import _repr_utils
 
@@ -246,6 +247,7 @@ class Writer:
     def __init__(self):
         self._writer = None
         self._desc = None
+        self._iterator = None
 
     def _is_valid(self) -> bool:
         return self._writer is not None and self._writer.is_valid()
@@ -254,17 +256,52 @@ class Writer:
         return self
 
     def __exit__(self, *args, **kwargs):
-        if self._writer is not None:
-            self._writer.release()
+        self.close()
+
+    def release(self):
+        if not self._is_valid():
+            return
+
+        self._writer.release()
+        self._writer = None
+
+    def close(self):
+        if not self._is_valid():
+            return
+
+        self._writer.write_end_of_stream()
+        self.release()
 
     def write(self, obj, schema=None):
         if not self._is_valid():
             raise ValueError("Can't write to released Writer")
 
-        # Until we wire up array view/schema interface
-        stream = c_array_stream(obj, schema=schema)
-        with self, stream:
-            self._writer.write_stream(stream._addr())
+        with c_array_stream(obj, schema=schema) as stream:
+            if self._iterator is None:
+                self._iterator = ArrayViewBaseIterator(stream._get_cached_schema())
+                self._writer.write_schema(self._iterator._schema)
+            for array in stream:
+                self._iterator._set_array(array)
+                self._writer.write_array_view(self._iterator._array_view)
+
+    def write_all(self, obj, schema=None):
+        if not self._is_valid():
+            raise ValueError("Can't write to released Writer")
+
+        # If we've already written a schema, we can't write using the
+        # stream writer because it automatically appends a schema. We can,
+        # however, write the rest of the stream and EOS using write().
+        if self._iterator is not None:
+            with self:
+                self.write(obj, schema=schema)
+                return
+
+        # Write the entire stream and release the writer. We can't
+        # use close() because that would write the EOS and the stream
+        # writer has already appended this.
+        with self, c_array_stream(obj, schema=schema) as stream:
+            self._writer.write_array_stream(stream._addr())
+            self.release()
 
     @staticmethod
     def from_writable(obj):

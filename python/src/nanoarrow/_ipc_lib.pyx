@@ -19,18 +19,22 @@
 # cython: linetrace=True
 
 from libc.stdint cimport uint8_t, int64_t, uintptr_t
-from libc.errno cimport EIO
+from libc.errno cimport EIO, EAGAIN
 from libc.stdio cimport snprintf
 from cpython.ref cimport PyObject, Py_INCREF, Py_DECREF
 from cpython cimport Py_buffer, PyBuffer_FillInfo
 
 from nanoarrow_c cimport (
+    ArrowArrayStream,
+    ArrowArrayView,
+    ArrowSchema,
     ArrowErrorCode,
     ArrowError,
     NANOARROW_OK,
-    ArrowArrayStream,
 )
 
+from nanoarrow._schema cimport CSchema
+from nanoarrow._array cimport CArrayView
 from nanoarrow._utils cimport Error
 
 
@@ -63,6 +67,13 @@ cdef extern from "nanoarrow_ipc.h" nogil:
     ArrowErrorCode ArrowIpcWriterInit(ArrowIpcWriter* writer,
                                       ArrowIpcOutputStream* output_stream)
     void ArrowIpcWriterReset(ArrowIpcWriter* writer)
+    ArrowErrorCode ArrowIpcWriterWriteSchema(ArrowIpcWriter* writer,
+                                             const ArrowSchema* in_,
+                                             ArrowError* error)
+    ArrowErrorCode ArrowIpcWriterWriteArrayView(ArrowIpcWriter* writer,
+                                                const ArrowArrayView* in_,
+                                                ArrowError* error)
+
     ArrowErrorCode ArrowIpcWriterWriteArrayStream(ArrowIpcWriter* writer,
                                                   ArrowArrayStream* in_,
                                                   ArrowError* error)
@@ -122,8 +133,16 @@ cdef ArrowErrorCode py_input_stream_read(ArrowIpcInputStream* stream, uint8_t* b
         stream_private.set_buffer(<uintptr_t>buf, buf_size_bytes)
 
         try:
-            size_read_out[0] = stream_private.obj.readinto(stream_private)
-            return NANOARROW_OK
+            # Non-blocking streams may return None here, or buffered
+            # wrappers of them may raise BufferedIOError
+            read_result = stream_private.obj.readinto(stream_private)
+
+            if read_result is None:
+                size_read_out[0] = 0
+                return EAGAIN
+            else:
+                size_read_out[0] = read_result
+                return NANOARROW_OK
         except Exception as e:
             cls = type(e).__name__.encode()
             msg = str(e).encode()
@@ -158,7 +177,17 @@ cdef ArrowErrorCode py_output_stream_write(ArrowIpcOutputStream* stream, const v
         stream_private.set_buffer(<uintptr_t>buf, buf_size_bytes)
 
         try:
-            size_written_out[0] = stream_private.obj.write(stream_private)
+            # Non-blocking streams may return None here, or buffered
+            # wrappers of them may raise BufferedIOError
+            write_result = stream_private.obj.write(stream_private)
+
+            # Non-blocking streams may return None here
+            if write_result is None:
+                size_written_out[0] = 0
+                return EAGAIN
+            else:
+                size_written_out[0] = write_result
+                return NANOARROW_OK
         except Exception as e:
             cls = type(e).__name__.encode()
             msg = str(e).encode()
@@ -288,8 +317,23 @@ cdef class CIpcWriter:
         if self._writer.private_data != NULL:
             ArrowIpcWriterReset(&self._writer)
 
-    def write_stream(self, uintptr_t stream):
-        cdef ArrowArrayStream* array_stream = <ArrowArrayStream*>stream
+    def write_schema(self, CSchema schema):
+        cdef Error error = Error()
+        cdef int code = ArrowIpcWriterWriteSchema(&self._writer, schema._ptr, &error.c_error)
+        error.raise_message_not_ok("ArrowIpcWriterWriteSchema()", code)
+
+    def write_array_view(self, CArrayView array_view):
+        cdef Error error = Error()
+        cdef int code = ArrowIpcWriterWriteArrayView(&self._writer, array_view._ptr, &error.c_error)
+        error.raise_message_not_ok("ArrowIpcWriterWriteArrayView()", code)
+
+    def write_array_stream(self, uintptr_t stream_addr):
+        cdef ArrowArrayStream* array_stream = <ArrowArrayStream*>stream_addr
         cdef Error error = Error()
         cdef int code = ArrowIpcWriterWriteArrayStream(&self._writer, array_stream, &error.c_error)
         error.raise_message_not_ok("ArrowIpcWriterWriteArrayStream()", code)
+
+    def write_end_of_stream(self):
+        cdef Error error = Error()
+        cdef int code = ArrowIpcWriterWriteArrayView(&self._writer, NULL, &error.c_error)
+        error.raise_message_not_ok("ArrowIpcWriterWriteArrayView()", code)
