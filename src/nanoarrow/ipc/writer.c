@@ -152,7 +152,7 @@ ArrowErrorCode ArrowIpcOutputStreamInitFile(struct ArrowIpcOutputStream* stream,
                                             void* file_ptr, int close_on_release) {
   NANOARROW_DCHECK(stream != NULL);
   if (file_ptr == NULL) {
-    return EINVAL;
+    return errno ? errno : EINVAL;
   }
 
   struct ArrowIpcOutputStreamFilePrivate* private_data =
@@ -281,6 +281,7 @@ ArrowErrorCode ArrowIpcWriterWriteArrayView(struct ArrowIpcWriter* writer,
 
   if (in == NULL) {
     int32_t eos[] = {-1, 0};
+    private->bytes_written += sizeof(eos);
     struct ArrowBufferView eos_view = {.data.as_int32 = eos, .size_bytes = sizeof(eos)};
     return ArrowIpcOutputStreamWrite(&private->output_stream, eos_view, error);
   }
@@ -364,6 +365,8 @@ ArrowErrorCode ArrowIpcWriterWriteArrayStream(struct ArrowIpcWriter* writer,
   return NANOARROW_OK;
 }
 
+#define NANOARROW_IPC_FILE_PADDED_MAGIC "ARROW1\0"
+
 ArrowErrorCode ArrowIpcWriterStartFile(struct ArrowIpcWriter* writer,
                                        struct ArrowError* error) {
   NANOARROW_DCHECK(writer != NULL && writer->private_data != NULL);
@@ -418,5 +421,6 @@ ArrowErrorCode ArrowIpcWriterFinalizeFile(struct ArrowIpcWriter* writer,
 
   NANOARROW_RETURN_NOT_OK(ArrowIpcOutputStreamWrite(
       &private->output_stream, ArrowBufferToBufferView(&private->buffer), error));
+  private->bytes_written += private->buffer.size_bytes;
   return NANOARROW_OK;
 }

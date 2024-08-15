@@ -23,6 +23,8 @@
 #include <nanoarrow/nanoarrow_ipc.hpp>
 #include <nanoarrow/nanoarrow_testing.hpp>
 
+#define NANOARROW_IPC_FILE_PADDED_MAGIC "ARROW1\0"
+
 std::string GetEnv(char const* name) {
   char const* val = std::getenv(name);
   return val ? val : "";

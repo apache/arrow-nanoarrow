@@ -81,6 +81,14 @@
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcWriterWriteArrayView)
 #define ArrowIpcWriterWriteArrayStream \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcWriterWriteArrayStream)
+#define ArrowIpcWriterStartFile \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcWriterStartFile)
+#define ArrowIpcWriterFinalizeFile \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcWriterFinalizeFile)
+#define ArrowIpcFooterInit NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcFooterInit)
+#define ArrowIpcFooterReset NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcFooterReset)
+#define ArrowIpcEncoderEncodeFooter \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcEncoderEncodeFooter)
 
 #endif
 
@@ -567,12 +575,6 @@ ArrowErrorCode ArrowIpcWriterFinalizeFile(struct ArrowIpcWriter* writer,
 /// @}
 
 // Internal APIs:
-
-/// \brief The magic which appears at the beginning and end of an IPC file, 0-padded.
-///
-/// \warning This API is currently only public for use in integration testing;
-///          use at your own risk.
-#define NANOARROW_IPC_FILE_PADDED_MAGIC "ARROW1\0"
 
 /// \brief Represents a byte range in an IPC file.
 ///

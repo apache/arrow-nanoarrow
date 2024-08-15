@@ -79,6 +79,8 @@ static void ArrowIpcInputStreamBufferRelease(struct ArrowIpcInputStream* stream)
 
 ArrowErrorCode ArrowIpcInputStreamInitBuffer(struct ArrowIpcInputStream* stream,
                                              struct ArrowBuffer* input) {
+  NANOARROW_DCHECK(stream != NULL);
+
   struct ArrowIpcInputStreamBufferPrivate* private_data =
       (struct ArrowIpcInputStreamBufferPrivate*)ArrowMalloc(
           sizeof(struct ArrowIpcInputStreamBufferPrivate));
@@ -154,8 +156,9 @@ static ArrowErrorCode ArrowIpcInputStreamFileRead(struct ArrowIpcInputStream* st
 
 ArrowErrorCode ArrowIpcInputStreamInitFile(struct ArrowIpcInputStream* stream,
                                            void* file_ptr, int close_on_release) {
+  NANOARROW_DCHECK(stream != NULL);
   if (file_ptr == NULL) {
-    return EINVAL;
+    return errno ? errno : EINVAL;
   }
 
   struct ArrowIpcInputStreamFilePrivate* private_data =
