@@ -762,6 +762,13 @@ TEST(SchemaTest, SchemaCompareIdenticalName) {
   EXPECT_EQ(is_equal, 0);
   EXPECT_STREQ(error.message, "root: actual->name != NULL && expected->name == NULL");
 
+  // The top-level name is not compared at the type equal level
+  is_equal = -1;
+  ASSERT_EQ(ArrowSchemaCompare(&actual, &expected, NANOARROW_COMPARE_TYPE_EQUAL,
+                               &is_equal, &error),
+            NANOARROW_OK);
+  EXPECT_EQ(is_equal, 1);
+
   is_equal = -1;
   ASSERT_EQ(ArrowSchemaSetName(&actual, NULL), NANOARROW_OK);
   ASSERT_EQ(ArrowSchemaSetName(&expected, "foofy"), NANOARROW_OK);
@@ -788,6 +795,26 @@ TEST(SchemaTest, SchemaCompareIdenticalName) {
                                &error),
             NANOARROW_OK);
   EXPECT_EQ(is_equal, 1);
+
+  ArrowSchemaRelease(&actual);
+  ArrowSchemaRelease(&expected);
+}
+
+TEST(SchemaTest, SchemaCompareIdenticalNameRecursive) {
+  struct ArrowError error;
+  struct ArrowSchema actual;
+  struct ArrowSchema expected;
+  int is_equal = -1;
+
+  ArrowSchemaInit(&actual);
+  ArrowSchemaInit(&expected);
+
+  ASSERT_EQ(ArrowSchemaSetTypeStruct(&actual, 1), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaSetType(actual.children[0], NANOARROW_TYPE_INT32), NANOARROW_OK);
+
+  ASSERT_EQ(ArrowSchemaSetTypeStruct(&expected, 1), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaSetType(expected.children[0], NANOARROW_TYPE_INT32), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaSetName(&expected, "foofy"), NANOARROW_OK);
 
   ArrowSchemaRelease(&actual);
   ArrowSchemaRelease(&expected);
