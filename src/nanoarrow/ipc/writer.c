@@ -407,17 +407,20 @@ ArrowErrorCode ArrowIpcWriterFinalizeFile(struct ArrowIpcWriter* writer,
 
   _NANOARROW_CHECK_RANGE(private->buffer.size_bytes, 0, INT32_MAX);
   int32_t size = (int32_t) private->buffer.size_bytes;
-  struct ArrowStringView magic = ArrowCharView(NANOARROW_IPC_FILE_PADDED_MAGIC);
+  // we don't pad the magic at the end of the file
+  struct ArrowStringView unpadded_magic = ArrowCharView(NANOARROW_IPC_FILE_PADDED_MAGIC);
+  NANOARROW_DCHECK(unpadded_magic.size_bytes == 6);
 
   // just append to private->buffer instead of queueing two more tiny writes
   NANOARROW_RETURN_NOT_OK_WITH_ERROR(
-      ArrowBufferReserve(&private->buffer, sizeof(size) + magic.size_bytes), error);
+      ArrowBufferReserve(&private->buffer, sizeof(size) + unpadded_magic.size_bytes),
+      error);
 
   if (ArrowIpcSystemEndianness() == NANOARROW_IPC_ENDIANNESS_BIG) {
     size = (int32_t)bswap32((uint32_t)size);
   }
   NANOARROW_ASSERT_OK(ArrowBufferAppendInt32(&private->buffer, size));
-  NANOARROW_ASSERT_OK(ArrowBufferAppendStringView(&private->buffer, magic));
+  NANOARROW_ASSERT_OK(ArrowBufferAppendStringView(&private->buffer, unpadded_magic));
 
   NANOARROW_RETURN_NOT_OK(ArrowIpcOutputStreamWrite(
       &private->output_stream, ArrowBufferToBufferView(&private->buffer), error));
