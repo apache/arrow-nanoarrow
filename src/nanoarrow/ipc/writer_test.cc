@@ -63,7 +63,8 @@ TEST(NanoarrowIpcWriter, OutputStreamFile) {
   fseek(file_ptr, 6, SEEK_SET);
 
   nanoarrow::ipc::UniqueOutputStream stream;
-  ASSERT_EQ(ArrowIpcOutputStreamInitFile(stream.get(), file_ptr, 1), NANOARROW_OK);
+  ASSERT_EQ(ArrowIpcOutputStreamInitFile(stream.get(), file_ptr, /*close_on_release=*/1),
+            NANOARROW_OK);
 
   struct ArrowError error;
 
@@ -87,4 +88,104 @@ TEST(NanoarrowIpcWriter, OutputStreamFile) {
   EXPECT_EQ(buffer.size(), 6 + 4 * message.size());
   EXPECT_EQ(std::string(buffer.data(), buffer.size()),
             "HELLO " + message + message + message + message);
+}
+
+TEST(NanoarrowIpcWriter, OutputStreamFileError) {
+  nanoarrow::ipc::UniqueOutputStream stream;
+  EXPECT_EQ(ArrowIpcOutputStreamInitFile(stream.get(), nullptr, /*close_on_release=*/1),
+            EINVAL);
+
+  auto phony_path = __FILE__ + std::string(".phony");
+  FILE* file_ptr = fopen(phony_path.c_str(), "rb");
+  ASSERT_EQ(file_ptr, nullptr);
+  EXPECT_EQ(ArrowIpcOutputStreamInitFile(stream.get(), file_ptr, /*close_on_release=*/1),
+            ENOENT);
+}
+
+struct ArrowIpcWriterPrivate {
+  struct ArrowIpcEncoder encoder;
+  struct ArrowIpcOutputStream output_stream;
+  struct ArrowBuffer buffer;
+  struct ArrowBuffer body_buffer;
+
+  int writing_file;
+  int64_t bytes_written;
+  struct ArrowIpcFooter footer;
+};
+
+#define NANOARROW_IPC_FILE_PADDED_MAGIC "ARROW1\0"
+
+TEST(NanoarrowIpcWriter, FileWriting) {
+  struct ArrowError error;
+
+  nanoarrow::UniqueBuffer output;
+  nanoarrow::ipc::UniqueOutputStream stream;
+  ASSERT_EQ(ArrowIpcOutputStreamInitBuffer(stream.get(), output.get()), NANOARROW_OK);
+
+  nanoarrow::ipc::UniqueWriter writer;
+  ASSERT_EQ(ArrowIpcWriterInit(writer.get(), stream.get()), NANOARROW_OK);
+
+  // the writer starts out in stream mode
+  auto* p = static_cast<struct ArrowIpcWriterPrivate*>(writer->private_data);
+  EXPECT_FALSE(p->writing_file);
+  EXPECT_EQ(p->bytes_written, 0);
+  EXPECT_EQ(p->footer.schema.release, nullptr);
+  EXPECT_EQ(p->footer.record_batch_blocks.size_bytes, 0);
+
+  // now it switches to file mode
+  EXPECT_EQ(ArrowIpcWriterStartFile(writer.get(), &error), NANOARROW_OK) << error.message;
+  EXPECT_TRUE(p->writing_file);
+  // and has written the leading magic
+  EXPECT_EQ(p->bytes_written, sizeof(NANOARROW_IPC_FILE_PADDED_MAGIC));
+  // but not a schema or any record batches
+  EXPECT_EQ(p->footer.schema.release, nullptr);
+  EXPECT_EQ(p->footer.record_batch_blocks.size_bytes, 0);
+
+  // write a schema
+  nanoarrow::UniqueSchema schema;
+  ASSERT_EQ(ArrowSchemaInitFromType(schema.get(), NANOARROW_TYPE_STRUCT), NANOARROW_OK);
+  EXPECT_EQ(ArrowIpcWriterWriteSchema(writer.get(), schema.get(), &error), NANOARROW_OK)
+      << error.message;
+  // more has been written
+  auto after_schema = p->bytes_written;
+  EXPECT_GT(after_schema, sizeof(NANOARROW_IPC_FILE_PADDED_MAGIC));
+  // the schema is cached in the writer's footer for later finalization
+  EXPECT_NE(p->footer.schema.release, nullptr);
+  // still no record batches
+  EXPECT_EQ(p->footer.record_batch_blocks.size_bytes, 0);
+
+  // write a batch
+  nanoarrow::UniqueArray array;
+  nanoarrow::UniqueArrayView array_view;
+  ASSERT_EQ(ArrowArrayInitFromSchema(array.get(), schema.get(), &error), NANOARROW_OK)
+      << error.message;
+  ASSERT_EQ(ArrowArrayViewInitFromSchema(array_view.get(), schema.get(), &error),
+            NANOARROW_OK)
+      << error.message;
+  ASSERT_EQ(ArrowArrayViewSetArray(array_view.get(), array.get(), &error), NANOARROW_OK)
+      << error.message;
+  EXPECT_EQ(ArrowIpcWriterWriteArrayView(writer.get(), array_view.get(), &error),
+            NANOARROW_OK)
+      << error.message;
+  // more has been written
+  auto after_batch = p->bytes_written;
+  EXPECT_GT(after_batch, after_schema);
+  // one record batch's block is stored
+  EXPECT_EQ(p->footer.record_batch_blocks.size_bytes, sizeof(struct ArrowIpcFileBlock));
+
+  // end the stream
+  EXPECT_EQ(ArrowIpcWriterWriteArrayView(writer.get(), nullptr, &error), NANOARROW_OK)
+      << error.message;
+  // more has been written
+  auto after_eos = p->bytes_written;
+  EXPECT_GT(after_eos, after_batch);
+  // EOS isn't stored in the blocks
+  EXPECT_EQ(p->footer.record_batch_blocks.size_bytes, sizeof(struct ArrowIpcFileBlock));
+
+  // finalize the file
+  EXPECT_EQ(ArrowIpcWriterFinalizeFile(writer.get(), &error), NANOARROW_OK)
+      << error.message;
+  // more has been written
+  auto after_footer = p->bytes_written;
+  EXPECT_GT(after_footer, after_eos);
 }

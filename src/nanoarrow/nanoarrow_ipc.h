@@ -81,6 +81,14 @@
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcWriterWriteArrayView)
 #define ArrowIpcWriterWriteArrayStream \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcWriterWriteArrayStream)
+#define ArrowIpcWriterStartFile \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcWriterStartFile)
+#define ArrowIpcWriterFinalizeFile \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcWriterFinalizeFile)
+#define ArrowIpcFooterInit NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcFooterInit)
+#define ArrowIpcFooterReset NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcFooterReset)
+#define ArrowIpcEncoderEncodeFooter \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcEncoderEncodeFooter)
 
 #endif
 
@@ -552,7 +560,71 @@ ArrowErrorCode ArrowIpcWriterWriteArrayView(struct ArrowIpcWriter* writer,
 ArrowErrorCode ArrowIpcWriterWriteArrayStream(struct ArrowIpcWriter* writer,
                                               struct ArrowArrayStream* in,
                                               struct ArrowError* error);
+
+/// \brief Start writing an IPC file
+///
+/// Writes the Arrow IPC magic and sets the writer up to track written blocks.
+ArrowErrorCode ArrowIpcWriterStartFile(struct ArrowIpcWriter* writer,
+                                       struct ArrowError* error);
+
+/// \brief Finish writing an IPC file
+///
+/// Writes the IPC file's Footer, footer size, and ending magic.
+ArrowErrorCode ArrowIpcWriterFinalizeFile(struct ArrowIpcWriter* writer,
+                                          struct ArrowError* error);
 /// @}
+
+// Internal APIs:
+
+/// \brief Represents a byte range in an IPC file.
+///
+/// \warning This API is currently only public for use in integration testing;
+///          use at your own risk.
+struct ArrowIpcFileBlock {
+  /// \brief offset relative to the first byte of the file.
+  int64_t offset;
+  /// \brief length of encapsulated metadata Message (including padding)
+  int32_t metadata_length;
+  /// \brief length of contiguous body buffers (including padding)
+  int64_t body_length;
+};
+
+/// \brief A Footer for use in an IPC file
+///
+/// \warning This API is currently only public for use in integration testing;
+///          use at your own risk.
+///
+/// This structure is intended to be allocated by the caller, initialized using
+/// ArrowIpcFooterInit(), and released with ArrowIpcFooterReset().
+struct ArrowIpcFooter {
+  /// \brief the Footer's embedded Schema
+  struct ArrowSchema schema;
+  /// \brief all blocks containing RecordBatch Messages
+  struct ArrowBuffer record_batch_blocks;
+};
+
+/// \brief Initialize a Footer
+///
+/// \warning This API is currently only public for use in integration testing;
+///          use at your own risk.
+void ArrowIpcFooterInit(struct ArrowIpcFooter* footer);
+
+/// \brief Release all resources attached to an footer
+///
+/// \warning This API is currently only public for use in integration testing;
+///          use at your own risk.
+void ArrowIpcFooterReset(struct ArrowIpcFooter* footer);
+
+/// \brief Encode a Footer for use in an IPC file
+///
+/// \warning This API is currently only public for use in integration testing;
+///          use at your own risk.
+///
+/// Returns ENOMEM if allocation fails, NANOARROW_OK otherwise.
+ArrowErrorCode ArrowIpcEncoderEncodeFooter(struct ArrowIpcEncoder* encoder,
+                                           const struct ArrowIpcFooter* footer,
+                                           struct ArrowError* error);
+
 #ifdef __cplusplus
 }
 #endif
