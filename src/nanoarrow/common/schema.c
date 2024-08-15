@@ -615,7 +615,6 @@ ArrowErrorCode ArrowSchemaDeepCopy(const struct ArrowSchema* schema,
 
 struct ArrowSchemaComparisonInternalState {
   enum ArrowCompareLevel level;
-  int check_names;
   int check_metadata;
   int check_exact_names;
   int check_nullability;
@@ -623,6 +622,7 @@ struct ArrowSchemaComparisonInternalState {
   struct ArrowError* reason;
 };
 
+#define CHECK_METADATA_IDENTICAL 2
 #define CHECK_NAME_PARENT_WAS_MAP -1
 #define CHECK_NAME_PARENT_WAS_MAP_CHILD -2
 
@@ -648,7 +648,7 @@ static void ArrowSchemaCompareIdentical(const struct ArrowSchema* actual,
     SET_NOT_EQUAL_AND_RETURN_IF(strcmp(actual->format, expected->format) != 0, state);
   }
 
-  if (state->check_names && check_name > 0) {
+  if (check_name > 0) {
     SET_NOT_EQUAL_AND_RETURN_IF(actual->name == NULL && expected->name != NULL, state);
     SET_NOT_EQUAL_AND_RETURN_IF(actual->name != NULL && expected->name == NULL, state);
     if (actual->name != NULL) {
@@ -664,7 +664,9 @@ static void ArrowSchemaCompareIdentical(const struct ArrowSchema* actual,
     SET_NOT_EQUAL_AND_RETURN_IF(actual_flags != expected_flags, state);
   }
 
-  if (state->check_metadata) {
+  if (state->check_metadata != 0) {
+    // Most implementations export empty metadata as NULL; however, some use
+    // the representation of zero key/value pairs to do so.
     char empty_metadata[4] = {'\0', '\0', '\0', '\0'};
     int actual_has_metadata =
         actual->metadata != NULL &&
@@ -672,9 +674,17 @@ static void ArrowSchemaCompareIdentical(const struct ArrowSchema* actual,
     int expected_has_metadata =
         expected->metadata != NULL &&
         memcmp(expected->metadata, empty_metadata, sizeof(empty_metadata)) != 0;
-    SET_NOT_EQUAL_AND_RETURN_IF(actual_has_metadata != expected_has_metadata, state);
 
-    if (actual->metadata != NULL) {
+    if (state->check_metadata == CHECK_METADATA_IDENTICAL) {
+      SET_NOT_EQUAL_AND_RETURN_IF(actual->metadata == NULL && expected->metadata != NULL,
+                                  state);
+      SET_NOT_EQUAL_AND_RETURN_IF(actual->metadata != NULL && expected->metadata == NULL,
+                                  state);
+    } else {
+      SET_NOT_EQUAL_AND_RETURN_IF(actual_has_metadata != expected_has_metadata, state);
+    }
+
+    if (actual_has_metadata && expected_has_metadata) {
       SET_NOT_EQUAL_AND_RETURN_IF(ArrowMetadataSizeOf(actual->metadata) !=
                                       ArrowMetadataSizeOf(expected->metadata),
                                   state);
@@ -713,6 +723,8 @@ static void ArrowSchemaCompareIdentical(const struct ArrowSchema* actual,
   }
 
   if (actual->dictionary != NULL) {
+    // The name field of the dictionary does not need to be exact for the
+    // purposes of allowing non-canonical names
     ArrowSchemaCompareIdentical(actual->dictionary, expected->dictionary, state,
                                 state->check_exact_names);
     if (!state->is_equal) {
@@ -730,19 +742,30 @@ ArrowErrorCode ArrowSchemaCompare(const struct ArrowSchema* actual,
                                   struct ArrowError* reason) {
   struct ArrowSchemaComparisonInternalState state;
   state.level = level;
-  state.check_exact_names = 1;
-  state.check_names = 1;
-  state.check_metadata = 1;
-  state.is_equal = 1;
   state.reason = reason;
+  state.is_equal = 1;
 
   switch (level) {
     case NANOARROW_COMPARE_IDENTICAL:
-      ArrowSchemaCompareIdentical(actual, expected, &state, state.check_exact_names);
+      state.check_exact_names = 1;
+      state.check_nullability = 1;
+      state.check_metadata = CHECK_METADATA_IDENTICAL;
+      break;
+    case NANOARROW_COMPARE_EQUAL:
+      state.check_exact_names = 1;
+      state.check_nullability = 1;
+      state.check_metadata = 1;
+      break;
+    case NANOARROW_COMPARE_TYPE_EQUAL:
+      state.check_exact_names = 0;
+      state.check_nullability = 1;
+      state.check_metadata = 0;
       break;
     default:
-      return EINVAL;
+      return ENOTSUP;
   }
+
+  ArrowSchemaCompareIdentical(actual, expected, &state, state.check_exact_names);
 
   *out = state.is_equal;
   if (!state.is_equal) {

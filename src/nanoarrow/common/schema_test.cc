@@ -807,12 +807,21 @@ TEST(SchemaTest, SchemaCompareIdenticalMetadata) {
   ArrowSchemaInit(&actual);
   ArrowSchemaInit(&expected);
 
+  // Different metadata should trigger an inequality
   ASSERT_EQ(ArrowSchemaSetMetadata(&actual, simple_metadata.data()), NANOARROW_OK);
   ASSERT_EQ(ArrowSchemaCompare(&actual, &expected, NANOARROW_COMPARE_IDENTICAL, &is_equal,
                                &error),
             NANOARROW_OK);
   EXPECT_EQ(is_equal, 0);
-  EXPECT_STREQ(error.message, "root: actual_has_metadata != expected_has_metadata");
+  EXPECT_STREQ(error.message,
+               "root: actual->metadata != NULL && expected->metadata == NULL");
+
+  // Except at the type equal level
+  is_equal = -1;
+  ASSERT_EQ(ArrowSchemaCompare(&actual, &expected, NANOARROW_COMPARE_TYPE_EQUAL,
+                               &is_equal, &error),
+            NANOARROW_OK);
+  EXPECT_EQ(is_equal, 1);
 
   is_equal = -1;
   ASSERT_EQ(ArrowSchemaSetMetadata(&actual, NULL), NANOARROW_OK);
@@ -821,7 +830,26 @@ TEST(SchemaTest, SchemaCompareIdenticalMetadata) {
                                &error),
             NANOARROW_OK);
   EXPECT_EQ(is_equal, 0);
-  EXPECT_STREQ(error.message, "root: actual_has_metadata != expected_has_metadata");
+  EXPECT_STREQ(error.message,
+               "root: actual->metadata == NULL && expected->metadata != NULL");
+
+  // At the identical level, the other form of empty metadata should not be treated as
+  // equal
+  is_equal = -1;
+  ASSERT_EQ(ArrowSchemaSetMetadata(&expected, "\0\0\0\0"), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaCompare(&actual, &expected, NANOARROW_COMPARE_IDENTICAL, &is_equal,
+                               &error),
+            NANOARROW_OK);
+  EXPECT_EQ(is_equal, 0);
+  EXPECT_STREQ(error.message,
+               "root: actual->metadata == NULL && expected->metadata != NULL");
+
+  // ...but at the equal level, the other form should be treated as equal
+  is_equal = -1;
+  ASSERT_EQ(
+      ArrowSchemaCompare(&actual, &expected, NANOARROW_COMPARE_EQUAL, &is_equal, &error),
+      NANOARROW_OK);
+  EXPECT_EQ(is_equal, 1);
 
   is_equal = -1;
   ASSERT_EQ(ArrowSchemaSetMetadata(&actual, simple_metadata.data()), NANOARROW_OK);
