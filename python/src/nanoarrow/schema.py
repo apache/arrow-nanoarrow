@@ -472,6 +472,7 @@ class Schema:
 
     def serialize(self, dst=None) -> Union[bytes, None]:
         from nanoarrow.c_array_stream import CArrayStream
+
         from nanoarrow.ipc import Writer
 
         empty = CArrayStream.from_c_arrays([], self._c_schema, validate=False)
