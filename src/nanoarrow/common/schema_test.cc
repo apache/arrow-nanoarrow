@@ -812,8 +812,7 @@ TEST(SchemaTest, SchemaCompareIdenticalMetadata) {
                                &error),
             NANOARROW_OK);
   EXPECT_EQ(is_equal, 0);
-  EXPECT_STREQ(error.message,
-               "root: actual->metadata != NULL && expected->metadata == NULL");
+  EXPECT_STREQ(error.message, "root: actual_has_metadata != expected_has_metadata");
 
   is_equal = -1;
   ASSERT_EQ(ArrowSchemaSetMetadata(&actual, NULL), NANOARROW_OK);
@@ -822,8 +821,7 @@ TEST(SchemaTest, SchemaCompareIdenticalMetadata) {
                                &error),
             NANOARROW_OK);
   EXPECT_EQ(is_equal, 0);
-  EXPECT_STREQ(error.message,
-               "root: actual->metadata == NULL && expected->metadata != NULL");
+  EXPECT_STREQ(error.message, "root: actual_has_metadata != expected_has_metadata");
 
   is_equal = -1;
   ASSERT_EQ(ArrowSchemaSetMetadata(&actual, simple_metadata.data()), NANOARROW_OK);
