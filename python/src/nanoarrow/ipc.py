@@ -272,13 +272,14 @@ class Writer:
         self._writer.write_end_of_stream()
         self.release()
 
-    def write(self, obj, schema=None):
+    def write(self, obj, schema=None, write_schema=True):
         if not self._is_valid():
             raise ValueError("Can't write to released Writer")
 
         with c_array_stream(obj, schema=schema) as stream:
             if self._iterator is None:
                 self._iterator = ArrayViewBaseIterator(stream._get_cached_schema())
+            if write_schema:
                 self._writer.write_schema(self._iterator._schema)
             for array in stream:
                 self._iterator._set_array(array)
