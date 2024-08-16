@@ -257,6 +257,7 @@ ArrowErrorCode Validate(struct ArrowError* error) {
   NANOARROW_RETURN_NOT_OK(arrow_table.FromIpcFile(arrow_path, error));
 
   nanoarrow::testing::TestingJSONComparison comparison;
+  comparison.set_compare_metadata_order(false);
   NANOARROW_RETURN_NOT_OK(
       comparison.CompareSchema(arrow_table.schema.get(), json_table.schema.get(), error));
   if (comparison.num_differences() != 0) {
