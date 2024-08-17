@@ -844,6 +844,8 @@ class ViewArrayStream {
  public:
   ViewArrayStream(ArrowArrayStream* stream, ArrowErrorCode* code, ArrowError* error)
       : code_{code}, error_{error} {
+    // Using a slightly more verbose constructor to silence a warning that occurs
+    // on some versions of MSVC.
     range_.next.self = this;
     range_.next.stream = stream;
   }
