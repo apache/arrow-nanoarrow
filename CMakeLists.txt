@@ -153,7 +153,7 @@ if(NANOARROW_IPC)
   # flatcc requires C11 for alignas() and static_assert() in flatcc_generated.h
   # It may be possible to use C99 mode to build the runtime and/or generated header
   # should this cause problems for users.
-  if(NOT DEFINED CMAKE_CXX_STANDARD)
+  if(NOT DEFINED CMAKE_C_STANDARD)
     set(CMAKE_C_STANDARD 11)
     set(CMAKE_C_STANDARD_REQUIRED ON)
   endif()
@@ -226,6 +226,10 @@ if(NANOARROW_IPC)
 endif()
 
 if(NANOARROW_IPC AND (NANOARROW_BUILD_INTEGRATION_TESTS OR NANOARROW_BUILD_TESTS))
+  if(NOT DEFINED CMAKE_CXX_STANDARD)
+    set(CMAKE_CXX_STANDARD 11)
+    set(CMAKE_CXX_STANDARD_REQUIRED ON)
+  endif()
   add_executable(nanoarrow_ipc_integration src/nanoarrow/integration/ipc_integration.cc)
   target_include_directories(nanoarrow_ipc_integration
                              PUBLIC $<BUILD_INTERFACE:${NANOARROW_BUILD_INCLUDE_DIR}>
