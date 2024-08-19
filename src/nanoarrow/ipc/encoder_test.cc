@@ -31,7 +31,7 @@ struct ArrowIpcEncoderPrivate {
 }
 
 #define NANOARROW_IPC_FILE_PADDED_MAGIC "ARROW1\0"
-static_assert(sizeof(NANOARROW_IPC_FILE_PADDED_MAGIC) == 8);
+static_assert(sizeof(NANOARROW_IPC_FILE_PADDED_MAGIC) == 8, "");
 
 TEST(NanoarrowIpcTest, NanoarrowIpcEncoderConstruction) {
   nanoarrow::ipc::UniqueEncoder encoder;
