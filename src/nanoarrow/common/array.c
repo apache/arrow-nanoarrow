@@ -106,7 +106,6 @@ static ArrowErrorCode ArrowArraySetStorageType(struct ArrowArray* array,
     case NANOARROW_TYPE_DENSE_UNION:
       array->n_buffers = 2;
       break;
-
     case NANOARROW_TYPE_STRING:
     case NANOARROW_TYPE_LARGE_STRING:
     case NANOARROW_TYPE_BINARY:
@@ -155,6 +154,25 @@ ArrowErrorCode ArrowArrayInitFromType(struct ArrowArray* array,
 
   array->private_data = private_data;
   array->buffers = (const void**)(&private_data->buffer_data);
+
+  // These are not technically "storage" in the sense that they do not appear
+  // in the ArrowSchemaView's storage_type member; however, allowing them here
+  // is helpful to maximize the number of types that can avoid going through
+  // ArrowArrayInitFromSchema().
+  switch (storage_type) {
+    case NANOARROW_TYPE_DURATION:
+    case NANOARROW_TYPE_TIMESTAMP:
+    case NANOARROW_TYPE_TIME64:
+    case NANOARROW_TYPE_DATE64:
+      storage_type = NANOARROW_TYPE_INT64;
+      break;
+    case NANOARROW_TYPE_TIME32:
+    case NANOARROW_TYPE_DATE32:
+      storage_type = NANOARROW_TYPE_INT32;
+      break;
+    default:
+      break;
+  }
 
   int result = ArrowArraySetStorageType(array, storage_type);
   if (result != NANOARROW_OK) {

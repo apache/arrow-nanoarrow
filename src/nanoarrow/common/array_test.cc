@@ -77,7 +77,16 @@ TEST(ArrayTest, ArrayTestInit) {
   EXPECT_EQ(array.n_buffers, 3);
   ArrowArrayRelease(&array);
 
-  EXPECT_EQ(ArrowArrayInitFromType(&array, NANOARROW_TYPE_DATE64), EINVAL);
+  EXPECT_EQ(ArrowArrayInitFromType(&array, NANOARROW_TYPE_DICTIONARY), EINVAL);
+
+  // Check that we can support non-storage types where possible
+  EXPECT_EQ(ArrowArrayInitFromType(&array, NANOARROW_TYPE_DATE32), NANOARROW_OK);
+  EXPECT_EQ(array.n_buffers, 2);
+  ArrowArrayRelease(&array);
+
+  EXPECT_EQ(ArrowArrayInitFromType(&array, NANOARROW_TYPE_DATE64), NANOARROW_OK);
+  EXPECT_EQ(array.n_buffers, 2);
+  ArrowArrayRelease(&array);
 }
 
 TEST(ArrayTest, ArrayTestAllocateChildren) {
