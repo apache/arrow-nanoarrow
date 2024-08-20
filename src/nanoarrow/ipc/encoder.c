@@ -428,13 +428,13 @@ static ArrowErrorCode ArrowIpcEncodeSchema(flatcc_builder_t* builder,
                                                &ns(Schema_fields_push_end), error));
   FLATCC_RETURN_UNLESS_0(Schema_fields_end(builder), error);
 
+  FLATCC_RETURN_UNLESS_0(Schema_custom_metadata_start(builder), error);
   if (schema->metadata) {
-    FLATCC_RETURN_UNLESS_0(Schema_custom_metadata_start(builder), error);
     NANOARROW_RETURN_NOT_OK(
         ArrowIpcEncodeMetadata(builder, schema, &ns(Schema_custom_metadata_push_start),
                                &ns(Schema_custom_metadata_push_end), error));
-    FLATCC_RETURN_UNLESS_0(Schema_custom_metadata_end(builder), error);
   }
+  FLATCC_RETURN_UNLESS_0(Schema_custom_metadata_end(builder), error);
 
   FLATCC_RETURN_UNLESS_0(Schema_features_start(builder), error);
   FLATCC_RETURN_UNLESS_0(Schema_features_end(builder), error);
