@@ -40,7 +40,7 @@ extern "C" {
 #endif
 
 #ifndef PORTABLE_EXPOSE_ATTRIBUTES
-#define PORTABLE_EXPOSE_ATTRIBUTES 1
+#define PORTABLE_EXPOSE_ATTRIBUTES 0
 #endif
 
 #ifdef __has_c_attribute
@@ -57,7 +57,7 @@ extern "C" {
 
 
 /* https://en.cppreference.com/w/c/language/attributes/fallthrough */
-#if PORTABLE_HAS_C_ATTRIBUTE(__fallthrough__)
+#if PORTABLE_HAS_C_ATTRIBUTE(__fallthrough__) && defined(__STDC_VERSION__) && __STDC_VERSION__ >= 202311L
 # define pattribute_fallthrough [[__fallthrough__]]
 #elif PORTABLE_HAS_ATTRIBUTE(__fallthrough__)
 # define pattribute_fallthrough __attribute__((__fallthrough__))

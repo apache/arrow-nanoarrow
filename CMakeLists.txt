@@ -383,6 +383,8 @@ foreach(target
                                      -Wunused-result
                                      -Wconversion
                                      -Wno-sign-conversion>)
+      target_compile_options(${target}
+                             PRIVATE -Wno-misleading-indentation)
     elseif(CMAKE_C_COMPILER_ID STREQUAL "AppleClang" OR CMAKE_C_COMPILER_ID STREQUAL
                                                         "Clang")
       target_compile_options(${target}
