@@ -472,16 +472,16 @@ TEST_P(ArrowTypeParameterizedTestFixture, NanoarrowIpcArrowTypeRoundtrip) {
 }
 
 std::string ArrowSchemaMetadataToString(const char* metadata) {
-  struct ArrowMetadataReader reader;
+  struct ArrowMetadataReader reader {};
   auto st = ArrowMetadataReaderInit(&reader, metadata);
-  NANOARROW_DCHECK(st == NANOARROW_OK);
+  EXPECT_EQ(st, NANOARROW_OK);
 
   bool comma = false;
   std::string out;
   while (reader.remaining_keys > 0) {
     struct ArrowStringView key, value;
     auto st = ArrowMetadataReaderRead(&reader, &key, &value);
-    NANOARROW_DCHECK(st == NANOARROW_OK);
+    EXPECT_EQ(st, NANOARROW_OK);
     if (comma) {
       out += ", ";
     }
