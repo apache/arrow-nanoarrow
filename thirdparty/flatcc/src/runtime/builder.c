@@ -1355,7 +1355,7 @@ flatcc_builder_ref_t flatcc_builder_end_table(flatcc_builder_t *B)
      * 16 bit size, but we must also be able to store the table size, so the
      * table payload has to be slightly less than that.
      */
-    check(tsize <= FLATBUFFERS_VOFFSET_MAX, "table too large"); 
+    check(tsize <= FLATBUFFERS_VOFFSET_MAX, "table too large");
     vt[1] = (voffset_t)tsize;
     FLATCC_BUILDER_UPDATE_VT_HASH(B->vt_hash, (uint32_t)vt[0], (uint32_t)vt[1]);
     /* Find already emitted vtable, or emit a new one. */

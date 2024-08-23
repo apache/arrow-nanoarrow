@@ -154,8 +154,8 @@ extern "C" {
     #endif
 #endif
 
-        
-#if PORTABLE_MEM_PTR_ACCESS 
+
+#if PORTABLE_MEM_PTR_ACCESS
 
 #define mem_read_8(p)  (*(uint8_t*)(p))
 #define mem_read_16(p) (*(uint16_t*)(p))
@@ -217,7 +217,7 @@ static inline uint128_t mem_read_128(const void *p) { uint128_t v; mem_copy_word
 #define mem_write_128(p, v) do { const uint128_t x = (uint128_t)(v); mem_copy_word_((p), &x, 128); } while(0)
 
 #endif
-   
+
 #if PORTABLE_MEM_ACCESS_DEBUG
 #  error mem_read/write_nn using: mem_copy_word
 #endif

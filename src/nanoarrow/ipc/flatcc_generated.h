@@ -1826,7 +1826,7 @@ static inline int org_apache_arrow_flatbuf_MetadataVersion_is_known_value(org_ap
  *       values here are intented to represent higher level
  *       features, additional details maybe negotiated
  *       with key-value pairs specific to the protocol.
- * 
+ *
  *  Enums added to this list should be assigned power-of-two values
  *  to facilitate exchanging and comparing bitmaps for supported
  *  features. */
@@ -2140,19 +2140,19 @@ __flatbuffers_table_as_root(org_apache_arrow_flatbuf_FixedSizeList)
 __flatbuffers_define_scalar_field(0, org_apache_arrow_flatbuf_FixedSizeList, listSize, flatbuffers_int32, int32_t, INT32_C(0))
 
 /**  A Map is a logical nested type that is represented as
- * 
+ *
  *  List<entries: Struct<key: K, value: V>>
- * 
+ *
  *  In this layout, the keys and values are each respectively contiguous. We do
  *  not constrain the key and value types, so the application is responsible
  *  for ensuring that the keys are hashable and unique. Whether the keys are sorted
  *  may be set in the metadata for this field.
- * 
+ *
  *  In a field with Map type, the field has a child Struct field, which then
  *  has two children: key type and the second the value type. The names of the
  *  child fields may be respectively "entries", "key", and "value", but this is
  *  not enforced.
- * 
+ *
  *  Map
  *  ```text
  *    - child[0] entries: Struct
@@ -2160,7 +2160,7 @@ __flatbuffers_define_scalar_field(0, org_apache_arrow_flatbuf_FixedSizeList, lis
  *      - child[1] value: V
  *  ```
  *  Neither the "entries" field nor the "key" field may be nullable.
- * 
+ *
  *  The metadata is structured so that Arrow systems without special handling
  *  for Map can make Map an alias for List. The "layout" attribute for the Map
  *  field must have the same contents as a List. */
@@ -2257,7 +2257,7 @@ __flatbuffers_table_as_root(org_apache_arrow_flatbuf_LargeBinary)
  *  struct that contains the string length and either the string's entire data
  *  inline (for small strings) or an inlined prefix, an index of another buffer,
  *  and an offset pointing to a slice in that buffer (for non-small strings).
- * 
+ *
  *  Since it uses a variable number of data buffers, each Field with this type
  *  must have a corresponding entry in `variadicBufferCounts`. */
 struct org_apache_arrow_flatbuf_Utf8View_table { uint8_t unused__; };
@@ -2273,7 +2273,7 @@ __flatbuffers_table_as_root(org_apache_arrow_flatbuf_Utf8View)
  *  struct that contains the string length and either the string's entire data
  *  inline (for small strings) or an inlined prefix, an index of another buffer,
  *  and an offset pointing to a slice in that buffer (for non-small strings).
- * 
+ *
  *  Since it uses a variable number of data buffers, each Field with this type
  *  must have a corresponding entry in `variadicBufferCounts`. */
 struct org_apache_arrow_flatbuf_BinaryView_table { uint8_t unused__; };
@@ -2307,7 +2307,7 @@ __flatbuffers_table_as_root(org_apache_arrow_flatbuf_Bool)
 
 /**  Contains two child arrays, run_ends and values.
  *  The run_ends child array must be a 16/32/64-bit integer array
- *  which encodes the indices at which the run with the value in 
+ *  which encodes the indices at which the run with the value in
  *  each corresponding index in the values child array ends.
  *  Like list/struct types, the value array can be of any type. */
 struct org_apache_arrow_flatbuf_RunEndEncoded_table { uint8_t unused__; };
@@ -2341,7 +2341,7 @@ __flatbuffers_define_scalar_field(2, org_apache_arrow_flatbuf_Decimal, bitWidth,
 
 /**  Date is either a 32-bit or 64-bit signed integer type representing an
  *  elapsed time since UNIX epoch (1970-01-01), stored in either of two units:
- * 
+ *
  *  * Milliseconds (64 bits) indicating UNIX time elapsed since the epoch (no
  *    leap seconds), where the values are evenly divisible by 86400000
  *  * Days (32 bits) since the UNIX epoch */
@@ -2358,11 +2358,11 @@ __flatbuffers_define_scalar_field(0, org_apache_arrow_flatbuf_Date, unit, org_ap
 /**  Time is either a 32-bit or 64-bit signed integer type representing an
  *  elapsed time since midnight, stored in either of four units: seconds,
  *  milliseconds, microseconds or nanoseconds.
- * 
+ *
  *  The integer `bitWidth` depends on the `unit` and must be one of the following:
  *  * SECOND and MILLISECOND: 32 bits
  *  * MICROSECOND and NANOSECOND: 64 bits
- * 
+ *
  *  The allowed values are between 0 (inclusive) and 86400 (=24*60*60) seconds
  *  (exclusive), adjusted for the time unit (for example, up to 86400000
  *  exclusive for the MILLISECOND unit).
@@ -2383,58 +2383,58 @@ __flatbuffers_define_scalar_field(1, org_apache_arrow_flatbuf_Time, bitWidth, fl
 /**  Timestamp is a 64-bit signed integer representing an elapsed time since a
  *  fixed epoch, stored in either of four units: seconds, milliseconds,
  *  microseconds or nanoseconds, and is optionally annotated with a timezone.
- * 
+ *
  *  Timestamp values do not include any leap seconds (in other words, all
  *  days are considered 86400 seconds long).
- * 
+ *
  *  Timestamps with a non-empty timezone
  *  ------------------------------------
- * 
+ *
  *  If a Timestamp column has a non-empty timezone value, its epoch is
  *  1970-01-01 00:00:00 (January 1st 1970, midnight) in the *UTC* timezone
  *  (the Unix epoch), regardless of the Timestamp's own timezone.
- * 
+ *
  *  Therefore, timestamp values with a non-empty timezone correspond to
  *  physical points in time together with some additional information about
  *  how the data was obtained and/or how to display it (the timezone).
- * 
+ *
  *    For example, the timestamp value 0 with the timezone string "Europe/Paris"
  *    corresponds to "January 1st 1970, 00h00" in the UTC timezone, but the
  *    application may prefer to display it as "January 1st 1970, 01h00" in
  *    the Europe/Paris timezone (which is the same physical point in time).
- * 
+ *
  *  One consequence is that timestamp values with a non-empty timezone
  *  can be compared and ordered directly, since they all share the same
  *  well-known point of reference (the Unix epoch).
- * 
+ *
  *  Timestamps with an unset / empty timezone
  *  -----------------------------------------
- * 
+ *
  *  If a Timestamp column has no timezone value, its epoch is
  *  1970-01-01 00:00:00 (January 1st 1970, midnight) in an *unknown* timezone.
- * 
+ *
  *  Therefore, timestamp values without a timezone cannot be meaningfully
  *  interpreted as physical points in time, but only as calendar / clock
  *  indications ("wall clock time") in an unspecified timezone.
- * 
+ *
  *    For example, the timestamp value 0 with an empty timezone string
  *    corresponds to "January 1st 1970, 00h00" in an unknown timezone: there
  *    is not enough information to interpret it as a well-defined physical
  *    point in time.
- * 
+ *
  *  One consequence is that timestamp values without a timezone cannot
  *  be reliably compared or ordered, since they may have different points of
  *  reference.  In particular, it is *not* possible to interpret an unset
  *  or empty timezone as the same as "UTC".
- * 
+ *
  *  Conversion between timezones
  *  ----------------------------
- * 
+ *
  *  If a Timestamp column has a non-empty timezone, changing the timezone
  *  to a different non-empty value is a metadata-only operation:
  *  the timestamp values need not change as their point of reference remains
  *  the same (the Unix epoch).
- * 
+ *
  *  However, if a Timestamp column has no timezone value, changing it to a
  *  non-empty value requires to think about the desired semantics.
  *  One possibility is to assume that the original timestamp values are
@@ -2443,37 +2443,37 @@ __flatbuffers_define_scalar_field(1, org_apache_arrow_flatbuf_Time, bitWidth, fl
  *  empty to "Europe/Paris" would require converting the timestamp values
  *  from "Europe/Paris" to "UTC", which seems counter-intuitive but is
  *  nevertheless correct).
- * 
+ *
  *  Guidelines for encoding data from external libraries
  *  ----------------------------------------------------
- * 
+ *
  *  Date & time libraries often have multiple different data types for temporal
  *  data. In order to ease interoperability between different implementations the
  *  Arrow project has some recommendations for encoding these types into a Timestamp
  *  column.
- * 
+ *
  *  An "instant" represents a physical point in time that has no relevant timezone
  *  (for example, astronomical data). To encode an instant, use a Timestamp with
  *  the timezone string set to "UTC", and make sure the Timestamp values
  *  are relative to the UTC epoch (January 1st 1970, midnight).
- * 
+ *
  *  A "zoned date-time" represents a physical point in time annotated with an
  *  informative timezone (for example, the timezone in which the data was
  *  recorded).  To encode a zoned date-time, use a Timestamp with the timezone
  *  string set to the name of the timezone, and make sure the Timestamp values
  *  are relative to the UTC epoch (January 1st 1970, midnight).
- * 
+ *
  *   (There is some ambiguity between an instant and a zoned date-time with the
  *    UTC timezone.  Both of these are stored the same in Arrow.  Typically,
  *    this distinction does not matter.  If it does, then an application should
  *    use custom metadata or an extension type to distinguish between the two cases.)
- * 
+ *
  *  An "offset date-time" represents a physical point in time combined with an
  *  explicit offset from UTC.  To encode an offset date-time, use a Timestamp
  *  with the timezone string set to the numeric timezone offset string
  *  (e.g. "+03:00"), and make sure the Timestamp values are relative to
  *  the UTC epoch (January 1st 1970, midnight).
- * 
+ *
  *  A "naive date-time" (also called "local date-time" in some libraries)
  *  represents a wall clock time combined with a calendar date, but with
  *  no indication of how to map this information to a physical point in time.
@@ -2496,12 +2496,12 @@ __flatbuffers_table_as_root(org_apache_arrow_flatbuf_Timestamp)
 __flatbuffers_define_scalar_field(0, org_apache_arrow_flatbuf_Timestamp, unit, org_apache_arrow_flatbuf_TimeUnit, org_apache_arrow_flatbuf_TimeUnit_enum_t, INT16_C(0))
 /**  The timezone is an optional string indicating the name of a timezone,
  *  one of:
- * 
+ *
  *  * As used in the Olson timezone database (the "tz database" or
  *    "tzdata"), such as "America/New_York".
  *  * An absolute timezone offset of the form "+XX:XX" or "-XX:XX",
  *    such as "+07:30".
- * 
+ *
  *  Whether a timezone string is present indicates different semantics about
  *  the data (see above). */
 __flatbuffers_define_string_field(1, org_apache_arrow_flatbuf_Timestamp, timezone, 0)
@@ -2938,33 +2938,33 @@ typedef flatbuffers_ref_t org_apache_arrow_flatbuf_Schema_ref_t;
 static org_apache_arrow_flatbuf_Schema_ref_t org_apache_arrow_flatbuf_Schema_clone(flatbuffers_builder_t *B, org_apache_arrow_flatbuf_Schema_table_t t);
 __flatbuffers_build_table(flatbuffers_, org_apache_arrow_flatbuf_Schema, 4)
 
-#define __org_apache_arrow_flatbuf_Null_formal_args 
-#define __org_apache_arrow_flatbuf_Null_call_args 
+#define __org_apache_arrow_flatbuf_Null_formal_args
+#define __org_apache_arrow_flatbuf_Null_call_args
 static inline org_apache_arrow_flatbuf_Null_ref_t org_apache_arrow_flatbuf_Null_create(flatbuffers_builder_t *B __org_apache_arrow_flatbuf_Null_formal_args);
 __flatbuffers_build_table_prolog(flatbuffers_, org_apache_arrow_flatbuf_Null, org_apache_arrow_flatbuf_Null_file_identifier, org_apache_arrow_flatbuf_Null_type_identifier)
 
-#define __org_apache_arrow_flatbuf_Struct__formal_args 
-#define __org_apache_arrow_flatbuf_Struct__call_args 
+#define __org_apache_arrow_flatbuf_Struct__formal_args
+#define __org_apache_arrow_flatbuf_Struct__call_args
 static inline org_apache_arrow_flatbuf_Struct__ref_t org_apache_arrow_flatbuf_Struct__create(flatbuffers_builder_t *B __org_apache_arrow_flatbuf_Struct__formal_args);
 __flatbuffers_build_table_prolog(flatbuffers_, org_apache_arrow_flatbuf_Struct_, org_apache_arrow_flatbuf_Struct__file_identifier, org_apache_arrow_flatbuf_Struct__type_identifier)
 
-#define __org_apache_arrow_flatbuf_List_formal_args 
-#define __org_apache_arrow_flatbuf_List_call_args 
+#define __org_apache_arrow_flatbuf_List_formal_args
+#define __org_apache_arrow_flatbuf_List_call_args
 static inline org_apache_arrow_flatbuf_List_ref_t org_apache_arrow_flatbuf_List_create(flatbuffers_builder_t *B __org_apache_arrow_flatbuf_List_formal_args);
 __flatbuffers_build_table_prolog(flatbuffers_, org_apache_arrow_flatbuf_List, org_apache_arrow_flatbuf_List_file_identifier, org_apache_arrow_flatbuf_List_type_identifier)
 
-#define __org_apache_arrow_flatbuf_LargeList_formal_args 
-#define __org_apache_arrow_flatbuf_LargeList_call_args 
+#define __org_apache_arrow_flatbuf_LargeList_formal_args
+#define __org_apache_arrow_flatbuf_LargeList_call_args
 static inline org_apache_arrow_flatbuf_LargeList_ref_t org_apache_arrow_flatbuf_LargeList_create(flatbuffers_builder_t *B __org_apache_arrow_flatbuf_LargeList_formal_args);
 __flatbuffers_build_table_prolog(flatbuffers_, org_apache_arrow_flatbuf_LargeList, org_apache_arrow_flatbuf_LargeList_file_identifier, org_apache_arrow_flatbuf_LargeList_type_identifier)
 
-#define __org_apache_arrow_flatbuf_ListView_formal_args 
-#define __org_apache_arrow_flatbuf_ListView_call_args 
+#define __org_apache_arrow_flatbuf_ListView_formal_args
+#define __org_apache_arrow_flatbuf_ListView_call_args
 static inline org_apache_arrow_flatbuf_ListView_ref_t org_apache_arrow_flatbuf_ListView_create(flatbuffers_builder_t *B __org_apache_arrow_flatbuf_ListView_formal_args);
 __flatbuffers_build_table_prolog(flatbuffers_, org_apache_arrow_flatbuf_ListView, org_apache_arrow_flatbuf_ListView_file_identifier, org_apache_arrow_flatbuf_ListView_type_identifier)
 
-#define __org_apache_arrow_flatbuf_LargeListView_formal_args 
-#define __org_apache_arrow_flatbuf_LargeListView_call_args 
+#define __org_apache_arrow_flatbuf_LargeListView_formal_args
+#define __org_apache_arrow_flatbuf_LargeListView_call_args
 static inline org_apache_arrow_flatbuf_LargeListView_ref_t org_apache_arrow_flatbuf_LargeListView_create(flatbuffers_builder_t *B __org_apache_arrow_flatbuf_LargeListView_formal_args);
 __flatbuffers_build_table_prolog(flatbuffers_, org_apache_arrow_flatbuf_LargeListView, org_apache_arrow_flatbuf_LargeListView_file_identifier, org_apache_arrow_flatbuf_LargeListView_type_identifier)
 
@@ -2993,33 +2993,33 @@ __flatbuffers_build_table_prolog(flatbuffers_, org_apache_arrow_flatbuf_Int, org
 static inline org_apache_arrow_flatbuf_FloatingPoint_ref_t org_apache_arrow_flatbuf_FloatingPoint_create(flatbuffers_builder_t *B __org_apache_arrow_flatbuf_FloatingPoint_formal_args);
 __flatbuffers_build_table_prolog(flatbuffers_, org_apache_arrow_flatbuf_FloatingPoint, org_apache_arrow_flatbuf_FloatingPoint_file_identifier, org_apache_arrow_flatbuf_FloatingPoint_type_identifier)
 
-#define __org_apache_arrow_flatbuf_Utf8_formal_args 
-#define __org_apache_arrow_flatbuf_Utf8_call_args 
+#define __org_apache_arrow_flatbuf_Utf8_formal_args
+#define __org_apache_arrow_flatbuf_Utf8_call_args
 static inline org_apache_arrow_flatbuf_Utf8_ref_t org_apache_arrow_flatbuf_Utf8_create(flatbuffers_builder_t *B __org_apache_arrow_flatbuf_Utf8_formal_args);
 __flatbuffers_build_table_prolog(flatbuffers_, org_apache_arrow_flatbuf_Utf8, org_apache_arrow_flatbuf_Utf8_file_identifier, org_apache_arrow_flatbuf_Utf8_type_identifier)
 
-#define __org_apache_arrow_flatbuf_Binary_formal_args 
-#define __org_apache_arrow_flatbuf_Binary_call_args 
+#define __org_apache_arrow_flatbuf_Binary_formal_args
+#define __org_apache_arrow_flatbuf_Binary_call_args
 static inline org_apache_arrow_flatbuf_Binary_ref_t org_apache_arrow_flatbuf_Binary_create(flatbuffers_builder_t *B __org_apache_arrow_flatbuf_Binary_formal_args);
 __flatbuffers_build_table_prolog(flatbuffers_, org_apache_arrow_flatbuf_Binary, org_apache_arrow_flatbuf_Binary_file_identifier, org_apache_arrow_flatbuf_Binary_type_identifier)
 
-#define __org_apache_arrow_flatbuf_LargeUtf8_formal_args 
-#define __org_apache_arrow_flatbuf_LargeUtf8_call_args 
+#define __org_apache_arrow_flatbuf_LargeUtf8_formal_args
+#define __org_apache_arrow_flatbuf_LargeUtf8_call_args
 static inline org_apache_arrow_flatbuf_LargeUtf8_ref_t org_apache_arrow_flatbuf_LargeUtf8_create(flatbuffers_builder_t *B __org_apache_arrow_flatbuf_LargeUtf8_formal_args);
 __flatbuffers_build_table_prolog(flatbuffers_, org_apache_arrow_flatbuf_LargeUtf8, org_apache_arrow_flatbuf_LargeUtf8_file_identifier, org_apache_arrow_flatbuf_LargeUtf8_type_identifier)
 
-#define __org_apache_arrow_flatbuf_LargeBinary_formal_args 
-#define __org_apache_arrow_flatbuf_LargeBinary_call_args 
+#define __org_apache_arrow_flatbuf_LargeBinary_formal_args
+#define __org_apache_arrow_flatbuf_LargeBinary_call_args
 static inline org_apache_arrow_flatbuf_LargeBinary_ref_t org_apache_arrow_flatbuf_LargeBinary_create(flatbuffers_builder_t *B __org_apache_arrow_flatbuf_LargeBinary_formal_args);
 __flatbuffers_build_table_prolog(flatbuffers_, org_apache_arrow_flatbuf_LargeBinary, org_apache_arrow_flatbuf_LargeBinary_file_identifier, org_apache_arrow_flatbuf_LargeBinary_type_identifier)
 
-#define __org_apache_arrow_flatbuf_Utf8View_formal_args 
-#define __org_apache_arrow_flatbuf_Utf8View_call_args 
+#define __org_apache_arrow_flatbuf_Utf8View_formal_args
+#define __org_apache_arrow_flatbuf_Utf8View_call_args
 static inline org_apache_arrow_flatbuf_Utf8View_ref_t org_apache_arrow_flatbuf_Utf8View_create(flatbuffers_builder_t *B __org_apache_arrow_flatbuf_Utf8View_formal_args);
 __flatbuffers_build_table_prolog(flatbuffers_, org_apache_arrow_flatbuf_Utf8View, org_apache_arrow_flatbuf_Utf8View_file_identifier, org_apache_arrow_flatbuf_Utf8View_type_identifier)
 
-#define __org_apache_arrow_flatbuf_BinaryView_formal_args 
-#define __org_apache_arrow_flatbuf_BinaryView_call_args 
+#define __org_apache_arrow_flatbuf_BinaryView_formal_args
+#define __org_apache_arrow_flatbuf_BinaryView_call_args
 static inline org_apache_arrow_flatbuf_BinaryView_ref_t org_apache_arrow_flatbuf_BinaryView_create(flatbuffers_builder_t *B __org_apache_arrow_flatbuf_BinaryView_formal_args);
 __flatbuffers_build_table_prolog(flatbuffers_, org_apache_arrow_flatbuf_BinaryView, org_apache_arrow_flatbuf_BinaryView_file_identifier, org_apache_arrow_flatbuf_BinaryView_type_identifier)
 
@@ -3028,13 +3028,13 @@ __flatbuffers_build_table_prolog(flatbuffers_, org_apache_arrow_flatbuf_BinaryVi
 static inline org_apache_arrow_flatbuf_FixedSizeBinary_ref_t org_apache_arrow_flatbuf_FixedSizeBinary_create(flatbuffers_builder_t *B __org_apache_arrow_flatbuf_FixedSizeBinary_formal_args);
 __flatbuffers_build_table_prolog(flatbuffers_, org_apache_arrow_flatbuf_FixedSizeBinary, org_apache_arrow_flatbuf_FixedSizeBinary_file_identifier, org_apache_arrow_flatbuf_FixedSizeBinary_type_identifier)
 
-#define __org_apache_arrow_flatbuf_Bool_formal_args 
-#define __org_apache_arrow_flatbuf_Bool_call_args 
+#define __org_apache_arrow_flatbuf_Bool_formal_args
+#define __org_apache_arrow_flatbuf_Bool_call_args
 static inline org_apache_arrow_flatbuf_Bool_ref_t org_apache_arrow_flatbuf_Bool_create(flatbuffers_builder_t *B __org_apache_arrow_flatbuf_Bool_formal_args);
 __flatbuffers_build_table_prolog(flatbuffers_, org_apache_arrow_flatbuf_Bool, org_apache_arrow_flatbuf_Bool_file_identifier, org_apache_arrow_flatbuf_Bool_type_identifier)
 
-#define __org_apache_arrow_flatbuf_RunEndEncoded_formal_args 
-#define __org_apache_arrow_flatbuf_RunEndEncoded_call_args 
+#define __org_apache_arrow_flatbuf_RunEndEncoded_formal_args
+#define __org_apache_arrow_flatbuf_RunEndEncoded_call_args
 static inline org_apache_arrow_flatbuf_RunEndEncoded_ref_t org_apache_arrow_flatbuf_RunEndEncoded_create(flatbuffers_builder_t *B __org_apache_arrow_flatbuf_RunEndEncoded_formal_args);
 __flatbuffers_build_table_prolog(flatbuffers_, org_apache_arrow_flatbuf_RunEndEncoded, org_apache_arrow_flatbuf_RunEndEncoded_file_identifier, org_apache_arrow_flatbuf_RunEndEncoded_type_identifier)
 
@@ -6238,7 +6238,7 @@ static inline int org_apache_arrow_flatbuf_MetadataVersion_is_known_value(org_ap
  *       values here are intented to represent higher level
  *       features, additional details maybe negotiated
  *       with key-value pairs specific to the protocol.
- * 
+ *
  *  Enums added to this list should be assigned power-of-two values
  *  to facilitate exchanging and comparing bitmaps for supported
  *  features. */
@@ -6552,19 +6552,19 @@ __flatbuffers_table_as_root(org_apache_arrow_flatbuf_FixedSizeList)
 __flatbuffers_define_scalar_field(0, org_apache_arrow_flatbuf_FixedSizeList, listSize, flatbuffers_int32, int32_t, INT32_C(0))
 
 /**  A Map is a logical nested type that is represented as
- * 
+ *
  *  List<entries: Struct<key: K, value: V>>
- * 
+ *
  *  In this layout, the keys and values are each respectively contiguous. We do
  *  not constrain the key and value types, so the application is responsible
  *  for ensuring that the keys are hashable and unique. Whether the keys are sorted
  *  may be set in the metadata for this field.
- * 
+ *
  *  In a field with Map type, the field has a child Struct field, which then
  *  has two children: key type and the second the value type. The names of the
  *  child fields may be respectively "entries", "key", and "value", but this is
  *  not enforced.
- * 
+ *
  *  Map
  *  ```text
  *    - child[0] entries: Struct
@@ -6572,7 +6572,7 @@ __flatbuffers_define_scalar_field(0, org_apache_arrow_flatbuf_FixedSizeList, lis
  *      - child[1] value: V
  *  ```
  *  Neither the "entries" field nor the "key" field may be nullable.
- * 
+ *
  *  The metadata is structured so that Arrow systems without special handling
  *  for Map can make Map an alias for List. The "layout" attribute for the Map
  *  field must have the same contents as a List. */
@@ -6669,7 +6669,7 @@ __flatbuffers_table_as_root(org_apache_arrow_flatbuf_LargeBinary)
  *  struct that contains the string length and either the string's entire data
  *  inline (for small strings) or an inlined prefix, an index of another buffer,
  *  and an offset pointing to a slice in that buffer (for non-small strings).
- * 
+ *
  *  Since it uses a variable number of data buffers, each Field with this type
  *  must have a corresponding entry in `variadicBufferCounts`. */
 struct org_apache_arrow_flatbuf_Utf8View_table { uint8_t unused__; };
@@ -6685,7 +6685,7 @@ __flatbuffers_table_as_root(org_apache_arrow_flatbuf_Utf8View)
  *  struct that contains the string length and either the string's entire data
  *  inline (for small strings) or an inlined prefix, an index of another buffer,
  *  and an offset pointing to a slice in that buffer (for non-small strings).
- * 
+ *
  *  Since it uses a variable number of data buffers, each Field with this type
  *  must have a corresponding entry in `variadicBufferCounts`. */
 struct org_apache_arrow_flatbuf_BinaryView_table { uint8_t unused__; };
@@ -6719,7 +6719,7 @@ __flatbuffers_table_as_root(org_apache_arrow_flatbuf_Bool)
 
 /**  Contains two child arrays, run_ends and values.
  *  The run_ends child array must be a 16/32/64-bit integer array
- *  which encodes the indices at which the run with the value in 
+ *  which encodes the indices at which the run with the value in
  *  each corresponding index in the values child array ends.
  *  Like list/struct types, the value array can be of any type. */
 struct org_apache_arrow_flatbuf_RunEndEncoded_table { uint8_t unused__; };
@@ -6753,7 +6753,7 @@ __flatbuffers_define_scalar_field(2, org_apache_arrow_flatbuf_Decimal, bitWidth,
 
 /**  Date is either a 32-bit or 64-bit signed integer type representing an
  *  elapsed time since UNIX epoch (1970-01-01), stored in either of two units:
- * 
+ *
  *  * Milliseconds (64 bits) indicating UNIX time elapsed since the epoch (no
  *    leap seconds), where the values are evenly divisible by 86400000
  *  * Days (32 bits) since the UNIX epoch */
@@ -6770,11 +6770,11 @@ __flatbuffers_define_scalar_field(0, org_apache_arrow_flatbuf_Date, unit, org_ap
 /**  Time is either a 32-bit or 64-bit signed integer type representing an
  *  elapsed time since midnight, stored in either of four units: seconds,
  *  milliseconds, microseconds or nanoseconds.
- * 
+ *
  *  The integer `bitWidth` depends on the `unit` and must be one of the following:
  *  * SECOND and MILLISECOND: 32 bits
  *  * MICROSECOND and NANOSECOND: 64 bits
- * 
+ *
  *  The allowed values are between 0 (inclusive) and 86400 (=24*60*60) seconds
  *  (exclusive), adjusted for the time unit (for example, up to 86400000
  *  exclusive for the MILLISECOND unit).
@@ -6795,58 +6795,58 @@ __flatbuffers_define_scalar_field(1, org_apache_arrow_flatbuf_Time, bitWidth, fl
 /**  Timestamp is a 64-bit signed integer representing an elapsed time since a
  *  fixed epoch, stored in either of four units: seconds, milliseconds,
  *  microseconds or nanoseconds, and is optionally annotated with a timezone.
- * 
+ *
  *  Timestamp values do not include any leap seconds (in other words, all
  *  days are considered 86400 seconds long).
- * 
+ *
  *  Timestamps with a non-empty timezone
  *  ------------------------------------
- * 
+ *
  *  If a Timestamp column has a non-empty timezone value, its epoch is
  *  1970-01-01 00:00:00 (January 1st 1970, midnight) in the *UTC* timezone
  *  (the Unix epoch), regardless of the Timestamp's own timezone.
- * 
+ *
  *  Therefore, timestamp values with a non-empty timezone correspond to
  *  physical points in time together with some additional information about
  *  how the data was obtained and/or how to display it (the timezone).
- * 
+ *
  *    For example, the timestamp value 0 with the timezone string "Europe/Paris"
  *    corresponds to "January 1st 1970, 00h00" in the UTC timezone, but the
  *    application may prefer to display it as "January 1st 1970, 01h00" in
  *    the Europe/Paris timezone (which is the same physical point in time).
- * 
+ *
  *  One consequence is that timestamp values with a non-empty timezone
  *  can be compared and ordered directly, since they all share the same
  *  well-known point of reference (the Unix epoch).
- * 
+ *
  *  Timestamps with an unset / empty timezone
  *  -----------------------------------------
- * 
+ *
  *  If a Timestamp column has no timezone value, its epoch is
  *  1970-01-01 00:00:00 (January 1st 1970, midnight) in an *unknown* timezone.
- * 
+ *
  *  Therefore, timestamp values without a timezone cannot be meaningfully
  *  interpreted as physical points in time, but only as calendar / clock
  *  indications ("wall clock time") in an unspecified timezone.
- * 
+ *
  *    For example, the timestamp value 0 with an empty timezone string
  *    corresponds to "January 1st 1970, 00h00" in an unknown timezone: there
  *    is not enough information to interpret it as a well-defined physical
  *    point in time.
- * 
+ *
  *  One consequence is that timestamp values without a timezone cannot
  *  be reliably compared or ordered, since they may have different points of
  *  reference.  In particular, it is *not* possible to interpret an unset
  *  or empty timezone as the same as "UTC".
- * 
+ *
  *  Conversion between timezones
  *  ----------------------------
- * 
+ *
  *  If a Timestamp column has a non-empty timezone, changing the timezone
  *  to a different non-empty value is a metadata-only operation:
  *  the timestamp values need not change as their point of reference remains
  *  the same (the Unix epoch).
- * 
+ *
  *  However, if a Timestamp column has no timezone value, changing it to a
  *  non-empty value requires to think about the desired semantics.
  *  One possibility is to assume that the original timestamp values are
@@ -6855,37 +6855,37 @@ __flatbuffers_define_scalar_field(1, org_apache_arrow_flatbuf_Time, bitWidth, fl
  *  empty to "Europe/Paris" would require converting the timestamp values
  *  from "Europe/Paris" to "UTC", which seems counter-intuitive but is
  *  nevertheless correct).
- * 
+ *
  *  Guidelines for encoding data from external libraries
  *  ----------------------------------------------------
- * 
+ *
  *  Date & time libraries often have multiple different data types for temporal
  *  data. In order to ease interoperability between different implementations the
  *  Arrow project has some recommendations for encoding these types into a Timestamp
  *  column.
- * 
+ *
  *  An "instant" represents a physical point in time that has no relevant timezone
  *  (for example, astronomical data). To encode an instant, use a Timestamp with
  *  the timezone string set to "UTC", and make sure the Timestamp values
  *  are relative to the UTC epoch (January 1st 1970, midnight).
- * 
+ *
  *  A "zoned date-time" represents a physical point in time annotated with an
  *  informative timezone (for example, the timezone in which the data was
  *  recorded).  To encode a zoned date-time, use a Timestamp with the timezone
  *  string set to the name of the timezone, and make sure the Timestamp values
  *  are relative to the UTC epoch (January 1st 1970, midnight).
- * 
+ *
  *   (There is some ambiguity between an instant and a zoned date-time with the
  *    UTC timezone.  Both of these are stored the same in Arrow.  Typically,
  *    this distinction does not matter.  If it does, then an application should
  *    use custom metadata or an extension type to distinguish between the two cases.)
- * 
+ *
  *  An "offset date-time" represents a physical point in time combined with an
  *  explicit offset from UTC.  To encode an offset date-time, use a Timestamp
  *  with the timezone string set to the numeric timezone offset string
  *  (e.g. "+03:00"), and make sure the Timestamp values are relative to
  *  the UTC epoch (January 1st 1970, midnight).
- * 
+ *
  *  A "naive date-time" (also called "local date-time" in some libraries)
  *  represents a wall clock time combined with a calendar date, but with
  *  no indication of how to map this information to a physical point in time.
@@ -6908,12 +6908,12 @@ __flatbuffers_table_as_root(org_apache_arrow_flatbuf_Timestamp)
 __flatbuffers_define_scalar_field(0, org_apache_arrow_flatbuf_Timestamp, unit, org_apache_arrow_flatbuf_TimeUnit, org_apache_arrow_flatbuf_TimeUnit_enum_t, INT16_C(0))
 /**  The timezone is an optional string indicating the name of a timezone,
  *  one of:
- * 
+ *
  *  * As used in the Olson timezone database (the "tz database" or
  *    "tzdata"), such as "America/New_York".
  *  * An absolute timezone offset of the form "+XX:XX" or "-XX:XX",
  *    such as "+07:30".
- * 
+ *
  *  Whether a timezone string is present indicates different semantics about
  *  the data (see above). */
 __flatbuffers_define_string_field(1, org_apache_arrow_flatbuf_Timestamp, timezone, 0)
@@ -7350,33 +7350,33 @@ typedef flatbuffers_ref_t org_apache_arrow_flatbuf_Schema_ref_t;
 static org_apache_arrow_flatbuf_Schema_ref_t org_apache_arrow_flatbuf_Schema_clone(flatbuffers_builder_t *B, org_apache_arrow_flatbuf_Schema_table_t t);
 __flatbuffers_build_table(flatbuffers_, org_apache_arrow_flatbuf_Schema, 4)
 
-#define __org_apache_arrow_flatbuf_Null_formal_args 
-#define __org_apache_arrow_flatbuf_Null_call_args 
+#define __org_apache_arrow_flatbuf_Null_formal_args
+#define __org_apache_arrow_flatbuf_Null_call_args
 static inline org_apache_arrow_flatbuf_Null_ref_t org_apache_arrow_flatbuf_Null_create(flatbuffers_builder_t *B __org_apache_arrow_flatbuf_Null_formal_args);
 __flatbuffers_build_table_prolog(flatbuffers_, org_apache_arrow_flatbuf_Null, org_apache_arrow_flatbuf_Null_file_identifier, org_apache_arrow_flatbuf_Null_type_identifier)
 
-#define __org_apache_arrow_flatbuf_Struct__formal_args 
-#define __org_apache_arrow_flatbuf_Struct__call_args 
+#define __org_apache_arrow_flatbuf_Struct__formal_args
+#define __org_apache_arrow_flatbuf_Struct__call_args
 static inline org_apache_arrow_flatbuf_Struct__ref_t org_apache_arrow_flatbuf_Struct__create(flatbuffers_builder_t *B __org_apache_arrow_flatbuf_Struct__formal_args);
 __flatbuffers_build_table_prolog(flatbuffers_, org_apache_arrow_flatbuf_Struct_, org_apache_arrow_flatbuf_Struct__file_identifier, org_apache_arrow_flatbuf_Struct__type_identifier)
 
-#define __org_apache_arrow_flatbuf_List_formal_args 
-#define __org_apache_arrow_flatbuf_List_call_args 
+#define __org_apache_arrow_flatbuf_List_formal_args
+#define __org_apache_arrow_flatbuf_List_call_args
 static inline org_apache_arrow_flatbuf_List_ref_t org_apache_arrow_flatbuf_List_create(flatbuffers_builder_t *B __org_apache_arrow_flatbuf_List_formal_args);
 __flatbuffers_build_table_prolog(flatbuffers_, org_apache_arrow_flatbuf_List, org_apache_arrow_flatbuf_List_file_identifier, org_apache_arrow_flatbuf_List_type_identifier)
 
-#define __org_apache_arrow_flatbuf_LargeList_formal_args 
-#define __org_apache_arrow_flatbuf_LargeList_call_args 
+#define __org_apache_arrow_flatbuf_LargeList_formal_args
+#define __org_apache_arrow_flatbuf_LargeList_call_args
 static inline org_apache_arrow_flatbuf_LargeList_ref_t org_apache_arrow_flatbuf_LargeList_create(flatbuffers_builder_t *B __org_apache_arrow_flatbuf_LargeList_formal_args);
 __flatbuffers_build_table_prolog(flatbuffers_, org_apache_arrow_flatbuf_LargeList, org_apache_arrow_flatbuf_LargeList_file_identifier, org_apache_arrow_flatbuf_LargeList_type_identifier)
 
-#define __org_apache_arrow_flatbuf_ListView_formal_args 
-#define __org_apache_arrow_flatbuf_ListView_call_args 
+#define __org_apache_arrow_flatbuf_ListView_formal_args
+#define __org_apache_arrow_flatbuf_ListView_call_args
 static inline org_apache_arrow_flatbuf_ListView_ref_t org_apache_arrow_flatbuf_ListView_create(flatbuffers_builder_t *B __org_apache_arrow_flatbuf_ListView_formal_args);
 __flatbuffers_build_table_prolog(flatbuffers_, org_apache_arrow_flatbuf_ListView, org_apache_arrow_flatbuf_ListView_file_identifier, org_apache_arrow_flatbuf_ListView_type_identifier)
 
-#define __org_apache_arrow_flatbuf_LargeListView_formal_args 
-#define __org_apache_arrow_flatbuf_LargeListView_call_args 
+#define __org_apache_arrow_flatbuf_LargeListView_formal_args
+#define __org_apache_arrow_flatbuf_LargeListView_call_args
 static inline org_apache_arrow_flatbuf_LargeListView_ref_t org_apache_arrow_flatbuf_LargeListView_create(flatbuffers_builder_t *B __org_apache_arrow_flatbuf_LargeListView_formal_args);
 __flatbuffers_build_table_prolog(flatbuffers_, org_apache_arrow_flatbuf_LargeListView, org_apache_arrow_flatbuf_LargeListView_file_identifier, org_apache_arrow_flatbuf_LargeListView_type_identifier)
 
@@ -7405,33 +7405,33 @@ __flatbuffers_build_table_prolog(flatbuffers_, org_apache_arrow_flatbuf_Int, org
 static inline org_apache_arrow_flatbuf_FloatingPoint_ref_t org_apache_arrow_flatbuf_FloatingPoint_create(flatbuffers_builder_t *B __org_apache_arrow_flatbuf_FloatingPoint_formal_args);
 __flatbuffers_build_table_prolog(flatbuffers_, org_apache_arrow_flatbuf_FloatingPoint, org_apache_arrow_flatbuf_FloatingPoint_file_identifier, org_apache_arrow_flatbuf_FloatingPoint_type_identifier)
 
-#define __org_apache_arrow_flatbuf_Utf8_formal_args 
-#define __org_apache_arrow_flatbuf_Utf8_call_args 
+#define __org_apache_arrow_flatbuf_Utf8_formal_args
+#define __org_apache_arrow_flatbuf_Utf8_call_args
 static inline org_apache_arrow_flatbuf_Utf8_ref_t org_apache_arrow_flatbuf_Utf8_create(flatbuffers_builder_t *B __org_apache_arrow_flatbuf_Utf8_formal_args);
 __flatbuffers_build_table_prolog(flatbuffers_, org_apache_arrow_flatbuf_Utf8, org_apache_arrow_flatbuf_Utf8_file_identifier, org_apache_arrow_flatbuf_Utf8_type_identifier)
 
-#define __org_apache_arrow_flatbuf_Binary_formal_args 
-#define __org_apache_arrow_flatbuf_Binary_call_args 
+#define __org_apache_arrow_flatbuf_Binary_formal_args
+#define __org_apache_arrow_flatbuf_Binary_call_args
 static inline org_apache_arrow_flatbuf_Binary_ref_t org_apache_arrow_flatbuf_Binary_create(flatbuffers_builder_t *B __org_apache_arrow_flatbuf_Binary_formal_args);
 __flatbuffers_build_table_prolog(flatbuffers_, org_apache_arrow_flatbuf_Binary, org_apache_arrow_flatbuf_Binary_file_identifier, org_apache_arrow_flatbuf_Binary_type_identifier)
 
-#define __org_apache_arrow_flatbuf_LargeUtf8_formal_args 
-#define __org_apache_arrow_flatbuf_LargeUtf8_call_args 
+#define __org_apache_arrow_flatbuf_LargeUtf8_formal_args
+#define __org_apache_arrow_flatbuf_LargeUtf8_call_args
 static inline org_apache_arrow_flatbuf_LargeUtf8_ref_t org_apache_arrow_flatbuf_LargeUtf8_create(flatbuffers_builder_t *B __org_apache_arrow_flatbuf_LargeUtf8_formal_args);
 __flatbuffers_build_table_prolog(flatbuffers_, org_apache_arrow_flatbuf_LargeUtf8, org_apache_arrow_flatbuf_LargeUtf8_file_identifier, org_apache_arrow_flatbuf_LargeUtf8_type_identifier)
 
-#define __org_apache_arrow_flatbuf_LargeBinary_formal_args 
-#define __org_apache_arrow_flatbuf_LargeBinary_call_args 
+#define __org_apache_arrow_flatbuf_LargeBinary_formal_args
+#define __org_apache_arrow_flatbuf_LargeBinary_call_args
 static inline org_apache_arrow_flatbuf_LargeBinary_ref_t org_apache_arrow_flatbuf_LargeBinary_create(flatbuffers_builder_t *B __org_apache_arrow_flatbuf_LargeBinary_formal_args);
 __flatbuffers_build_table_prolog(flatbuffers_, org_apache_arrow_flatbuf_LargeBinary, org_apache_arrow_flatbuf_LargeBinary_file_identifier, org_apache_arrow_flatbuf_LargeBinary_type_identifier)
 
-#define __org_apache_arrow_flatbuf_Utf8View_formal_args 
-#define __org_apache_arrow_flatbuf_Utf8View_call_args 
+#define __org_apache_arrow_flatbuf_Utf8View_formal_args
+#define __org_apache_arrow_flatbuf_Utf8View_call_args
 static inline org_apache_arrow_flatbuf_Utf8View_ref_t org_apache_arrow_flatbuf_Utf8View_create(flatbuffers_builder_t *B __org_apache_arrow_flatbuf_Utf8View_formal_args);
 __flatbuffers_build_table_prolog(flatbuffers_, org_apache_arrow_flatbuf_Utf8View, org_apache_arrow_flatbuf_Utf8View_file_identifier, org_apache_arrow_flatbuf_Utf8View_type_identifier)
 
-#define __org_apache_arrow_flatbuf_BinaryView_formal_args 
-#define __org_apache_arrow_flatbuf_BinaryView_call_args 
+#define __org_apache_arrow_flatbuf_BinaryView_formal_args
+#define __org_apache_arrow_flatbuf_BinaryView_call_args
 static inline org_apache_arrow_flatbuf_BinaryView_ref_t org_apache_arrow_flatbuf_BinaryView_create(flatbuffers_builder_t *B __org_apache_arrow_flatbuf_BinaryView_formal_args);
 __flatbuffers_build_table_prolog(flatbuffers_, org_apache_arrow_flatbuf_BinaryView, org_apache_arrow_flatbuf_BinaryView_file_identifier, org_apache_arrow_flatbuf_BinaryView_type_identifier)
 
@@ -7440,13 +7440,13 @@ __flatbuffers_build_table_prolog(flatbuffers_, org_apache_arrow_flatbuf_BinaryVi
 static inline org_apache_arrow_flatbuf_FixedSizeBinary_ref_t org_apache_arrow_flatbuf_FixedSizeBinary_create(flatbuffers_builder_t *B __org_apache_arrow_flatbuf_FixedSizeBinary_formal_args);
 __flatbuffers_build_table_prolog(flatbuffers_, org_apache_arrow_flatbuf_FixedSizeBinary, org_apache_arrow_flatbuf_FixedSizeBinary_file_identifier, org_apache_arrow_flatbuf_FixedSizeBinary_type_identifier)
 
-#define __org_apache_arrow_flatbuf_Bool_formal_args 
-#define __org_apache_arrow_flatbuf_Bool_call_args 
+#define __org_apache_arrow_flatbuf_Bool_formal_args
+#define __org_apache_arrow_flatbuf_Bool_call_args
 static inline org_apache_arrow_flatbuf_Bool_ref_t org_apache_arrow_flatbuf_Bool_create(flatbuffers_builder_t *B __org_apache_arrow_flatbuf_Bool_formal_args);
 __flatbuffers_build_table_prolog(flatbuffers_, org_apache_arrow_flatbuf_Bool, org_apache_arrow_flatbuf_Bool_file_identifier, org_apache_arrow_flatbuf_Bool_type_identifier)
 
-#define __org_apache_arrow_flatbuf_RunEndEncoded_formal_args 
-#define __org_apache_arrow_flatbuf_RunEndEncoded_call_args 
+#define __org_apache_arrow_flatbuf_RunEndEncoded_formal_args
+#define __org_apache_arrow_flatbuf_RunEndEncoded_call_args
 static inline org_apache_arrow_flatbuf_RunEndEncoded_ref_t org_apache_arrow_flatbuf_RunEndEncoded_create(flatbuffers_builder_t *B __org_apache_arrow_flatbuf_RunEndEncoded_formal_args);
 __flatbuffers_build_table_prolog(flatbuffers_, org_apache_arrow_flatbuf_RunEndEncoded, org_apache_arrow_flatbuf_RunEndEncoded_file_identifier, org_apache_arrow_flatbuf_RunEndEncoded_type_identifier)
 
@@ -10235,15 +10235,15 @@ static inline int org_apache_arrow_flatbuf_SparseMatrixCompressedAxis_is_known_v
 /**  ----------------------------------------------------------------------
  *  EXPERIMENTAL: Data structures for sparse tensors
  *  Coordinate (COO) format of sparse tensor index.
- * 
+ *
  *  COO's index list are represented as a NxM matrix,
  *  where N is the number of non-zero values,
  *  and M is the number of dimensions of a sparse tensor.
- * 
+ *
  *  indicesBuffer stores the location and size of the data of this indices
  *  matrix.  The value type and the stride of the indices matrix is
  *  specified in indicesType and indicesStrides fields.
- * 
+ *
  *  For example, let X be a 2x3x4x5 tensor, and it has the following
  *  6 non-zero values:
  *  ```text
@@ -10304,7 +10304,7 @@ __flatbuffers_define_table_field(1, org_apache_arrow_flatbuf_SparseMatrixIndexCS
  *  The i-th row spans from `indptr[i]` to `indptr[i+1]` in the data.
  *  The length of this array is 1 + (the number of rows), and the type
  *  of index value is long.
- * 
+ *
  *  For example, let X be the following 6x4 matrix:
  *  ```text
  *    X := [[0, 1, 2, 0],
@@ -10328,7 +10328,7 @@ __flatbuffers_define_table_field(3, org_apache_arrow_flatbuf_SparseMatrixIndexCS
 /**  indicesBuffer stores the location and size of the array that
  *  contains the column indices of the corresponding non-zero values.
  *  The type of index value is long.
- * 
+ *
  *  For example, the indices of the above X is:
  *  ```text
  *    indices(X) = [1, 2, 2, 1, 3, 0, 2, 3, 1].
@@ -10347,12 +10347,12 @@ __flatbuffers_table_as_root(org_apache_arrow_flatbuf_SparseTensorIndexCSF)
 
 /**  CSF is a generalization of compressed sparse row (CSR) index.
  *  See [smith2017knl](http://shaden.io/pub-files/smith2017knl.pdf)
- * 
+ *
  *  CSF index recursively compresses each dimension of a tensor into a set
  *  of prefix trees. Each path from a root to leaf forms one tensor
  *  non-zero index. CSF is implemented with two arrays of buffers and one
  *  arrays of integers.
- * 
+ *
  *  For example, let X be a 2x3x4x5 tensor and let it have the following
  *  8 non-zero values:
  *  ```text
@@ -10382,7 +10382,7 @@ __flatbuffers_define_table_field(0, org_apache_arrow_flatbuf_SparseTensorIndexCS
  *  indptrBuffers. A pair of consecutive values at `indptrBuffers[dim][i]`
  *  and `indptrBuffers[dim][i + 1]` signify a range of nodes in
  *  `indicesBuffers[dim + 1]` who are children of `indicesBuffers[dim][i]` node.
- * 
+ *
  *  For example, the indptrBuffers for the above X is:
  *  ```text
  *    indptrBuffer(X) = [
@@ -11131,7 +11131,7 @@ static inline int org_apache_arrow_flatbuf_BodyCompressionMethod_is_known_value(
  *  equal-length Arrow arrays)
  *  Metadata about a field at some level of a nested type tree (but not
  *  its children).
- * 
+ *
  *  For example, a List<Int16> with values `[[1, 2, 3], null, [4], [5, 6], null]`
  *  would have {length: 5, null_count: 2} for its List node, and {length: 6,
  *  null_count: 0} for its Int16 node, as separate FieldNode structs */
@@ -11193,7 +11193,7 @@ __flatbuffers_define_scalar_field(0, org_apache_arrow_flatbuf_RecordBatch, lengt
 /**  Nodes correspond to the pre-ordered flattened logical schema */
 __flatbuffers_define_vector_field(1, org_apache_arrow_flatbuf_RecordBatch, nodes, org_apache_arrow_flatbuf_FieldNode_vec_t, 0)
 /**  Buffers correspond to the pre-ordered flattened buffer tree
- * 
+ *
  *  The number of buffers appended to this list depends on the schema. For
  *  example, most primitive arrays will have 2 buffers, 1 for the validity
  *  bitmap and 1 for the values. For struct arrays, there will only be a
@@ -11205,14 +11205,14 @@ __flatbuffers_define_table_field(3, org_apache_arrow_flatbuf_RecordBatch, compre
  *  For each such Field in the pre-ordered flattened logical schema, there will be
  *  an entry in variadicBufferCounts to indicate the number of number of variadic
  *  buffers which belong to that Field in the current RecordBatch.
- * 
+ *
  *  For example, the schema
  *      col1: Struct<alpha: Int32, beta: BinaryView, gamma: Float64>
  *      col2: Utf8View
  *  contains two Fields with variadic buffers so variadicBufferCounts will have
  *  two entries, the first counting the variadic buffers of `col1.beta` and the
  *  second counting `col2`'s.
- * 
+ *
  *  This field may be omitted if and only if the schema contains no Fields with
  *  a variable number of buffers, such as BinaryView and Utf8View. */
 __flatbuffers_define_vector_field(4, org_apache_arrow_flatbuf_RecordBatch, variadicBufferCounts, flatbuffers_int64_vec_t, 0)
@@ -11241,7 +11241,7 @@ __flatbuffers_define_scalar_field(2, org_apache_arrow_flatbuf_DictionaryBatch, i
  *  The root Message type
  *  This union enables us to easily send different message types without
  *  redundant storage, and in the future we can easily add new message types.
- * 
+ *
  *  Arrow implementations do not need to implement all of the message types,
  *  which may include experimental metadata types. For maximum compatibility,
  *  it is best to send data using RecordBatch */
@@ -12392,7 +12392,7 @@ static inline int org_apache_arrow_flatbuf_MetadataVersion_is_known_value(org_ap
  *       values here are intented to represent higher level
  *       features, additional details maybe negotiated
  *       with key-value pairs specific to the protocol.
- * 
+ *
  *  Enums added to this list should be assigned power-of-two values
  *  to facilitate exchanging and comparing bitmaps for supported
  *  features. */
@@ -12706,19 +12706,19 @@ __flatbuffers_table_as_root(org_apache_arrow_flatbuf_FixedSizeList)
 __flatbuffers_define_scalar_field(0, org_apache_arrow_flatbuf_FixedSizeList, listSize, flatbuffers_int32, int32_t, INT32_C(0))
 
 /**  A Map is a logical nested type that is represented as
- * 
+ *
  *  List<entries: Struct<key: K, value: V>>
- * 
+ *
  *  In this layout, the keys and values are each respectively contiguous. We do
  *  not constrain the key and value types, so the application is responsible
  *  for ensuring that the keys are hashable and unique. Whether the keys are sorted
  *  may be set in the metadata for this field.
- * 
+ *
  *  In a field with Map type, the field has a child Struct field, which then
  *  has two children: key type and the second the value type. The names of the
  *  child fields may be respectively "entries", "key", and "value", but this is
  *  not enforced.
- * 
+ *
  *  Map
  *  ```text
  *    - child[0] entries: Struct
@@ -12726,7 +12726,7 @@ __flatbuffers_define_scalar_field(0, org_apache_arrow_flatbuf_FixedSizeList, lis
  *      - child[1] value: V
  *  ```
  *  Neither the "entries" field nor the "key" field may be nullable.
- * 
+ *
  *  The metadata is structured so that Arrow systems without special handling
  *  for Map can make Map an alias for List. The "layout" attribute for the Map
  *  field must have the same contents as a List. */
@@ -12823,7 +12823,7 @@ __flatbuffers_table_as_root(org_apache_arrow_flatbuf_LargeBinary)
  *  struct that contains the string length and either the string's entire data
  *  inline (for small strings) or an inlined prefix, an index of another buffer,
  *  and an offset pointing to a slice in that buffer (for non-small strings).
- * 
+ *
  *  Since it uses a variable number of data buffers, each Field with this type
  *  must have a corresponding entry in `variadicBufferCounts`. */
 struct org_apache_arrow_flatbuf_Utf8View_table { uint8_t unused__; };
@@ -12839,7 +12839,7 @@ __flatbuffers_table_as_root(org_apache_arrow_flatbuf_Utf8View)
  *  struct that contains the string length and either the string's entire data
  *  inline (for small strings) or an inlined prefix, an index of another buffer,
  *  and an offset pointing to a slice in that buffer (for non-small strings).
- * 
+ *
  *  Since it uses a variable number of data buffers, each Field with this type
  *  must have a corresponding entry in `variadicBufferCounts`. */
 struct org_apache_arrow_flatbuf_BinaryView_table { uint8_t unused__; };
@@ -12873,7 +12873,7 @@ __flatbuffers_table_as_root(org_apache_arrow_flatbuf_Bool)
 
 /**  Contains two child arrays, run_ends and values.
  *  The run_ends child array must be a 16/32/64-bit integer array
- *  which encodes the indices at which the run with the value in 
+ *  which encodes the indices at which the run with the value in
  *  each corresponding index in the values child array ends.
  *  Like list/struct types, the value array can be of any type. */
 struct org_apache_arrow_flatbuf_RunEndEncoded_table { uint8_t unused__; };
@@ -12907,7 +12907,7 @@ __flatbuffers_define_scalar_field(2, org_apache_arrow_flatbuf_Decimal, bitWidth,
 
 /**  Date is either a 32-bit or 64-bit signed integer type representing an
  *  elapsed time since UNIX epoch (1970-01-01), stored in either of two units:
- * 
+ *
  *  * Milliseconds (64 bits) indicating UNIX time elapsed since the epoch (no
  *    leap seconds), where the values are evenly divisible by 86400000
  *  * Days (32 bits) since the UNIX epoch */
@@ -12924,11 +12924,11 @@ __flatbuffers_define_scalar_field(0, org_apache_arrow_flatbuf_Date, unit, org_ap
 /**  Time is either a 32-bit or 64-bit signed integer type representing an
  *  elapsed time since midnight, stored in either of four units: seconds,
  *  milliseconds, microseconds or nanoseconds.
- * 
+ *
  *  The integer `bitWidth` depends on the `unit` and must be one of the following:
  *  * SECOND and MILLISECOND: 32 bits
  *  * MICROSECOND and NANOSECOND: 64 bits
- * 
+ *
  *  The allowed values are between 0 (inclusive) and 86400 (=24*60*60) seconds
  *  (exclusive), adjusted for the time unit (for example, up to 86400000
  *  exclusive for the MILLISECOND unit).
@@ -12949,58 +12949,58 @@ __flatbuffers_define_scalar_field(1, org_apache_arrow_flatbuf_Time, bitWidth, fl
 /**  Timestamp is a 64-bit signed integer representing an elapsed time since a
  *  fixed epoch, stored in either of four units: seconds, milliseconds,
  *  microseconds or nanoseconds, and is optionally annotated with a timezone.
- * 
+ *
  *  Timestamp values do not include any leap seconds (in other words, all
  *  days are considered 86400 seconds long).
- * 
+ *
  *  Timestamps with a non-empty timezone
  *  ------------------------------------
- * 
+ *
  *  If a Timestamp column has a non-empty timezone value, its epoch is
  *  1970-01-01 00:00:00 (January 1st 1970, midnight) in the *UTC* timezone
  *  (the Unix epoch), regardless of the Timestamp's own timezone.
- * 
+ *
  *  Therefore, timestamp values with a non-empty timezone correspond to
  *  physical points in time together with some additional information about
  *  how the data was obtained and/or how to display it (the timezone).
- * 
+ *
  *    For example, the timestamp value 0 with the timezone string "Europe/Paris"
  *    corresponds to "January 1st 1970, 00h00" in the UTC timezone, but the
  *    application may prefer to display it as "January 1st 1970, 01h00" in
  *    the Europe/Paris timezone (which is the same physical point in time).
- * 
+ *
  *  One consequence is that timestamp values with a non-empty timezone
  *  can be compared and ordered directly, since they all share the same
  *  well-known point of reference (the Unix epoch).
- * 
+ *
  *  Timestamps with an unset / empty timezone
  *  -----------------------------------------
- * 
+ *
  *  If a Timestamp column has no timezone value, its epoch is
  *  1970-01-01 00:00:00 (January 1st 1970, midnight) in an *unknown* timezone.
- * 
+ *
  *  Therefore, timestamp values without a timezone cannot be meaningfully
  *  interpreted as physical points in time, but only as calendar / clock
  *  indications ("wall clock time") in an unspecified timezone.
- * 
+ *
  *    For example, the timestamp value 0 with an empty timezone string
  *    corresponds to "January 1st 1970, 00h00" in an unknown timezone: there
  *    is not enough information to interpret it as a well-defined physical
  *    point in time.
- * 
+ *
  *  One consequence is that timestamp values without a timezone cannot
  *  be reliably compared or ordered, since they may have different points of
  *  reference.  In particular, it is *not* possible to interpret an unset
  *  or empty timezone as the same as "UTC".
- * 
+ *
  *  Conversion between timezones
  *  ----------------------------
- * 
+ *
  *  If a Timestamp column has a non-empty timezone, changing the timezone
  *  to a different non-empty value is a metadata-only operation:
  *  the timestamp values need not change as their point of reference remains
  *  the same (the Unix epoch).
- * 
+ *
  *  However, if a Timestamp column has no timezone value, changing it to a
  *  non-empty value requires to think about the desired semantics.
  *  One possibility is to assume that the original timestamp values are
@@ -13009,37 +13009,37 @@ __flatbuffers_define_scalar_field(1, org_apache_arrow_flatbuf_Time, bitWidth, fl
  *  empty to "Europe/Paris" would require converting the timestamp values
  *  from "Europe/Paris" to "UTC", which seems counter-intuitive but is
  *  nevertheless correct).
- * 
+ *
  *  Guidelines for encoding data from external libraries
  *  ----------------------------------------------------
- * 
+ *
  *  Date & time libraries often have multiple different data types for temporal
  *  data. In order to ease interoperability between different implementations the
  *  Arrow project has some recommendations for encoding these types into a Timestamp
  *  column.
- * 
+ *
  *  An "instant" represents a physical point in time that has no relevant timezone
  *  (for example, astronomical data). To encode an instant, use a Timestamp with
  *  the timezone string set to "UTC", and make sure the Timestamp values
  *  are relative to the UTC epoch (January 1st 1970, midnight).
- * 
+ *
  *  A "zoned date-time" represents a physical point in time annotated with an
  *  informative timezone (for example, the timezone in which the data was
  *  recorded).  To encode a zoned date-time, use a Timestamp with the timezone
  *  string set to the name of the timezone, and make sure the Timestamp values
  *  are relative to the UTC epoch (January 1st 1970, midnight).
- * 
+ *
  *   (There is some ambiguity between an instant and a zoned date-time with the
  *    UTC timezone.  Both of these are stored the same in Arrow.  Typically,
  *    this distinction does not matter.  If it does, then an application should
  *    use custom metadata or an extension type to distinguish between the two cases.)
- * 
+ *
  *  An "offset date-time" represents a physical point in time combined with an
  *  explicit offset from UTC.  To encode an offset date-time, use a Timestamp
  *  with the timezone string set to the numeric timezone offset string
  *  (e.g. "+03:00"), and make sure the Timestamp values are relative to
  *  the UTC epoch (January 1st 1970, midnight).
- * 
+ *
  *  A "naive date-time" (also called "local date-time" in some libraries)
  *  represents a wall clock time combined with a calendar date, but with
  *  no indication of how to map this information to a physical point in time.
@@ -13062,12 +13062,12 @@ __flatbuffers_table_as_root(org_apache_arrow_flatbuf_Timestamp)
 __flatbuffers_define_scalar_field(0, org_apache_arrow_flatbuf_Timestamp, unit, org_apache_arrow_flatbuf_TimeUnit, org_apache_arrow_flatbuf_TimeUnit_enum_t, INT16_C(0))
 /**  The timezone is an optional string indicating the name of a timezone,
  *  one of:
- * 
+ *
  *  * As used in the Olson timezone database (the "tz database" or
  *    "tzdata"), such as "America/New_York".
  *  * An absolute timezone offset of the form "+XX:XX" or "-XX:XX",
  *    such as "+07:30".
- * 
+ *
  *  Whether a timezone string is present indicates different semantics about
  *  the data (see above). */
 __flatbuffers_define_string_field(1, org_apache_arrow_flatbuf_Timestamp, timezone, 0)
@@ -13504,33 +13504,33 @@ typedef flatbuffers_ref_t org_apache_arrow_flatbuf_Schema_ref_t;
 static org_apache_arrow_flatbuf_Schema_ref_t org_apache_arrow_flatbuf_Schema_clone(flatbuffers_builder_t *B, org_apache_arrow_flatbuf_Schema_table_t t);
 __flatbuffers_build_table(flatbuffers_, org_apache_arrow_flatbuf_Schema, 4)
 
-#define __org_apache_arrow_flatbuf_Null_formal_args 
-#define __org_apache_arrow_flatbuf_Null_call_args 
+#define __org_apache_arrow_flatbuf_Null_formal_args
+#define __org_apache_arrow_flatbuf_Null_call_args
 static inline org_apache_arrow_flatbuf_Null_ref_t org_apache_arrow_flatbuf_Null_create(flatbuffers_builder_t *B __org_apache_arrow_flatbuf_Null_formal_args);
 __flatbuffers_build_table_prolog(flatbuffers_, org_apache_arrow_flatbuf_Null, org_apache_arrow_flatbuf_Null_file_identifier, org_apache_arrow_flatbuf_Null_type_identifier)
 
-#define __org_apache_arrow_flatbuf_Struct__formal_args 
-#define __org_apache_arrow_flatbuf_Struct__call_args 
+#define __org_apache_arrow_flatbuf_Struct__formal_args
+#define __org_apache_arrow_flatbuf_Struct__call_args
 static inline org_apache_arrow_flatbuf_Struct__ref_t org_apache_arrow_flatbuf_Struct__create(flatbuffers_builder_t *B __org_apache_arrow_flatbuf_Struct__formal_args);
 __flatbuffers_build_table_prolog(flatbuffers_, org_apache_arrow_flatbuf_Struct_, org_apache_arrow_flatbuf_Struct__file_identifier, org_apache_arrow_flatbuf_Struct__type_identifier)
 
-#define __org_apache_arrow_flatbuf_List_formal_args 
-#define __org_apache_arrow_flatbuf_List_call_args 
+#define __org_apache_arrow_flatbuf_List_formal_args
+#define __org_apache_arrow_flatbuf_List_call_args
 static inline org_apache_arrow_flatbuf_List_ref_t org_apache_arrow_flatbuf_List_create(flatbuffers_builder_t *B __org_apache_arrow_flatbuf_List_formal_args);
 __flatbuffers_build_table_prolog(flatbuffers_, org_apache_arrow_flatbuf_List, org_apache_arrow_flatbuf_List_file_identifier, org_apache_arrow_flatbuf_List_type_identifier)
 
-#define __org_apache_arrow_flatbuf_LargeList_formal_args 
-#define __org_apache_arrow_flatbuf_LargeList_call_args 
+#define __org_apache_arrow_flatbuf_LargeList_formal_args
+#define __org_apache_arrow_flatbuf_LargeList_call_args
 static inline org_apache_arrow_flatbuf_LargeList_ref_t org_apache_arrow_flatbuf_LargeList_create(flatbuffers_builder_t *B __org_apache_arrow_flatbuf_LargeList_formal_args);
 __flatbuffers_build_table_prolog(flatbuffers_, org_apache_arrow_flatbuf_LargeList, org_apache_arrow_flatbuf_LargeList_file_identifier, org_apache_arrow_flatbuf_LargeList_type_identifier)
 
-#define __org_apache_arrow_flatbuf_ListView_formal_args 
-#define __org_apache_arrow_flatbuf_ListView_call_args 
+#define __org_apache_arrow_flatbuf_ListView_formal_args
+#define __org_apache_arrow_flatbuf_ListView_call_args
 static inline org_apache_arrow_flatbuf_ListView_ref_t org_apache_arrow_flatbuf_ListView_create(flatbuffers_builder_t *B __org_apache_arrow_flatbuf_ListView_formal_args);
 __flatbuffers_build_table_prolog(flatbuffers_, org_apache_arrow_flatbuf_ListView, org_apache_arrow_flatbuf_ListView_file_identifier, org_apache_arrow_flatbuf_ListView_type_identifier)
 
-#define __org_apache_arrow_flatbuf_LargeListView_formal_args 
-#define __org_apache_arrow_flatbuf_LargeListView_call_args 
+#define __org_apache_arrow_flatbuf_LargeListView_formal_args
+#define __org_apache_arrow_flatbuf_LargeListView_call_args
 static inline org_apache_arrow_flatbuf_LargeListView_ref_t org_apache_arrow_flatbuf_LargeListView_create(flatbuffers_builder_t *B __org_apache_arrow_flatbuf_LargeListView_formal_args);
 __flatbuffers_build_table_prolog(flatbuffers_, org_apache_arrow_flatbuf_LargeListView, org_apache_arrow_flatbuf_LargeListView_file_identifier, org_apache_arrow_flatbuf_LargeListView_type_identifier)
 
@@ -13559,33 +13559,33 @@ __flatbuffers_build_table_prolog(flatbuffers_, org_apache_arrow_flatbuf_Int, org
 static inline org_apache_arrow_flatbuf_FloatingPoint_ref_t org_apache_arrow_flatbuf_FloatingPoint_create(flatbuffers_builder_t *B __org_apache_arrow_flatbuf_FloatingPoint_formal_args);
 __flatbuffers_build_table_prolog(flatbuffers_, org_apache_arrow_flatbuf_FloatingPoint, org_apache_arrow_flatbuf_FloatingPoint_file_identifier, org_apache_arrow_flatbuf_FloatingPoint_type_identifier)
 
-#define __org_apache_arrow_flatbuf_Utf8_formal_args 
-#define __org_apache_arrow_flatbuf_Utf8_call_args 
+#define __org_apache_arrow_flatbuf_Utf8_formal_args
+#define __org_apache_arrow_flatbuf_Utf8_call_args
 static inline org_apache_arrow_flatbuf_Utf8_ref_t org_apache_arrow_flatbuf_Utf8_create(flatbuffers_builder_t *B __org_apache_arrow_flatbuf_Utf8_formal_args);
 __flatbuffers_build_table_prolog(flatbuffers_, org_apache_arrow_flatbuf_Utf8, org_apache_arrow_flatbuf_Utf8_file_identifier, org_apache_arrow_flatbuf_Utf8_type_identifier)
 
-#define __org_apache_arrow_flatbuf_Binary_formal_args 
-#define __org_apache_arrow_flatbuf_Binary_call_args 
+#define __org_apache_arrow_flatbuf_Binary_formal_args
+#define __org_apache_arrow_flatbuf_Binary_call_args
 static inline org_apache_arrow_flatbuf_Binary_ref_t org_apache_arrow_flatbuf_Binary_create(flatbuffers_builder_t *B __org_apache_arrow_flatbuf_Binary_formal_args);
 __flatbuffers_build_table_prolog(flatbuffers_, org_apache_arrow_flatbuf_Binary, org_apache_arrow_flatbuf_Binary_file_identifier, org_apache_arrow_flatbuf_Binary_type_identifier)
 
-#define __org_apache_arrow_flatbuf_LargeUtf8_formal_args 
-#define __org_apache_arrow_flatbuf_LargeUtf8_call_args 
+#define __org_apache_arrow_flatbuf_LargeUtf8_formal_args
+#define __org_apache_arrow_flatbuf_LargeUtf8_call_args
 static inline org_apache_arrow_flatbuf_LargeUtf8_ref_t org_apache_arrow_flatbuf_LargeUtf8_create(flatbuffers_builder_t *B __org_apache_arrow_flatbuf_LargeUtf8_formal_args);
 __flatbuffers_build_table_prolog(flatbuffers_, org_apache_arrow_flatbuf_LargeUtf8, org_apache_arrow_flatbuf_LargeUtf8_file_identifier, org_apache_arrow_flatbuf_LargeUtf8_type_identifier)
 
-#define __org_apache_arrow_flatbuf_LargeBinary_formal_args 
-#define __org_apache_arrow_flatbuf_LargeBinary_call_args 
+#define __org_apache_arrow_flatbuf_LargeBinary_formal_args
+#define __org_apache_arrow_flatbuf_LargeBinary_call_args
 static inline org_apache_arrow_flatbuf_LargeBinary_ref_t org_apache_arrow_flatbuf_LargeBinary_create(flatbuffers_builder_t *B __org_apache_arrow_flatbuf_LargeBinary_formal_args);
 __flatbuffers_build_table_prolog(flatbuffers_, org_apache_arrow_flatbuf_LargeBinary, org_apache_arrow_flatbuf_LargeBinary_file_identifier, org_apache_arrow_flatbuf_LargeBinary_type_identifier)
 
-#define __org_apache_arrow_flatbuf_Utf8View_formal_args 
-#define __org_apache_arrow_flatbuf_Utf8View_call_args 
+#define __org_apache_arrow_flatbuf_Utf8View_formal_args
+#define __org_apache_arrow_flatbuf_Utf8View_call_args
 static inline org_apache_arrow_flatbuf_Utf8View_ref_t org_apache_arrow_flatbuf_Utf8View_create(flatbuffers_builder_t *B __org_apache_arrow_flatbuf_Utf8View_formal_args);
 __flatbuffers_build_table_prolog(flatbuffers_, org_apache_arrow_flatbuf_Utf8View, org_apache_arrow_flatbuf_Utf8View_file_identifier, org_apache_arrow_flatbuf_Utf8View_type_identifier)
 
-#define __org_apache_arrow_flatbuf_BinaryView_formal_args 
-#define __org_apache_arrow_flatbuf_BinaryView_call_args 
+#define __org_apache_arrow_flatbuf_BinaryView_formal_args
+#define __org_apache_arrow_flatbuf_BinaryView_call_args
 static inline org_apache_arrow_flatbuf_BinaryView_ref_t org_apache_arrow_flatbuf_BinaryView_create(flatbuffers_builder_t *B __org_apache_arrow_flatbuf_BinaryView_formal_args);
 __flatbuffers_build_table_prolog(flatbuffers_, org_apache_arrow_flatbuf_BinaryView, org_apache_arrow_flatbuf_BinaryView_file_identifier, org_apache_arrow_flatbuf_BinaryView_type_identifier)
 
@@ -13594,13 +13594,13 @@ __flatbuffers_build_table_prolog(flatbuffers_, org_apache_arrow_flatbuf_BinaryVi
 static inline org_apache_arrow_flatbuf_FixedSizeBinary_ref_t org_apache_arrow_flatbuf_FixedSizeBinary_create(flatbuffers_builder_t *B __org_apache_arrow_flatbuf_FixedSizeBinary_formal_args);
 __flatbuffers_build_table_prolog(flatbuffers_, org_apache_arrow_flatbuf_FixedSizeBinary, org_apache_arrow_flatbuf_FixedSizeBinary_file_identifier, org_apache_arrow_flatbuf_FixedSizeBinary_type_identifier)
 
-#define __org_apache_arrow_flatbuf_Bool_formal_args 
-#define __org_apache_arrow_flatbuf_Bool_call_args 
+#define __org_apache_arrow_flatbuf_Bool_formal_args
+#define __org_apache_arrow_flatbuf_Bool_call_args
 static inline org_apache_arrow_flatbuf_Bool_ref_t org_apache_arrow_flatbuf_Bool_create(flatbuffers_builder_t *B __org_apache_arrow_flatbuf_Bool_formal_args);
 __flatbuffers_build_table_prolog(flatbuffers_, org_apache_arrow_flatbuf_Bool, org_apache_arrow_flatbuf_Bool_file_identifier, org_apache_arrow_flatbuf_Bool_type_identifier)
 
-#define __org_apache_arrow_flatbuf_RunEndEncoded_formal_args 
-#define __org_apache_arrow_flatbuf_RunEndEncoded_call_args 
+#define __org_apache_arrow_flatbuf_RunEndEncoded_formal_args
+#define __org_apache_arrow_flatbuf_RunEndEncoded_call_args
 static inline org_apache_arrow_flatbuf_RunEndEncoded_ref_t org_apache_arrow_flatbuf_RunEndEncoded_create(flatbuffers_builder_t *B __org_apache_arrow_flatbuf_RunEndEncoded_formal_args);
 __flatbuffers_build_table_prolog(flatbuffers_, org_apache_arrow_flatbuf_RunEndEncoded, org_apache_arrow_flatbuf_RunEndEncoded_file_identifier, org_apache_arrow_flatbuf_RunEndEncoded_type_identifier)
 
@@ -16498,7 +16498,7 @@ static inline int org_apache_arrow_flatbuf_MetadataVersion_is_known_value(org_ap
  *       values here are intented to represent higher level
  *       features, additional details maybe negotiated
  *       with key-value pairs specific to the protocol.
- * 
+ *
  *  Enums added to this list should be assigned power-of-two values
  *  to facilitate exchanging and comparing bitmaps for supported
  *  features. */
@@ -16812,19 +16812,19 @@ __flatbuffers_table_as_root(org_apache_arrow_flatbuf_FixedSizeList)
 __flatbuffers_define_scalar_field(0, org_apache_arrow_flatbuf_FixedSizeList, listSize, flatbuffers_int32, int32_t, INT32_C(0))
 
 /**  A Map is a logical nested type that is represented as
- * 
+ *
  *  List<entries: Struct<key: K, value: V>>
- * 
+ *
  *  In this layout, the keys and values are each respectively contiguous. We do
  *  not constrain the key and value types, so the application is responsible
  *  for ensuring that the keys are hashable and unique. Whether the keys are sorted
  *  may be set in the metadata for this field.
- * 
+ *
  *  In a field with Map type, the field has a child Struct field, which then
  *  has two children: key type and the second the value type. The names of the
  *  child fields may be respectively "entries", "key", and "value", but this is
  *  not enforced.
- * 
+ *
  *  Map
  *  ```text
  *    - child[0] entries: Struct
@@ -16832,7 +16832,7 @@ __flatbuffers_define_scalar_field(0, org_apache_arrow_flatbuf_FixedSizeList, lis
  *      - child[1] value: V
  *  ```
  *  Neither the "entries" field nor the "key" field may be nullable.
- * 
+ *
  *  The metadata is structured so that Arrow systems without special handling
  *  for Map can make Map an alias for List. The "layout" attribute for the Map
  *  field must have the same contents as a List. */
@@ -16929,7 +16929,7 @@ __flatbuffers_table_as_root(org_apache_arrow_flatbuf_LargeBinary)
  *  struct that contains the string length and either the string's entire data
  *  inline (for small strings) or an inlined prefix, an index of another buffer,
  *  and an offset pointing to a slice in that buffer (for non-small strings).
- * 
+ *
  *  Since it uses a variable number of data buffers, each Field with this type
  *  must have a corresponding entry in `variadicBufferCounts`. */
 struct org_apache_arrow_flatbuf_Utf8View_table { uint8_t unused__; };
@@ -16945,7 +16945,7 @@ __flatbuffers_table_as_root(org_apache_arrow_flatbuf_Utf8View)
  *  struct that contains the string length and either the string's entire data
  *  inline (for small strings) or an inlined prefix, an index of another buffer,
  *  and an offset pointing to a slice in that buffer (for non-small strings).
- * 
+ *
  *  Since it uses a variable number of data buffers, each Field with this type
  *  must have a corresponding entry in `variadicBufferCounts`. */
 struct org_apache_arrow_flatbuf_BinaryView_table { uint8_t unused__; };
@@ -16979,7 +16979,7 @@ __flatbuffers_table_as_root(org_apache_arrow_flatbuf_Bool)
 
 /**  Contains two child arrays, run_ends and values.
  *  The run_ends child array must be a 16/32/64-bit integer array
- *  which encodes the indices at which the run with the value in 
+ *  which encodes the indices at which the run with the value in
  *  each corresponding index in the values child array ends.
  *  Like list/struct types, the value array can be of any type. */
 struct org_apache_arrow_flatbuf_RunEndEncoded_table { uint8_t unused__; };
@@ -17013,7 +17013,7 @@ __flatbuffers_define_scalar_field(2, org_apache_arrow_flatbuf_Decimal, bitWidth,
 
 /**  Date is either a 32-bit or 64-bit signed integer type representing an
  *  elapsed time since UNIX epoch (1970-01-01), stored in either of two units:
- * 
+ *
  *  * Milliseconds (64 bits) indicating UNIX time elapsed since the epoch (no
  *    leap seconds), where the values are evenly divisible by 86400000
  *  * Days (32 bits) since the UNIX epoch */
@@ -17030,11 +17030,11 @@ __flatbuffers_define_scalar_field(0, org_apache_arrow_flatbuf_Date, unit, org_ap
 /**  Time is either a 32-bit or 64-bit signed integer type representing an
  *  elapsed time since midnight, stored in either of four units: seconds,
  *  milliseconds, microseconds or nanoseconds.
- * 
+ *
  *  The integer `bitWidth` depends on the `unit` and must be one of the following:
  *  * SECOND and MILLISECOND: 32 bits
  *  * MICROSECOND and NANOSECOND: 64 bits
- * 
+ *
  *  The allowed values are between 0 (inclusive) and 86400 (=24*60*60) seconds
  *  (exclusive), adjusted for the time unit (for example, up to 86400000
  *  exclusive for the MILLISECOND unit).
@@ -17055,58 +17055,58 @@ __flatbuffers_define_scalar_field(1, org_apache_arrow_flatbuf_Time, bitWidth, fl
 /**  Timestamp is a 64-bit signed integer representing an elapsed time since a
  *  fixed epoch, stored in either of four units: seconds, milliseconds,
  *  microseconds or nanoseconds, and is optionally annotated with a timezone.
- * 
+ *
  *  Timestamp values do not include any leap seconds (in other words, all
  *  days are considered 86400 seconds long).
- * 
+ *
  *  Timestamps with a non-empty timezone
  *  ------------------------------------
- * 
+ *
  *  If a Timestamp column has a non-empty timezone value, its epoch is
  *  1970-01-01 00:00:00 (January 1st 1970, midnight) in the *UTC* timezone
  *  (the Unix epoch), regardless of the Timestamp's own timezone.
- * 
+ *
  *  Therefore, timestamp values with a non-empty timezone correspond to
  *  physical points in time together with some additional information about
  *  how the data was obtained and/or how to display it (the timezone).
- * 
+ *
  *    For example, the timestamp value 0 with the timezone string "Europe/Paris"
  *    corresponds to "January 1st 1970, 00h00" in the UTC timezone, but the
  *    application may prefer to display it as "January 1st 1970, 01h00" in
  *    the Europe/Paris timezone (which is the same physical point in time).
- * 
+ *
  *  One consequence is that timestamp values with a non-empty timezone
  *  can be compared and ordered directly, since they all share the same
  *  well-known point of reference (the Unix epoch).
- * 
+ *
  *  Timestamps with an unset / empty timezone
  *  -----------------------------------------
- * 
+ *
  *  If a Timestamp column has no timezone value, its epoch is
  *  1970-01-01 00:00:00 (January 1st 1970, midnight) in an *unknown* timezone.
- * 
+ *
  *  Therefore, timestamp values without a timezone cannot be meaningfully
  *  interpreted as physical points in time, but only as calendar / clock
  *  indications ("wall clock time") in an unspecified timezone.
- * 
+ *
  *    For example, the timestamp value 0 with an empty timezone string
  *    corresponds to "January 1st 1970, 00h00" in an unknown timezone: there
  *    is not enough information to interpret it as a well-defined physical
  *    point in time.
- * 
+ *
  *  One consequence is that timestamp values without a timezone cannot
  *  be reliably compared or ordered, since they may have different points of
  *  reference.  In particular, it is *not* possible to interpret an unset
  *  or empty timezone as the same as "UTC".
- * 
+ *
  *  Conversion between timezones
  *  ----------------------------
- * 
+ *
  *  If a Timestamp column has a non-empty timezone, changing the timezone
  *  to a different non-empty value is a metadata-only operation:
  *  the timestamp values need not change as their point of reference remains
  *  the same (the Unix epoch).
- * 
+ *
  *  However, if a Timestamp column has no timezone value, changing it to a
  *  non-empty value requires to think about the desired semantics.
  *  One possibility is to assume that the original timestamp values are
@@ -17115,37 +17115,37 @@ __flatbuffers_define_scalar_field(1, org_apache_arrow_flatbuf_Time, bitWidth, fl
  *  empty to "Europe/Paris" would require converting the timestamp values
  *  from "Europe/Paris" to "UTC", which seems counter-intuitive but is
  *  nevertheless correct).
- * 
+ *
  *  Guidelines for encoding data from external libraries
  *  ----------------------------------------------------
- * 
+ *
  *  Date & time libraries often have multiple different data types for temporal
  *  data. In order to ease interoperability between different implementations the
  *  Arrow project has some recommendations for encoding these types into a Timestamp
  *  column.
- * 
+ *
  *  An "instant" represents a physical point in time that has no relevant timezone
  *  (for example, astronomical data). To encode an instant, use a Timestamp with
  *  the timezone string set to "UTC", and make sure the Timestamp values
  *  are relative to the UTC epoch (January 1st 1970, midnight).
- * 
+ *
  *  A "zoned date-time" represents a physical point in time annotated with an
  *  informative timezone (for example, the timezone in which the data was
  *  recorded).  To encode a zoned date-time, use a Timestamp with the timezone
  *  string set to the name of the timezone, and make sure the Timestamp values
  *  are relative to the UTC epoch (January 1st 1970, midnight).
- * 
+ *
  *   (There is some ambiguity between an instant and a zoned date-time with the
  *    UTC timezone.  Both of these are stored the same in Arrow.  Typically,
  *    this distinction does not matter.  If it does, then an application should
  *    use custom metadata or an extension type to distinguish between the two cases.)
- * 
+ *
  *  An "offset date-time" represents a physical point in time combined with an
  *  explicit offset from UTC.  To encode an offset date-time, use a Timestamp
  *  with the timezone string set to the numeric timezone offset string
  *  (e.g. "+03:00"), and make sure the Timestamp values are relative to
  *  the UTC epoch (January 1st 1970, midnight).
- * 
+ *
  *  A "naive date-time" (also called "local date-time" in some libraries)
  *  represents a wall clock time combined with a calendar date, but with
  *  no indication of how to map this information to a physical point in time.
@@ -17168,12 +17168,12 @@ __flatbuffers_table_as_root(org_apache_arrow_flatbuf_Timestamp)
 __flatbuffers_define_scalar_field(0, org_apache_arrow_flatbuf_Timestamp, unit, org_apache_arrow_flatbuf_TimeUnit, org_apache_arrow_flatbuf_TimeUnit_enum_t, INT16_C(0))
 /**  The timezone is an optional string indicating the name of a timezone,
  *  one of:
- * 
+ *
  *  * As used in the Olson timezone database (the "tz database" or
  *    "tzdata"), such as "America/New_York".
  *  * An absolute timezone offset of the form "+XX:XX" or "-XX:XX",
  *    such as "+07:30".
- * 
+ *
  *  Whether a timezone string is present indicates different semantics about
  *  the data (see above). */
 __flatbuffers_define_string_field(1, org_apache_arrow_flatbuf_Timestamp, timezone, 0)
@@ -17610,33 +17610,33 @@ typedef flatbuffers_ref_t org_apache_arrow_flatbuf_Schema_ref_t;
 static org_apache_arrow_flatbuf_Schema_ref_t org_apache_arrow_flatbuf_Schema_clone(flatbuffers_builder_t *B, org_apache_arrow_flatbuf_Schema_table_t t);
 __flatbuffers_build_table(flatbuffers_, org_apache_arrow_flatbuf_Schema, 4)
 
-#define __org_apache_arrow_flatbuf_Null_formal_args 
-#define __org_apache_arrow_flatbuf_Null_call_args 
+#define __org_apache_arrow_flatbuf_Null_formal_args
+#define __org_apache_arrow_flatbuf_Null_call_args
 static inline org_apache_arrow_flatbuf_Null_ref_t org_apache_arrow_flatbuf_Null_create(flatbuffers_builder_t *B __org_apache_arrow_flatbuf_Null_formal_args);
 __flatbuffers_build_table_prolog(flatbuffers_, org_apache_arrow_flatbuf_Null, org_apache_arrow_flatbuf_Null_file_identifier, org_apache_arrow_flatbuf_Null_type_identifier)
 
-#define __org_apache_arrow_flatbuf_Struct__formal_args 
-#define __org_apache_arrow_flatbuf_Struct__call_args 
+#define __org_apache_arrow_flatbuf_Struct__formal_args
+#define __org_apache_arrow_flatbuf_Struct__call_args
 static inline org_apache_arrow_flatbuf_Struct__ref_t org_apache_arrow_flatbuf_Struct__create(flatbuffers_builder_t *B __org_apache_arrow_flatbuf_Struct__formal_args);
 __flatbuffers_build_table_prolog(flatbuffers_, org_apache_arrow_flatbuf_Struct_, org_apache_arrow_flatbuf_Struct__file_identifier, org_apache_arrow_flatbuf_Struct__type_identifier)
 
-#define __org_apache_arrow_flatbuf_List_formal_args 
-#define __org_apache_arrow_flatbuf_List_call_args 
+#define __org_apache_arrow_flatbuf_List_formal_args
+#define __org_apache_arrow_flatbuf_List_call_args
 static inline org_apache_arrow_flatbuf_List_ref_t org_apache_arrow_flatbuf_List_create(flatbuffers_builder_t *B __org_apache_arrow_flatbuf_List_formal_args);
 __flatbuffers_build_table_prolog(flatbuffers_, org_apache_arrow_flatbuf_List, org_apache_arrow_flatbuf_List_file_identifier, org_apache_arrow_flatbuf_List_type_identifier)
 
-#define __org_apache_arrow_flatbuf_LargeList_formal_args 
-#define __org_apache_arrow_flatbuf_LargeList_call_args 
+#define __org_apache_arrow_flatbuf_LargeList_formal_args
+#define __org_apache_arrow_flatbuf_LargeList_call_args
 static inline org_apache_arrow_flatbuf_LargeList_ref_t org_apache_arrow_flatbuf_LargeList_create(flatbuffers_builder_t *B __org_apache_arrow_flatbuf_LargeList_formal_args);
 __flatbuffers_build_table_prolog(flatbuffers_, org_apache_arrow_flatbuf_LargeList, org_apache_arrow_flatbuf_LargeList_file_identifier, org_apache_arrow_flatbuf_LargeList_type_identifier)
 
-#define __org_apache_arrow_flatbuf_ListView_formal_args 
-#define __org_apache_arrow_flatbuf_ListView_call_args 
+#define __org_apache_arrow_flatbuf_ListView_formal_args
+#define __org_apache_arrow_flatbuf_ListView_call_args
 static inline org_apache_arrow_flatbuf_ListView_ref_t org_apache_arrow_flatbuf_ListView_create(flatbuffers_builder_t *B __org_apache_arrow_flatbuf_ListView_formal_args);
 __flatbuffers_build_table_prolog(flatbuffers_, org_apache_arrow_flatbuf_ListView, org_apache_arrow_flatbuf_ListView_file_identifier, org_apache_arrow_flatbuf_ListView_type_identifier)
 
-#define __org_apache_arrow_flatbuf_LargeListView_formal_args 
-#define __org_apache_arrow_flatbuf_LargeListView_call_args 
+#define __org_apache_arrow_flatbuf_LargeListView_formal_args
+#define __org_apache_arrow_flatbuf_LargeListView_call_args
 static inline org_apache_arrow_flatbuf_LargeListView_ref_t org_apache_arrow_flatbuf_LargeListView_create(flatbuffers_builder_t *B __org_apache_arrow_flatbuf_LargeListView_formal_args);
 __flatbuffers_build_table_prolog(flatbuffers_, org_apache_arrow_flatbuf_LargeListView, org_apache_arrow_flatbuf_LargeListView_file_identifier, org_apache_arrow_flatbuf_LargeListView_type_identifier)
 
@@ -17665,33 +17665,33 @@ __flatbuffers_build_table_prolog(flatbuffers_, org_apache_arrow_flatbuf_Int, org
 static inline org_apache_arrow_flatbuf_FloatingPoint_ref_t org_apache_arrow_flatbuf_FloatingPoint_create(flatbuffers_builder_t *B __org_apache_arrow_flatbuf_FloatingPoint_formal_args);
 __flatbuffers_build_table_prolog(flatbuffers_, org_apache_arrow_flatbuf_FloatingPoint, org_apache_arrow_flatbuf_FloatingPoint_file_identifier, org_apache_arrow_flatbuf_FloatingPoint_type_identifier)
 
-#define __org_apache_arrow_flatbuf_Utf8_formal_args 
-#define __org_apache_arrow_flatbuf_Utf8_call_args 
+#define __org_apache_arrow_flatbuf_Utf8_formal_args
+#define __org_apache_arrow_flatbuf_Utf8_call_args
 static inline org_apache_arrow_flatbuf_Utf8_ref_t org_apache_arrow_flatbuf_Utf8_create(flatbuffers_builder_t *B __org_apache_arrow_flatbuf_Utf8_formal_args);
 __flatbuffers_build_table_prolog(flatbuffers_, org_apache_arrow_flatbuf_Utf8, org_apache_arrow_flatbuf_Utf8_file_identifier, org_apache_arrow_flatbuf_Utf8_type_identifier)
 
-#define __org_apache_arrow_flatbuf_Binary_formal_args 
-#define __org_apache_arrow_flatbuf_Binary_call_args 
+#define __org_apache_arrow_flatbuf_Binary_formal_args
+#define __org_apache_arrow_flatbuf_Binary_call_args
 static inline org_apache_arrow_flatbuf_Binary_ref_t org_apache_arrow_flatbuf_Binary_create(flatbuffers_builder_t *B __org_apache_arrow_flatbuf_Binary_formal_args);
 __flatbuffers_build_table_prolog(flatbuffers_, org_apache_arrow_flatbuf_Binary, org_apache_arrow_flatbuf_Binary_file_identifier, org_apache_arrow_flatbuf_Binary_type_identifier)
 
-#define __org_apache_arrow_flatbuf_LargeUtf8_formal_args 
-#define __org_apache_arrow_flatbuf_LargeUtf8_call_args 
+#define __org_apache_arrow_flatbuf_LargeUtf8_formal_args
+#define __org_apache_arrow_flatbuf_LargeUtf8_call_args
 static inline org_apache_arrow_flatbuf_LargeUtf8_ref_t org_apache_arrow_flatbuf_LargeUtf8_create(flatbuffers_builder_t *B __org_apache_arrow_flatbuf_LargeUtf8_formal_args);
 __flatbuffers_build_table_prolog(flatbuffers_, org_apache_arrow_flatbuf_LargeUtf8, org_apache_arrow_flatbuf_LargeUtf8_file_identifier, org_apache_arrow_flatbuf_LargeUtf8_type_identifier)
 
-#define __org_apache_arrow_flatbuf_LargeBinary_formal_args 
-#define __org_apache_arrow_flatbuf_LargeBinary_call_args 
+#define __org_apache_arrow_flatbuf_LargeBinary_formal_args
+#define __org_apache_arrow_flatbuf_LargeBinary_call_args
 static inline org_apache_arrow_flatbuf_LargeBinary_ref_t org_apache_arrow_flatbuf_LargeBinary_create(flatbuffers_builder_t *B __org_apache_arrow_flatbuf_LargeBinary_formal_args);
 __flatbuffers_build_table_prolog(flatbuffers_, org_apache_arrow_flatbuf_LargeBinary, org_apache_arrow_flatbuf_LargeBinary_file_identifier, org_apache_arrow_flatbuf_LargeBinary_type_identifier)
 
-#define __org_apache_arrow_flatbuf_Utf8View_formal_args 
-#define __org_apache_arrow_flatbuf_Utf8View_call_args 
+#define __org_apache_arrow_flatbuf_Utf8View_formal_args
+#define __org_apache_arrow_flatbuf_Utf8View_call_args
 static inline org_apache_arrow_flatbuf_Utf8View_ref_t org_apache_arrow_flatbuf_Utf8View_create(flatbuffers_builder_t *B __org_apache_arrow_flatbuf_Utf8View_formal_args);
 __flatbuffers_build_table_prolog(flatbuffers_, org_apache_arrow_flatbuf_Utf8View, org_apache_arrow_flatbuf_Utf8View_file_identifier, org_apache_arrow_flatbuf_Utf8View_type_identifier)
 
-#define __org_apache_arrow_flatbuf_BinaryView_formal_args 
-#define __org_apache_arrow_flatbuf_BinaryView_call_args 
+#define __org_apache_arrow_flatbuf_BinaryView_formal_args
+#define __org_apache_arrow_flatbuf_BinaryView_call_args
 static inline org_apache_arrow_flatbuf_BinaryView_ref_t org_apache_arrow_flatbuf_BinaryView_create(flatbuffers_builder_t *B __org_apache_arrow_flatbuf_BinaryView_formal_args);
 __flatbuffers_build_table_prolog(flatbuffers_, org_apache_arrow_flatbuf_BinaryView, org_apache_arrow_flatbuf_BinaryView_file_identifier, org_apache_arrow_flatbuf_BinaryView_type_identifier)
 
@@ -17700,13 +17700,13 @@ __flatbuffers_build_table_prolog(flatbuffers_, org_apache_arrow_flatbuf_BinaryVi
 static inline org_apache_arrow_flatbuf_FixedSizeBinary_ref_t org_apache_arrow_flatbuf_FixedSizeBinary_create(flatbuffers_builder_t *B __org_apache_arrow_flatbuf_FixedSizeBinary_formal_args);
 __flatbuffers_build_table_prolog(flatbuffers_, org_apache_arrow_flatbuf_FixedSizeBinary, org_apache_arrow_flatbuf_FixedSizeBinary_file_identifier, org_apache_arrow_flatbuf_FixedSizeBinary_type_identifier)
 
-#define __org_apache_arrow_flatbuf_Bool_formal_args 
-#define __org_apache_arrow_flatbuf_Bool_call_args 
+#define __org_apache_arrow_flatbuf_Bool_formal_args
+#define __org_apache_arrow_flatbuf_Bool_call_args
 static inline org_apache_arrow_flatbuf_Bool_ref_t org_apache_arrow_flatbuf_Bool_create(flatbuffers_builder_t *B __org_apache_arrow_flatbuf_Bool_formal_args);
 __flatbuffers_build_table_prolog(flatbuffers_, org_apache_arrow_flatbuf_Bool, org_apache_arrow_flatbuf_Bool_file_identifier, org_apache_arrow_flatbuf_Bool_type_identifier)
 
-#define __org_apache_arrow_flatbuf_RunEndEncoded_formal_args 
-#define __org_apache_arrow_flatbuf_RunEndEncoded_call_args 
+#define __org_apache_arrow_flatbuf_RunEndEncoded_formal_args
+#define __org_apache_arrow_flatbuf_RunEndEncoded_call_args
 static inline org_apache_arrow_flatbuf_RunEndEncoded_ref_t org_apache_arrow_flatbuf_RunEndEncoded_create(flatbuffers_builder_t *B __org_apache_arrow_flatbuf_RunEndEncoded_formal_args);
 __flatbuffers_build_table_prolog(flatbuffers_, org_apache_arrow_flatbuf_RunEndEncoded, org_apache_arrow_flatbuf_RunEndEncoded_file_identifier, org_apache_arrow_flatbuf_RunEndEncoded_type_identifier)
 
@@ -20495,15 +20495,15 @@ static inline int org_apache_arrow_flatbuf_SparseMatrixCompressedAxis_is_known_v
 /**  ----------------------------------------------------------------------
  *  EXPERIMENTAL: Data structures for sparse tensors
  *  Coordinate (COO) format of sparse tensor index.
- * 
+ *
  *  COO's index list are represented as a NxM matrix,
  *  where N is the number of non-zero values,
  *  and M is the number of dimensions of a sparse tensor.
- * 
+ *
  *  indicesBuffer stores the location and size of the data of this indices
  *  matrix.  The value type and the stride of the indices matrix is
  *  specified in indicesType and indicesStrides fields.
- * 
+ *
  *  For example, let X be a 2x3x4x5 tensor, and it has the following
  *  6 non-zero values:
  *  ```text
@@ -20564,7 +20564,7 @@ __flatbuffers_define_table_field(1, org_apache_arrow_flatbuf_SparseMatrixIndexCS
  *  The i-th row spans from `indptr[i]` to `indptr[i+1]` in the data.
  *  The length of this array is 1 + (the number of rows), and the type
  *  of index value is long.
- * 
+ *
  *  For example, let X be the following 6x4 matrix:
  *  ```text
  *    X := [[0, 1, 2, 0],
@@ -20588,7 +20588,7 @@ __flatbuffers_define_table_field(3, org_apache_arrow_flatbuf_SparseMatrixIndexCS
 /**  indicesBuffer stores the location and size of the array that
  *  contains the column indices of the corresponding non-zero values.
  *  The type of index value is long.
- * 
+ *
  *  For example, the indices of the above X is:
  *  ```text
  *    indices(X) = [1, 2, 2, 1, 3, 0, 2, 3, 1].
@@ -20607,12 +20607,12 @@ __flatbuffers_table_as_root(org_apache_arrow_flatbuf_SparseTensorIndexCSF)
 
 /**  CSF is a generalization of compressed sparse row (CSR) index.
  *  See [smith2017knl](http://shaden.io/pub-files/smith2017knl.pdf)
- * 
+ *
  *  CSF index recursively compresses each dimension of a tensor into a set
  *  of prefix trees. Each path from a root to leaf forms one tensor
  *  non-zero index. CSF is implemented with two arrays of buffers and one
  *  arrays of integers.
- * 
+ *
  *  For example, let X be a 2x3x4x5 tensor and let it have the following
  *  8 non-zero values:
  *  ```text
@@ -20642,7 +20642,7 @@ __flatbuffers_define_table_field(0, org_apache_arrow_flatbuf_SparseTensorIndexCS
  *  indptrBuffers. A pair of consecutive values at `indptrBuffers[dim][i]`
  *  and `indptrBuffers[dim][i + 1]` signify a range of nodes in
  *  `indicesBuffers[dim + 1]` who are children of `indicesBuffers[dim][i]` node.
- * 
+ *
  *  For example, the indptrBuffers for the above X is:
  *  ```text
  *    indptrBuffer(X) = [
@@ -21785,7 +21785,7 @@ static inline int org_apache_arrow_flatbuf_MetadataVersion_is_known_value(org_ap
  *       values here are intented to represent higher level
  *       features, additional details maybe negotiated
  *       with key-value pairs specific to the protocol.
- * 
+ *
  *  Enums added to this list should be assigned power-of-two values
  *  to facilitate exchanging and comparing bitmaps for supported
  *  features. */
@@ -22099,19 +22099,19 @@ __flatbuffers_table_as_root(org_apache_arrow_flatbuf_FixedSizeList)
 __flatbuffers_define_scalar_field(0, org_apache_arrow_flatbuf_FixedSizeList, listSize, flatbuffers_int32, int32_t, INT32_C(0))
 
 /**  A Map is a logical nested type that is represented as
- * 
+ *
  *  List<entries: Struct<key: K, value: V>>
- * 
+ *
  *  In this layout, the keys and values are each respectively contiguous. We do
  *  not constrain the key and value types, so the application is responsible
  *  for ensuring that the keys are hashable and unique. Whether the keys are sorted
  *  may be set in the metadata for this field.
- * 
+ *
  *  In a field with Map type, the field has a child Struct field, which then
  *  has two children: key type and the second the value type. The names of the
  *  child fields may be respectively "entries", "key", and "value", but this is
  *  not enforced.
- * 
+ *
  *  Map
  *  ```text
  *    - child[0] entries: Struct
@@ -22119,7 +22119,7 @@ __flatbuffers_define_scalar_field(0, org_apache_arrow_flatbuf_FixedSizeList, lis
  *      - child[1] value: V
  *  ```
  *  Neither the "entries" field nor the "key" field may be nullable.
- * 
+ *
  *  The metadata is structured so that Arrow systems without special handling
  *  for Map can make Map an alias for List. The "layout" attribute for the Map
  *  field must have the same contents as a List. */
@@ -22216,7 +22216,7 @@ __flatbuffers_table_as_root(org_apache_arrow_flatbuf_LargeBinary)
  *  struct that contains the string length and either the string's entire data
  *  inline (for small strings) or an inlined prefix, an index of another buffer,
  *  and an offset pointing to a slice in that buffer (for non-small strings).
- * 
+ *
  *  Since it uses a variable number of data buffers, each Field with this type
  *  must have a corresponding entry in `variadicBufferCounts`. */
 struct org_apache_arrow_flatbuf_Utf8View_table { uint8_t unused__; };
@@ -22232,7 +22232,7 @@ __flatbuffers_table_as_root(org_apache_arrow_flatbuf_Utf8View)
  *  struct that contains the string length and either the string's entire data
  *  inline (for small strings) or an inlined prefix, an index of another buffer,
  *  and an offset pointing to a slice in that buffer (for non-small strings).
- * 
+ *
  *  Since it uses a variable number of data buffers, each Field with this type
  *  must have a corresponding entry in `variadicBufferCounts`. */
 struct org_apache_arrow_flatbuf_BinaryView_table { uint8_t unused__; };
@@ -22266,7 +22266,7 @@ __flatbuffers_table_as_root(org_apache_arrow_flatbuf_Bool)
 
 /**  Contains two child arrays, run_ends and values.
  *  The run_ends child array must be a 16/32/64-bit integer array
- *  which encodes the indices at which the run with the value in 
+ *  which encodes the indices at which the run with the value in
  *  each corresponding index in the values child array ends.
  *  Like list/struct types, the value array can be of any type. */
 struct org_apache_arrow_flatbuf_RunEndEncoded_table { uint8_t unused__; };
@@ -22300,7 +22300,7 @@ __flatbuffers_define_scalar_field(2, org_apache_arrow_flatbuf_Decimal, bitWidth,
 
 /**  Date is either a 32-bit or 64-bit signed integer type representing an
  *  elapsed time since UNIX epoch (1970-01-01), stored in either of two units:
- * 
+ *
  *  * Milliseconds (64 bits) indicating UNIX time elapsed since the epoch (no
  *    leap seconds), where the values are evenly divisible by 86400000
  *  * Days (32 bits) since the UNIX epoch */
@@ -22317,11 +22317,11 @@ __flatbuffers_define_scalar_field(0, org_apache_arrow_flatbuf_Date, unit, org_ap
 /**  Time is either a 32-bit or 64-bit signed integer type representing an
  *  elapsed time since midnight, stored in either of four units: seconds,
  *  milliseconds, microseconds or nanoseconds.
- * 
+ *
  *  The integer `bitWidth` depends on the `unit` and must be one of the following:
  *  * SECOND and MILLISECOND: 32 bits
  *  * MICROSECOND and NANOSECOND: 64 bits
- * 
+ *
  *  The allowed values are between 0 (inclusive) and 86400 (=24*60*60) seconds
  *  (exclusive), adjusted for the time unit (for example, up to 86400000
  *  exclusive for the MILLISECOND unit).
@@ -22342,58 +22342,58 @@ __flatbuffers_define_scalar_field(1, org_apache_arrow_flatbuf_Time, bitWidth, fl
 /**  Timestamp is a 64-bit signed integer representing an elapsed time since a
  *  fixed epoch, stored in either of four units: seconds, milliseconds,
  *  microseconds or nanoseconds, and is optionally annotated with a timezone.
- * 
+ *
  *  Timestamp values do not include any leap seconds (in other words, all
  *  days are considered 86400 seconds long).
- * 
+ *
  *  Timestamps with a non-empty timezone
  *  ------------------------------------
- * 
+ *
  *  If a Timestamp column has a non-empty timezone value, its epoch is
  *  1970-01-01 00:00:00 (January 1st 1970, midnight) in the *UTC* timezone
  *  (the Unix epoch), regardless of the Timestamp's own timezone.
- * 
+ *
  *  Therefore, timestamp values with a non-empty timezone correspond to
  *  physical points in time together with some additional information about
  *  how the data was obtained and/or how to display it (the timezone).
- * 
+ *
  *    For example, the timestamp value 0 with the timezone string "Europe/Paris"
  *    corresponds to "January 1st 1970, 00h00" in the UTC timezone, but the
  *    application may prefer to display it as "January 1st 1970, 01h00" in
  *    the Europe/Paris timezone (which is the same physical point in time).
- * 
+ *
  *  One consequence is that timestamp values with a non-empty timezone
  *  can be compared and ordered directly, since they all share the same
  *  well-known point of reference (the Unix epoch).
- * 
+ *
  *  Timestamps with an unset / empty timezone
  *  -----------------------------------------
- * 
+ *
  *  If a Timestamp column has no timezone value, its epoch is
  *  1970-01-01 00:00:00 (January 1st 1970, midnight) in an *unknown* timezone.
- * 
+ *
  *  Therefore, timestamp values without a timezone cannot be meaningfully
  *  interpreted as physical points in time, but only as calendar / clock
  *  indications ("wall clock time") in an unspecified timezone.
- * 
+ *
  *    For example, the timestamp value 0 with an empty timezone string
  *    corresponds to "January 1st 1970, 00h00" in an unknown timezone: there
  *    is not enough information to interpret it as a well-defined physical
  *    point in time.
- * 
+ *
  *  One consequence is that timestamp values without a timezone cannot
  *  be reliably compared or ordered, since they may have different points of
  *  reference.  In particular, it is *not* possible to interpret an unset
  *  or empty timezone as the same as "UTC".
- * 
+ *
  *  Conversion between timezones
  *  ----------------------------
- * 
+ *
  *  If a Timestamp column has a non-empty timezone, changing the timezone
  *  to a different non-empty value is a metadata-only operation:
  *  the timestamp values need not change as their point of reference remains
  *  the same (the Unix epoch).
- * 
+ *
  *  However, if a Timestamp column has no timezone value, changing it to a
  *  non-empty value requires to think about the desired semantics.
  *  One possibility is to assume that the original timestamp values are
@@ -22402,37 +22402,37 @@ __flatbuffers_define_scalar_field(1, org_apache_arrow_flatbuf_Time, bitWidth, fl
  *  empty to "Europe/Paris" would require converting the timestamp values
  *  from "Europe/Paris" to "UTC", which seems counter-intuitive but is
  *  nevertheless correct).
- * 
+ *
  *  Guidelines for encoding data from external libraries
  *  ----------------------------------------------------
- * 
+ *
  *  Date & time libraries often have multiple different data types for temporal
  *  data. In order to ease interoperability between different implementations the
  *  Arrow project has some recommendations for encoding these types into a Timestamp
  *  column.
- * 
+ *
  *  An "instant" represents a physical point in time that has no relevant timezone
  *  (for example, astronomical data). To encode an instant, use a Timestamp with
  *  the timezone string set to "UTC", and make sure the Timestamp values
  *  are relative to the UTC epoch (January 1st 1970, midnight).
- * 
+ *
  *  A "zoned date-time" represents a physical point in time annotated with an
  *  informative timezone (for example, the timezone in which the data was
  *  recorded).  To encode a zoned date-time, use a Timestamp with the timezone
  *  string set to the name of the timezone, and make sure the Timestamp values
  *  are relative to the UTC epoch (January 1st 1970, midnight).
- * 
+ *
  *   (There is some ambiguity between an instant and a zoned date-time with the
  *    UTC timezone.  Both of these are stored the same in Arrow.  Typically,
  *    this distinction does not matter.  If it does, then an application should
  *    use custom metadata or an extension type to distinguish between the two cases.)
- * 
+ *
  *  An "offset date-time" represents a physical point in time combined with an
  *  explicit offset from UTC.  To encode an offset date-time, use a Timestamp
  *  with the timezone string set to the numeric timezone offset string
  *  (e.g. "+03:00"), and make sure the Timestamp values are relative to
  *  the UTC epoch (January 1st 1970, midnight).
- * 
+ *
  *  A "naive date-time" (also called "local date-time" in some libraries)
  *  represents a wall clock time combined with a calendar date, but with
  *  no indication of how to map this information to a physical point in time.
@@ -22455,12 +22455,12 @@ __flatbuffers_table_as_root(org_apache_arrow_flatbuf_Timestamp)
 __flatbuffers_define_scalar_field(0, org_apache_arrow_flatbuf_Timestamp, unit, org_apache_arrow_flatbuf_TimeUnit, org_apache_arrow_flatbuf_TimeUnit_enum_t, INT16_C(0))
 /**  The timezone is an optional string indicating the name of a timezone,
  *  one of:
- * 
+ *
  *  * As used in the Olson timezone database (the "tz database" or
  *    "tzdata"), such as "America/New_York".
  *  * An absolute timezone offset of the form "+XX:XX" or "-XX:XX",
  *    such as "+07:30".
- * 
+ *
  *  Whether a timezone string is present indicates different semantics about
  *  the data (see above). */
 __flatbuffers_define_string_field(1, org_apache_arrow_flatbuf_Timestamp, timezone, 0)
@@ -22897,33 +22897,33 @@ typedef flatbuffers_ref_t org_apache_arrow_flatbuf_Schema_ref_t;
 static org_apache_arrow_flatbuf_Schema_ref_t org_apache_arrow_flatbuf_Schema_clone(flatbuffers_builder_t *B, org_apache_arrow_flatbuf_Schema_table_t t);
 __flatbuffers_build_table(flatbuffers_, org_apache_arrow_flatbuf_Schema, 4)
 
-#define __org_apache_arrow_flatbuf_Null_formal_args 
-#define __org_apache_arrow_flatbuf_Null_call_args 
+#define __org_apache_arrow_flatbuf_Null_formal_args
+#define __org_apache_arrow_flatbuf_Null_call_args
 static inline org_apache_arrow_flatbuf_Null_ref_t org_apache_arrow_flatbuf_Null_create(flatbuffers_builder_t *B __org_apache_arrow_flatbuf_Null_formal_args);
 __flatbuffers_build_table_prolog(flatbuffers_, org_apache_arrow_flatbuf_Null, org_apache_arrow_flatbuf_Null_file_identifier, org_apache_arrow_flatbuf_Null_type_identifier)
 
-#define __org_apache_arrow_flatbuf_Struct__formal_args 
-#define __org_apache_arrow_flatbuf_Struct__call_args 
+#define __org_apache_arrow_flatbuf_Struct__formal_args
+#define __org_apache_arrow_flatbuf_Struct__call_args
 static inline org_apache_arrow_flatbuf_Struct__ref_t org_apache_arrow_flatbuf_Struct__create(flatbuffers_builder_t *B __org_apache_arrow_flatbuf_Struct__formal_args);
 __flatbuffers_build_table_prolog(flatbuffers_, org_apache_arrow_flatbuf_Struct_, org_apache_arrow_flatbuf_Struct__file_identifier, org_apache_arrow_flatbuf_Struct__type_identifier)
 
-#define __org_apache_arrow_flatbuf_List_formal_args 
-#define __org_apache_arrow_flatbuf_List_call_args 
+#define __org_apache_arrow_flatbuf_List_formal_args
+#define __org_apache_arrow_flatbuf_List_call_args
 static inline org_apache_arrow_flatbuf_List_ref_t org_apache_arrow_flatbuf_List_create(flatbuffers_builder_t *B __org_apache_arrow_flatbuf_List_formal_args);
 __flatbuffers_build_table_prolog(flatbuffers_, org_apache_arrow_flatbuf_List, org_apache_arrow_flatbuf_List_file_identifier, org_apache_arrow_flatbuf_List_type_identifier)
 
-#define __org_apache_arrow_flatbuf_LargeList_formal_args 
-#define __org_apache_arrow_flatbuf_LargeList_call_args 
+#define __org_apache_arrow_flatbuf_LargeList_formal_args
+#define __org_apache_arrow_flatbuf_LargeList_call_args
 static inline org_apache_arrow_flatbuf_LargeList_ref_t org_apache_arrow_flatbuf_LargeList_create(flatbuffers_builder_t *B __org_apache_arrow_flatbuf_LargeList_formal_args);
 __flatbuffers_build_table_prolog(flatbuffers_, org_apache_arrow_flatbuf_LargeList, org_apache_arrow_flatbuf_LargeList_file_identifier, org_apache_arrow_flatbuf_LargeList_type_identifier)
 
-#define __org_apache_arrow_flatbuf_ListView_formal_args 
-#define __org_apache_arrow_flatbuf_ListView_call_args 
+#define __org_apache_arrow_flatbuf_ListView_formal_args
+#define __org_apache_arrow_flatbuf_ListView_call_args
 static inline org_apache_arrow_flatbuf_ListView_ref_t org_apache_arrow_flatbuf_ListView_create(flatbuffers_builder_t *B __org_apache_arrow_flatbuf_ListView_formal_args);
 __flatbuffers_build_table_prolog(flatbuffers_, org_apache_arrow_flatbuf_ListView, org_apache_arrow_flatbuf_ListView_file_identifier, org_apache_arrow_flatbuf_ListView_type_identifier)
 
-#define __org_apache_arrow_flatbuf_LargeListView_formal_args 
-#define __org_apache_arrow_flatbuf_LargeListView_call_args 
+#define __org_apache_arrow_flatbuf_LargeListView_formal_args
+#define __org_apache_arrow_flatbuf_LargeListView_call_args
 static inline org_apache_arrow_flatbuf_LargeListView_ref_t org_apache_arrow_flatbuf_LargeListView_create(flatbuffers_builder_t *B __org_apache_arrow_flatbuf_LargeListView_formal_args);
 __flatbuffers_build_table_prolog(flatbuffers_, org_apache_arrow_flatbuf_LargeListView, org_apache_arrow_flatbuf_LargeListView_file_identifier, org_apache_arrow_flatbuf_LargeListView_type_identifier)
 
@@ -22952,33 +22952,33 @@ __flatbuffers_build_table_prolog(flatbuffers_, org_apache_arrow_flatbuf_Int, org
 static inline org_apache_arrow_flatbuf_FloatingPoint_ref_t org_apache_arrow_flatbuf_FloatingPoint_create(flatbuffers_builder_t *B __org_apache_arrow_flatbuf_FloatingPoint_formal_args);
 __flatbuffers_build_table_prolog(flatbuffers_, org_apache_arrow_flatbuf_FloatingPoint, org_apache_arrow_flatbuf_FloatingPoint_file_identifier, org_apache_arrow_flatbuf_FloatingPoint_type_identifier)
 
-#define __org_apache_arrow_flatbuf_Utf8_formal_args 
-#define __org_apache_arrow_flatbuf_Utf8_call_args 
+#define __org_apache_arrow_flatbuf_Utf8_formal_args
+#define __org_apache_arrow_flatbuf_Utf8_call_args
 static inline org_apache_arrow_flatbuf_Utf8_ref_t org_apache_arrow_flatbuf_Utf8_create(flatbuffers_builder_t *B __org_apache_arrow_flatbuf_Utf8_formal_args);
 __flatbuffers_build_table_prolog(flatbuffers_, org_apache_arrow_flatbuf_Utf8, org_apache_arrow_flatbuf_Utf8_file_identifier, org_apache_arrow_flatbuf_Utf8_type_identifier)
 
-#define __org_apache_arrow_flatbuf_Binary_formal_args 
-#define __org_apache_arrow_flatbuf_Binary_call_args 
+#define __org_apache_arrow_flatbuf_Binary_formal_args
+#define __org_apache_arrow_flatbuf_Binary_call_args
 static inline org_apache_arrow_flatbuf_Binary_ref_t org_apache_arrow_flatbuf_Binary_create(flatbuffers_builder_t *B __org_apache_arrow_flatbuf_Binary_formal_args);
 __flatbuffers_build_table_prolog(flatbuffers_, org_apache_arrow_flatbuf_Binary, org_apache_arrow_flatbuf_Binary_file_identifier, org_apache_arrow_flatbuf_Binary_type_identifier)
 
-#define __org_apache_arrow_flatbuf_LargeUtf8_formal_args 
-#define __org_apache_arrow_flatbuf_LargeUtf8_call_args 
+#define __org_apache_arrow_flatbuf_LargeUtf8_formal_args
+#define __org_apache_arrow_flatbuf_LargeUtf8_call_args
 static inline org_apache_arrow_flatbuf_LargeUtf8_ref_t org_apache_arrow_flatbuf_LargeUtf8_create(flatbuffers_builder_t *B __org_apache_arrow_flatbuf_LargeUtf8_formal_args);
 __flatbuffers_build_table_prolog(flatbuffers_, org_apache_arrow_flatbuf_LargeUtf8, org_apache_arrow_flatbuf_LargeUtf8_file_identifier, org_apache_arrow_flatbuf_LargeUtf8_type_identifier)
 
-#define __org_apache_arrow_flatbuf_LargeBinary_formal_args 
-#define __org_apache_arrow_flatbuf_LargeBinary_call_args 
+#define __org_apache_arrow_flatbuf_LargeBinary_formal_args
+#define __org_apache_arrow_flatbuf_LargeBinary_call_args
 static inline org_apache_arrow_flatbuf_LargeBinary_ref_t org_apache_arrow_flatbuf_LargeBinary_create(flatbuffers_builder_t *B __org_apache_arrow_flatbuf_LargeBinary_formal_args);
 __flatbuffers_build_table_prolog(flatbuffers_, org_apache_arrow_flatbuf_LargeBinary, org_apache_arrow_flatbuf_LargeBinary_file_identifier, org_apache_arrow_flatbuf_LargeBinary_type_identifier)
 
-#define __org_apache_arrow_flatbuf_Utf8View_formal_args 
-#define __org_apache_arrow_flatbuf_Utf8View_call_args 
+#define __org_apache_arrow_flatbuf_Utf8View_formal_args
+#define __org_apache_arrow_flatbuf_Utf8View_call_args
 static inline org_apache_arrow_flatbuf_Utf8View_ref_t org_apache_arrow_flatbuf_Utf8View_create(flatbuffers_builder_t *B __org_apache_arrow_flatbuf_Utf8View_formal_args);
 __flatbuffers_build_table_prolog(flatbuffers_, org_apache_arrow_flatbuf_Utf8View, org_apache_arrow_flatbuf_Utf8View_file_identifier, org_apache_arrow_flatbuf_Utf8View_type_identifier)
 
-#define __org_apache_arrow_flatbuf_BinaryView_formal_args 
-#define __org_apache_arrow_flatbuf_BinaryView_call_args 
+#define __org_apache_arrow_flatbuf_BinaryView_formal_args
+#define __org_apache_arrow_flatbuf_BinaryView_call_args
 static inline org_apache_arrow_flatbuf_BinaryView_ref_t org_apache_arrow_flatbuf_BinaryView_create(flatbuffers_builder_t *B __org_apache_arrow_flatbuf_BinaryView_formal_args);
 __flatbuffers_build_table_prolog(flatbuffers_, org_apache_arrow_flatbuf_BinaryView, org_apache_arrow_flatbuf_BinaryView_file_identifier, org_apache_arrow_flatbuf_BinaryView_type_identifier)
 
@@ -22987,13 +22987,13 @@ __flatbuffers_build_table_prolog(flatbuffers_, org_apache_arrow_flatbuf_BinaryVi
 static inline org_apache_arrow_flatbuf_FixedSizeBinary_ref_t org_apache_arrow_flatbuf_FixedSizeBinary_create(flatbuffers_builder_t *B __org_apache_arrow_flatbuf_FixedSizeBinary_formal_args);
 __flatbuffers_build_table_prolog(flatbuffers_, org_apache_arrow_flatbuf_FixedSizeBinary, org_apache_arrow_flatbuf_FixedSizeBinary_file_identifier, org_apache_arrow_flatbuf_FixedSizeBinary_type_identifier)
 
-#define __org_apache_arrow_flatbuf_Bool_formal_args 
-#define __org_apache_arrow_flatbuf_Bool_call_args 
+#define __org_apache_arrow_flatbuf_Bool_formal_args
+#define __org_apache_arrow_flatbuf_Bool_call_args
 static inline org_apache_arrow_flatbuf_Bool_ref_t org_apache_arrow_flatbuf_Bool_create(flatbuffers_builder_t *B __org_apache_arrow_flatbuf_Bool_formal_args);
 __flatbuffers_build_table_prolog(flatbuffers_, org_apache_arrow_flatbuf_Bool, org_apache_arrow_flatbuf_Bool_file_identifier, org_apache_arrow_flatbuf_Bool_type_identifier)
 
-#define __org_apache_arrow_flatbuf_RunEndEncoded_formal_args 
-#define __org_apache_arrow_flatbuf_RunEndEncoded_call_args 
+#define __org_apache_arrow_flatbuf_RunEndEncoded_formal_args
+#define __org_apache_arrow_flatbuf_RunEndEncoded_call_args
 static inline org_apache_arrow_flatbuf_RunEndEncoded_ref_t org_apache_arrow_flatbuf_RunEndEncoded_create(flatbuffers_builder_t *B __org_apache_arrow_flatbuf_RunEndEncoded_formal_args);
 __flatbuffers_build_table_prolog(flatbuffers_, org_apache_arrow_flatbuf_RunEndEncoded, org_apache_arrow_flatbuf_RunEndEncoded_file_identifier, org_apache_arrow_flatbuf_RunEndEncoded_type_identifier)
 
