@@ -286,6 +286,7 @@ ArrowErrorCode WriteData(std::ostream& out, const ArrowArrayView* value,
 
     case NANOARROW_TYPE_STRING:
     case NANOARROW_TYPE_LARGE_STRING:
+    case NANOARROW_TYPE_STRING_VIEW:
       WriteString(out, ArrowArrayViewGetStringUnsafe(value, 0));
       for (int64_t i = 1; i < value->length; i++) {
         out << ", ";
@@ -403,6 +404,9 @@ ArrowErrorCode WriteTypeFromView(std::ostream& out, const ArrowSchemaView* field
       break;
     case NANOARROW_TYPE_LARGE_STRING:
       out << R"("name": "largeutf8")";
+      break;
+    case NANOARROW_TYPE_STRING_VIEW:
+      out << R"("name": "stringview")";
       break;
     case NANOARROW_TYPE_BINARY:
       out << R"("name": "binary")";

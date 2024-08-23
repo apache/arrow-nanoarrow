@@ -914,6 +914,22 @@ static inline double ArrowArrayViewGetDoubleUnsafe(
   }
 }
 
+#define ARROW_VIEW_PREFIX_SIZE 4
+#define ARROW_VIEW_INLINE_SIZE 12
+
+union ArrowBinaryViewType {  // TODO: C++ impl uses alignas which comes in C11
+  struct {
+    int32_t size;
+    uint8_t data[ARROW_VIEW_INLINE_SIZE];
+  } inlined;
+  struct {
+    int32_t size;
+    uint8_t data[ARROW_VIEW_PREFIX_SIZE];
+    int32_t buffer_index;
+    int32_t offset;
+  } ref;
+};
+
 static inline struct ArrowStringView ArrowArrayViewGetStringUnsafe(
     const struct ArrowArrayView* array_view, int64_t i) {
   i += array_view->offset;
@@ -938,6 +954,23 @@ static inline struct ArrowStringView ArrowArrayViewGetStringUnsafe(
       view.size_bytes = array_view->layout.element_size_bits[1] / 8;
       view.data = array_view->buffer_views[1].data.as_char + (i * view.size_bytes);
       break;
+    case NANOARROW_TYPE_STRING_VIEW:
+    case NANOARROW_TYPE_BINARY_VIEW: {
+      const union ArrowBufferViewData value_view = array_view->buffer_views[1].data;
+      union ArrowBinaryViewType bvt;
+      const size_t idx = sizeof(union ArrowBinaryViewType) * i;
+      memcpy(&bvt, value_view.as_uint8 + idx, sizeof(union ArrowBinaryViewType));
+      const int32_t inline_size = bvt.inlined.size;
+      view.size_bytes = inline_size;
+      if (inline_size <= ARROW_VIEW_INLINE_SIZE) {
+        view.data = value_view.as_char + idx +
+                    sizeof(((union ArrowBinaryViewType*)0)->inlined.size);
+      } else {
+        const int32_t buf_index = bvt.ref.buffer_index + 2;
+        view.data = array_view->buffer_views[buf_index].data.as_char + bvt.ref.offset;
+      }
+      break;
+    }
     default:
       view.data = NULL;
       view.size_bytes = 0;
@@ -972,6 +1005,23 @@ static inline struct ArrowBufferView ArrowArrayViewGetBytesUnsafe(
       view.data.as_uint8 =
           array_view->buffer_views[1].data.as_uint8 + (i * view.size_bytes);
       break;
+    case NANOARROW_TYPE_STRING_VIEW:
+    case NANOARROW_TYPE_BINARY_VIEW: {
+      const union ArrowBufferViewData value_view = array_view->buffer_views[1].data;
+      union ArrowBinaryViewType bvt;
+      const size_t idx = sizeof(union ArrowBinaryViewType) * i;
+      memcpy(&bvt, value_view.as_uint8 + idx, sizeof(union ArrowBinaryViewType));
+      const int32_t inline_size = bvt.inlined.size;
+      view.size_bytes = inline_size;
+      if (inline_size <= ARROW_VIEW_INLINE_SIZE) {
+        view.data.as_uint8 = value_view.as_uint8 + idx +
+                             sizeof(((union ArrowBinaryViewType*)0)->inlined.size);
+      } else {
+        const int32_t buf_index = bvt.ref.buffer_index + 2;
+        view.data = array_view->buffer_views[buf_index].data;
+      }
+      break;
+    }
     default:
       view.data.data = NULL;
       view.size_bytes = 0;

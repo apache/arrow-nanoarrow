@@ -18,6 +18,7 @@
 #include <errno.h>
 #include <inttypes.h>
 #include <stdarg.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -701,9 +702,15 @@ static int ArrowArrayViewSetArrayInternal(struct ArrowArrayView* array_view,
   array_view->length = array->length;
   array_view->null_count = array->null_count;
 
+  const bool fixed_nbuffers = (array_view->storage_type == NANOARROW_TYPE_STRING_VIEW ||
+                               array_view->storage_type == NANOARROW_TYPE_BINARY_VIEW)
+                                  ? 0
+                                  : 1;
+
   int64_t buffers_required = 0;
   for (int i = 0; i < NANOARROW_MAX_FIXED_BUFFERS; i++) {
-    if (array_view->layout.buffer_type[i] == NANOARROW_BUFFER_TYPE_NONE) {
+    if (array_view->layout.buffer_type[i] == NANOARROW_BUFFER_TYPE_NONE &&
+        fixed_nbuffers) {
       break;
     }
 
@@ -720,8 +727,7 @@ static int ArrowArrayViewSetArrayInternal(struct ArrowArrayView* array_view,
     }
   }
 
-  // Check the number of buffers
-  if (buffers_required != array->n_buffers) {
+  if (buffers_required != array->n_buffers && fixed_nbuffers) {
     ArrowErrorSet(error,
                   "Expected array with %" PRId64 " buffer(s) but found %" PRId64
                   " buffer(s)",
