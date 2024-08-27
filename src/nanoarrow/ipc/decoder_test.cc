@@ -960,6 +960,52 @@ TEST_P(ArrowSchemaParameterizedTestFixture, NanoarrowIpcNanoarrowSchemaRoundtrip
   EXPECT_EQ(ArrowSchemaToString(roundtripped.get()), ArrowSchemaToString(schema.get()));
 }
 
+TEST_P(ArrowSchemaParameterizedTestFixture, NanoarrowIpcNanoarrowFooterRoundtrip) {
+  using namespace nanoarrow::literals;
+  const std::shared_ptr<arrow::Schema>& arrow_schema = GetParam();
+
+  nanoarrow::ipc::UniqueFooter footer;
+  ASSERT_TRUE(arrow::ExportSchema(*arrow_schema, &footer->schema).ok());
+
+  struct ArrowIpcFileBlock dummy_block = {1, 2, 3};
+  EXPECT_EQ(
+      ArrowBufferAppend(&footer->record_batch_blocks, &dummy_block, sizeof(dummy_block)),
+      NANOARROW_OK);
+
+  nanoarrow::ipc::UniqueEncoder encoder;
+  EXPECT_EQ(ArrowIpcEncoderInit(encoder.get()), NANOARROW_OK);
+
+  struct ArrowError error;
+  EXPECT_EQ(ArrowIpcEncoderEncodeFooter(encoder.get(), footer.get(), &error),
+            NANOARROW_OK)
+      << error.message;
+
+  nanoarrow::UniqueBuffer buffer;
+  EXPECT_EQ(
+      ArrowIpcEncoderFinalizeBuffer(encoder.get(), /*encapsulate=*/false, buffer.get()),
+      NANOARROW_OK);
+  EXPECT_EQ(ArrowBufferAppendInt32(buffer.get(), buffer->size_bytes), NANOARROW_OK);
+  EXPECT_EQ(ArrowBufferAppendStringView(buffer.get(), "ARROW1"_asv), NANOARROW_OK);
+
+  struct ArrowBufferView buffer_view;
+  buffer_view.data.data = buffer->data;
+  buffer_view.size_bytes = buffer->size_bytes;
+
+  nanoarrow::ipc::UniqueDecoder decoder;
+  ArrowIpcDecoderInit(decoder.get());
+  ASSERT_EQ(ArrowIpcDecoderVerifyFooter(decoder.get(), buffer_view, &error), NANOARROW_OK)
+      << error.message;
+  ASSERT_EQ(ArrowIpcDecoderDecodeFooter(decoder.get(), buffer_view, &error), NANOARROW_OK)
+      << error.message;
+
+  EXPECT_EQ(ArrowSchemaToString(&decoder->footer->schema),
+            ArrowSchemaToString(&footer->schema));
+  EXPECT_EQ(decoder->footer->record_batch_blocks.size_bytes, sizeof(dummy_block));
+  EXPECT_EQ(memcmp(decoder->footer->record_batch_blocks.data, &dummy_block,
+                   sizeof(dummy_block)),
+            0);
+}
+
 INSTANTIATE_TEST_SUITE_P(
     NanoarrowIpcTest, ArrowSchemaParameterizedTestFixture,
     ::testing::Values(
@@ -1137,3 +1183,43 @@ INSTANTIATE_TEST_SUITE_P(NanoarrowIpcTest, ArrowTypeIdParameterizedTestFixture,
                                            NANOARROW_TYPE_DECIMAL128,
                                            NANOARROW_TYPE_DECIMAL256,
                                            NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO));
+
+TEST(NanoarrowIpcTest, NanoarrowIpcFooterDecodingErrors) {
+  struct ArrowError error;
+
+  nanoarrow::ipc::UniqueDecoder decoder;
+  ArrowIpcDecoderInit(decoder.get());
+
+  // not enough data to get the size+magic
+  EXPECT_EQ(ArrowIpcDecoderPeekFooter(decoder.get(), {nullptr, 3}, &error), ESPIPE)
+      << error.message;
+
+  // doesn't end with magic
+  EXPECT_EQ(ArrowIpcDecoderPeekFooter(decoder.get(), {"\0\0\0\0blargh", 10}, &error),
+            EINVAL)
+      << error.message;
+
+  // negative size
+  EXPECT_EQ(ArrowIpcDecoderPeekFooter(decoder.get(),
+                                      {"\xFF\xFF\xFF\xFF"
+                                       "ARROW1",
+                                       10},
+                                      &error),
+            EINVAL)
+      << error.message;
+
+  // PeekFooter doesn't check for available data
+  EXPECT_EQ(ArrowIpcDecoderPeekFooter(decoder.get(), {"\xFF\xFF\0\0ARROW1", 10}, &error),
+            NANOARROW_OK)
+      << error.message;
+  EXPECT_EQ(decoder->header_size_bytes, 0xFFFF);
+
+  decoder->header_size_bytes = -1;
+
+  // VerifyFooter *does* check for enough available data
+  EXPECT_EQ(
+      ArrowIpcDecoderVerifyFooter(decoder.get(), {"\xFF\xFF\0\0ARROW1", 10}, &error),
+      ESPIPE)
+      << error.message;
+  EXPECT_EQ(decoder->header_size_bytes, 0xFFFF);
+}

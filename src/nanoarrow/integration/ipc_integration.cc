@@ -196,6 +196,8 @@ struct MaterializedArrayStream {
         ArrowSchemaDeepCopy(&decoder->footer->schema, schema.get()), error);
     NANOARROW_RETURN_NOT_OK(
         ArrowIpcDecoderSetSchema(decoder.get(), &decoder->footer->schema, error));
+    NANOARROW_RETURN_NOT_OK_WITH_ERROR(
+        ArrowIpcDecoderSetEndianness(decoder.get(), decoder->endianness), error);
 
     nanoarrow::UniqueBuffer record_batch_blocks;
     ArrowBufferMove(&decoder->footer->record_batch_blocks, record_batch_blocks.get());

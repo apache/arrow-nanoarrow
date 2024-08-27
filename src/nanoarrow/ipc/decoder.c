@@ -1023,6 +1023,45 @@ ArrowErrorCode ArrowIpcDecoderPeekHeader(struct ArrowIpcDecoder* decoder,
   return NANOARROW_OK;
 }
 
+ArrowErrorCode ArrowIpcDecoderVerifyHeader(struct ArrowIpcDecoder* decoder,
+                                           struct ArrowBufferView data,
+                                           struct ArrowError* error) {
+  struct ArrowIpcDecoderPrivate* private_data =
+      (struct ArrowIpcDecoderPrivate*)decoder->private_data;
+
+  ArrowIpcDecoderResetHeaderInfo(decoder);
+  NANOARROW_RETURN_NOT_OK(ArrowIpcDecoderReadHeaderPrefix(
+      decoder, &data, &decoder->header_size_bytes, error));
+
+  // Check that data contains at least the entire header (return ESPIPE to signal
+  // that reading more data may help).
+  int64_t message_body_size = decoder->header_size_bytes - kMessageHeaderPrefixSize;
+  if (data.size_bytes < message_body_size) {
+    ArrowErrorSet(error,
+                  "Expected >= %" PRId64 " bytes of remaining data but found %" PRId64
+                  " bytes in buffer",
+                  message_body_size + kMessageHeaderPrefixSize,
+                  data.size_bytes + kMessageHeaderPrefixSize);
+    return ESPIPE;
+  }
+
+  // Run flatbuffers verification
+  if (ns(Message_verify_as_root(data.data.as_uint8, message_body_size) !=
+         flatcc_verify_ok)) {
+    ArrowErrorSet(error, "Message flatbuffer verification failed");
+    return EINVAL;
+  }
+
+  // Read some basic information from the message
+  ns(Message_table_t) message = ns(Message_as_root(data.data.as_uint8));
+  decoder->metadata_version = ns(Message_version(message));
+  decoder->message_type = ns(Message_header_type(message));
+  decoder->body_size_bytes = ns(Message_bodyLength(message));
+
+  private_data->last_message = ns(Message_header_get(message));
+  return NANOARROW_OK;
+}
+
 ArrowErrorCode ArrowIpcDecoderPeekFooter(struct ArrowIpcDecoder* decoder,
                                          struct ArrowBufferView data,
                                          struct ArrowError* error) {
@@ -1060,45 +1099,6 @@ ArrowErrorCode ArrowIpcDecoderPeekFooter(struct ArrowIpcDecoder* decoder,
   }
 
   decoder->header_size_bytes = footer_size;
-  return NANOARROW_OK;
-}
-
-ArrowErrorCode ArrowIpcDecoderVerifyHeader(struct ArrowIpcDecoder* decoder,
-                                           struct ArrowBufferView data,
-                                           struct ArrowError* error) {
-  struct ArrowIpcDecoderPrivate* private_data =
-      (struct ArrowIpcDecoderPrivate*)decoder->private_data;
-
-  ArrowIpcDecoderResetHeaderInfo(decoder);
-  NANOARROW_RETURN_NOT_OK(ArrowIpcDecoderReadHeaderPrefix(
-      decoder, &data, &decoder->header_size_bytes, error));
-
-  // Check that data contains at least the entire header (return ESPIPE to signal
-  // that reading more data may help).
-  int64_t message_body_size = decoder->header_size_bytes - kMessageHeaderPrefixSize;
-  if (data.size_bytes < message_body_size) {
-    ArrowErrorSet(error,
-                  "Expected >= %" PRId64 " bytes of remaining data but found %" PRId64
-                  " bytes in buffer",
-                  message_body_size + kMessageHeaderPrefixSize,
-                  data.size_bytes + kMessageHeaderPrefixSize);
-    return ESPIPE;
-  }
-
-  // Run flatbuffers verification
-  if (ns(Message_verify_as_root(data.data.as_uint8, message_body_size) !=
-         flatcc_verify_ok)) {
-    ArrowErrorSet(error, "Message flatbuffer verification failed");
-    return EINVAL;
-  }
-
-  // Read some basic information from the message
-  ns(Message_table_t) message = ns(Message_as_root(data.data.as_uint8));
-  decoder->metadata_version = ns(Message_version(message));
-  decoder->message_type = ns(Message_header_type(message));
-  decoder->body_size_bytes = ns(Message_bodyLength(message));
-
-  private_data->last_message = ns(Message_header_get(message));
   return NANOARROW_OK;
 }
 
