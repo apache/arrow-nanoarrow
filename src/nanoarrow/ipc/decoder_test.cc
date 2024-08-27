@@ -1001,9 +1001,13 @@ TEST_P(ArrowSchemaParameterizedTestFixture, NanoarrowIpcNanoarrowFooterRoundtrip
   EXPECT_EQ(ArrowSchemaToString(&decoder->footer->schema),
             ArrowSchemaToString(&footer->schema));
   EXPECT_EQ(decoder->footer->record_batch_blocks.size_bytes, sizeof(dummy_block));
-  EXPECT_EQ(memcmp(decoder->footer->record_batch_blocks.data, &dummy_block,
-                   sizeof(dummy_block)),
-            0);
+
+  struct ArrowIpcFileBlock roundtripped_block;
+  memcpy(&roundtripped_block, decoder->footer->record_batch_blocks.data,
+         sizeof(roundtripped_block));
+  EXPECT_EQ(roundtripped_block.offset, dummy_block.offset);
+  EXPECT_EQ(roundtripped_block.metadata_length, dummy_block.metadata_length);
+  EXPECT_EQ(roundtripped_block.body_length, dummy_block.body_length);
 }
 
 INSTANTIATE_TEST_SUITE_P(
