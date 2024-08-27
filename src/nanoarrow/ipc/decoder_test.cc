@@ -48,6 +48,7 @@ struct ArrowIpcDecoderPrivate {
   struct ArrowIpcField* fields;
   int64_t n_buffers;
   const void* last_message;
+  struct ArrowIpcFooter footer;
 };
 }
 

@@ -238,8 +238,10 @@ static ArrowErrorCode ArrowIpcEncodeFieldType(flatcc_builder_t* builder,
       FLATCC_RETURN_UNLESS_0(
           Timestamp_unit_add(builder, (ns(TimeUnit_enum_t))schema_view->time_unit),
           error);
-      FLATCC_RETURN_UNLESS_0(
-          Timestamp_timezone_create_str(builder, schema_view->timezone), error);
+      if (schema_view->timezone && schema_view->timezone[0] != 0) {
+        FLATCC_RETURN_UNLESS_0(
+            Timestamp_timezone_create_str(builder, schema_view->timezone), error);
+      }
       FLATCC_RETURN_UNLESS_0(Field_type_Timestamp_end(builder), error);
       return NANOARROW_OK;
 
