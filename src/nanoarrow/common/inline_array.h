@@ -917,17 +917,24 @@ static inline double ArrowArrayViewGetDoubleUnsafe(
 #define ARROW_VIEW_PREFIX_SIZE 4
 #define ARROW_VIEW_INLINE_SIZE 12
 
+// The Arrow C++ implementation uses anonymous structs as members
+// of the ArrowBinaryViewType. For Cython support in this library, we define
+// those structs outside of the ArrowBinaryViewType
+struct ArrowBinaryViewTypeInlinedData {
+  int32_t size;
+  uint8_t data[ARROW_VIEW_INLINE_SIZE];
+};
+
+struct ArrowBinaryViewTypeRefData {
+  int32_t size;
+  uint8_t data[ARROW_VIEW_PREFIX_SIZE];
+  int32_t buffer_index;
+  int32_t offset;
+};
+
 union ArrowBinaryViewType {  // TODO: C++ impl uses alignas which comes in C11
-  struct {
-    int32_t size;
-    uint8_t data[ARROW_VIEW_INLINE_SIZE];
-  } inlined;
-  struct {
-    int32_t size;
-    uint8_t data[ARROW_VIEW_PREFIX_SIZE];
-    int32_t buffer_index;
-    int32_t offset;
-  } ref;
+  struct ArrowBinaryViewTypeInlinedData inlined;
+  struct ArrowBinaryViewTypeRefData ref;
 };
 
 static inline struct ArrowStringView ArrowArrayViewGetStringUnsafe(
