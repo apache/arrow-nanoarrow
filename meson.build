@@ -35,6 +35,12 @@ project(
 #   add_project_arguments(['-fvisibility=hidden'], language: 'cpp')
 # endif
 
+cpp = meson.get_compiler('cpp')
+add_project_arguments(
+    cpp.get_supported_arguments(['-Wno-misleading-indentation']),
+    language : 'cpp'
+)
+
 nanoarrow_dep_args = []
 if host_machine.system() == 'windows' and get_option('default_library') == 'shared'
   add_project_arguments(['-DNANOARROW_BUILD_DLL', '-DNANOARROW_EXPORT_DLL'], language: 'c')
