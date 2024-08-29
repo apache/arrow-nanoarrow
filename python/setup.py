@@ -53,12 +53,13 @@ if os.path.exists(bootstrap_py):
 
 
 # Set some extra flags for compiling with coverage support
-extra_include_dirs = []
 extra_compile_args = []
 extra_link_args = []
 extra_define_macros = []
-library_dirs = []
-libraries = []
+device_include_dirs = []
+device_library_dirs = []
+device_libraries = []
+device_define_macros = []
 
 if os.getenv("NANOARROW_PYTHON_COVERAGE") == "1":
     extra_compile_args.append("--coverage")
@@ -82,86 +83,66 @@ if cuda_toolkit_root:
     if not include_dir.is_dir():
         raise ValueError(f"CUDA include directory does not exist: '{include_dir}'")
 
-    lib_dirs = [d for d in possible_libs if d.exists()]
-    if not lib_dirs:
-        lib_dirs_err = ", ".join(f"'{d}" for d in possible_libs)
-        raise ValueError(f"Can't find CUDA library directory. Checked {lib_dirs_err}")
+    device_include_dirs.append(str(include_dir))
+    device_libraries.append("cuda")
+    device_define_macros.append(("NANOARROW_DEVICE_WITH_CUDA", 1))
 
-    extra_include_dirs.append(str(include_dir))
-    library_dirs.append(str(lib_dirs[0].parent))
-    libraries.append("cuda")
-    extra_define_macros.append(("NANOARROW_DEVICE_WITH_CUDA", 1))
+    # Library might be already in a system library directory such that no -L flag
+    # is needed
+    lib_dirs = [d for d in possible_libs if d.exists()]
+    if lib_dirs:
+        device_library_dirs.append(str(lib_dirs[0].parent))
+
+
+def nanoarrow_extension(
+    name, *, nanoarrow_c=False, nanoarrow_device=False, nanoarrow_ipc=False
+):
+    sources = ["src/" + name.replace(".", "/") + ".pyx"]
+    libraries = []
+    library_dirs = []
+    include_dirs = ["src/nanoarrow", "vendor"]
+    define_macros = list(extra_define_macros)
+
+    if nanoarrow_c:
+        sources.append("vendor/nanoarrow.c")
+
+    if nanoarrow_device:
+        sources.append("vendor/nanoarrow_device.c")
+        include_dirs.extend(device_include_dirs)
+        libraries.extend(device_libraries)
+        library_dirs.extend(device_library_dirs)
+        define_macros.extend(device_define_macros)
+
+    if nanoarrow_ipc:
+        sources.extend(["vendor/nanoarrow_ipc.c", "vendor/flatcc.c"])
+
+    return Extension(
+        name=name,
+        include_dirs=include_dirs,
+        language="c",
+        sources=sources,
+        extra_compile_args=extra_compile_args,
+        extra_link_args=extra_link_args,
+        define_macros=define_macros,
+        library_dirs=library_dirs,
+        libraries=libraries,
+    )
 
 
 setup(
     ext_modules=[
-        Extension(
-            name="nanoarrow._device",
-            include_dirs=["src/nanoarrow", "vendor"],
-            language="c",
-            sources=[
-                "src/nanoarrow/_device.pyx",
-                "vendor/nanoarrow.c",
-                "vendor/nanoarrow_device.c",
-            ],
-            extra_compile_args=extra_compile_args,
-            extra_link_args=extra_link_args,
-            define_macros=extra_define_macros,
-            library_dirs=library_dirs,
-            libraries=libraries,
+        nanoarrow_extension("nanoarrow._types"),
+        nanoarrow_extension("nanoarrow._utils", nanoarrow_c=True),
+        nanoarrow_extension(
+            "nanoarrow._device", nanoarrow_c=True, nanoarrow_device=True
         ),
-        Extension(
-            name="nanoarrow._types",
-            include_dirs=["src/nanoarrow", "vendor"],
-            language="c",
-            sources=[
-                "src/nanoarrow/_types.pyx",
-            ],
-            extra_compile_args=extra_compile_args,
-            extra_link_args=extra_link_args,
-            define_macros=extra_define_macros,
+        nanoarrow_extension(
+            "nanoarrow._array", nanoarrow_c=True, nanoarrow_device=True
         ),
-        Extension(
-            name="nanoarrow._utils",
-            include_dirs=extra_include_dirs + ["src/nanoarrow", "vendor"],
-            language="c",
-            sources=[
-                "src/nanoarrow/_utils.pyx",
-                "vendor/nanoarrow.c",
-            ],
-            extra_compile_args=extra_compile_args,
-            extra_link_args=extra_link_args,
-            define_macros=extra_define_macros,
-        ),
-        Extension(
-            name="nanoarrow._lib",
-            include_dirs=extra_include_dirs + ["src/nanoarrow", "vendor"],
-            language="c",
-            sources=[
-                "src/nanoarrow/_lib.pyx",
-                "vendor/nanoarrow.c",
-                "vendor/nanoarrow_device.c",
-            ],
-            extra_compile_args=extra_compile_args,
-            extra_link_args=extra_link_args,
-            define_macros=extra_define_macros,
-            library_dirs=library_dirs,
-            libraries=libraries,
-        ),
-        Extension(
-            name="nanoarrow._ipc_lib",
-            include_dirs=extra_include_dirs + ["src/nanoarrow", "vendor"],
-            language="c",
-            sources=[
-                "src/nanoarrow/_ipc_lib.pyx",
-                "vendor/nanoarrow.c",
-                "vendor/nanoarrow_ipc.c",
-                "vendor/flatcc.c",
-            ],
-            extra_compile_args=extra_compile_args,
-            extra_link_args=extra_link_args,
-            define_macros=extra_define_macros,
-        ),
+        nanoarrow_extension("nanoarrow._array_stream", nanoarrow_c=True),
+        nanoarrow_extension("nanoarrow._buffer", nanoarrow_c=True),
+        nanoarrow_extension("nanoarrow._ipc_lib", nanoarrow_c=True, nanoarrow_ipc=True),
+        nanoarrow_extension("nanoarrow._schema", nanoarrow_c=True),
     ],
     version=version,
 )

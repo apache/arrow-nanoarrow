@@ -98,6 +98,9 @@ struct ArrowIpcDecoderPrivate {
 };
 
 ArrowErrorCode ArrowIpcCheckRuntime(struct ArrowError* error) {
+  // Avoids an unused warning when bundling the header into nanoarrow_ipc.c
+  NANOARROW_UNUSED(flatbuffers_end);
+
   const char* nanoarrow_runtime_version = ArrowNanoarrowVersion();
   const char* nanoarrow_ipc_build_time_version = NANOARROW_VERSION;
 
@@ -108,17 +111,6 @@ ArrowErrorCode ArrowIpcCheckRuntime(struct ArrowError* error) {
   }
 
   return NANOARROW_OK;
-}
-
-static enum ArrowIpcEndianness ArrowIpcSystemEndianness(void) {
-  uint32_t check = 1;
-  char first_byte;
-  memcpy(&first_byte, &check, sizeof(char));
-  if (first_byte) {
-    return NANOARROW_IPC_ENDIANNESS_LITTLE;
-  } else {
-    return NANOARROW_IPC_ENDIANNESS_BIG;
-  }
 }
 
 #if NANOARROW_IPC_USE_STDATOMIC
@@ -1665,9 +1657,16 @@ static ArrowErrorCode ArrowIpcDecoderDecodeArrayViewInternal(
     return EINVAL;
   }
 
+  // RecordBatch messages don't count the root node but decoder->fields does
+  // (decoder->fields[0] is the root field)
+  if (field_i + 1 >= private_data->n_fields) {
+    ArrowErrorSet(error, "cannot decode column %" PRId64 "; there are only %" PRId64,
+                  field_i, private_data->n_fields - 1);
+    return EINVAL;
+  }
+
   ns(RecordBatch_table_t) batch = (ns(RecordBatch_table_t))private_data->last_message;
 
-  // RecordBatch messages don't count the root node but decoder->fields does
   struct ArrowIpcField* root = private_data->fields + field_i + 1;
 
   struct ArrowIpcArraySetter setter;

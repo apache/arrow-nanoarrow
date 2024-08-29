@@ -17,8 +17,8 @@
 
 import io
 
+from nanoarrow._array_stream import CArrayStream
 from nanoarrow._ipc_lib import CIpcInputStream, init_array_stream
-from nanoarrow._lib import CArrayStream
 from nanoarrow._utils import obj_is_buffer
 
 from nanoarrow import _repr_utils

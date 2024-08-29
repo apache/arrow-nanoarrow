@@ -149,14 +149,14 @@ struct ArrowArrayStream {
   NANOARROW_RETURN_NOT_OK((x_ <= max_) ? NANOARROW_OK : EINVAL)
 
 #if defined(NANOARROW_DEBUG)
-#define _NANOARROW_RETURN_NOT_OK_WITH_ERROR_IMPL(NAME, EXPR, ERROR_PTR_EXPR, EXPR_STR) \
-  do {                                                                                 \
-    const int NAME = (EXPR);                                                           \
-    if (NAME) {                                                                        \
-      ArrowErrorSet((ERROR_PTR_EXPR), "%s failed with errno %d\n* %s:%d", EXPR_STR,    \
-                    NAME, __FILE__, __LINE__);                                         \
-      return NAME;                                                                     \
-    }                                                                                  \
+#define _NANOARROW_RETURN_NOT_OK_WITH_ERROR_IMPL(NAME, EXPR, ERROR_PTR_EXPR, EXPR_STR)  \
+  do {                                                                                  \
+    const int NAME = (EXPR);                                                            \
+    if (NAME) {                                                                         \
+      ArrowErrorSet((ERROR_PTR_EXPR), "%s failed with errno %d(%s)\n* %s:%d", EXPR_STR, \
+                    NAME, strerror(NAME), __FILE__, __LINE__);                          \
+      return NAME;                                                                      \
+    }                                                                                   \
   } while (0)
 #else
 #define _NANOARROW_RETURN_NOT_OK_WITH_ERROR_IMPL(NAME, EXPR, ERROR_PTR_EXPR, EXPR_STR) \
@@ -574,6 +574,17 @@ enum ArrowValidationLevel {
   /// \brief Validate all buffer sizes and all buffer content. This is useful in the
   /// context of untrusted input or input that may have been corrupted in transit.
   NANOARROW_VALIDATION_LEVEL_FULL = 3
+};
+
+/// \brief Comparison level enumerator
+/// \ingroup nanoarrow-utils
+enum ArrowCompareLevel {
+  /// \brief Consider arrays equal if buffers contain identical content
+  /// and have identical offset, null count, and length. Note that this is
+  /// a much stricter check than logical equality, which would take into
+  /// account potentially different content of null slots, arrays with a
+  /// non-zero offset, and other considerations.
+  NANOARROW_COMPARE_IDENTICAL,
 };
 
 /// \brief Get a string value of an enum ArrowTimeUnit value

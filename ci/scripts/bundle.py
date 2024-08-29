@@ -128,8 +128,6 @@ def bundle_nanoarrow(
     # Generate files that don't need special handling
     for filename in [
         "nanoarrow.hpp",
-        "nanoarrow_testing.hpp",
-        "nanoarrow_gtest_util.hpp",
     ]:
         content = read_content(src_dir / filename)
         content = namespace_nanoarrow_includes(content, header_namespace)
@@ -203,7 +201,9 @@ def bundle_nanoarrow_ipc(
         [
             src_dir / "ipc" / "flatcc_generated.h",
             src_dir / "ipc" / "decoder.c",
+            src_dir / "ipc" / "encoder.c",
             src_dir / "ipc" / "reader.c",
+            src_dir / "ipc" / "writer.c",
         ]
     )
     nanoarrow_ipc_c = nanoarrow_ipc_c.replace(
@@ -211,6 +211,38 @@ def bundle_nanoarrow_ipc(
     )
     nanoarrow_ipc_c = namespace_nanoarrow_includes(nanoarrow_ipc_c, header_namespace)
     yield f"{output_source_dir}/nanoarrow_ipc.c", nanoarrow_ipc_c
+
+
+def bundle_nanoarrow_testing(
+    root_dir,
+    header_namespace="nanoarrow/",
+    output_source_dir="src",
+    output_include_dir="include",
+):
+    root_dir = pathlib.Path(root_dir)
+    src_dir = root_dir / "src" / "nanoarrow"
+
+    output_source_dir = pathlib.Path(output_source_dir)
+    output_include_dir = pathlib.Path(output_include_dir) / header_namespace
+
+    # Generate headers
+    for filename in [
+        "nanoarrow_testing.hpp",
+        "nanoarrow_gtest_util.hpp",
+    ]:
+        content = read_content(src_dir / filename)
+        content = namespace_nanoarrow_includes(content, header_namespace)
+        yield f"{output_include_dir}/{filename}", content
+
+    nanoarrow_testing_cc = concatenate_content(
+        [
+            src_dir / "testing" / "testing.cc",
+        ]
+    )
+    nanoarrow_testing_cc = namespace_nanoarrow_includes(
+        nanoarrow_testing_cc, header_namespace
+    )
+    yield f"{output_source_dir}/nanoarrow_testing.cc", nanoarrow_testing_cc
 
 
 def bundle_flatcc(
@@ -310,6 +342,11 @@ if __name__ == "__main__":
         action="store_true",
     )
     parser.add_argument(
+        "--with-testing",
+        help="Include nanoarrow_testing sources/headers",
+        action="store_true",
+    )
+    parser.add_argument(
         "--with-flatcc",
         help="Include flatcc sources/headers",
         action="store_true",
@@ -350,6 +387,17 @@ if __name__ == "__main__":
     if args.with_ipc:
         do_bundle(
             bundle_nanoarrow_ipc(
+                root_dir,
+                header_namespace=args.header_namespace,
+                output_source_dir=args.source_output_dir,
+                output_include_dir=args.include_output_dir,
+            )
+        )
+
+    # Bundle nanoarrow_testing
+    if args.with_testing:
+        do_bundle(
+            bundle_nanoarrow_testing(
                 root_dir,
                 header_namespace=args.header_namespace,
                 output_source_dir=args.source_output_dir,

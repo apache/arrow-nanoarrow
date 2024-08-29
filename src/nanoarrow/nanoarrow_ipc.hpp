@@ -42,6 +42,38 @@ inline void release_pointer(struct ArrowIpcDecoder* data) {
 }
 
 template <>
+inline void init_pointer(struct ArrowIpcFooter* data) {
+  ArrowIpcFooterInit(data);
+}
+
+template <>
+inline void move_pointer(struct ArrowIpcFooter* src, struct ArrowIpcFooter* dst) {
+  ArrowSchemaMove(&src->schema, &dst->schema);
+  ArrowBufferMove(&src->record_batch_blocks, &dst->record_batch_blocks);
+}
+
+template <>
+inline void release_pointer(struct ArrowIpcFooter* data) {
+  ArrowIpcFooterReset(data);
+}
+
+template <>
+inline void init_pointer(struct ArrowIpcEncoder* data) {
+  data->private_data = nullptr;
+}
+
+template <>
+inline void move_pointer(struct ArrowIpcEncoder* src, struct ArrowIpcEncoder* dst) {
+  memcpy(dst, src, sizeof(struct ArrowIpcEncoder));
+  src->private_data = nullptr;
+}
+
+template <>
+inline void release_pointer(struct ArrowIpcEncoder* data) {
+  ArrowIpcEncoderReset(data);
+}
+
+template <>
 inline void init_pointer(struct ArrowIpcInputStream* data) {
   data->release = nullptr;
 }
@@ -58,6 +90,41 @@ inline void release_pointer(struct ArrowIpcInputStream* data) {
   if (data->release != nullptr) {
     data->release(data);
   }
+}
+
+template <>
+inline void init_pointer(struct ArrowIpcOutputStream* data) {
+  data->release = nullptr;
+}
+
+template <>
+inline void move_pointer(struct ArrowIpcOutputStream* src,
+                         struct ArrowIpcOutputStream* dst) {
+  memcpy(dst, src, sizeof(struct ArrowIpcOutputStream));
+  src->release = nullptr;
+}
+
+template <>
+inline void release_pointer(struct ArrowIpcOutputStream* data) {
+  if (data->release != nullptr) {
+    data->release(data);
+  }
+}
+
+template <>
+inline void init_pointer(struct ArrowIpcWriter* data) {
+  data->private_data = nullptr;
+}
+
+template <>
+inline void move_pointer(struct ArrowIpcWriter* src, struct ArrowIpcWriter* dst) {
+  memcpy(dst, src, sizeof(struct ArrowIpcWriter));
+  src->private_data = nullptr;
+}
+
+template <>
+inline void release_pointer(struct ArrowIpcWriter* data) {
+  ArrowIpcWriterReset(data);
 }
 
 }  // namespace internal
@@ -77,8 +144,20 @@ namespace ipc {
 /// \brief Class wrapping a unique struct ArrowIpcDecoder
 using UniqueDecoder = internal::Unique<struct ArrowIpcDecoder>;
 
+/// \brief Class wrapping a unique struct ArrowIpcFooter
+using UniqueFooter = internal::Unique<struct ArrowIpcFooter>;
+
+/// \brief Class wrapping a unique struct ArrowIpcEncoder
+using UniqueEncoder = internal::Unique<struct ArrowIpcEncoder>;
+
 /// \brief Class wrapping a unique struct ArrowIpcInputStream
 using UniqueInputStream = internal::Unique<struct ArrowIpcInputStream>;
+
+/// \brief Class wrapping a unique struct ArrowIpcOutputStream
+using UniqueOutputStream = internal::Unique<struct ArrowIpcOutputStream>;
+
+/// \brief Class wrapping a unique struct ArrowIpcWriter
+using UniqueWriter = internal::Unique<struct ArrowIpcWriter>;
 
 /// @}
 

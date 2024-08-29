@@ -20,7 +20,7 @@ from functools import cached_property
 from itertools import islice, repeat
 from typing import Iterable, Tuple
 
-from nanoarrow._lib import CArrayView
+from nanoarrow._array import CArrayView
 from nanoarrow.c_array_stream import c_array_stream
 from nanoarrow.c_schema import c_schema, c_schema_view
 from nanoarrow.schema import Schema

@@ -29,7 +29,7 @@
 #include <gtest/gtest.h>
 
 #include "nanoarrow/nanoarrow.hpp"
-#include "nanoarrow/nanoarrow_ipc.h"
+#include "nanoarrow/nanoarrow_ipc.hpp"
 #include "nanoarrow/nanoarrow_testing.hpp"
 
 #include "flatcc/portable/pendian_detect.h"
@@ -88,6 +88,16 @@ class TestFile {
     return path_.substr(0, dot_pos) + std::string(".json.gz");
   }
 
+  ArrowErrorCode GetArrowArrayStreamIPC(struct ArrowBuffer* content,
+                                        ArrowArrayStream* out, ArrowError* error) {
+    nanoarrow::ipc::UniqueInputStream input;
+    NANOARROW_RETURN_NOT_OK_WITH_ERROR(
+        ArrowIpcInputStreamInitBuffer(input.get(), content), error);
+    NANOARROW_RETURN_NOT_OK_WITH_ERROR(
+        ArrowIpcArrayStreamReaderInit(out, input.get(), nullptr), error);
+    return NANOARROW_OK;
+  }
+
   ArrowErrorCode GetArrowArrayStreamIPC(const std::string& dir_prefix,
                                         ArrowArrayStream* out, ArrowError* error) {
     std::stringstream path_builder;
@@ -96,13 +106,36 @@ class TestFile {
     // Read using nanoarrow_ipc
     nanoarrow::UniqueBuffer content;
     NANOARROW_RETURN_NOT_OK(ReadFileBuffer(path_builder.str(), content.get(), error));
+    return GetArrowArrayStreamIPC(content.get(), out, error);
+  }
 
-    struct ArrowIpcInputStream input;
-    NANOARROW_RETURN_NOT_OK_WITH_ERROR(
-        ArrowIpcInputStreamInitBuffer(&input, content.get()), error);
-    NANOARROW_RETURN_NOT_OK_WITH_ERROR(
-        ArrowIpcArrayStreamReaderInit(out, &input, nullptr), error);
+  ArrowErrorCode ReadArrowArrayStreamIPC(struct ArrowArrayStream* stream,
+                                         struct ArrowSchema* schema,
+                                         std::vector<nanoarrow::UniqueArray>* arrays,
+                                         ArrowError* error) {
+    NANOARROW_RETURN_NOT_OK(ArrowArrayStreamGetSchema(stream, schema, error));
+
+    while (true) {
+      nanoarrow::UniqueArray array;
+
+      NANOARROW_RETURN_NOT_OK(ArrowArrayStreamGetNext(stream, array.get(), error));
+
+      if (array->release == nullptr) {
+        break;
+      }
+
+      arrays->push_back(std::move(array));
+    }
     return NANOARROW_OK;
+  }
+
+  ArrowErrorCode ReadArrowArrayStreamIPC(const std::string& dir_prefix,
+                                         struct ArrowSchema* schema,
+                                         std::vector<nanoarrow::UniqueArray>* arrays,
+                                         ArrowError* error) {
+    nanoarrow::UniqueArrayStream stream;
+    NANOARROW_RETURN_NOT_OK(GetArrowArrayStreamIPC(dir_prefix, stream.get(), error));
+    return ReadArrowArrayStreamIPC(stream.get(), schema, arrays, error);
   }
 
   ArrowErrorCode GetArrowArrayStreamCheckJSON(const std::string& dir_prefix,
@@ -171,6 +204,31 @@ class TestFile {
     return std::make_shared<io::BufferReader>(content_copy_wrapped);
   }
 
+  ArrowErrorCode WriteNanoarrowStream(const nanoarrow::UniqueSchema& schema,
+                                      const std::vector<nanoarrow::UniqueArray>& arrays,
+                                      struct ArrowBuffer* buffer,
+                                      struct ArrowError* error) {
+    nanoarrow::ipc::UniqueOutputStream output_stream;
+    NANOARROW_RETURN_NOT_OK(ArrowIpcOutputStreamInitBuffer(output_stream.get(), buffer));
+
+    nanoarrow::ipc::UniqueWriter writer;
+    NANOARROW_RETURN_NOT_OK(ArrowIpcWriterInit(writer.get(), output_stream.get()));
+
+    nanoarrow::UniqueArrayView array_view;
+    NANOARROW_RETURN_NOT_OK(
+        ArrowArrayViewInitFromSchema(array_view.get(), schema.get(), error));
+
+    NANOARROW_RETURN_NOT_OK(ArrowIpcWriterWriteSchema(writer.get(), schema.get(), error));
+    for (const auto& array : arrays) {
+      NANOARROW_RETURN_NOT_OK(
+          ArrowArrayViewSetArray(array_view.get(), array.get(), error));
+
+      NANOARROW_RETURN_NOT_OK(
+          ArrowIpcWriterWriteArrayView(writer.get(), array_view.get(), error));
+    }
+    return ArrowIpcWriterWriteArrayView(writer.get(), nullptr, error);
+  }
+
   void TestEqualsArrowCpp(const std::string& dir_prefix) {
     std::stringstream path_builder;
     path_builder << dir_prefix << "/" << path_;
@@ -179,38 +237,14 @@ class TestFile {
     ArrowErrorInit(&error);
 
     // Read using nanoarrow_ipc
-    nanoarrow::UniqueArrayStream stream;
-    ASSERT_EQ(GetArrowArrayStreamIPC(dir_prefix, stream.get(), &error), NANOARROW_OK)
-        << error.message;
-
     nanoarrow::UniqueSchema schema;
-    int result = ArrowArrayStreamGetSchema(stream.get(), schema.get(), &error);
+    std::vector<nanoarrow::UniqueArray> arrays;
+    int result = ReadArrowArrayStreamIPC(dir_prefix, schema.get(), &arrays, &error);
     if (result != NANOARROW_OK) {
       if (Check(result, error.message)) {
         return;
       }
-
       GTEST_FAIL() << MakeError(result, error.message);
-    }
-
-    std::vector<nanoarrow::UniqueArray> arrays;
-    while (true) {
-      nanoarrow::UniqueArray array;
-
-      result = ArrowArrayStreamGetNext(stream.get(), array.get(), &error);
-      if (result != NANOARROW_OK) {
-        if (Check(result, error.message)) {
-          return;
-        }
-
-        GTEST_FAIL() << MakeError(result, error.message);
-      }
-
-      if (array->release == nullptr) {
-        break;
-      }
-
-      arrays.push_back(std::move(array));
     }
 
     // If the file was supposed to fail the read but did not, fail here
@@ -218,37 +252,78 @@ class TestFile {
       GTEST_FAIL() << MakeError(NANOARROW_OK, "");
     }
 
-    // Read the same file with Arrow C++
-    nanoarrow::UniqueBuffer content_copy;
-    ASSERT_EQ(ReadFileBuffer(path_builder.str(), content_copy.get(), &error),
+    // Write back to a buffer using nanoarrow
+    nanoarrow::UniqueBuffer roundtripped;
+    ASSERT_EQ(WriteNanoarrowStream(schema, arrays, roundtripped.get(), &error),
               NANOARROW_OK)
         << error.message;
-    std::shared_ptr<io::InputStream> input_stream = BufferInputStream(content_copy.get());
 
-    auto maybe_reader = ipc::RecordBatchStreamReader::Open(input_stream);
-    FAIL_RESULT_NOT_OK(maybe_reader);
-
-    auto maybe_table_arrow = maybe_reader.ValueUnsafe()->ToTable();
-    FAIL_RESULT_NOT_OK(maybe_table_arrow);
-
-    // Make a Table from the our vector of arrays
-    auto maybe_schema = ImportSchema(schema.get());
-    FAIL_RESULT_NOT_OK(maybe_schema);
-
-    ASSERT_TRUE(maybe_table_arrow.ValueUnsafe()->schema()->Equals(**maybe_schema, true));
-
-    std::vector<std::shared_ptr<RecordBatch>> batches;
-    for (auto& array : arrays) {
-      auto maybe_batch = ImportRecordBatch(array.get(), *maybe_schema);
-      FAIL_RESULT_NOT_OK(maybe_batch);
-
-      batches.push_back(std::move(*maybe_batch));
+    // Read the same file with Arrow C++
+    auto maybe_table_arrow = ReadTable(io::ReadableFile::Open(path_builder.str()));
+    {
+      SCOPED_TRACE("Read the same file with Arrow C++");
+      FAIL_RESULT_NOT_OK(maybe_table_arrow);
+      AssertEqualsTable(std::move(schema), std::move(arrays),
+                        maybe_table_arrow.ValueUnsafe());
     }
 
-    auto maybe_table = Table::FromRecordBatches(*maybe_schema, batches);
-    FAIL_RESULT_NOT_OK(maybe_table);
+    auto maybe_table_roundtripped = ReadTable(BufferInputStream(roundtripped.get()));
+    {
+      SCOPED_TRACE("Read the roundtripped buffer using Arrow C++");
+      FAIL_RESULT_NOT_OK(maybe_table_roundtripped);
 
-    EXPECT_TRUE(maybe_table.ValueUnsafe()->Equals(**maybe_table_arrow, true));
+      AssertEqualsTable(maybe_table_roundtripped.ValueUnsafe(),
+                        maybe_table_arrow.ValueUnsafe());
+    }
+
+    nanoarrow::UniqueSchema roundtripped_schema;
+    std::vector<nanoarrow::UniqueArray> roundtripped_arrays;
+    {
+      SCOPED_TRACE("Read the roundtripped buffer using nanoarrow");
+      nanoarrow::UniqueArrayStream array_stream;
+      ASSERT_EQ(GetArrowArrayStreamIPC(roundtripped.get(), array_stream.get(), &error),
+                NANOARROW_OK);
+      ASSERT_EQ(ReadArrowArrayStreamIPC(array_stream.get(), roundtripped_schema.get(),
+                                        &roundtripped_arrays, &error),
+                NANOARROW_OK);
+
+      AssertEqualsTable(std::move(roundtripped_schema), std::move(roundtripped_arrays),
+                        maybe_table_arrow.ValueUnsafe());
+    }
+  }
+
+  Result<std::shared_ptr<Table>> ReadTable(
+      Result<std::shared_ptr<io::InputStream>> maybe_input_stream) {
+    ARROW_ASSIGN_OR_RAISE(auto input_stream, maybe_input_stream);
+    ARROW_ASSIGN_OR_RAISE(auto reader, ipc::RecordBatchStreamReader::Open(input_stream));
+    return reader->ToTable();
+  }
+
+  Result<std::shared_ptr<Table>> ToTable(nanoarrow::UniqueSchema schema,
+                                         std::vector<nanoarrow::UniqueArray> arrays) {
+    ARROW_ASSIGN_OR_RAISE(auto arrow_schema, ImportSchema(schema.get()));
+
+    std::vector<std::shared_ptr<RecordBatch>> batches(arrays.size());
+    size_t i = 0;
+    for (auto& array : arrays) {
+      ARROW_ASSIGN_OR_RAISE(auto batch, ImportRecordBatch(array.get(), arrow_schema));
+      batches[i++] = std::move(batch);
+    }
+    return Table::FromRecordBatches(std::move(arrow_schema), std::move(batches));
+  }
+
+  void AssertEqualsTable(const std::shared_ptr<Table>& actual,
+                         const std::shared_ptr<Table>& expected) {
+    ASSERT_TRUE(actual->schema()->Equals(expected->schema(), true));
+    EXPECT_TRUE(actual->Equals(*expected, true));
+  }
+
+  void AssertEqualsTable(nanoarrow::UniqueSchema schema,
+                         std::vector<nanoarrow::UniqueArray> arrays,
+                         const std::shared_ptr<Table>& expected) {
+    auto maybe_table = ToTable(std::move(schema), std::move(arrays));
+    FAIL_RESULT_NOT_OK(maybe_table);
+    AssertEqualsTable(maybe_table.ValueUnsafe(), expected);
   }
 
   void TestIPCCheckJSON(const std::string& dir_prefix) {
@@ -382,7 +457,8 @@ INSTANTIATE_TEST_SUITE_P(
     NanoarrowIpcTest, TestFileFixture,
     ::testing::Values(
         // Files in data/arrow-ipc-stream/integration/1.0.0-(little|big)endian/
-        // should read without error and the data should match Arrow C++'s read
+        // should read without error and the data should match Arrow C++'s read.
+        // Also write the stream to a buffer and check Arrow C++'s read of that.
         TestFile::OK("generated_custom_metadata.stream"),
         TestFile::OK("generated_datetime.stream"),
         TestFile::OK("generated_decimal.stream"),

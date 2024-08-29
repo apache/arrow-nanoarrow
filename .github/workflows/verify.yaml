@@ -71,7 +71,7 @@ jobs:
           use-public-rspm: true
           windows-path-include-rtools: false
           windows-path-include-mingw: false
-      - uses: r-lib/actions/setup-r-dependencies@v2
+      - uses: r-lib/actions/setup-r-dependencies@f4937e0dc26f9b99c969cd3e4ca943b576e7f991
         with:
           needs: check
           working-directory: src/r
@@ -134,8 +134,9 @@ jobs:
               platform: "centos7",
               arch: "amd64",
               # Currently the Python on the centos7 image is 3.6, which does not support
-              # new enough setuptools to build the Python package.
-              compose_args: "-e NANOARROW_ACCEPT_IMPORT_GPG_KEYS_ERROR=1 -e TEST_PYTHON=0"
+              # new enough setuptools to build the Python package. Our test dependencies
+              # no longer support centos7 for R, either.
+              compose_args: "-e NANOARROW_ACCEPT_IMPORT_GPG_KEYS_ERROR=1 -e TEST_PYTHON=0 -e TEST_R=0"
             }
           - {
               platform: "ubuntu",

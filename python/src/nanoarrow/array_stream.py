@@ -18,7 +18,7 @@
 from functools import cached_property
 from typing import Iterable, Tuple
 
-from nanoarrow._lib import CMaterializedArrayStream
+from nanoarrow._array_stream import CMaterializedArrayStream
 from nanoarrow._repr_utils import make_class_label
 from nanoarrow.array import Array
 from nanoarrow.c_array_stream import c_array_stream

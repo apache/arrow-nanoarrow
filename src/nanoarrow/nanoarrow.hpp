@@ -843,7 +843,12 @@ class ViewArrayAsFixedSizeBytes {
 class ViewArrayStream {
  public:
   ViewArrayStream(ArrowArrayStream* stream, ArrowErrorCode* code, ArrowError* error)
-      : range_{Next{this, stream, UniqueArray()}}, code_{code}, error_{error} {}
+      : code_{code}, error_{error} {
+    // Using a slightly more verbose constructor to silence a warning that occurs
+    // on some versions of MSVC.
+    range_.next.self = this;
+    range_.next.stream = stream;
+  }
 
   ViewArrayStream(ArrowArrayStream* stream, ArrowError* error)
       : ViewArrayStream{stream, &internal_code_, error} {}

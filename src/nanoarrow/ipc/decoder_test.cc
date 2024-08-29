@@ -21,17 +21,17 @@
 #include <arrow/c/bridge.h>
 #include <arrow/ipc/api.h>
 #include <arrow/util/key_value_metadata.h>
+#include <gmock/gmock-matchers.h>
 #include <gtest/gtest.h>
 
 // For bswap32()
 #include "flatcc/portable/pendian.h"
 
-#include "nanoarrow/nanoarrow_ipc.h"
+#include "nanoarrow/nanoarrow_ipc.hpp"
 
 using namespace arrow;
 
-// Copied from nanoarrow_ipc.c so we can test the internal state
-// of the decoder
+// Copied from decoder.c so we can test the internal state
 extern "C" {
 struct ArrowIpcField {
   struct ArrowArrayView* array_view;
@@ -49,17 +49,6 @@ struct ArrowIpcDecoderPrivate {
   int64_t n_buffers;
   const void* last_message;
 };
-}
-
-static enum ArrowIpcEndianness ArrowIpcSystemEndianness(void) {
-  uint32_t check = 1;
-  char first_byte;
-  memcpy(&first_byte, &check, sizeof(char));
-  if (first_byte) {
-    return NANOARROW_IPC_ENDIANNESS_LITTLE;
-  } else {
-    return NANOARROW_IPC_ENDIANNESS_BIG;
-  }
 }
 
 TEST(NanoarrowIpcCheckRuntime, CheckRuntime) {
@@ -481,6 +470,99 @@ TEST_P(ArrowTypeParameterizedTestFixture, NanoarrowIpcArrowTypeRoundtrip) {
   ArrowIpcDecoderReset(&decoder);
 }
 
+std::string ArrowSchemaMetadataToString(const char* metadata) {
+  struct ArrowMetadataReader reader;
+  auto st = ArrowMetadataReaderInit(&reader, metadata);
+  NANOARROW_DCHECK(st == NANOARROW_OK);
+
+  bool comma = false;
+  std::string out;
+  while (reader.remaining_keys > 0) {
+    struct ArrowStringView key, value;
+    auto st = ArrowMetadataReaderRead(&reader, &key, &value);
+    NANOARROW_DCHECK(st == NANOARROW_OK);
+    if (comma) {
+      out += ", ";
+    }
+    comma = true;
+
+    out.append(key.data, key.size_bytes);
+    out += "=";
+    out.append(value.data, value.size_bytes);
+  }
+  return out;
+}
+
+std::string ArrowSchemaToString(const struct ArrowSchema* schema) {
+  int64_t n = ArrowSchemaToString(schema, nullptr, 0, /*recursive=*/false);
+  std::vector<char> out_vec(n, '\0');
+  ArrowSchemaToString(schema, out_vec.data(), n, /*recursive=*/false);
+  std::string out(out_vec.data(), out_vec.size());
+
+  std::string metadata = ArrowSchemaMetadataToString(schema->metadata);
+  if (!metadata.empty()) {
+    out += "{" + metadata + "}";
+  }
+
+  bool comma = false;
+  if (schema->format[0] == '+') {
+    out += "<";
+    for (int64_t i = 0; i < schema->n_children; ++i) {
+      if (comma) {
+        out += ", ";
+      }
+      comma = true;
+
+      auto* child = schema->children[i];
+      if (child && child->name[0] != '\0') {
+        out += child->name;
+        out += ": ";
+      }
+      out += ArrowSchemaToString(schema->children[i]);
+    }
+    out += ">";
+  }
+
+  return out;
+}
+
+TEST_P(ArrowTypeParameterizedTestFixture, NanoarrowIpcNanoarrowTypeRoundtrip) {
+  nanoarrow::UniqueSchema schema;
+  ASSERT_TRUE(
+      arrow::ExportSchema(arrow::Schema({arrow::field("", GetParam())}), schema.get())
+          .ok());
+
+  nanoarrow::ipc::UniqueEncoder encoder;
+  EXPECT_EQ(ArrowIpcEncoderInit(encoder.get()), NANOARROW_OK);
+
+  struct ArrowError error;
+  EXPECT_EQ(ArrowIpcEncoderEncodeSchema(encoder.get(), schema.get(), &error),
+            NANOARROW_OK)
+      << error.message;
+
+  nanoarrow::UniqueBuffer buffer;
+  EXPECT_EQ(
+      ArrowIpcEncoderFinalizeBuffer(encoder.get(), /*encapsulate=*/true, buffer.get()),
+      NANOARROW_OK);
+
+  struct ArrowBufferView buffer_view;
+  buffer_view.data.data = buffer->data;
+  buffer_view.size_bytes = buffer->size_bytes;
+
+  nanoarrow::ipc::UniqueDecoder decoder;
+  ArrowIpcDecoderInit(decoder.get());
+  ASSERT_EQ(ArrowIpcDecoderVerifyHeader(decoder.get(), buffer_view, nullptr),
+            NANOARROW_OK);
+  ASSERT_EQ(ArrowIpcDecoderDecodeHeader(decoder.get(), buffer_view, nullptr),
+            NANOARROW_OK);
+
+  nanoarrow::UniqueSchema roundtripped;
+  ASSERT_EQ(ArrowIpcDecoderDecodeSchema(decoder.get(), roundtripped.get(), nullptr),
+            NANOARROW_OK);
+
+  EXPECT_EQ(ArrowSchemaToString(roundtripped.get()), ArrowSchemaToString(schema.get()));
+}
+
 TEST(NanoarrowIpcTest, NanoarrowIpcDecodeSimpleRecordBatchFromShared) {
   struct ArrowIpcDecoder decoder;
   struct ArrowError error;
@@ -680,6 +762,83 @@ TEST_P(ArrowTypeParameterizedTestFixture, NanoarrowIpcArrowArrayRoundtrip) {
   ArrowIpcDecoderReset(&decoder);
 }
 
+void AssertArrayViewIdentical(const struct ArrowArrayView* actual,
+                              const struct ArrowArrayView* expected) {
+  NANOARROW_DCHECK(actual->dictionary == nullptr);
+  NANOARROW_DCHECK(expected->dictionary == nullptr);
+
+  ASSERT_EQ(actual->storage_type, expected->storage_type);
+  ASSERT_EQ(actual->offset, expected->offset);
+  ASSERT_EQ(actual->length, expected->length);
+  for (int i = 0; i < 3; i++) {
+    auto a_buf = actual->buffer_views[i];
+    auto e_buf = expected->buffer_views[i];
+    ASSERT_EQ(a_buf.size_bytes, e_buf.size_bytes);
+    if (a_buf.size_bytes != 0) {
+      ASSERT_EQ(memcmp(a_buf.data.data, e_buf.data.data, a_buf.size_bytes), 0);
+    }
+  }
+
+  ASSERT_EQ(actual->n_children, expected->n_children);
+  for (int i = 0; i < actual->n_children; i++) {
+    AssertArrayViewIdentical(actual->children[i], expected->children[i]);
+  }
+}
+
+TEST_P(ArrowTypeParameterizedTestFixture, NanoarrowIpcNanoarrowArrayRoundtrip) {
+  struct ArrowError error;
+  nanoarrow::UniqueSchema schema;
+  ASSERT_TRUE(
+      arrow::ExportSchema(arrow::Schema({arrow::field("", GetParam())}), schema.get())
+          .ok());
+
+  nanoarrow::UniqueArrayView array_view;
+  ASSERT_EQ(ArrowArrayViewInitFromSchema(array_view.get(), schema.get(), &error),
+            NANOARROW_OK);
+
+  // now make one empty struct array with this schema and another with all zeroes
+  nanoarrow::UniqueArray empty_array, zero_array;
+  for (auto* array : {empty_array.get(), zero_array.get()}) {
+    ASSERT_EQ(ArrowArrayInitFromSchema(array, schema.get(), nullptr), NANOARROW_OK);
+    ASSERT_EQ(ArrowArrayStartAppending(array), NANOARROW_OK);
+    if (array == zero_array.get()) {
+      ASSERT_EQ(ArrowArrayAppendEmpty(array, 5), NANOARROW_OK);
+    }
+    ASSERT_EQ(ArrowArrayFinishBuildingDefault(array, nullptr), NANOARROW_OK);
+    ASSERT_EQ(ArrowArrayViewSetArray(array_view.get(), array, &error), NANOARROW_OK)
+        << error.message;
+
+    nanoarrow::ipc::UniqueEncoder encoder;
+    EXPECT_EQ(ArrowIpcEncoderInit(encoder.get()), NANOARROW_OK);
+
+    nanoarrow::UniqueBuffer buffer, body_buffer;
+    EXPECT_EQ(ArrowIpcEncoderEncodeSimpleRecordBatch(encoder.get(), array_view.get(),
+                                                     body_buffer.get(), &error),
+              NANOARROW_OK)
+        << error.message;
+    EXPECT_EQ(
+        ArrowIpcEncoderFinalizeBuffer(encoder.get(), /*encapsulate=*/true, buffer.get()),
+        NANOARROW_OK);
+
+    nanoarrow::ipc::UniqueDecoder decoder;
+    ArrowIpcDecoderInit(decoder.get());
+    EXPECT_EQ(ArrowIpcDecoderSetSchema(decoder.get(), schema.get(), &error), NANOARROW_OK)
+        << error.message;
+    EXPECT_EQ(ArrowIpcDecoderDecodeHeader(decoder.get(),
+                                          {buffer->data, buffer->size_bytes}, &error),
+              NANOARROW_OK)
+        << error.message;
+
+    struct ArrowArrayView* roundtripped;
+    ASSERT_EQ(ArrowIpcDecoderDecodeArrayView(decoder.get(),
+                                             {body_buffer->data, body_buffer->size_bytes},
+                                             -1, &roundtripped, nullptr),
+              NANOARROW_OK);
+
+    AssertArrayViewIdentical(roundtripped, array_view.get());
+  }
+}
+
 INSTANTIATE_TEST_SUITE_P(
     NanoarrowIpcTest, ArrowTypeParameterizedTestFixture,
     ::testing::Values(
@@ -697,7 +856,8 @@ INSTANTIATE_TEST_SUITE_P(
         arrow::duration(arrow::TimeUnit::SECOND), arrow::duration(arrow::TimeUnit::MILLI),
         arrow::duration(arrow::TimeUnit::MICRO), arrow::duration(arrow::TimeUnit::NANO),
         arrow::month_interval(), arrow::day_time_interval(),
-        arrow::month_day_nano_interval(),
+        arrow::month_day_nano_interval(), arrow::list(arrow::int32()),
+        arrow::list(arrow::field("", arrow::int32())),
         arrow::list(arrow::field("some_custom_name", arrow::int32())),
         arrow::large_list(arrow::field("some_custom_name", arrow::int32())),
         arrow::fixed_size_list(arrow::field("some_custom_name", arrow::int32()), 123),
@@ -755,10 +915,48 @@ TEST_P(ArrowSchemaParameterizedTestFixture, NanoarrowIpcArrowSchemaRoundtrip) {
   ASSERT_TRUE(maybe_schema.ok());
 
   // Better failure message if we first check for string equality
-  EXPECT_EQ(maybe_schema.ValueUnsafe()->ToString(), arrow_schema->ToString());
+  EXPECT_EQ(maybe_schema.ValueUnsafe()->ToString(/*show_metadata=*/true),
+            arrow_schema->ToString(/*show_metadata=*/true));
   EXPECT_TRUE(maybe_schema.ValueUnsafe()->Equals(arrow_schema, true));
 
   ArrowIpcDecoderReset(&decoder);
+}
+
+TEST_P(ArrowSchemaParameterizedTestFixture, NanoarrowIpcNanoarrowSchemaRoundtrip) {
+  const std::shared_ptr<arrow::Schema>& arrow_schema = GetParam();
+
+  nanoarrow::UniqueSchema schema;
+  ASSERT_TRUE(arrow::ExportSchema(*arrow_schema, schema.get()).ok());
+
+  nanoarrow::ipc::UniqueEncoder encoder;
+  EXPECT_EQ(ArrowIpcEncoderInit(encoder.get()), NANOARROW_OK);
+
+  struct ArrowError error;
+  EXPECT_EQ(ArrowIpcEncoderEncodeSchema(encoder.get(), schema.get(), &error),
+            NANOARROW_OK)
+      << error.message;
+
+  nanoarrow::UniqueBuffer buffer;
+  EXPECT_EQ(
+      ArrowIpcEncoderFinalizeBuffer(encoder.get(), /*encapsulate=*/true, buffer.get()),
+      NANOARROW_OK);
+
+  struct ArrowBufferView buffer_view;
+  buffer_view.data.data = buffer->data;
+  buffer_view.size_bytes = buffer->size_bytes;
+
+  nanoarrow::ipc::UniqueDecoder decoder;
+  ArrowIpcDecoderInit(decoder.get());
+  ASSERT_EQ(ArrowIpcDecoderVerifyHeader(decoder.get(), buffer_view, nullptr),
+            NANOARROW_OK);
+  ASSERT_EQ(ArrowIpcDecoderDecodeHeader(decoder.get(), buffer_view, nullptr),
+            NANOARROW_OK);
+
+  nanoarrow::UniqueSchema roundtripped;
+  ASSERT_EQ(ArrowIpcDecoderDecodeSchema(decoder.get(), roundtripped.get(), nullptr),
+            NANOARROW_OK);
+
+  EXPECT_EQ(ArrowSchemaToString(roundtripped.get()), ArrowSchemaToString(schema.get()));
 }
 
 INSTANTIATE_TEST_SUITE_P(

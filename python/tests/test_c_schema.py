@@ -182,20 +182,27 @@ def test_c_schema_equals():
 
 
 def test_c_schema_assert_type_equal():
-    from nanoarrow._lib import assert_type_equal
+    from nanoarrow._schema import assert_type_equal
 
     int32 = na.c_schema(na.int32())
     string = na.c_schema(na.string())
+    nn_string = na.c_schema(na.string(False))
+
+    assert_type_equal(int32, int32, check_nullability=True)
 
     with pytest.raises(TypeError):
-        assert_type_equal(None, int32)
+        assert_type_equal(None, int32, check_nullability=False)
 
     with pytest.raises(TypeError):
-        assert_type_equal(int32, None)
+        assert_type_equal(int32, None, check_nullability=False)
 
     msg = "Expected schema\n  'string'\nbut got\n  'int32'"
     with pytest.raises(ValueError, match=msg):
-        assert_type_equal(int32, string)
+        assert_type_equal(int32, string, check_nullability=False)
+
+    assert_type_equal(nn_string, string, check_nullability=False)
+    with pytest.raises(ValueError):
+        assert_type_equal(nn_string, string, check_nullability=True)
 
 
 def test_c_schema_modify():

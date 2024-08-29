@@ -57,6 +57,38 @@
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcInputStreamMove)
 #define ArrowIpcArrayStreamReaderInit \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcArrayStreamReaderInit)
+#define ArrowIpcEncoderInit NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcEncoderInit)
+#define ArrowIpcEncoderReset NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcEncoderReset)
+#define ArrowIpcEncoderFinalizeBuffer \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcEncoderFinalizeBuffer)
+#define ArrowIpcEncoderEncodeSchema \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcEncoderEncodeSchema)
+#define ArrowIpcEncoderEncodeSimpleRecordBatch \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcEncoderEncodeSimpleRecordBatch)
+#define ArrowIpcOutputStreamInitBuffer \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcOutputStreamInitBuffer)
+#define ArrowIpcOutputStreamInitFile \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcOutputStreamInitFile)
+#define ArrowIpcOutputStreamWrite \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcOutputStreamWrite)
+#define ArrowIpcOutputStreamMove \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcOutputStreamMove)
+#define ArrowIpcWriterInit NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcWriterInit)
+#define ArrowIpcWriterReset NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcWriterReset)
+#define ArrowIpcWriterWriteSchema \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcWriterWriteSchema)
+#define ArrowIpcWriterWriteArrayView \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcWriterWriteArrayView)
+#define ArrowIpcWriterWriteArrayStream \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcWriterWriteArrayStream)
+#define ArrowIpcWriterStartFile \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcWriterStartFile)
+#define ArrowIpcWriterFinalizeFile \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcWriterFinalizeFile)
+#define ArrowIpcFooterInit NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcFooterInit)
+#define ArrowIpcFooterReset NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcFooterReset)
+#define ArrowIpcEncoderEncodeFooter \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcEncoderEncodeFooter)
 
 #endif
 
@@ -116,6 +148,18 @@ enum ArrowIpcCompressionType {
 
 /// \brief Checks the nanoarrow runtime to make sure the run/build versions match
 ArrowErrorCode ArrowIpcCheckRuntime(struct ArrowError* error);
+
+/// \brief Get the endianness of the current runtime
+static inline enum ArrowIpcEndianness ArrowIpcSystemEndianness(void) {
+  uint32_t check = 1;
+  char first_byte;
+  memcpy(&first_byte, &check, sizeof(char));
+  if (first_byte) {
+    return NANOARROW_IPC_ENDIANNESS_LITTLE;
+  } else {
+    return NANOARROW_IPC_ENDIANNESS_BIG;
+  }
+}
 
 /// \brief A structure representing a reference-counted buffer that may be passed to
 /// ArrowIpcDecoderDecodeArrayFromShared().
@@ -190,7 +234,7 @@ void ArrowIpcDecoderReset(struct ArrowIpcDecoder* decoder);
 
 /// \brief Peek at a message header
 ///
-/// The first 8 bytes of an Arrow IPC message are 0xFFFFFF followed by the size
+/// The first 8 bytes of an Arrow IPC message are 0xFFFFFFFF followed by the size
 /// of the header as a little-endian 32-bit integer. ArrowIpcDecoderPeekHeader() reads
 /// these bytes and returns ESPIPE if there are not enough remaining bytes in data to read
 /// the entire header message, EINVAL if the first 8 bytes are not valid, ENODATA if the
@@ -339,6 +383,8 @@ void ArrowIpcInputStreamMove(struct ArrowIpcInputStream* src,
                              struct ArrowIpcInputStream* dst);
 
 /// \brief Create an input stream from an ArrowBuffer
+///
+/// The stream takes ownership of the buffer and reads bytes from it.
 ArrowErrorCode ArrowIpcInputStreamInitBuffer(struct ArrowIpcInputStream* stream,
                                              struct ArrowBuffer* input);
 
@@ -379,7 +425,205 @@ ArrowErrorCode ArrowIpcArrayStreamReaderInit(
     struct ArrowArrayStream* out, struct ArrowIpcInputStream* input_stream,
     struct ArrowIpcArrayStreamReaderOptions* options);
 
+/// \brief Encoder for Arrow IPC messages
+///
+/// This structure is intended to be allocated by the caller,
+/// initialized using ArrowIpcEncoderInit(), and released with
+/// ArrowIpcEncoderReset().
+struct ArrowIpcEncoder {
+  /// \brief Private resources managed by this library
+  void* private_data;
+};
+
+/// \brief Initialize an encoder
+///
+/// If NANOARROW_OK is returned, the caller must call ArrowIpcEncoderReset()
+/// to release resources allocated by this function.
+ArrowErrorCode ArrowIpcEncoderInit(struct ArrowIpcEncoder* encoder);
+
+/// \brief Release all resources attached to an encoder
+void ArrowIpcEncoderReset(struct ArrowIpcEncoder* encoder);
+
+/// \brief Finalize the most recently encoded message into a buffer
+///
+/// If specified, the message will be encapsulated (prefixed with the continuation
+/// marker and the header size and 0-padded to a multiple of 8 bytes).
+///
+/// The bytes of the encoded message will be appended to the provided buffer.
+ArrowErrorCode ArrowIpcEncoderFinalizeBuffer(struct ArrowIpcEncoder* encoder,
+                                             char encapsulate, struct ArrowBuffer* out);
+
+/// \brief Encode an ArrowSchema
+///
+/// Returns ENOMEM if allocation fails, NANOARROW_OK otherwise.
+ArrowErrorCode ArrowIpcEncoderEncodeSchema(struct ArrowIpcEncoder* encoder,
+                                           const struct ArrowSchema* schema,
+                                           struct ArrowError* error);
+
+/// \brief Encode a struct typed ArrayView to a flatbuffer RecordBatch, embedded in a
+/// Message.
+///
+/// Body buffers are concatenated into a contiguous, padded body_buffer.
+///
+/// Returns ENOMEM if allocation fails, NANOARROW_OK otherwise.
+ArrowErrorCode ArrowIpcEncoderEncodeSimpleRecordBatch(
+    struct ArrowIpcEncoder* encoder, const struct ArrowArrayView* array_view,
+    struct ArrowBuffer* body_buffer, struct ArrowError* error);
+
+/// \brief An user-extensible output data sink
+struct ArrowIpcOutputStream {
+  /// \brief Write up to buf_size_bytes from stream into buf
+  ///
+  /// The actual number of bytes written is placed in the value pointed to by
+  /// size_read_out. Returns NANOARROW_OK on success.
+  ArrowErrorCode (*write)(struct ArrowIpcOutputStream* stream, const void* buf,
+                          int64_t buf_size_bytes, int64_t* size_written_out,
+                          struct ArrowError* error);
+
+  /// \brief Release the stream and any resources it may be holding
+  ///
+  /// Release callback implementations must set the release member to NULL.
+  /// Callers must check that the release callback is not NULL before calling
+  /// read() or release().
+  void (*release)(struct ArrowIpcOutputStream* stream);
+
+  /// \brief Private implementation-defined data
+  void* private_data;
+};
+
+/// \brief Transfer ownership of an ArrowIpcOutputStream
+void ArrowIpcOutputStreamMove(struct ArrowIpcOutputStream* src,
+                              struct ArrowIpcOutputStream* dst);
+
+/// \brief Create an output stream from an ArrowBuffer
+///
+/// All bytes witten to the stream will be appended to the buffer.
+/// The stream does not take ownership of the buffer.
+ArrowErrorCode ArrowIpcOutputStreamInitBuffer(struct ArrowIpcOutputStream* stream,
+                                              struct ArrowBuffer* output);
+
+/// \brief Create an output stream from a C FILE* pointer
+///
+/// Note that the ArrowIpcOutputStream has no mechanism to communicate an error
+/// if file_ptr fails to close. If this behaviour is needed, pass false to
+/// close_on_release and handle closing the file independently from stream.
+ArrowErrorCode ArrowIpcOutputStreamInitFile(struct ArrowIpcOutputStream* stream,
+                                            void* file_ptr, int close_on_release);
+
+/// \brief Write to a stream, trying again until all are written or the stream errors.
+ArrowErrorCode ArrowIpcOutputStreamWrite(struct ArrowIpcOutputStream* stream,
+                                         struct ArrowBufferView data,
+                                         struct ArrowError* error);
+
+/// \brief A stream writer which encodes Schemas and ArrowArrays into an IPC byte stream
+///
+/// This structure is intended to be allocated by the caller,
+/// initialized using ArrowIpcWriterInit(), and released with
+/// ArrowIpcWriterReset().
+struct ArrowIpcWriter {
+  /// \brief Private resources managed by this library
+  void* private_data;
+};
+
+/// \brief Initialize an output stream of bytes from an ArrowArrayStream
+///
+/// Returns NANOARROW_OK on success. If NANOARROW_OK is returned the writer
+/// takes ownership of the output byte stream, and the caller is
+/// responsible for releasing the writer by calling ArrowIpcWriterReset().
+ArrowErrorCode ArrowIpcWriterInit(struct ArrowIpcWriter* writer,
+                                  struct ArrowIpcOutputStream* output_stream);
+
+/// \brief Release all resources attached to a writer
+void ArrowIpcWriterReset(struct ArrowIpcWriter* writer);
+
+/// \brief Write a schema to the output byte stream
+///
+/// Errors are propagated from the underlying encoder and output byte stream.
+ArrowErrorCode ArrowIpcWriterWriteSchema(struct ArrowIpcWriter* writer,
+                                         const struct ArrowSchema* in,
+                                         struct ArrowError* error);
+
+/// \brief Write an array view to the output byte stream
+///
+/// The array view may be NULL, in which case an EOS will be written.
+/// The writer does not check that a schema was already written.
+///
+/// Errors are propagated from the underlying encoder and output byte stream,
+ArrowErrorCode ArrowIpcWriterWriteArrayView(struct ArrowIpcWriter* writer,
+                                            const struct ArrowArrayView* in,
+                                            struct ArrowError* error);
+
+/// \brief Write an entire stream (including EOS) to the output byte stream
+///
+/// Errors are propagated from the underlying encoder, array stream, and output byte
+/// stream.
+ArrowErrorCode ArrowIpcWriterWriteArrayStream(struct ArrowIpcWriter* writer,
+                                              struct ArrowArrayStream* in,
+                                              struct ArrowError* error);
+
+/// \brief Start writing an IPC file
+///
+/// Writes the Arrow IPC magic and sets the writer up to track written blocks.
+ArrowErrorCode ArrowIpcWriterStartFile(struct ArrowIpcWriter* writer,
+                                       struct ArrowError* error);
+
+/// \brief Finish writing an IPC file
+///
+/// Writes the IPC file's Footer, footer size, and ending magic.
+ArrowErrorCode ArrowIpcWriterFinalizeFile(struct ArrowIpcWriter* writer,
+                                          struct ArrowError* error);
 /// @}
+
+// Internal APIs:
+
+/// \brief Represents a byte range in an IPC file.
+///
+/// \warning This API is currently only public for use in integration testing;
+///          use at your own risk.
+struct ArrowIpcFileBlock {
+  /// \brief offset relative to the first byte of the file.
+  int64_t offset;
+  /// \brief length of encapsulated metadata Message (including padding)
+  int32_t metadata_length;
+  /// \brief length of contiguous body buffers (including padding)
+  int64_t body_length;
+};
+
+/// \brief A Footer for use in an IPC file
+///
+/// \warning This API is currently only public for use in integration testing;
+///          use at your own risk.
+///
+/// This structure is intended to be allocated by the caller, initialized using
+/// ArrowIpcFooterInit(), and released with ArrowIpcFooterReset().
+struct ArrowIpcFooter {
+  /// \brief the Footer's embedded Schema
+  struct ArrowSchema schema;
+  /// \brief all blocks containing RecordBatch Messages
+  struct ArrowBuffer record_batch_blocks;
+};
+
+/// \brief Initialize a Footer
+///
+/// \warning This API is currently only public for use in integration testing;
+///          use at your own risk.
+void ArrowIpcFooterInit(struct ArrowIpcFooter* footer);
+
+/// \brief Release all resources attached to an footer
+///
+/// \warning This API is currently only public for use in integration testing;
+///          use at your own risk.
+void ArrowIpcFooterReset(struct ArrowIpcFooter* footer);
+
+/// \brief Encode a Footer for use in an IPC file
+///
+/// \warning This API is currently only public for use in integration testing;
+///          use at your own risk.
+///
+/// Returns ENOMEM if allocation fails, NANOARROW_OK otherwise.
+ArrowErrorCode ArrowIpcEncoderEncodeFooter(struct ArrowIpcEncoder* encoder,
+                                           const struct ArrowIpcFooter* footer,
+                                           struct ArrowError* error);
 
 #ifdef __cplusplus
 }

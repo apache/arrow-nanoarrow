@@ -128,6 +128,7 @@
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowArrayViewSetArrayMinimal)
 #define ArrowArrayViewValidate \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowArrayViewValidate)
+#define ArrowArrayViewCompare NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowArrayViewCompare)
 #define ArrowArrayViewReset NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowArrayViewReset)
 #define ArrowBasicArrayStreamInit \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowBasicArrayStreamInit)
@@ -1064,12 +1065,29 @@ ArrowErrorCode ArrowArrayViewValidate(struct ArrowArrayView* array_view,
                                       enum ArrowValidationLevel validation_level,
                                       struct ArrowError* error);
 
+/// \brief Compare two ArrowArrayView objects for equality
+///
+/// Given two ArrowArrayView instances, place either 0 (not equal) and
+/// 1 (equal) at the address pointed to by out. If the comparison determines
+/// that actual and expected are not equal, a reason will be communicated via
+/// error if error is non-NULL.
+///
+/// Returns NANOARROW_OK if the comparison completed successfully.
+ArrowErrorCode ArrowArrayViewCompare(const struct ArrowArrayView* actual,
+                                     const struct ArrowArrayView* expected,
+                                     enum ArrowCompareLevel level, int* out,
+                                     struct ArrowError* reason);
+
 /// \brief Reset the contents of an ArrowArrayView and frees resources
 void ArrowArrayViewReset(struct ArrowArrayView* array_view);
 
 /// \brief Check for a null element in an ArrowArrayView
 static inline int8_t ArrowArrayViewIsNull(const struct ArrowArrayView* array_view,
                                           int64_t i);
+
+/// \brief Compute null count for an ArrowArrayView
+static inline int64_t ArrowArrayViewComputeNullCount(
+    const struct ArrowArrayView* array_view);
 
 /// \brief Get the type id of a union array element
 static inline int8_t ArrowArrayViewUnionTypeId(const struct ArrowArrayView* array_view,

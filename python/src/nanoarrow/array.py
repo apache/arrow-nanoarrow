@@ -19,8 +19,10 @@ import itertools
 from functools import cached_property
 from typing import Iterable, Tuple
 
+from nanoarrow._array import CArray, CArrayView
+from nanoarrow._array_stream import CMaterializedArrayStream
+from nanoarrow._buffer import CBufferView
 from nanoarrow._device import DEVICE_CPU, Device
-from nanoarrow._lib import CArray, CArrayView, CBuffer, CMaterializedArrayStream
 from nanoarrow.c_array import c_array, c_array_view
 from nanoarrow.c_array_stream import c_array_stream
 from nanoarrow.c_schema import c_schema
@@ -289,7 +291,7 @@ class Array(ArrayViewVisitable):
         self._assert_one_chunk("scalar offset")
         return self._data.array(0).offset
 
-    def buffer(self, i: int) -> CBuffer:
+    def buffer(self, i: int) -> CBufferView:
         """Access a single buffer of a contiguous array
 
         Examples
@@ -298,12 +300,12 @@ class Array(ArrayViewVisitable):
         >>> import nanoarrow as na
         >>> array = na.Array([1, 2, 3], na.int32())
         >>> array.buffer(1)
-        nanoarrow.c_lib.CBufferView(int32[12 b] 1 2 3)
+        nanoarrow.c_buffer.CBufferView(int32[12 b] 1 2 3)
         """
         return self.buffers[i]
 
     @cached_property
-    def buffers(self) -> Tuple[CBuffer, ...]:
+    def buffers(self) -> Tuple[CBufferView, ...]:
         """Access buffers of a contiguous array.
 
         Examples
@@ -313,8 +315,8 @@ class Array(ArrayViewVisitable):
         >>> array = na.Array([1, 2, 3], na.int32())
         >>> for buffer in array.buffers:
         ...     print(buffer)
-        nanoarrow.c_lib.CBufferView(bool[0 b] )
-        nanoarrow.c_lib.CBufferView(int32[12 b] 1 2 3)
+        nanoarrow.c_buffer.CBufferView(bool[0 b] )
+        nanoarrow.c_buffer.CBufferView(int32[12 b] 1 2 3)
         """
         view = c_array_view(self)
         return tuple(view.buffers)
@@ -334,8 +336,8 @@ class Array(ArrayViewVisitable):
         ...     print(validity)
         ...     print(data)
         0 3
-        nanoarrow.c_lib.CBufferView(bool[0 b] )
-        nanoarrow.c_lib.CBufferView(int32[12 b] 1 2 3)
+        nanoarrow.c_buffer.CBufferView(bool[0 b] )
+        nanoarrow.c_buffer.CBufferView(int32[12 b] 1 2 3)
         """
         return iter_array_views(self)
 

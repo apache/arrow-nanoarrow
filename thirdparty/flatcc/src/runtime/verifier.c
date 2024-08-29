@@ -135,20 +135,6 @@ static inline int check_header(uoffset_t end, uoffset_t base, uoffset_t offset)
     return k > base && k + offset_size <= end && !(k & (offset_size - 1));
 }
 
-static inline int check_aligned_header(uoffset_t end, uoffset_t base, uoffset_t offset, uint16_t align)
-{
-    uoffset_t k = base + offset;
-
-    if (uoffset_size <= voffset_size && k + offset_size < k) {
-        return 0;
-    }
-    /* Alignment refers to element 0 and header must also be aligned. */
-    align = align < uoffset_size ? uoffset_size : align;
-
-    /* Note to self: the builder can also use the mask OR trick to propagate `min_align`. */
-    return k > base && k + offset_size <= end && !((k + offset_size) & ((offset_size - 1) | (align - 1u)));
-}
-
 static inline int verify_struct(uoffset_t end, uoffset_t base, uoffset_t offset, uoffset_t size, uint16_t align)
 {
     /* Structs can have zero size so `end` is a valid value. */
@@ -278,10 +264,17 @@ static inline int verify_vector(const void *buf, uoffset_t end, uoffset_t base, 
 {
     uoffset_t n;
 
-    verify(check_aligned_header(end, base, offset, align), flatcc_verify_error_vector_header_out_of_range_or_unaligned);
+    verify(check_header(end, base, offset), flatcc_verify_error_vector_header_out_of_range_or_unaligned);
     base += offset;
+
     n = read_uoffset(buf, base);
     base += offset_size;
+
+#if !FLATCC_ENFORCE_ALIGNED_EMPTY_VECTORS
+    /* This is due to incorrect buffers from other builders than cannot easily be ignored. */
+    align = n == 0 ? uoffset_size : align;
+#endif
+    verify(!(base & ((align - 1u) | (uoffset_size - 1u))), flatcc_verify_error_vector_header_out_of_range_or_unaligned);
     /* `n * elem_size` can overflow uncontrollably otherwise. */
     verify(n <= max_count, flatcc_verify_error_vector_count_exceeds_representable_vector_size);
     verify(end - base >= n * elem_size, flatcc_verify_error_vector_out_of_range);
@@ -470,6 +463,29 @@ int flatcc_verify_buffer_header(const void *buf, size_t bufsiz, const char *fid)
     return flatcc_verify_ok;
 }
 
+int flatcc_verify_buffer_header_with_size(const void *buf, size_t *bufsiz, const char *fid)
+{
+    thash_t id, id2;
+    size_t size_field;
+
+    verify_runtime(!(((size_t)buf) & (offset_size - 1)), flatcc_verify_error_runtime_buffer_header_not_aligned);
+    /* -8 ensures no scalar or offset field size can overflow. */
+    verify_runtime(*bufsiz <= FLATBUFFERS_UOFFSET_MAX - 8, flatcc_verify_error_runtime_buffer_size_too_large);
+
+    /* Size field, offset field, optional identifier field that must be read even if not present. */
+    verify(*bufsiz >= 2 * offset_size + FLATBUFFERS_IDENTIFIER_SIZE, flatcc_verify_error_buffer_header_too_small);
+
+    size_field = (size_t)read_uoffset(buf, 0);
+    verify_runtime(size_field <= *bufsiz - offset_size, flatcc_verify_error_runtime_buffer_size_less_than_size_field);
+    if (fid != 0) {
+        id2 = read_thash_identifier(fid);
+        id = read_thash(buf, offset_size);
+        verify(id2 == 0 || id == id2, flatcc_verify_error_identifier_mismatch);
+    }
+    *bufsiz = size_field + offset_size;
+    return flatcc_verify_ok;
+}
+
 int flatcc_verify_typed_buffer_header(const void *buf, size_t bufsiz, flatbuffers_thash_t thash)
 {
     thash_t id, id2;
@@ -492,9 +508,38 @@ int flatcc_verify_typed_buffer_header(const void *buf, size_t bufsiz, flatbuffer
     return flatcc_verify_ok;
 }
 
+int flatcc_verify_typed_buffer_header_with_size(const void *buf, size_t *bufsiz, flatbuffers_thash_t thash)
+{
+    thash_t id, id2;
+    size_t size_field;
+
+    verify_runtime(!(((size_t)buf) & (offset_size - 1)), flatcc_verify_error_runtime_buffer_header_not_aligned);
+    /* -8 ensures no scalar or offset field size can overflow. */
+    verify_runtime(*bufsiz <= FLATBUFFERS_UOFFSET_MAX - 8, flatcc_verify_error_runtime_buffer_size_too_large);
+
+    /* Size field, offset field, optional identifier field that must be read even if not present. */
+    verify(*bufsiz >= 2 * offset_size + FLATBUFFERS_IDENTIFIER_SIZE, flatcc_verify_error_buffer_header_too_small);
+
+    size_field = (size_t)read_uoffset(buf, 0);
+    verify_runtime(size_field <= *bufsiz - offset_size, flatcc_verify_error_runtime_buffer_size_less_than_size_field);
+    if (thash != 0) {
+        id2 = thash;
+        id = read_thash(buf, offset_size);
+        verify(id2 == 0 || id == id2, flatcc_verify_error_identifier_mismatch);
+    }
+    *bufsiz = size_field + offset_size;
+    return flatcc_verify_ok;
+}
+
 int flatcc_verify_struct_as_root(const void *buf, size_t bufsiz, const char *fid, size_t size, uint16_t align)
 {
     check_result(flatcc_verify_buffer_header(buf, bufsiz, fid));
+    return verify_struct((uoffset_t)bufsiz, 0, read_uoffset(buf, 0), (uoffset_t)size, align);
+}
+
+int flatcc_verify_struct_as_root_with_size(const void *buf, size_t bufsiz, const char *fid, size_t size, uint16_t align)
+{
+    check_result(flatcc_verify_buffer_header_with_size(buf, &bufsiz, fid));
     return verify_struct((uoffset_t)bufsiz, 0, read_uoffset(buf, 0), (uoffset_t)size, align);
 }
 
@@ -504,16 +549,34 @@ int flatcc_verify_struct_as_typed_root(const void *buf, size_t bufsiz, flatbuffe
     return verify_struct((uoffset_t)bufsiz, 0, read_uoffset(buf, 0), (uoffset_t)size, align);
 }
 
+int flatcc_verify_struct_as_typed_root_with_size(const void *buf, size_t bufsiz, flatbuffers_thash_t thash, size_t size, uint16_t align)
+{
+    check_result(flatcc_verify_typed_buffer_header_with_size(buf, &bufsiz, thash));
+    return verify_struct((uoffset_t)bufsiz, uoffset_size, read_uoffset(buf, uoffset_size), (uoffset_t)size, align);
+}
+
 int flatcc_verify_table_as_root(const void *buf, size_t bufsiz, const char *fid, flatcc_table_verifier_f *tvf)
 {
-    check_result(flatcc_verify_buffer_header(buf, (uoffset_t)bufsiz, fid));
+    check_result(flatcc_verify_buffer_header(buf, bufsiz, fid));
     return verify_table(buf, (uoffset_t)bufsiz, 0, read_uoffset(buf, 0), FLATCC_VERIFIER_MAX_LEVELS, tvf);
+}
+
+int flatcc_verify_table_as_root_with_size(const void *buf, size_t bufsiz, const char *fid, flatcc_table_verifier_f *tvf)
+{
+    check_result(flatcc_verify_buffer_header_with_size(buf, &bufsiz, fid));
+    return verify_table(buf, (uoffset_t)bufsiz, uoffset_size, read_uoffset(buf, uoffset_size), FLATCC_VERIFIER_MAX_LEVELS, tvf);
 }
 
 int flatcc_verify_table_as_typed_root(const void *buf, size_t bufsiz, flatbuffers_thash_t thash, flatcc_table_verifier_f *tvf)
 {
-    check_result(flatcc_verify_typed_buffer_header(buf, (uoffset_t)bufsiz, thash));
+    check_result(flatcc_verify_typed_buffer_header(buf, bufsiz, thash));
     return verify_table(buf, (uoffset_t)bufsiz, 0, read_uoffset(buf, 0), FLATCC_VERIFIER_MAX_LEVELS, tvf);
+}
+
+int flatcc_verify_table_as_typed_root_with_size(const void *buf, size_t bufsiz, flatbuffers_thash_t thash, flatcc_table_verifier_f *tvf)
+{
+    check_result(flatcc_verify_typed_buffer_header_with_size(buf, &bufsiz, thash));
+    return verify_table(buf, (uoffset_t)bufsiz, uoffset_size, read_uoffset(buf, uoffset_size), FLATCC_VERIFIER_MAX_LEVELS, tvf);
 }
 
 int flatcc_verify_struct_as_nested_root(flatcc_table_verifier_descriptor_t *td,

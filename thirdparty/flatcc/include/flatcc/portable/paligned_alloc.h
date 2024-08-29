@@ -61,6 +61,8 @@ extern "C" {
 #define PORTABLE_C11_ALIGNED_ALLOC 0
 #elif defined (__clang__)
 #define PORTABLE_C11_ALIGNED_ALLOC 0
+#elif defined (__APPLE__)
+#define PORTABLE_C11_ALIGNED_ALLOC 0
 #elif defined(__IBMC__)
 #define PORTABLE_C11_ALIGNED_ALLOC 0
 #elif (defined(__STDC__) && __STDC__ && defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L)
@@ -169,6 +171,7 @@ static inline void *__portable_aligned_alloc(size_t alignment, size_t size)
         alignment = sizeof(void *);
     }
     raw = (char *)(size_t)malloc(total_size);
+    if (!raw) return 0;
     buf = raw + alignment - 1 + sizeof(void *);
     buf = (void *)(((size_t)buf) & ~(alignment - 1));
     ((void **)buf)[-1] = raw;

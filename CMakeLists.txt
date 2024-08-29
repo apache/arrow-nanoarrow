@@ -32,6 +32,9 @@ set(NANOARROW_VERSION_MAJOR "${nanoarrow_VERSION_MAJOR}")
 set(NANOARROW_VERSION_MINOR "${nanoarrow_VERSION_MINOR}")
 set(NANOARROW_VERSION_PATCH "${nanoarrow_VERSION_PATCH}")
 
+# General options
+option(NANOARROW_NAMESPACE "A prefix for exported symbols" OFF)
+
 # Feature options
 option(NANOARROW_IPC "Build IPC extension" OFF)
 option(NANOARROW_FLATCC_ROOT_DIR "Root directory for flatcc include and lib directories"
@@ -40,6 +43,9 @@ option(NANOARROW_FLATCC_INCLUDE_DIR "Include directory for flatcc includes" OFF)
 option(NANOARROW_FLATCC_LIB_DIR "Library directory that contains libflatccrt.a" OFF)
 
 option(NANOARROW_DEVICE "Build device extension" OFF)
+option(NANOARROW_TESTING "Build testng extension" OFF)
+option(NANOARROW_DEVICE_WITH_METAL "Build Apple metal libraries" OFF)
+option(NANOARROW_DEVICE_WITH_CUDA "Build CUDA libraries" OFF)
 
 # Development options
 option(NANOARROW_BUILD_APPS "Build utility applications" OFF)
@@ -49,20 +55,9 @@ option(NANOARROW_BUILD_INTEGRATION_TESTS
        "Build cross-implementation Arrow integration tests" OFF)
 option(NANOARROW_BUNDLE "Create bundled nanoarrow.h and nanoarrow.c" OFF)
 option(NANOARROW_BUNDLE_AS_CPP "Bundle nanoarrow source file as nanoarrow.cc" OFF)
-option(NANOARROW_NAMESPACE "A prefix for exported symbols" OFF)
+option(NANOARROW_CODE_COVERAGE "Enable coverage reporting" OFF)
 option(NANOARROW_ARROW_STATIC
        "Use a statically-linked Arrow C++ build when linking tests" OFF)
-
-option(NANOARROW_DEVICE_WITH_METAL "Build Apple metal libraries" OFF)
-option(NANOARROW_DEVICE_WITH_CUDA "Build CUDA libraries" OFF)
-
-if(NANOARROW_IPC)
-  add_library(ipc_coverage_config INTERFACE)
-endif()
-
-if(NANOARROW_DEVICE)
-  add_library(device_coverage_config INTERFACE)
-endif()
 
 if(NANOARROW_NAMESPACE)
   set(NANOARROW_NAMESPACE_DEFINE "#define NANOARROW_NAMESPACE ${NANOARROW_NAMESPACE}")
@@ -70,7 +65,15 @@ else()
   set(NANOARROW_NAMESPACE_DEFINE "// #define NANOARROW_NAMESPACE YourNamespaceHere")
 endif()
 
-option(NANOARROW_CODE_COVERAGE "Enable coverage reporting" OFF)
+add_library(nanoarrow_coverage_config INTERFACE)
+install(TARGETS nanoarrow_coverage_config
+        DESTINATION lib
+        EXPORT nanoarrow-exports)
+
+if(NANOARROW_CODE_COVERAGE)
+  target_compile_options(nanoarrow_coverage_config INTERFACE -O0 -g --coverage)
+  target_link_options(nanoarrow_coverage_config INTERFACE --coverage)
+endif()
 
 # Avoids a warning about timestamps on downloaded files (prefer new policy
 # if available))
@@ -86,7 +89,7 @@ if(NANOARROW_BUNDLE)
                REQUIRED)
 
   # Set up arguments to the bundler
-  set(NANOARROW_BUNDLE_ARGS "--with-ipc" "--with-device" "--with-flatcc")
+  set(NANOARROW_BUNDLE_ARGS "--with-ipc" "--with-device" "--with-testing" "--with-flatcc")
 
   if(NANOARROW_BUNDLE_AS_CPP)
     list(APPEND NANOARROW_BUNDLE_ARGS "--cpp")
@@ -103,11 +106,13 @@ if(NANOARROW_BUNDLE)
   execute_process(COMMAND ${Python3_EXECUTABLE}
                           "${CMAKE_CURRENT_SOURCE_DIR}/ci/scripts/bundle.py"
                           "--output-dir" "${CMAKE_BINARY_DIR}/bundled"
-                          ${NANOARROW_BUNDLE_ARGS} COMMAND_ECHO STDERR)
+                          ${NANOARROW_BUNDLE_ARGS})
 
   set(NANOARROW_BUILD_INCLUDE_DIR "${CMAKE_BINARY_DIR}/bundled/include")
   set(NANOARROW_IPC_BUILD_SOURCES "${CMAKE_BINARY_DIR}/bundled/src/nanoarrow_ipc.c")
   set(NANOARROW_DEVICE_BUILD_SOURCES "${CMAKE_BINARY_DIR}/bundled/src/nanoarrow_device.c")
+  set(NANOARROW_TESTING_BUILD_SOURCES
+      "${CMAKE_BINARY_DIR}/bundled/src/nanoarrow_testing.cc")
   set(NANOARROW_FLATCC_BUILD_SOURCES "${CMAKE_BINARY_DIR}/bundled/src/flatcc.c")
 else()
   # Generate the version information
@@ -142,41 +147,17 @@ target_include_directories(nanoarrow
                            PUBLIC $<BUILD_INTERFACE:${NANOARROW_BUILD_INCLUDE_DIR}>
                                   $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/src>
                                   $<INSTALL_INTERFACE:include>)
-target_compile_definitions(nanoarrow PUBLIC "$<$<CONFIG:Debug>:NANOARROW_DEBUG>")
-
-# Ensure targets/headers can be installed
-install(TARGETS nanoarrow
-        DESTINATION lib
-        EXPORT nanoarrow-exports)
-
 install(FILES ${NANOARROW_INSTALL_HEADERS} DESTINATION include/nanoarrow)
 
-if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-  if(CMAKE_C_COMPILER_ID STREQUAL "GNU")
-    target_compile_options(nanoarrow
-                           PRIVATE -Wall
-                                   -Werror
-                                   -Wextra
-                                   -Wpedantic
-                                   -Wno-type-limits
-                                   -Wmaybe-uninitialized
-                                   -Wunused-result
-                                   -Wconversion
-                                   -Wno-sign-conversion)
-  elseif(CMAKE_C_COMPILER_ID STREQUAL "AppleClang" OR CMAKE_C_COMPILER_ID STREQUAL
-                                                      "Clang")
-    target_compile_options(nanoarrow
-                           PRIVATE -Wall
-                                   -Werror
-                                   -Wextra
-                                   -Wpedantic
-                                   -Wdocumentation
-                                   -Wconversion
-                                   -Wno-sign-conversion)
-  endif()
-endif()
-
 if(NANOARROW_IPC)
+  # flatcc requires C11 for alignas() and static_assert() in flatcc_generated.h
+  # It may be possible to use C99 mode to build the runtime and/or generated header
+  # should this cause problems for users.
+  if(NOT DEFINED CMAKE_C_STANDARD)
+    set(CMAKE_C_STANDARD 11)
+    set(CMAKE_C_STANDARD_REQUIRED ON)
+  endif()
+
   # Add the flatcc (runtime) dependency
   set(FLATCC_RTONLY
       ON
@@ -203,6 +184,9 @@ if(NANOARROW_IPC)
     target_include_directories(flatccrt
                                PUBLIC $<BUILD_INTERFACE:${NANOARROW_FLATCC_INCLUDE_DIR}>
                                       $<INSTALL_INTERFACE:include>)
+    install(TARGETS flatccrt
+            DESTINATION lib
+            EXPORT nanoarrow-exports)
 
   elseif(NOT NANOARROW_FLATCC_ROOT_DIR)
     add_library(flatccrt STATIC IMPORTED)
@@ -223,21 +207,37 @@ if(NANOARROW_IPC)
   endif()
 
   if(NOT NANOARROW_BUNDLE)
-    set(NANOARROW_IPC_BUILD_SOURCES src/nanoarrow/ipc/decoder.c
-                                    src/nanoarrow/ipc/reader.c)
+    set(NANOARROW_IPC_BUILD_SOURCES
+        src/nanoarrow/ipc/decoder.c src/nanoarrow/ipc/encoder.c
+        src/nanoarrow/ipc/reader.c src/nanoarrow/ipc/writer.c)
   endif()
 
   add_library(nanoarrow_ipc ${NANOARROW_IPC_BUILD_SOURCES})
-  target_link_libraries(nanoarrow_ipc PRIVATE flatccrt)
+  target_link_libraries(nanoarrow_ipc PRIVATE flatccrt nanoarrow_coverage_config)
   target_include_directories(nanoarrow_ipc
                              PUBLIC $<BUILD_INTERFACE:${NANOARROW_BUILD_INCLUDE_DIR}>
                                     $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/src>
-                                    $<BUILD_INTERFACE:${NANOARROW_IPC_FLATCC_INCLUDE_DIR}
+                                    $<BUILD_INTERFACE:${NANOARROW_IPC_FLATCC_INCLUDE_DIR}>
                                     $<INSTALL_INTERFACE:include>)
 
   install(TARGETS nanoarrow_ipc DESTINATION lib)
   install(FILES src/nanoarrow/nanoarrow_ipc.h src/nanoarrow/ipc/flatcc_generated.h
           DESTINATION include/nanoarrow)
+endif()
+
+if(NANOARROW_IPC AND (NANOARROW_BUILD_INTEGRATION_TESTS OR NANOARROW_BUILD_TESTS))
+  if(NOT DEFINED CMAKE_CXX_STANDARD)
+    set(CMAKE_CXX_STANDARD 11)
+    set(CMAKE_CXX_STANDARD_REQUIRED ON)
+  endif()
+  add_executable(nanoarrow_ipc_integration src/nanoarrow/integration/ipc_integration.cc)
+  target_include_directories(nanoarrow_ipc_integration
+                             PUBLIC $<BUILD_INTERFACE:${NANOARROW_BUILD_INCLUDE_DIR}>
+                                    $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/src>
+                                    $<INSTALL_INTERFACE:include>)
+  target_link_libraries(nanoarrow_ipc_integration
+                        PRIVATE nanoarrow_testing nanoarrow_ipc flatccrt
+                                nanoarrow_coverage_config)
 endif()
 
 if(NANOARROW_DEVICE)
@@ -268,11 +268,20 @@ if(NANOARROW_DEVICE)
     find_library(QUARTZ_CORE_LIBRARY QuartzCore REQUIRED)
     message(STATUS "CoreFoundation framework found at '${QUARTZ_CORE_LIBRARY}'")
 
+    set(NANOARROW_DEVICE_INCLUDE_METAL "${CMAKE_BINARY_DIR}/metal-cpp")
+    add_library(nanoarrow_metal_impl src/nanoarrow/device/metal_impl.cc)
+    target_link_libraries(nanoarrow_metal_impl
+                          PRIVATE ${METAL_LIBRARY} ${FOUNDATION_LIBRARY}
+                                  ${QUARTZ_CORE_LIBRARY})
+    target_include_directories(nanoarrow_metal_impl
+                               PRIVATE ${NANOARROW_DEVICE_INCLUDE_METAL})
+    install(TARGETS nanoarrow_metal_impl
+            DESTINATION lib
+            EXPORT nanoarrow-exports)
+
     set(NANOARROW_DEVICE_SOURCES_METAL src/nanoarrow/device/metal.cc)
-    set(NANOARROW_DEVICE_INCLUDE_METAL ${CMAKE_BINARY_DIR}/metal-cpp)
-    set(NANOARROW_DEVICE_LIBS_METAL ${METAL_LIBRARY} ${FOUNDATION_LIBRARY}
-                                    ${QUARTZ_CORE_LIBRARY})
     set(NANOARROW_DEVICE_DEFS_METAL "NANOARROW_DEVICE_WITH_METAL")
+    set(NANOARROW_DEVICE_LIBS_METAL nanoarrow_metal_impl)
   endif()
 
   if(NANOARROW_DEVICE_WITH_CUDA)
@@ -299,27 +308,95 @@ if(NANOARROW_DEVICE)
 
   target_compile_definitions(nanoarrow_device PRIVATE ${NANOARROW_DEVICE_DEFS_METAL}
                                                       ${NANOARROW_DEVICE_DEFS_CUDA})
-  target_link_libraries(nanoarrow_device PUBLIC ${NANOARROW_DEVICE_LIBS_METAL}
-                                                ${NANOARROW_DEVICE_LIBS_CUDA})
-  target_compile_definitions(nanoarrow_device PUBLIC "$<$<CONFIG:Debug>:NANOARROW_DEBUG>")
+  target_link_libraries(nanoarrow_device
+                        PUBLIC ${NANOARROW_DEVICE_LIBS_CUDA}
+                               ${NANOARROW_DEVICE_LIBS_METAL} nanoarrow_coverage_config)
 
   install(TARGETS nanoarrow_device DESTINATION lib)
   install(FILES src/nanoarrow/nanoarrow_device.h DESTINATION include/nanoarrow)
 endif()
 
+if(NANOARROW_TESTING
+   OR NANOARROW_BUILD_TESTS
+   OR NANOARROW_BUILD_INTEGRATION_TESTS)
+  if(NOT DEFINED CMAKE_CXX_STANDARD)
+    set(CMAKE_CXX_STANDARD 11)
+    set(CMAKE_CXX_STANDARD_REQUIRED ON)
+  endif()
+
+  if(NOT NANOARROW_BUNDLE)
+    set(NANOARROW_TESTING_BUILD_SOURCES src/nanoarrow/testing/testing.cc)
+  endif()
+
+  add_subdirectory("thirdparty/nlohmann_json")
+  install(TARGETS nlohmann_json
+          DESTINATION lib
+          EXPORT nanoarrow-exports)
+
+  add_library(nanoarrow_testing src/nanoarrow/testing/testing.cc)
+  target_include_directories(nanoarrow_testing
+                             PUBLIC $<BUILD_INTERFACE:${NANOARROW_BUILD_INCLUDE_DIR}>
+                                    $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/src>
+                                    $<INSTALL_INTERFACE:include>)
+  target_link_libraries(nanoarrow_testing PRIVATE nlohmann_json::nlohmann_json nanoarrow)
+  target_link_libraries(nanoarrow_testing PUBLIC nanoarrow)
+  set_target_properties(nanoarrow_testing PROPERTIES POSITION_INDEPENDENT_CODE ON)
+endif()
+
 # Always build integration test if building tests
 if(NANOARROW_BUILD_TESTS OR NANOARROW_BUILD_INTEGRATION_TESTS)
-  add_subdirectory("thirdparty/nlohmann_json")
-
   set_target_properties(nanoarrow PROPERTIES POSITION_INDEPENDENT_CODE ON)
   add_library(nanoarrow_c_data_integration SHARED
               src/nanoarrow/integration/c_data_integration.cc)
+  target_compile_definitions(nanoarrow_c_data_integration PRIVATE NANOARROW_BUILD_DLL
+                                                                  NANOARROW_EXPORT_DLL)
   target_include_directories(nanoarrow_c_data_integration
                              PUBLIC $<BUILD_INTERFACE:${NANOARROW_BUILD_INCLUDE_DIR}>
                                     $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/src>
                                     $<INSTALL_INTERFACE:include>)
-  target_link_libraries(nanoarrow_c_data_integration PRIVATE nanoarrow nlohmann_json)
+  target_link_libraries(nanoarrow_c_data_integration PRIVATE nanoarrow_testing)
 endif()
+
+# Common configuration for all targets
+foreach(target
+        nanoarrow
+        nanoarrow_ipc
+        nanoarrow_device
+        nanoarrow_testing
+        nanoarrow_c_data_integration
+        nanoarrow_ipc_json_integration)
+  if(TARGET ${target})
+    target_compile_definitions(${target} PUBLIC "$<$<CONFIG:Debug>:NANOARROW_DEBUG>")
+
+    install(TARGETS ${target}
+            DESTINATION lib
+            EXPORT nanoarrow-exports)
+
+    if(CMAKE_C_COMPILER_ID STREQUAL "GNU")
+      target_compile_options(${target}
+                             PRIVATE $<$<CONFIG:Debug>:-Wall
+                                     -Werror
+                                     -Wextra
+                                     -Wpedantic
+                                     -Wno-type-limits
+                                     -Wmaybe-uninitialized
+                                     -Wunused-result
+                                     -Wconversion
+                                     -Wno-sign-conversion>)
+      target_compile_options(${target} PRIVATE -Wno-misleading-indentation)
+    elseif(CMAKE_C_COMPILER_ID STREQUAL "AppleClang" OR CMAKE_C_COMPILER_ID STREQUAL
+                                                        "Clang")
+      target_compile_options(${target}
+                             PRIVATE $<$<CONFIG:Debug>:-Wall
+                                     -Werror
+                                     -Wextra
+                                     -Wpedantic
+                                     -Wdocumentation
+                                     -Wconversion
+                                     -Wno-sign-conversion>)
+    endif()
+  endif()
+endforeach()
 
 if(NANOARROW_BUILD_TESTS)
   set(MEMORYCHECK_COMMAND_OPTIONS
@@ -361,34 +438,41 @@ if(NANOARROW_BUILD_TESTS)
   add_executable(c_data_integration_test
                  src/nanoarrow/integration/c_data_integration_test.cc)
 
-  if(NANOARROW_CODE_COVERAGE)
-    target_compile_options(nanoarrow PUBLIC -O0 -g --coverage)
-    target_link_options(nanoarrow PUBLIC --coverage)
-  endif()
-
   target_link_libraries(utils_test
-                        nanoarrow
+                        nanoarrow_testing
                         gtest_main
                         gmock_main
                         ${NANOARROW_ARROW_TARGET}
-                        nlohmann_json::nlohmann_json)
-  target_link_libraries(buffer_test nanoarrow gtest_main)
+                        nanoarrow_coverage_config)
+  target_link_libraries(buffer_test nanoarrow gtest_main nanoarrow_coverage_config)
   target_link_libraries(array_test
                         nanoarrow
                         gtest_main
                         gmock_main
-                        ${NANOARROW_ARROW_TARGET})
-  target_link_libraries(schema_test nanoarrow gtest_main ${NANOARROW_ARROW_TARGET})
-  target_link_libraries(array_stream_test nanoarrow gtest_main gmock_main)
+                        ${NANOARROW_ARROW_TARGET}
+                        nanoarrow_coverage_config)
+  target_link_libraries(schema_test
+                        nanoarrow
+                        gtest_main
+                        ${NANOARROW_ARROW_TARGET}
+                        nanoarrow_coverage_config)
+  target_link_libraries(array_stream_test
+                        nanoarrow
+                        gtest_main
+                        gmock_main
+                        nanoarrow_coverage_config)
   target_link_libraries(nanoarrow_hpp_test
                         nanoarrow
                         gtest_main
                         gmock_main
-                        nlohmann_json::nlohmann_json)
-  target_link_libraries(nanoarrow_testing_test nanoarrow gtest_main
-                        nlohmann_json::nlohmann_json)
-  target_link_libraries(c_data_integration_test nanoarrow nanoarrow_c_data_integration
-                        gtest_main)
+                        nanoarrow_coverage_config)
+  target_link_libraries(nanoarrow_testing_test nanoarrow_testing gtest_main
+                        nanoarrow_coverage_config)
+  target_link_libraries(c_data_integration_test
+                        nanoarrow
+                        nanoarrow_c_data_integration
+                        gtest_main
+                        nanoarrow_coverage_config)
 
   include(GoogleTest)
   # Some users have reported a timeout with the default value of 5
@@ -416,51 +500,34 @@ if(NANOARROW_BUILD_TESTS)
     endif()
 
     enable_testing()
-
-    add_executable(nanoarrow_ipc_decoder_test src/nanoarrow/ipc/decoder_test.cc)
-    add_executable(nanoarrow_ipc_reader_test src/nanoarrow/ipc/reader_test.cc)
-    add_executable(nanoarrow_ipc_files_test src/nanoarrow/ipc/files_test.cc)
-    add_executable(nanoarrow_ipc_hpp_test src/nanoarrow/ipc/ipc_hpp_test.cc)
-
-    if(NANOARROW_CODE_COVERAGE)
-      target_compile_options(ipc_coverage_config INTERFACE -O0 -g --coverage)
-      target_link_options(ipc_coverage_config INTERFACE --coverage)
-      target_link_libraries(nanoarrow_ipc PRIVATE ipc_coverage_config)
-    endif()
-    target_link_libraries(nanoarrow_ipc_decoder_test
-                          nanoarrow_ipc
-                          nanoarrow
-                          flatccrt
-                          ${NANOARROW_ARROW_TARGET}
-                          gtest_main
-                          ipc_coverage_config)
-    target_link_libraries(nanoarrow_ipc_reader_test
-                          nanoarrow_ipc
-                          nanoarrow
-                          flatccrt
-                          gtest_main
-                          ipc_coverage_config)
-    target_link_libraries(nanoarrow_ipc_files_test
-                          nanoarrow_ipc
-                          nanoarrow
-                          flatccrt
-                          ${NANOARROW_ARROW_TARGET}
-                          nlohmann_json
-                          ZLIB::ZLIB
-                          gtest_main
-                          ipc_coverage_config)
-    target_link_libraries(nanoarrow_ipc_hpp_test
-                          nanoarrow_ipc
-                          nanoarrow
-                          ${NANOARROW_ARROW_TARGET}
-                          gtest_main
-                          ipc_coverage_config)
-
     include(GoogleTest)
-    gtest_discover_tests(nanoarrow_ipc_decoder_test)
-    gtest_discover_tests(nanoarrow_ipc_reader_test)
-    gtest_discover_tests(nanoarrow_ipc_files_test)
-    gtest_discover_tests(nanoarrow_ipc_hpp_test)
+
+    foreach(name
+            decoder
+            encoder
+            reader
+            writer
+            files
+            ipc_hpp)
+      add_executable(nanoarrow_ipc_${name}_test src/nanoarrow/ipc/${name}_test.cc)
+
+      target_link_libraries(nanoarrow_ipc_${name}_test
+                            nanoarrow_ipc
+                            nanoarrow
+                            ${NANOARROW_ARROW_TARGET}
+                            gtest_main
+                            nanoarrow_coverage_config)
+
+      if(NOT (name MATCHES "_hpp_"))
+        target_link_libraries(nanoarrow_ipc_${name}_test flatccrt)
+      endif()
+
+      gtest_discover_tests(nanoarrow_ipc_${name}_test)
+    endforeach()
+
+    target_link_libraries(nanoarrow_ipc_files_test nanoarrow_testing ZLIB::ZLIB
+                          nanoarrow_coverage_config)
+    target_link_libraries(nanoarrow_ipc_decoder_test gmock_main)
   endif()
 
   if(NANOARROW_DEVICE)
@@ -468,22 +535,16 @@ if(NANOARROW_BUILD_TESTS)
     add_executable(nanoarrow_device_test src/nanoarrow/device/device_test.cc)
     add_executable(nanoarrow_device_hpp_test src/nanoarrow/device/device_hpp_test.cc)
 
-    if(NANOARROW_DEVICE_CODE_COVERAGE)
-      target_compile_options(device_coverage_config INTERFACE -O0 -g --coverage)
-      target_link_options(device_coverage_config INTERFACE --coverage)
-      target_link_libraries(nanoarrow_device PRIVATE device_coverage_config)
-    endif()
-
     target_link_libraries(nanoarrow_device_test
                           nanoarrow_device
                           nanoarrow
                           gtest_main
-                          device_coverage_config)
+                          nanoarrow_coverage_config)
     target_link_libraries(nanoarrow_device_hpp_test
                           nanoarrow_device
                           nanoarrow
                           gtest_main
-                          device_coverage_config)
+                          nanoarrow_coverage_config)
 
     include(GoogleTest)
     gtest_discover_tests(nanoarrow_device_test)
@@ -495,7 +556,7 @@ if(NANOARROW_BUILD_TESTS)
                             nanoarrow_device
                             nanoarrow
                             gtest_main
-                            device_coverage_config)
+                            nanoarrow_coverage_config)
       gtest_discover_tests(nanoarrow_device_metal_test)
     endif()
 
@@ -505,7 +566,7 @@ if(NANOARROW_BUILD_TESTS)
                             nanoarrow_device
                             nanoarrow
                             gtest_main
-                            device_coverage_config)
+                            nanoarrow_coverage_config)
       gtest_discover_tests(nanoarrow_device_cuda_test)
     endif()
   endif()

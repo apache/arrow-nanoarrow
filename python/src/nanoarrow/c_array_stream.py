@@ -15,7 +15,7 @@
 # specific language governing permissions and limitations
 # under the License.
 
-from nanoarrow._lib import CArrayStream
+from nanoarrow._array_stream import CArrayStream
 from nanoarrow._utils import obj_is_capsule
 from nanoarrow.c_array import c_array
 from nanoarrow.c_schema import c_schema
