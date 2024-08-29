@@ -30,7 +30,7 @@ project(
 )
 
 if meson.get_compiler('cpp').get_id() == 'gcc' or meson.get_compiler('cpp').get_id() == 'clang'
-  add_project_arguments(['-fvisibility=hidden', '-Wno-unused-parameter'], language: 'cpp')
+  add_project_arguments(['-fvisibility=hidden'], language: 'cpp')
 endif
 
 nanoarrow_dep_args = []
@@ -143,7 +143,8 @@ if get_option('tests')
   # Similarly code coverage has a built in option users should use instead
   # https://mesonbuild.com/Unit-tests.html#coverage
 
-  arrow_dep = dependency('arrow')
+  # The system include suppresses compilation warnings from Arrow
+  arrow_dep = dependency('arrow', include_type: 'system')
   gtest_dep = dependency('gtest_main')
   gmock_dep = dependency('gmock')
   nlohmann_json_dep = dependency('nlohmann_json')
