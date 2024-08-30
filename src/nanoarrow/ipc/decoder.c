@@ -56,6 +56,8 @@
 // at the beginning of every message header.
 static const int32_t kMessageHeaderPrefixSize = 8;
 
+#define NANOARROW_IPC_MAGIC "ARROW1"
+
 // Internal representation of a parsed "Field" from flatbuffers. This
 // represents a field in a depth-first walk of column arrays and their
 // children.
@@ -95,6 +97,8 @@ struct ArrowIpcDecoderPrivate {
   int64_t n_buffers;
   // A pointer to the last flatbuffers message.
   const void* last_message;
+  // Storage for a Footer
+  struct ArrowIpcFooter footer;
 };
 
 ArrowErrorCode ArrowIpcCheckRuntime(struct ArrowError* error) {
@@ -236,6 +240,7 @@ ArrowErrorCode ArrowIpcDecoderInit(struct ArrowIpcDecoder* decoder) {
 
   memset(private_data, 0, sizeof(struct ArrowIpcDecoderPrivate));
   private_data->system_endianness = ArrowIpcSystemEndianness();
+  ArrowIpcFooterInit(&private_data->footer);
   decoder->private_data = private_data;
   return NANOARROW_OK;
 }
@@ -255,6 +260,8 @@ void ArrowIpcDecoderReset(struct ArrowIpcDecoder* decoder) {
       ArrowFree(private_data->fields);
       private_data->n_fields = 0;
     }
+
+    ArrowIpcFooterReset(&private_data->footer);
 
     ArrowFree(private_data);
     memset(decoder, 0, sizeof(struct ArrowIpcDecoder));
@@ -959,6 +966,8 @@ static inline void ArrowIpcDecoderResetHeaderInfo(struct ArrowIpcDecoder* decode
   decoder->codec = 0;
   decoder->header_size_bytes = 0;
   decoder->body_size_bytes = 0;
+  decoder->footer = NULL;
+  ArrowIpcFooterReset(&private_data->footer);
   private_data->last_message = NULL;
 }
 
@@ -1053,6 +1062,85 @@ ArrowErrorCode ArrowIpcDecoderVerifyHeader(struct ArrowIpcDecoder* decoder,
   return NANOARROW_OK;
 }
 
+ArrowErrorCode ArrowIpcDecoderPeekFooter(struct ArrowIpcDecoder* decoder,
+                                         struct ArrowBufferView data,
+                                         struct ArrowError* error) {
+  struct ArrowIpcDecoderPrivate* private_data =
+      (struct ArrowIpcDecoderPrivate*)decoder->private_data;
+
+  ArrowIpcDecoderResetHeaderInfo(decoder);
+  if (data.size_bytes < (int)strlen(NANOARROW_IPC_MAGIC) + (int)sizeof(int32_t)) {
+    ArrowErrorSet(error,
+                  "Expected data of at least 10 bytes but only %" PRId64
+                  " bytes are available",
+                  data.size_bytes);
+    return ESPIPE;
+  }
+
+  const char* data_end = data.data.as_char + data.size_bytes;
+  const char* magic = data_end - strlen(NANOARROW_IPC_MAGIC);
+  const char* footer_size_data = magic - sizeof(int32_t);
+
+  if (memcmp(magic, NANOARROW_IPC_MAGIC, strlen(NANOARROW_IPC_MAGIC)) != 0) {
+    ArrowErrorSet(error, "Expected file to end with ARROW1 but got %s", data_end);
+    return EINVAL;
+  }
+
+  int32_t footer_size;
+  memcpy(&footer_size, footer_size_data, sizeof(footer_size));
+  if (private_data->system_endianness == NANOARROW_IPC_ENDIANNESS_BIG) {
+    footer_size = bswap32(footer_size);
+  }
+
+  if (footer_size < 0) {
+    ArrowErrorSet(error, "Expected footer size > 0 but found footer size of %d bytes",
+                  footer_size);
+    return EINVAL;
+  }
+
+  decoder->header_size_bytes = footer_size;
+  return NANOARROW_OK;
+}
+
+ArrowErrorCode ArrowIpcDecoderVerifyFooter(struct ArrowIpcDecoder* decoder,
+                                           struct ArrowBufferView data,
+                                           struct ArrowError* error) {
+  NANOARROW_RETURN_NOT_OK(ArrowIpcDecoderPeekFooter(decoder, data, error));
+
+  // Check that data contains at least the entire footer (return ESPIPE to signal
+  // that reading more data may help).
+  int32_t footer_and_size_and_magic_size =
+      decoder->header_size_bytes + sizeof(int32_t) + strlen(NANOARROW_IPC_MAGIC);
+  if (data.size_bytes < footer_and_size_and_magic_size) {
+    ArrowErrorSet(error,
+                  "Expected >= %d bytes of data but only %" PRId64
+                  " bytes are in the buffer",
+                  footer_and_size_and_magic_size, data.size_bytes);
+    return ESPIPE;
+  }
+
+  const uint8_t* footer_data =
+      data.data.as_uint8 + data.size_bytes - footer_and_size_and_magic_size;
+
+  // Run flatbuffers verification
+  if (ns(Footer_verify_as_root(footer_data, decoder->header_size_bytes) !=
+         flatcc_verify_ok)) {
+    ArrowErrorSet(error, "Footer flatbuffer verification failed");
+    return EINVAL;
+  }
+
+  // Read some basic information from the message
+  ns(Footer_table_t) footer = ns(Footer_as_root(footer_data));
+  if (ns(Footer_schema(footer)) == NULL) {
+    ArrowErrorSet(error, "Footer has no schema");
+    return EINVAL;
+  }
+
+  decoder->metadata_version = ns(Footer_version(footer));
+  decoder->body_size_bytes = 0;
+  return NANOARROW_OK;
+}
+
 ArrowErrorCode ArrowIpcDecoderDecodeHeader(struct ArrowIpcDecoder* decoder,
                                            struct ArrowBufferView data,
                                            struct ArrowError* error) {
@@ -1126,6 +1214,29 @@ ArrowErrorCode ArrowIpcDecoderDecodeHeader(struct ArrowIpcDecoder* decoder,
   return NANOARROW_OK;
 }
 
+static ArrowErrorCode ArrowIpcDecoderDecodeSchemaImpl(ns(Schema_table_t) schema,
+                                                      struct ArrowSchema* out,
+                                                      struct ArrowError* error) {
+  ArrowSchemaInit(out);
+  // Top-level batch schema is typically non-nullable
+  out->flags = 0;
+
+  ns(Field_vec_t) fields = ns(Schema_fields(schema));
+  int64_t n_fields = ns(Schema_vec_len(fields));
+
+  ArrowErrorCode result = ArrowSchemaSetTypeStruct(out, n_fields);
+  if (result != NANOARROW_OK) {
+    ArrowErrorSet(error, "Failed to allocate struct schema with %" PRId64 " children",
+                  n_fields);
+    return result;
+  }
+
+  NANOARROW_RETURN_NOT_OK(ArrowIpcDecoderSetChildren(out, fields, error));
+  NANOARROW_RETURN_NOT_OK(
+      ArrowIpcDecoderSetMetadata(out, ns(Schema_custom_metadata(schema)), error));
+  return NANOARROW_OK;
+}
+
 ArrowErrorCode ArrowIpcDecoderDecodeSchema(struct ArrowIpcDecoder* decoder,
                                            struct ArrowSchema* out,
                                            struct ArrowError* error) {
@@ -1138,37 +1249,47 @@ ArrowErrorCode ArrowIpcDecoderDecodeSchema(struct ArrowIpcDecoder* decoder,
     return EINVAL;
   }
 
-  ns(Schema_table_t) schema = (ns(Schema_table_t))private_data->last_message;
-
-  ns(Field_vec_t) fields = ns(Schema_fields(schema));
-  int64_t n_fields = ns(Schema_vec_len(fields));
-
   struct ArrowSchema tmp;
-  ArrowSchemaInit(&tmp);
-  int result = ArrowSchemaSetTypeStruct(&tmp, n_fields);
-  if (result != NANOARROW_OK) {
-    ArrowSchemaRelease(&tmp);
-    ArrowErrorSet(error, "Failed to allocate struct schema with %" PRId64 " children",
-                  n_fields);
-    return result;
-  }
+  ArrowErrorCode result = ArrowIpcDecoderDecodeSchemaImpl(
+      (ns(Schema_table_t))private_data->last_message, &tmp, error);
 
-  // Top-level batch schema is typically non-nullable
-  tmp.flags = 0;
-
-  result = ArrowIpcDecoderSetChildren(&tmp, fields, error);
   if (result != NANOARROW_OK) {
     ArrowSchemaRelease(&tmp);
     return result;
   }
-
-  result = ArrowIpcDecoderSetMetadata(&tmp, ns(Schema_custom_metadata(schema)), error);
-  if (result != NANOARROW_OK) {
-    ArrowSchemaRelease(&tmp);
-    return result;
-  }
-
   ArrowSchemaMove(&tmp, out);
+  return NANOARROW_OK;
+}
+
+ArrowErrorCode ArrowIpcDecoderDecodeFooter(struct ArrowIpcDecoder* decoder,
+                                           struct ArrowBufferView data,
+                                           struct ArrowError* error) {
+  struct ArrowIpcDecoderPrivate* private_data =
+      (struct ArrowIpcDecoderPrivate*)decoder->private_data;
+
+  int32_t footer_and_size_and_magic_size =
+      decoder->header_size_bytes + sizeof(int32_t) + strlen(NANOARROW_IPC_MAGIC);
+  const uint8_t* footer_data =
+      data.data.as_uint8 + data.size_bytes - footer_and_size_and_magic_size;
+  ns(Footer_table_t) footer = ns(Footer_as_root(footer_data));
+
+  NANOARROW_RETURN_NOT_OK(ArrowIpcDecoderDecodeSchemaImpl(
+      ns(Footer_schema(footer)), &private_data->footer.schema, error));
+
+  ns(Block_vec_t) blocks = ns(Footer_recordBatches(footer));
+  int64_t n = ns(Block_vec_len(blocks));
+  NANOARROW_RETURN_NOT_OK(ArrowBufferResize(&private_data->footer.record_batch_blocks,
+                                            sizeof(struct ArrowIpcFileBlock) * n,
+                                            /*shrink_to_fit=*/0));
+  struct ArrowIpcFileBlock* record_batches =
+      (struct ArrowIpcFileBlock*)private_data->footer.record_batch_blocks.data;
+  for (int64_t i = 0; i < n; i++) {
+    record_batches[i].offset = blocks[i].offset;
+    record_batches[i].metadata_length = blocks[i].metaDataLength;
+    record_batches[i].body_length = blocks[i].bodyLength;
+  }
+
+  decoder->footer = &private_data->footer;
   return NANOARROW_OK;
 }
 

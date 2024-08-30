@@ -95,6 +95,9 @@ int main(int argc, char** argv) try {
 }
 
 struct File {
+  File(FILE* file) : file_{file} {}
+  File() = default;
+
   ~File() {
     if (file_ != nullptr) {
       fclose(file_);
@@ -166,35 +169,62 @@ struct MaterializedArrayStream {
     // Footer).
     File ipc_file;
     NANOARROW_RETURN_NOT_OK(ipc_file.open(path, "rb", error));
-    return FromIpcFile(ipc_file, error);
-  }
+    auto bytes = ipc_file.read();
 
-  ArrowErrorCode FromIpcFile(FILE* ipc_file, struct ArrowError* error) {
-    char prefix[sizeof(NANOARROW_IPC_FILE_PADDED_MAGIC)] = {};
-    if (fread(&prefix, 1, sizeof(prefix), ipc_file) < sizeof(prefix)) {
-      ArrowErrorSet(error, "Expected file of more than %lu bytes, got %ld",
-                    sizeof(prefix), ftell(ipc_file));
+    auto min_size = sizeof(NANOARROW_IPC_FILE_PADDED_MAGIC) + sizeof(int32_t) +
+                    strlen(NANOARROW_IPC_FILE_PADDED_MAGIC);
+    if (bytes.size() < min_size) {
+      ArrowErrorSet(error, "Expected file of more than %lu bytes, got %ld", min_size,
+                    bytes.size());
       return EINVAL;
     }
 
-    if (memcmp(&prefix, NANOARROW_IPC_FILE_PADDED_MAGIC, sizeof(prefix)) != 0) {
+    if (memcmp(bytes.data(), NANOARROW_IPC_FILE_PADDED_MAGIC,
+               sizeof(NANOARROW_IPC_FILE_PADDED_MAGIC)) != 0) {
       ArrowErrorSet(error, "File did not begin with 'ARROW1\\0\\0'");
       return EINVAL;
     }
 
-    nanoarrow::ipc::UniqueInputStream input_stream;
-    NANOARROW_RETURN_NOT_OK_WITH_ERROR(
-        ArrowIpcInputStreamInitFile(input_stream.get(), ipc_file,
-                                    /*close_on_release=*/false),
-        error);
+    nanoarrow::ipc::UniqueDecoder decoder;
+    NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowIpcDecoderInit(decoder.get()), error);
+    NANOARROW_RETURN_NOT_OK(ArrowIpcDecoderVerifyFooter(
+        decoder.get(), {{bytes.data()}, static_cast<int64_t>(bytes.size())}, error));
+    NANOARROW_RETURN_NOT_OK(ArrowIpcDecoderDecodeFooter(
+        decoder.get(), {{bytes.data()}, static_cast<int64_t>(bytes.size())}, error));
 
-    nanoarrow::UniqueArrayStream array_stream;
     NANOARROW_RETURN_NOT_OK_WITH_ERROR(
-        ArrowIpcArrayStreamReaderInit(array_stream.get(), input_stream.get(),
-                                      /*options=*/nullptr),
-        error);
+        ArrowSchemaDeepCopy(&decoder->footer->schema, schema.get()), error);
+    NANOARROW_RETURN_NOT_OK(
+        ArrowIpcDecoderSetSchema(decoder.get(), &decoder->footer->schema, error));
+    NANOARROW_RETURN_NOT_OK_WITH_ERROR(
+        ArrowIpcDecoderSetEndianness(decoder.get(), decoder->endianness), error);
 
-    return From(array_stream.get(), error);
+    nanoarrow::UniqueBuffer record_batch_blocks;
+    ArrowBufferMove(&decoder->footer->record_batch_blocks, record_batch_blocks.get());
+
+    for (int i = 0;
+         i < record_batch_blocks->size_bytes / sizeof(struct ArrowIpcFileBlock); i++) {
+      const auto& block =
+          reinterpret_cast<struct ArrowIpcFileBlock*>(record_batch_blocks->data)[i];
+      struct ArrowBufferView metadata_view = {
+          {bytes.data() + block.offset},
+          block.metadata_length,
+      };
+      NANOARROW_RETURN_NOT_OK(
+          ArrowIpcDecoderDecodeHeader(decoder.get(), metadata_view, error));
+
+      struct ArrowBufferView body_view = {
+          {metadata_view.data.as_uint8 + metadata_view.size_bytes},
+          block.body_length,
+      };
+      nanoarrow::UniqueArray batch;
+      NANOARROW_RETURN_NOT_OK(
+          ArrowIpcDecoderDecodeArray(decoder.get(), body_view, -1, batch.get(),
+                                     NANOARROW_VALIDATION_LEVEL_FULL, error));
+      batches.push_back(std::move(batch));
+    }
+
+    return NANOARROW_OK;
   }
 
   ArrowErrorCode Write(struct ArrowIpcOutputStream* output_stream, bool write_file,
