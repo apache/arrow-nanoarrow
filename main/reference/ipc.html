@@ -798,7 +798,7 @@ document.write(`
 <dt class="sig sig-object cpp" id="_CPPv426ArrowIpcWriterFinalizeFileP14ArrowIpcWriterP10ArrowError">
 <span id="_CPPv326ArrowIpcWriterFinalizeFileP14ArrowIpcWriterP10ArrowError"></span><span id="_CPPv226ArrowIpcWriterFinalizeFileP14ArrowIpcWriterP10ArrowError"></span><span id="ArrowIpcWriterFinalizeFile__ArrowIpcWriterP.ArrowErrorP"></span><span class="target" id="group__nanoarrow__ipc_1gade66ef48f224e45ac2f292452417c9c1"></span><span class="n"><span class="pre">ArrowErrorCode</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">ArrowIpcWriterFinalizeFile</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv414ArrowIpcWriter" title="ArrowIpcWriter"><span class="n"><span class="pre">ArrowIpcWriter</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">writer</span></span>, <span class="k"><span class="pre">struct</span></span><span class="w"> </span><span class="n"><span class="pre">ArrowError</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">error</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv426ArrowIpcWriterFinalizeFileP14ArrowIpcWriterP10ArrowError" title="Link to this definition">#</a><br /></dt>
 <dd><p>Finish writing an IPC file. </p>
-<p>Writes the IPC file’s Footer, footer size, and ending magic. </p>
+<p>Writes the IPC file’s footer, footer size, and ending magic. </p>
 </dd></dl>
 
 </div>
@@ -860,6 +860,16 @@ document.write(`
 <dt class="sig sig-object cpp" id="_CPPv4N15ArrowIpcDecoder15body_size_bytesE">
 <span id="_CPPv3N15ArrowIpcDecoder15body_size_bytesE"></span><span id="_CPPv2N15ArrowIpcDecoder15body_size_bytesE"></span><span id="ArrowIpcDecoder::body_size_bytes__int64_t"></span><span class="target" id="struct_arrow_ipc_decoder_1a69d8c83f127711e7a757936d90c1245e"></span><span class="n"><span class="pre">int64_t</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">body_size_bytes</span></span></span><a class="headerlink" href="#_CPPv4N15ArrowIpcDecoder15body_size_bytesE" title="Link to this definition">#</a><br /></dt>
 <dd><p>The number of bytes in the forthcoming body message. </p>
+</dd></dl>
+
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4N15ArrowIpcDecoder6footerE">
+<span id="_CPPv3N15ArrowIpcDecoder6footerE"></span><span id="_CPPv2N15ArrowIpcDecoder6footerE"></span><span id="ArrowIpcDecoder::footer__ArrowIpcFooterP"></span><span class="target" id="struct_arrow_ipc_decoder_1ab315f7523d1b09f0575ba5fc3afbdd96"></span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><span class="n"><span class="pre">ArrowIpcFooter</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="sig-name descname"><span class="n"><span class="pre">footer</span></span></span><a class="headerlink" href="#_CPPv4N15ArrowIpcDecoder6footerE" title="Link to this definition">#</a><br /></dt>
+<dd><p>The last decoded Footer. </p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>This API is currently only public for use in integration testing; use at your own risk. </p>
+</div>
 </dd></dl>
 
 <dl class="cpp var">
@@ -1168,6 +1178,7 @@ document.write(`
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N15ArrowIpcDecoder5codecE"><code class="docutils literal notranslate"><span class="pre">ArrowIpcDecoder::codec</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N15ArrowIpcDecoder17header_size_bytesE"><code class="docutils literal notranslate"><span class="pre">ArrowIpcDecoder::header_size_bytes</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N15ArrowIpcDecoder15body_size_bytesE"><code class="docutils literal notranslate"><span class="pre">ArrowIpcDecoder::body_size_bytes</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N15ArrowIpcDecoder6footerE"><code class="docutils literal notranslate"><span class="pre">ArrowIpcDecoder::footer</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N15ArrowIpcDecoder12private_dataE"><code class="docutils literal notranslate"><span class="pre">ArrowIpcDecoder::private_data</span></code></a></li>
 </ul>
 </li>
