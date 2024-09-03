@@ -58,7 +58,9 @@ class PxdGenerator:
             output.write(header.encode("UTF-8"))
 
             output.write(
-                f'\ncdef extern from "{file_in_name}" nogil:\n'.encode("UTF-8")
+                f'\ncdef extern from "nanoarrow/{file_in_name}" nogil:\n'.encode(
+                    "UTF-8"
+                )
             )
 
             # A few things we add in manually
@@ -228,7 +230,9 @@ class NanoarrowDevicePxdGenerator(PxdGenerator):
 # strictly necessary for things like installing from GitHub.
 def copy_or_generate_nanoarrow_c():
     this_dir = pathlib.Path(__file__).parent.resolve()
-    source_dir = this_dir.parent
+    subproj_dir = this_dir / "subprojects"
+    source_dir = subproj_dir / "arrow-nanoarrow"
+
     vendor_dir = this_dir / "vendor"
 
     vendored_files = [
@@ -243,16 +247,6 @@ def copy_or_generate_nanoarrow_c():
 
     for f in dst.values():
         f.unlink(missing_ok=True)
-
-    is_cmake_dir = (source_dir / "CMakeLists.txt").exists()
-    is_in_nanoarrow_repo = (
-        is_cmake_dir and (source_dir / "src" / "nanoarrow" / "nanoarrow.h").exists()
-    )
-
-    if not is_in_nanoarrow_repo:
-        raise ValueError(
-            "Attempt to build source distribution outside the nanoarrow repo"
-        )
 
     vendor_dir.mkdir(exist_ok=True)
     subprocess.run(

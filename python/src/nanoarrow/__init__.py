@@ -24,6 +24,8 @@ the nanoarrow C library, it provides tools to facilitate the use of the
 Arrow C Data and Arrow C Stream interfaces.
 """
 
+import importlib.metadata
+
 from nanoarrow._utils import c_version
 from nanoarrow.c_array import c_array_from_buffers, c_array
 from nanoarrow.c_array_stream import c_array_stream
@@ -75,7 +77,8 @@ from nanoarrow.schema import (
 from nanoarrow.array import array, Array
 from nanoarrow.array_stream import ArrayStream
 from nanoarrow.visitor import nulls_as_sentinel, nulls_forbid, nulls_separate
-from nanoarrow._version import __version__  # noqa: F401
+
+__version__ = importlib.metadata.version("nanoarrow")
 
 # Helps Sphinx automatically populate an API reference section
 __all__ = [

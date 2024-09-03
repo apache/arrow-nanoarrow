@@ -14,12 +14,24 @@
 # KIND, either express or implied.  See the License for the
 # specific language governing permissions and limitations
 # under the License.
-#
-# This file is part of 'miniver': https://github.com/jbweston/miniver
 
-# Replaced by version-bumping scripts at release time
-version = "0.7.0.dev0"
+project(
+    'nanoarrow',
+    'cpp', 'cython',
+    version: '0.7.0.dev0',
+    license: 'Apache-2.0',
+    meson_version: '>=1.2.0',
+    default_options: [
+        'warning_level=2',
+        'cpp_std=c++17',
+        'default_library=static',
+        # We need to set these options at the project default_option level
+        # due to https://github.com/mesonbuild/meson/issues/6728
+        'arrow-nanoarrow:ipc=true',
+        'arrow-nanoarrow:device=true',
+    ],
+)
 
-# These values are only set if the distribution was created with 'git archive'
-refnames = "$Format:%D$"
-git_hash = "$Format:%h$"
+subdir('src/nanoarrow')
+
+meson.add_dist_script('python', meson.current_source_dir() / 'generate_dist.py')
