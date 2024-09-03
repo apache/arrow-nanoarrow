@@ -32,26 +32,26 @@ constexpr auto kUsage = R"(USAGE:
   env COMMAND=VALIDATE    \
       ARROW_PATH=f.arrow  \
       JSON_PATH=f.json    \
-      nanoarrow_ipc_json_integration
+      nanoarrow_ipc_integration
 
   # produce f.arrow from f.json
   env COMMAND=JSON_TO_ARROW  \
       ARROW_PATH=f.arrow     \
       JSON_PATH=f.json       \
-      nanoarrow_ipc_json_integration
+      nanoarrow_ipc_integration
 
   # copy f.stream into f.arrow
   env COMMAND=STREAM_TO_FILE  \
       ARROW_PATH=f.arrow      \
-      nanoarrow_ipc_json_integration < f.stream
+      nanoarrow_ipc_integration < f.stream
 
   # copy f.arrow into f.stream
   env COMMAND=FILE_TO_STREAM  \
       ARROW_PATH=f.arrow      \
-      nanoarrow_ipc_json_integration > f.stream
+      nanoarrow_ipc_integration > f.stream
 
   # run all internal test cases
-  nanoarrow_ipc_json_integration
+  nanoarrow_ipc_integration
 )";
 
 ArrowErrorCode Validate(struct ArrowError*);

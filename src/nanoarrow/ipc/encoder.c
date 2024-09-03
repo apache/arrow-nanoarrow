@@ -380,8 +380,8 @@ static ArrowErrorCode ArrowIpcEncodeField(flatcc_builder_t* builder,
                                           const struct ArrowSchema* schema,
                                           struct ArrowError* error) {
   FLATCC_RETURN_UNLESS_0(Field_name_create_str(builder, schema->name), error);
-  FLATCC_RETURN_UNLESS_0(Field_nullable_add(builder, schema->flags & ARROW_FLAG_NULLABLE),
-                         error);
+  FLATCC_RETURN_UNLESS_0(
+      Field_nullable_add(builder, (schema->flags & ARROW_FLAG_NULLABLE) != 0), error);
 
   struct ArrowSchemaView schema_view;
   NANOARROW_RETURN_NOT_OK(ArrowSchemaViewInit(&schema_view, schema, error));
