@@ -16,10 +16,10 @@
 # under the License.
 
 [wrap-file]
-directory = flatcc-0.6.1
-source_url = https://github.com/dvidelabs/flatcc/archive/refs/tags/v0.6.1.tar.gz
-source_filename = flatcc-0.6.1.tar.gz
-source_hash = 2533c2f1061498499f15acc7e0937dcf35bc68e685d237325124ae0d6c600c2b
+directory = flatcc-fd3c4ae5cd39f0651eda6a3a1a374278070135d6
+source_url = https://github.com/dvidelabs/flatcc/archive/fd3c4ae5cd39f0651eda6a3a1a374278070135d6.tar.gz
+source_filename = flatcc-fd3c4ae5cd39f0651eda6a3a1a374278070135d6.tar.gz
+source_hash = 353cb04a619865383b87c8077eb39b63b01a3fc44f7bebd558a88f139c6b6f77
 patch_directory = flatcc
 
 [provide]
