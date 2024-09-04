@@ -289,11 +289,11 @@ static inline ArrowErrorCode ArrowBufferAppendBufferView(struct ArrowBuffer* buf
 
 static inline ArrowErrorCode ArrowBufferAppendFill(struct ArrowBuffer* buffer,
                                                    uint8_t value, int64_t size_bytes) {
-  NANOARROW_RETURN_NOT_OK(ArrowBufferReserve(buffer, size_bytes));
-
   if (size_bytes == 0) {
     return NANOARROW_OK;
   }
+
+  NANOARROW_RETURN_NOT_OK(ArrowBufferReserve(buffer, size_bytes));
 
   memset(buffer->data + buffer->size_bytes, value, size_bytes);
   buffer->size_bytes += size_bytes;
