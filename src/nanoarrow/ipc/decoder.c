@@ -1046,9 +1046,11 @@ ArrowErrorCode ArrowIpcDecoderVerifyHeader(struct ArrowIpcDecoder* decoder,
   }
 
   // Run flatbuffers verification
-  if (ns(Message_verify_as_root(data.data.as_uint8, message_body_size) !=
-         flatcc_verify_ok)) {
-    ArrowErrorSet(error, "Message flatbuffer verification failed");
+  enum flatcc_verify_error_no verify_error =
+      ns(Message_verify_as_root(data.data.as_uint8, message_body_size);
+         if (verify_error != flatcc_verify_ok)) {
+    ArrowErrorSet(error, "Message flatbuffer verification failed (%d) %s",
+                  (int)verify_error, flatcc_verify_error_string(verify_error));
     return EINVAL;
   }
 
@@ -1123,9 +1125,11 @@ ArrowErrorCode ArrowIpcDecoderVerifyFooter(struct ArrowIpcDecoder* decoder,
       data.data.as_uint8 + data.size_bytes - footer_and_size_and_magic_size;
 
   // Run flatbuffers verification
-  if (ns(Footer_verify_as_root(footer_data, decoder->header_size_bytes) !=
-         flatcc_verify_ok)) {
-    ArrowErrorSet(error, "Footer flatbuffer verification failed");
+  enum flatcc_verify_error_no verify_error =
+      ns(Footer_verify_as_root(footer_data, decoder->header_size_bytes));
+  if (verify_error != flatcc_verify_ok) {
+    ArrowErrorSet(error, "Footer flatbuffer verification failed (%d) %s",
+                  (int)verify_error, flatcc_verify_error_string(verify_error));
     return EINVAL;
   }
 
