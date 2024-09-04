@@ -35,6 +35,11 @@ project(
 #   add_project_arguments(['-fvisibility=hidden'], language: 'cpp')
 # endif
 
+cc = meson.get_compiler('c')
+add_project_arguments(
+    cc.get_supported_arguments(['-Wno-misleading-indentation']),
+    language : 'c'
+)
 cpp = meson.get_compiler('cpp')
 add_project_arguments(
     cpp.get_supported_arguments(['-Wno-misleading-indentation']),
