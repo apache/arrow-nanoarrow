@@ -76,6 +76,8 @@ class Type(enum.Enum):
     LARGE_BINARY = int(_types.LARGE_BINARY)
     LARGE_LIST = int(_types.LARGE_LIST)
     INTERVAL_MONTH_DAY_NANO = int(_types.INTERVAL_MONTH_DAY_NANO)
+    BINARY_VIEW = int(_types.BINARY_VIEW)
+    STRING_VIEW = int(_types.STRING_VIEW)
 
     def __arrow_c_schema__(self):
         # This will only work for parameter-free types
@@ -756,6 +758,24 @@ def large_string(nullable: bool = True) -> Schema:
     return Schema(Type.LARGE_STRING, nullable=nullable)
 
 
+def string_view(nullable: bool = True) -> Schema:
+    """Create an instance of a string view type.
+
+    Parameters
+    ----------
+    nullable : bool, optional
+        Use ``False`` to mark this field as non-nullable.
+
+    Examples
+    --------
+
+    >>> import nanoarrow as na
+    >>> na.large_binary()
+    <Schema> large_binary
+    """
+    return Schema(Type.STRING_VIEW, nullable=nullable)
+
+
 def binary(nullable: bool = True) -> Schema:
     """Create an instance of a variable or fixed-width binary type.
 
@@ -790,6 +810,24 @@ def large_binary(nullable: bool = True) -> Schema:
     <Schema> large_binary
     """
     return Schema(Type.LARGE_BINARY, nullable=nullable)
+
+
+def binary_view(nullable: bool = True) -> Schema:
+    """Create an instance of a binary view type.
+
+    Parameters
+    ----------
+    nullable : bool, optional
+        Use ``False`` to mark this field as non-nullable.
+
+    Examples
+    --------
+
+    >>> import nanoarrow as na
+    >>> na.large_binary()
+    <Schema> large_binary
+    """
+    return Schema(Type.BINARY_VIEW, nullable=nullable)
 
 
 def fixed_size_binary(byte_width: int, nullable: bool = True) -> Schema:

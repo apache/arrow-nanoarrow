@@ -414,6 +414,9 @@ ArrowErrorCode WriteTypeFromView(std::ostream& out, const ArrowSchemaView* field
     case NANOARROW_TYPE_LARGE_BINARY:
       out << R"("name": "largebinary")";
       break;
+    case NANOARROW_TYPE_BINARY_VIEW:
+      out << R"("name": "binaryview")";
+      break;
     case NANOARROW_TYPE_FIXED_SIZE_BINARY:
       out << R"("name": "fixedsizebinary", "byteWidth": )" << field->fixed_size;
       break;

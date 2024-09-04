@@ -101,8 +101,12 @@ static const char* ArrowSchemaFormatTemplate(enum ArrowType type) {
       return "u";
     case NANOARROW_TYPE_LARGE_STRING:
       return "U";
+    case NANOARROW_TYPE_STRING_VIEW:
+      return "vu";
     case NANOARROW_TYPE_BINARY:
       return "z";
+    case NANOARROW_TYPE_BINARY_VIEW:
+      return "vz";
     case NANOARROW_TYPE_LARGE_BINARY:
       return "Z";
 
