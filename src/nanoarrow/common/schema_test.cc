@@ -68,9 +68,11 @@ TEST(SchemaTest, SchemaInit) {
   EXPECT_EQ(schema.release, nullptr);
 
   ASSERT_EQ(ArrowSchemaInitFromType(&schema, NANOARROW_TYPE_UNINITIALIZED), NANOARROW_OK);
+#if !defined(__SANITIZE_ADDRESS__)
   EXPECT_EQ(ArrowSchemaAllocateChildren(
                 &schema, std::numeric_limits<int64_t>::max() / sizeof(void*)),
             ENOMEM);
+#endif
   ArrowSchemaRelease(&schema);
 }
 

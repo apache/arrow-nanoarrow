@@ -76,7 +76,6 @@ function main() {
           -Db_coverage=false
 
     meson compile
-    export ASAN_OPTIONS=allocator_may_return_null=1  # allow ENOMEM tests
     meson test --print-errorlogs
 
     show_header "Run valgrind test suite"

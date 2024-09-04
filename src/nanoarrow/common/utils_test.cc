@@ -150,6 +150,7 @@ TEST(AllocatorTest, AllocatorTestDefault) {
 
   allocator.free(&allocator, buffer, 100);
 
+#if !defined(__SANITIZE_ADDRESS__)
   buffer =
       allocator.reallocate(&allocator, nullptr, 0, std::numeric_limits<int64_t>::max());
   EXPECT_EQ(buffer, nullptr);
@@ -157,6 +158,7 @@ TEST(AllocatorTest, AllocatorTestDefault) {
   buffer =
       allocator.reallocate(&allocator, buffer, 0, std::numeric_limits<int64_t>::max());
   EXPECT_EQ(buffer, nullptr);
+#endif
 }
 
 // In a non-trivial test this struct could hold a reference to an object
@@ -239,6 +241,7 @@ TEST(AllocatorTest, AllocatorTestMemoryPool) {
   arrow_allocator.free(&arrow_allocator, buffer, 100);
   EXPECT_EQ(CustomMemoryPool::GetInstance()->bytes_allocated, allocated0);
 
+#if !defined(__SANITIZE_ADDRESS__)
   buffer = arrow_allocator.reallocate(&arrow_allocator, nullptr, 0,
                                       std::numeric_limits<int64_t>::max());
   EXPECT_EQ(buffer, nullptr);
@@ -246,6 +249,7 @@ TEST(AllocatorTest, AllocatorTestMemoryPool) {
   buffer = arrow_allocator.reallocate(&arrow_allocator, buffer, 0,
                                       std::numeric_limits<int64_t>::max());
   EXPECT_EQ(buffer, nullptr);
+#endif
 }
 
 TEST(DecimalTest, Decimal128Test) {

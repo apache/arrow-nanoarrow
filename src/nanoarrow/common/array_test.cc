@@ -98,9 +98,11 @@ TEST(ArrayTest, ArrayTestAllocateChildren) {
   ArrowArrayRelease(&array);
 
   ASSERT_EQ(ArrowArrayInitFromType(&array, NANOARROW_TYPE_STRUCT), NANOARROW_OK);
+#if !defined(__SANITIZE_ADDRESS__)
   EXPECT_EQ(ArrowArrayAllocateChildren(
                 &array, std::numeric_limits<int64_t>::max() / sizeof(void*)),
             ENOMEM);
+#endif
   ArrowArrayRelease(&array);
 
   ASSERT_EQ(ArrowArrayInitFromType(&array, NANOARROW_TYPE_STRUCT), NANOARROW_OK);
@@ -2303,9 +2305,11 @@ TEST(ArrayTest, ArrayViewTestStruct) {
   EXPECT_EQ(array_view.layout.element_size_bits[0], 1);
 
   // Expect error for out-of-memory
+#if !defined(__SANITIZE_ADDRESS__)
   EXPECT_EQ(ArrowArrayViewAllocateChildren(
                 &array_view, std::numeric_limits<int64_t>::max() / sizeof(void*)),
             ENOMEM);
+#endif
 
   EXPECT_EQ(ArrowArrayViewAllocateChildren(&array_view, 2), NANOARROW_OK);
   EXPECT_EQ(array_view.n_children, 2);
