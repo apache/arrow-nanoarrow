@@ -49,6 +49,12 @@
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcDecoderSetSchema)
 #define ArrowIpcDecoderSetEndianness \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcDecoderSetEndianness)
+#define ArrowIpcDecoderPeekFooter \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcDecoderPeekFooter)
+#define ArrowIpcDecoderVerifyFooter \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcDecoderVerifyFooter)
+#define ArrowIpcDecoderDecodeFooter \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcDecoderDecodeFooter)
 #define ArrowIpcInputStreamInitBuffer \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcInputStreamInitBuffer)
 #define ArrowIpcInputStreamInitFile \
@@ -221,6 +227,12 @@ struct ArrowIpcDecoder {
 
   /// \brief The number of bytes in the forthcoming body message.
   int64_t body_size_bytes;
+
+  /// \brief The last decoded Footer
+  ///
+  /// \warning This API is currently only public for use in integration testing;
+  ///          use at your own risk.
+  struct ArrowIpcFooter* footer;
 
   /// \brief Private resources managed by this library
   void* private_data;
@@ -569,7 +581,7 @@ ArrowErrorCode ArrowIpcWriterStartFile(struct ArrowIpcWriter* writer,
 
 /// \brief Finish writing an IPC file
 ///
-/// Writes the IPC file's Footer, footer size, and ending magic.
+/// Writes the IPC file's footer, footer size, and ending magic.
 ArrowErrorCode ArrowIpcWriterFinalizeFile(struct ArrowIpcWriter* writer,
                                           struct ArrowError* error);
 /// @}
@@ -589,7 +601,7 @@ struct ArrowIpcFileBlock {
   int64_t body_length;
 };
 
-/// \brief A Footer for use in an IPC file
+/// \brief A footer for use in an IPC file
 ///
 /// \warning This API is currently only public for use in integration testing;
 ///          use at your own risk.
@@ -603,7 +615,7 @@ struct ArrowIpcFooter {
   struct ArrowBuffer record_batch_blocks;
 };
 
-/// \brief Initialize a Footer
+/// \brief Initialize a footer
 ///
 /// \warning This API is currently only public for use in integration testing;
 ///          use at your own risk.
@@ -615,7 +627,7 @@ void ArrowIpcFooterInit(struct ArrowIpcFooter* footer);
 ///          use at your own risk.
 void ArrowIpcFooterReset(struct ArrowIpcFooter* footer);
 
-/// \brief Encode a Footer for use in an IPC file
+/// \brief Encode a footer for use in an IPC file
 ///
 /// \warning This API is currently only public for use in integration testing;
 ///          use at your own risk.
@@ -623,6 +635,55 @@ void ArrowIpcFooterReset(struct ArrowIpcFooter* footer);
 /// Returns ENOMEM if allocation fails, NANOARROW_OK otherwise.
 ArrowErrorCode ArrowIpcEncoderEncodeFooter(struct ArrowIpcEncoder* encoder,
                                            const struct ArrowIpcFooter* footer,
+                                           struct ArrowError* error);
+
+/// \brief Peek at a footer
+///
+/// The last 10 bytes of an Arrow IPC file are the footer size as a little-endian
+/// 32-bit integer followed by the ARROW1 magic. ArrowIpcDecoderPeekFooter() reads
+/// these bytes and returns ESPIPE if there are not enough remaining bytes in data
+/// to read the entire footer, EINVAL if the last 10 bytes are not valid,
+/// or NANOARROW_OK otherwise.
+///
+/// The footer size will be stored in decoder.header_size_bytes.
+///
+/// \warning This API is currently only public for use in integration testing;
+///          use at your own risk.
+ArrowErrorCode ArrowIpcDecoderPeekFooter(struct ArrowIpcDecoder* decoder,
+                                         struct ArrowBufferView data,
+                                         struct ArrowError* error);
+
+/// \brief Verify a footer
+///
+/// Runs ArrowIpcDecoderPeekFooter() to ensure data is sufficiently large but additionally
+/// runs flatbuffer verification to ensure that decoding the data will not access
+/// memory outside of the buffer specified by data. ArrowIpcDecoderVerifyFooter() will
+/// also set decoder.header_size_bytes and decoder.metadata_version.
+///
+/// Returns as ArrowIpcDecoderPeekFooter() and additionally will
+/// return EINVAL if flatbuffer verification fails.
+///
+/// \warning This API is currently only public for use in integration testing;
+///          use at your own risk.
+ArrowErrorCode ArrowIpcDecoderVerifyFooter(struct ArrowIpcDecoder* decoder,
+                                           struct ArrowBufferView data,
+                                           struct ArrowError* error);
+
+/// \brief Decode a footer
+///
+/// Runs ArrowIpcDecoderPeekFooter() to ensure data is sufficiently large and decodes
+/// the content of the footer. decoder.footer will be set for access to the file's
+/// schema and record batches. In almost all cases this should be preceded by a call to
+/// ArrowIpcDecoderVerifyFooter() to ensure decoding does not access data outside of the
+/// specified buffer.
+///
+/// Returns EINVAL if the content of the footer cannot be decoded or ENOTSUP if the
+/// content of the footer uses features not supported by this library.
+///
+/// \warning This API is currently only public for use in integration testing;
+///          use at your own risk.
+ArrowErrorCode ArrowIpcDecoderDecodeFooter(struct ArrowIpcDecoder* decoder,
+                                           struct ArrowBufferView data,
                                            struct ArrowError* error);
 
 #ifdef __cplusplus

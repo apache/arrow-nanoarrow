@@ -137,6 +137,8 @@ TEST(BufferTest, BufferTestMove) {
 }
 
 TEST(BufferTest, BufferTestFill) {
+  EXPECT_EQ(ArrowBufferAppendFill(NULL, 0, 0), NANOARROW_OK);
+
   struct ArrowBuffer buffer;
   ArrowBufferInit(&buffer);
 
