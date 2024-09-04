@@ -914,20 +914,20 @@ static inline double ArrowArrayViewGetDoubleUnsafe(
   }
 }
 
-enum { ARROW_BINARY_VIEW_INLINE_SIZE = 12 };
-enum { ARROW_BINARY_VIEW_PREVIEW_SIZE = 4 };
+#define NANOARROW_BINARY_VIEW_INLINE_SIZE 12
+#define NANOARROW_BINARY_VIEW_PREVIEW_SIZE 4
 
 // The Arrow C++ implementation uses anonymous structs as members
 // of the ArrowBinaryViewType. For Cython support in this library, we define
 // those structs outside of the ArrowBinaryViewType
 struct ArrowBinaryViewTypeInlinedData {
   int32_t size;
-  uint8_t data[ARROW_BINARY_VIEW_INLINE_SIZE];
+  uint8_t data[NANOARROW_BINARY_VIEW_INLINE_SIZE];
 };
 
 struct ArrowBinaryViewTypeRefData {
   int32_t size;
-  uint8_t data[ARROW_BINARY_VIEW_PREVIEW_SIZE];
+  uint8_t data[NANOARROW_BINARY_VIEW_PREVIEW_SIZE];
   int32_t buffer_index;
   int32_t offset;
 };
@@ -969,7 +969,7 @@ static inline struct ArrowStringView ArrowArrayViewGetStringUnsafe(
       memcpy(&bvt, value_view.as_uint8 + idx, sizeof(union ArrowBinaryViewType));
       const int32_t inline_size = bvt.inlined.size;
       view.size_bytes = inline_size;
-      if (inline_size <= ARROW_BINARY_VIEW_INLINE_SIZE) {
+      if (inline_size <= NANOARROW_BINARY_VIEW_INLINE_SIZE) {
         view.data = value_view.as_char + idx +
                     sizeof(((union ArrowBinaryViewType*)0)->inlined.size);
       } else {
@@ -1020,7 +1020,7 @@ static inline struct ArrowBufferView ArrowArrayViewGetBytesUnsafe(
       memcpy(&bvt, value_view.as_uint8 + idx, sizeof(union ArrowBinaryViewType));
       const int32_t inline_size = bvt.inlined.size;
       view.size_bytes = inline_size;
-      if (inline_size <= ARROW_BINARY_VIEW_INLINE_SIZE) {
+      if (inline_size <= NANOARROW_BINARY_VIEW_INLINE_SIZE) {
         view.data.as_uint8 = value_view.as_uint8 + idx +
                              sizeof(((union ArrowBinaryViewType*)0)->inlined.size);
       } else {
