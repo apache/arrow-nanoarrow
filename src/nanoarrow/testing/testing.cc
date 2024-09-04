@@ -296,6 +296,7 @@ ArrowErrorCode WriteData(std::ostream& out, const ArrowArrayView* value,
 
     case NANOARROW_TYPE_BINARY:
     case NANOARROW_TYPE_LARGE_BINARY:
+    case NANOARROW_TYPE_BINARY_VIEW:
     case NANOARROW_TYPE_FIXED_SIZE_BINARY: {
       WriteBytesMaybeNull(out, value, 0);
       for (int64_t i = 1; i < value->length; i++) {
