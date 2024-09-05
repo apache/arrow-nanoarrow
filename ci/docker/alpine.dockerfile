@@ -34,7 +34,7 @@ ENV NANOARROW_PYTHON_VENV "/venv"
 # For R. Note that arrow is not installed (takes too long).
 RUN mkdir ~/.R && echo "MAKEFLAGS = -j$(nproc)" > ~/.R/Makevars
 COPY r/DESCRIPTION /tmp/rdeps
-RUN R -e 'gsub("\\(.*?\\)", "", read.dcf("/tmp/rdeps/DESCRIPTION")[1, "Suggests"]) |> strsplit("[^A-Za-z0-9.]+") |> unlist(use.names = FALSE) |> setdiff("arrow") |> install.packages(repos = "https://cloud.r-project.org")'
+RUN R -e 'gsub("\\(.*?\\)", "", read.dcf("/tmp/rdeps")[1, "Suggests"]) |> strsplit("[^A-Za-z0-9.]+") |> unlist(use.names = FALSE) |> setdiff("arrow") |> install.packages(repos = "https://cloud.r-project.org")'
 RUN rm -f ~/.R/Makevars
 
 ENV NANOARROW_CMAKE_OPTIONS -DArrow_DIR=/arrow/lib/cmake/Arrow
