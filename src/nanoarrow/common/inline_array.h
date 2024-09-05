@@ -301,6 +301,7 @@ static inline ArrowErrorCode _ArrowArrayAppendEmptyInternal(struct ArrowArray* a
         i++;
         continue;
       case NANOARROW_BUFFER_TYPE_DATA:
+      case NANOARROW_BUFFER_TYPE_DATA_VIEW:
         // Zero out the next bit of memory
         if (private_data->layout.element_size_bits[i] % 8 == 0) {
           NANOARROW_RETURN_NOT_OK(ArrowBufferAppendFill(buffer, 0, size_bytes * n));
@@ -467,52 +468,99 @@ static inline ArrowErrorCode ArrowArrayAppendDouble(struct ArrowArray* array,
   return NANOARROW_OK;
 }
 
+#define NANOARROW_BINARY_VIEW_INLINE_SIZE 12
+#define NANOARROW_BINARY_VIEW_PREVIEW_SIZE 4
+#define NANOARROW_BINARY_VIEW_BLOCK_SIZE 32 << 10  // 32KB
+
+// The Arrow C++ implementation uses anonymous structs as members
+// of the ArrowBinaryViewType. For Cython support in this library, we define
+// those structs outside of the ArrowBinaryViewType
+struct ArrowBinaryViewTypeInlinedData {
+  int32_t size;
+  uint8_t data[NANOARROW_BINARY_VIEW_INLINE_SIZE];
+};
+
+struct ArrowBinaryViewTypeRefData {
+  int32_t size;
+  uint8_t data[NANOARROW_BINARY_VIEW_PREVIEW_SIZE];
+  int32_t buffer_index;
+  int32_t offset;
+};
+
+union ArrowBinaryViewType {  // TODO: C++ impl uses alignas which comes in C11
+  struct ArrowBinaryViewTypeInlinedData inlined;
+  struct ArrowBinaryViewTypeRefData ref;
+};
+
 static inline ArrowErrorCode ArrowArrayAppendBytes(struct ArrowArray* array,
                                                    struct ArrowBufferView value) {
   struct ArrowArrayPrivateData* private_data =
       (struct ArrowArrayPrivateData*)array->private_data;
 
-  struct ArrowBuffer* offset_buffer = ArrowArrayBuffer(array, 1);
-  struct ArrowBuffer* data_buffer = ArrowArrayBuffer(
-      array, 1 + (private_data->storage_type != NANOARROW_TYPE_FIXED_SIZE_BINARY));
-  int32_t offset;
-  int64_t large_offset;
-  int64_t fixed_size_bytes = private_data->layout.element_size_bits[1] / 8;
+  if (private_data->storage_type == NANOARROW_TYPE_STRING_VIEW ||
+      private_data->storage_type == NANOARROW_TYPE_BINARY_VIEW) {
+    struct ArrowBuffer* data_buffer = ArrowArrayBuffer(array, 1);
+    union ArrowBinaryViewType bvt;
+    bvt.inlined.size = value.size_bytes;
 
-  switch (private_data->storage_type) {
-    case NANOARROW_TYPE_STRING:
-    case NANOARROW_TYPE_BINARY:
-      offset = ((int32_t*)offset_buffer->data)[array->length];
-      if ((((int64_t)offset) + value.size_bytes) > INT32_MAX) {
-        return EOVERFLOW;
-      }
+    if (value.size_bytes <= NANOARROW_BINARY_VIEW_INLINE_SIZE) {
+      memcpy(bvt.inlined.data, value.data.as_char, value.size_bytes);
+    } else {
+      struct ArrowBuffer* current_out_buffer = ArrowArrayBuffer(array, 2);
+      // TODO: with C11 would be great to static_assert that sizeof(bvt.ref.data) <=
+      // NANOARROW_BINARY_VIEW_INLINE_SIZE
+      // assert(sizeof(bvt.ref.data) <= NANOARROW_BINARY_VIEW_INLINE_SIZE);
+      memcpy(bvt.ref.data, value.data.as_char, sizeof(bvt.ref.data));
+      // TODO: do not hardcode buffer position
+      bvt.ref.buffer_index = 0;
+      bvt.ref.offset = current_out_buffer->size_bytes;
+      NANOARROW_RETURN_NOT_OK(ArrowBufferAppend(current_out_buffer, &bvt, sizeof(bvt)));
+    }
+    NANOARROW_RETURN_NOT_OK(ArrowBufferAppend(data_buffer, &bvt, sizeof(bvt)));
+  } else {
+    struct ArrowBuffer* offset_buffer = ArrowArrayBuffer(array, 1);
+    struct ArrowBuffer* data_buffer = ArrowArrayBuffer(
+        array, 1 + (private_data->storage_type != NANOARROW_TYPE_FIXED_SIZE_BINARY));
+    int32_t offset;
+    int64_t large_offset;
+    int64_t fixed_size_bytes = private_data->layout.element_size_bits[1] / 8;
 
-      offset += (int32_t)value.size_bytes;
-      NANOARROW_RETURN_NOT_OK(ArrowBufferAppend(offset_buffer, &offset, sizeof(int32_t)));
-      NANOARROW_RETURN_NOT_OK(
-          ArrowBufferAppend(data_buffer, value.data.data, value.size_bytes));
-      break;
+    switch (private_data->storage_type) {
+      case NANOARROW_TYPE_STRING:
+      case NANOARROW_TYPE_BINARY:
+        offset = ((int32_t*)offset_buffer->data)[array->length];
+        if ((((int64_t)offset) + value.size_bytes) > INT32_MAX) {
+          return EOVERFLOW;
+        }
 
-    case NANOARROW_TYPE_LARGE_STRING:
-    case NANOARROW_TYPE_LARGE_BINARY:
-      large_offset = ((int64_t*)offset_buffer->data)[array->length];
-      large_offset += value.size_bytes;
-      NANOARROW_RETURN_NOT_OK(
-          ArrowBufferAppend(offset_buffer, &large_offset, sizeof(int64_t)));
-      NANOARROW_RETURN_NOT_OK(
-          ArrowBufferAppend(data_buffer, value.data.data, value.size_bytes));
-      break;
+        offset += (int32_t)value.size_bytes;
+        NANOARROW_RETURN_NOT_OK(
+            ArrowBufferAppend(offset_buffer, &offset, sizeof(int32_t)));
+        NANOARROW_RETURN_NOT_OK(
+            ArrowBufferAppend(data_buffer, value.data.data, value.size_bytes));
+        break;
 
-    case NANOARROW_TYPE_FIXED_SIZE_BINARY:
-      if (value.size_bytes != fixed_size_bytes) {
+      case NANOARROW_TYPE_LARGE_STRING:
+      case NANOARROW_TYPE_LARGE_BINARY:
+        large_offset = ((int64_t*)offset_buffer->data)[array->length];
+        large_offset += value.size_bytes;
+        NANOARROW_RETURN_NOT_OK(
+            ArrowBufferAppend(offset_buffer, &large_offset, sizeof(int64_t)));
+        NANOARROW_RETURN_NOT_OK(
+            ArrowBufferAppend(data_buffer, value.data.data, value.size_bytes));
+        break;
+
+      case NANOARROW_TYPE_FIXED_SIZE_BINARY:
+        if (value.size_bytes != fixed_size_bytes) {
+          return EINVAL;
+        }
+
+        NANOARROW_RETURN_NOT_OK(
+            ArrowBufferAppend(data_buffer, value.data.data, value.size_bytes));
+        break;
+      default:
         return EINVAL;
-      }
-
-      NANOARROW_RETURN_NOT_OK(
-          ArrowBufferAppend(data_buffer, value.data.data, value.size_bytes));
-      break;
-    default:
-      return EINVAL;
+    }
   }
 
   if (private_data->bitmap.buffer.data != NULL) {
@@ -535,8 +583,10 @@ static inline ArrowErrorCode ArrowArrayAppendString(struct ArrowArray* array,
   switch (private_data->storage_type) {
     case NANOARROW_TYPE_STRING:
     case NANOARROW_TYPE_LARGE_STRING:
+    case NANOARROW_TYPE_STRING_VIEW:
     case NANOARROW_TYPE_BINARY:
     case NANOARROW_TYPE_LARGE_BINARY:
+    case NANOARROW_TYPE_BINARY_VIEW:
       return ArrowArrayAppendBytes(array, buffer_view);
     default:
       return EINVAL;
@@ -913,29 +963,6 @@ static inline double ArrowArrayViewGetDoubleUnsafe(
       return DBL_MAX;
   }
 }
-
-#define NANOARROW_BINARY_VIEW_INLINE_SIZE 12
-#define NANOARROW_BINARY_VIEW_PREVIEW_SIZE 4
-
-// The Arrow C++ implementation uses anonymous structs as members
-// of the ArrowBinaryViewType. For Cython support in this library, we define
-// those structs outside of the ArrowBinaryViewType
-struct ArrowBinaryViewTypeInlinedData {
-  int32_t size;
-  uint8_t data[NANOARROW_BINARY_VIEW_INLINE_SIZE];
-};
-
-struct ArrowBinaryViewTypeRefData {
-  int32_t size;
-  uint8_t data[NANOARROW_BINARY_VIEW_PREVIEW_SIZE];
-  int32_t buffer_index;
-  int32_t offset;
-};
-
-union ArrowBinaryViewType {  // TODO: C++ impl uses alignas which comes in C11
-  struct ArrowBinaryViewTypeInlinedData inlined;
-  struct ArrowBinaryViewTypeRefData ref;
-};
 
 static inline struct ArrowStringView ArrowArrayViewGetStringUnsafe(
     const struct ArrowArrayView* array_view, int64_t i) {

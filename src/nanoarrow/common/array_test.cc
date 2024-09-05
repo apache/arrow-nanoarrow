@@ -895,6 +895,40 @@ TEST(ArrayTest, ArrayTestAppendToLargeStringArray) {
   ArrowArrayRelease(&array);
 }
 
+TEST(ArrayTest, ArrayTestAppendToStringViewArray) {
+  struct ArrowArray array;
+
+  ASSERT_EQ(ArrowArrayInitFromType(&array, NANOARROW_TYPE_STRING_VIEW), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayStartAppending(&array), NANOARROW_OK);
+
+  // Check that we can reserve
+  ASSERT_EQ(ArrowArrayReserve(&array, 5), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayBuffer(&array, 1)->capacity_bytes,
+            (5 + 1) * sizeof(union ArrowBinaryViewType));
+
+  EXPECT_EQ(ArrowArrayAppendString(&array, "1234"_asv), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayAppendNull(&array, 2), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayAppendString(&array, "longer_than_the_inline_size"_asv),
+            NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayAppendEmpty(&array, 1), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayFinishBuildingDefault(&array, nullptr), NANOARROW_OK);
+
+  EXPECT_EQ(array.length, 5);
+  EXPECT_EQ(array.null_count, 2);
+  auto validity_buffer = reinterpret_cast<const uint8_t*>(array.buffers[0]);
+  auto data_buffer = reinterpret_cast<const int64_t*>(array.buffers[1]);
+  auto out_of_line_buffer = reinterpret_cast<const char*>(array.buffers[2]);
+  EXPECT_EQ(validity_buffer[0], 0b00011001);
+  EXPECT_EQ(memcmp(data_buffer, "1234", 4), 0);
+
+  // TODO: need to add overload for ViewArrayAsBytes
+  /*
+  EXPECT_THAT(nanoarrow::ViewArrayAsBytes<64>(&array),
+              ElementsAre("1234"_asv, NA, NA, "56789"_asv, ""_asv));
+  */
+  ArrowArrayRelease(&array);
+}
+
 TEST(ArrayTest, ArrayTestAppendToFixedSizeBinaryArray) {
   struct ArrowArray array;
   struct ArrowSchema schema;
