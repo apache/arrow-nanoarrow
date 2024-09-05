@@ -15,8 +15,6 @@
 # specific language governing permissions and limitations
 # under the License.
 
-version: '3.5'
-
 services:
   verify:
     image: ${REPO}:${NANOARROW_PLATFORM}-${NANOARROW_ARCH}
@@ -48,12 +46,10 @@ services:
     command: "/bin/bash /build-docs.sh /nanoarrow"
 
   integration:
-    # Based on an arrow-dev repo image that is amd64 only
-    image: ${REPO}:integration-amd64
+    # Don't cache here (building the image takes about the same amount of time
+    # as downloading on CI)
     build:
       context: .
-      cache_from:
-        - ${REPO}:integration-amd64
       dockerfile: ci/docker/integration.dockerfile
     volumes:
       - ${NANOARROW_DOCKER_SOURCE_DIR}:/arrow-integration/nanoarrow

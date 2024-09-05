@@ -37,5 +37,5 @@ jobs:
 
       - name: Run integration tests
         run: |
-          echo "::group::Docker Pull"
+          echo "::group::Docker Build"
           docker compose run --rm -e GITHUB_ACTIONS integration
