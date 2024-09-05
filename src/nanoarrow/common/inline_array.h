@@ -1000,8 +1000,9 @@ static inline struct ArrowStringView ArrowArrayViewGetStringUnsafe(
         view.data = value_view.as_char + idx +
                     sizeof(((union ArrowBinaryViewType*)0)->inlined.size);
       } else {
-        const int32_t buf_index = bvt.ref.buffer_index + 2;
-        view.data = array_view->buffer_views[buf_index].data.as_char + bvt.ref.offset;
+        const int32_t buf_index = bvt.ref.buffer_index;
+        view.data =
+            array_view->variadic_buffer_views[buf_index].data.as_char + bvt.ref.offset;
       }
       break;
     }
@@ -1051,8 +1052,8 @@ static inline struct ArrowBufferView ArrowArrayViewGetBytesUnsafe(
         view.data.as_uint8 = value_view.as_uint8 + idx +
                              sizeof(((union ArrowBinaryViewType*)0)->inlined.size);
       } else {
-        const int32_t buf_index = bvt.ref.buffer_index + 2;
-        view.data = array_view->buffer_views[buf_index].data;
+        const int32_t buf_index = bvt.ref.buffer_index;
+        view.data = array_view->variadic_buffer_views[buf_index].data;
       }
       break;
     }

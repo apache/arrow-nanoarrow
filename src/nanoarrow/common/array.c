@@ -645,6 +645,10 @@ void ArrowArrayViewReset(struct ArrowArrayView* array_view) {
     ArrowFree(array_view->union_type_id_map);
   }
 
+  if (array_view->variadic_buffer_views != NULL) {
+    ArrowFree(array_view->variadic_buffer_views);
+  }
+
   ArrowArrayViewInitFromType(array_view, NANOARROW_TYPE_UNINITIALIZED);
 }
 
@@ -704,16 +708,13 @@ static int ArrowArrayViewSetArrayInternal(struct ArrowArrayView* array_view,
   array_view->offset = array->offset;
   array_view->length = array->length;
   array_view->null_count = array->null_count;
-
-  const bool fixed_nbuffers = (array_view->storage_type == NANOARROW_TYPE_STRING_VIEW ||
-                               array_view->storage_type == NANOARROW_TYPE_BINARY_VIEW)
-                                  ? 0
-                                  : 1;
+  array_view->variadic_buffer_sizes = NULL;
+  array_view->variadic_buffer_views = NULL;
+  array_view->n_variadic_buffers = 0;
 
   int64_t buffers_required = 0;
   for (int i = 0; i < NANOARROW_MAX_FIXED_BUFFERS; i++) {
-    if (array_view->layout.buffer_type[i] == NANOARROW_BUFFER_TYPE_NONE &&
-        fixed_nbuffers) {
+    if (array_view->layout.buffer_type[i] == NANOARROW_BUFFER_TYPE_NONE) {
       break;
     }
 
@@ -730,7 +731,41 @@ static int ArrowArrayViewSetArrayInternal(struct ArrowArrayView* array_view,
     }
   }
 
-  if (buffers_required != array->n_buffers && fixed_nbuffers) {
+  if (array_view->storage_type == NANOARROW_TYPE_STRING_VIEW ||
+      array_view->storage_type == NANOARROW_TYPE_BINARY_VIEW) {
+    const int64_t n_buffers = array->n_buffers;
+    const int64_t n_fixed_buffers = 2;
+
+    int64_t n_variadic_buffers = n_buffers - n_fixed_buffers - 1;
+    // Theoretically if the variadic buffers are not used the above subtraction
+    // could yield a negative number
+    n_variadic_buffers = (n_variadic_buffers < 0) ? 0 : n_variadic_buffers;
+
+    array_view->n_variadic_buffers = n_variadic_buffers;
+    // TODO: check malloc failures
+    array_view->variadic_buffer_views =
+        ArrowMalloc(sizeof(struct ArrowBufferView) * n_variadic_buffers);
+
+    for (int64_t i = 0; i < n_variadic_buffers; ++i) {
+      ++buffers_required;
+      array_view->variadic_buffer_views[i].data.data =
+          array->buffers[i + n_fixed_buffers];
+
+      // TODO: why do we need this?
+      // If non-null, set buffer size to unknown.
+      if (array->buffers[i + n_fixed_buffers] == NULL) {
+        array_view->variadic_buffer_views[i].size_bytes = 0;
+      } else {
+        array_view->variadic_buffer_views[i].size_bytes = -1;
+      }
+    }
+
+    // final buffer
+    ++buffers_required;
+    array_view->variadic_buffer_sizes = (int64_t*)array->buffers[n_buffers - 1];
+  }
+
+  if (buffers_required != array->n_buffers) {
     ArrowErrorSet(error,
                   "Expected array with %" PRId64 " buffer(s) but found %" PRId64
                   " buffer(s)",

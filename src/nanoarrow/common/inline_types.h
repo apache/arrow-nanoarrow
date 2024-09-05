@@ -815,6 +815,15 @@ struct ArrowArrayView {
   /// type_id == union_type_id_map[128 + child_index]. This value may be
   /// NULL in the case where child_id == type_id.
   int8_t* union_type_id_map;
+
+  /// \brief Number of variadic buffers
+  int64_t n_variadic_buffers;
+
+  /// \brief Size of each variadic buffer
+  int64_t* variadic_buffer_sizes;
+
+  /// \brief Variadic buffer contents
+  struct ArrowBufferView* variadic_buffer_views;
 };
 
 // Used as the private data member for ArrowArrays allocated here and accessed
