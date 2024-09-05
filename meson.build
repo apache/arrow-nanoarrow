@@ -35,6 +35,17 @@ project(
 #   add_project_arguments(['-fvisibility=hidden'], language: 'cpp')
 # endif
 
+cc = meson.get_compiler('c')
+add_project_arguments(
+    cc.get_supported_arguments(['-Wno-misleading-indentation']),
+    language : 'c'
+)
+cpp = meson.get_compiler('cpp')
+add_project_arguments(
+    cpp.get_supported_arguments(['-Wno-misleading-indentation']),
+    language : 'cpp'
+)
+
 nanoarrow_dep_args = []
 if host_machine.system() == 'windows' and get_option('default_library') == 'shared'
   add_project_arguments(['-DNANOARROW_BUILD_DLL', '-DNANOARROW_EXPORT_DLL'], language: 'c')
@@ -161,7 +172,8 @@ if get_option('tests')
   # Similarly code coverage has a built in option users should use instead
   # https://mesonbuild.com/Unit-tests.html#coverage
 
-  arrow_dep = dependency('arrow')
+  # The system include suppresses compilation warnings from Arrow
+  arrow_dep = dependency('arrow', include_type: 'system')
   gtest_dep = dependency('gtest_main')
   gmock_dep = dependency('gmock')
 

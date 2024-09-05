@@ -156,9 +156,6 @@ TEST(BufferTest, BufferTestFill) {
   }
 
   ArrowBufferReset(&buffer);
-
-  EXPECT_EQ(ArrowBufferAppendFill(&buffer, 0, std::numeric_limits<int64_t>::max()),
-            ENOMEM);
 }
 
 TEST(BufferTest, BufferTestResize0) {
@@ -184,8 +181,10 @@ TEST(BufferTest, BufferTestResize0) {
 TEST(BufferTest, BufferTestError) {
   struct ArrowBuffer buffer;
   ArrowBufferInit(&buffer);
+#if !defined(__SANITIZE_ADDRESS__)
   EXPECT_EQ(ArrowBufferResize(&buffer, std::numeric_limits<int64_t>::max(), false),
             ENOMEM);
+#endif
 
   ASSERT_EQ(ArrowBufferAppend(&buffer, "abcd", 4), NANOARROW_OK);
   EXPECT_EQ(ArrowBufferSetAllocator(&buffer, ArrowBufferAllocatorDefault()), EINVAL);

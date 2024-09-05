@@ -137,6 +137,7 @@ void ArrowDeviceInitCpu(struct ArrowDevice* device) {
 }
 
 struct ArrowDevice* ArrowDeviceResolve(ArrowDeviceType device_type, int64_t device_id) {
+  NANOARROW_UNUSED(device_id);
   if (device_type == ARROW_DEVICE_CPU) {
     return ArrowDeviceCpu();
   }

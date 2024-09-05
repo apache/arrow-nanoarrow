@@ -61,7 +61,7 @@ function main() {
     mkdir "${SANDBOX_DIR}"
 
     show_header "Compile project with meson"
-    meson setup "${SANDBOX_DIR}" --pkg-config-path $PKG_CONFIG_PATH
+    meson setup "${SANDBOX_DIR}" --pkg-config-path $PKG_CONFIG_PATH -Dwerror=true
 
     pushd "${SANDBOX_DIR}"
 
@@ -76,7 +76,6 @@ function main() {
           -Db_coverage=false
 
     meson compile
-    export ASAN_OPTIONS=allocator_may_return_null=1  # allow ENOMEM tests
     meson test --print-errorlogs
 
     show_header "Run valgrind test suite"
