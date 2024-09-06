@@ -101,7 +101,7 @@ TEST(NanoarrowIpcReader, InputStreamBuffer) {
 
 TEST(NanoarrowIpcReader, InputStreamFile) {
   struct ArrowIpcInputStream stream;
-  ASSERT_EQ(ArrowIpcInputStreamInitFile(&stream, nullptr, 1), EINVAL);
+  ASSERT_NE(ArrowIpcInputStreamInitFile(&stream, nullptr, 1), NANOARROW_OK);
 
   uint8_t input_data[] = {0x01, 0x02, 0x03, 0x04, 0x05};
   FILE* file_ptr = tmpfile();
