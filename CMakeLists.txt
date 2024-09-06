@@ -18,11 +18,6 @@
 message(STATUS "Building using CMake version: ${CMAKE_VERSION}")
 cmake_minimum_required(VERSION 3.14)
 
-if(NOT DEFINED CMAKE_C_STANDARD)
-  set(CMAKE_C_STANDARD 99)
-  set(CMAKE_C_STANDARD_REQUIRED ON)
-endif()
-
 set(NANOARROW_VERSION "0.6.0-SNAPSHOT")
 string(REGEX MATCH "^[0-9]+\\.[0-9]+\\.[0-9]+" NANOARROW_BASE_VERSION
              "${NANOARROW_VERSION}")
@@ -58,6 +53,15 @@ option(NANOARROW_BUNDLE_AS_CPP "Bundle nanoarrow source file as nanoarrow.cc" OF
 option(NANOARROW_CODE_COVERAGE "Enable coverage reporting" OFF)
 option(NANOARROW_ARROW_STATIC
        "Use a statically-linked Arrow C++ build when linking tests" OFF)
+
+if(NOT DEFINED CMAKE_C_STANDARD)
+  if(NANOARROW_IPC)
+    set(CMAKE_C_STANDARD 11)
+  else()
+    set(CMAKE_C_STANDARD 99)
+  endif()
+  set(CMAKE_C_STANDARD_REQUIRED ON)
+endif()
 
 if(NANOARROW_NAMESPACE)
   set(NANOARROW_NAMESPACE_DEFINE "#define NANOARROW_NAMESPACE ${NANOARROW_NAMESPACE}")
@@ -150,14 +154,6 @@ target_include_directories(nanoarrow
 install(FILES ${NANOARROW_INSTALL_HEADERS} DESTINATION include/nanoarrow)
 
 if(NANOARROW_IPC)
-  # flatcc requires C11 for alignas() and static_assert() in flatcc_generated.h
-  # It may be possible to use C99 mode to build the runtime and/or generated header
-  # should this cause problems for users.
-  if(NOT DEFINED CMAKE_C_STANDARD)
-    set(CMAKE_C_STANDARD 11)
-    set(CMAKE_C_STANDARD_REQUIRED ON)
-  endif()
-
   # Add the flatcc (runtime) dependency
   set(FLATCC_RTONLY
       ON
