@@ -92,8 +92,9 @@ TEST(NanoarrowIpcWriter, OutputStreamFile) {
 
 TEST(NanoarrowIpcWriter, OutputStreamFileError) {
   nanoarrow::ipc::UniqueOutputStream stream;
-  EXPECT_NE(ArrowIpcOutputStreamInitFile(stream.get(), nullptr, /*close_on_release=*/1),
-            NANOARROW_OK);
+  errno = EINVAL;
+  EXPECT_EQ(ArrowIpcOutputStreamInitFile(stream.get(), nullptr, /*close_on_release=*/1),
+            EINVAL);
 
   auto phony_path = __FILE__ + std::string(".phony");
   FILE* file_ptr = fopen(phony_path.c_str(), "rb");
