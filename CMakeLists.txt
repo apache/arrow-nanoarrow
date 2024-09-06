@@ -56,6 +56,9 @@ option(NANOARROW_ARROW_STATIC
 
 if(NOT DEFINED CMAKE_C_STANDARD)
   if(NANOARROW_IPC)
+    # flatcc requires C11 for alignas() and static_assert() in flatcc_generated.h
+    # It may be possible to use C99 mode to build the runtime and/or generated header
+    # should this cause problems for users.
     set(CMAKE_C_STANDARD 11)
   else()
     set(CMAKE_C_STANDARD 99)
