@@ -23,10 +23,6 @@ SOURCE_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 pushd "${SOURCE_DIR}"
 
-# Generate stubs using mypy
-stubgen --module nanoarrow._lib --include-docstrings -o build/tmp
-stubgen --module nanoarrow._ipc_lib --include-docstrings -o build/tmp
-
 # Add license to the start of the files
 LICENSE='
 # Licensed to the Apache Software Foundation (ASF) under one
@@ -47,13 +43,21 @@ LICENSE='
 # under the License.
 '
 
-echo "$LICENSE" > src/nanoarrow/_lib.pyi
-cat build/tmp/nanoarrow/_lib.pyi >> src/nanoarrow/_lib.pyi
+find src/nanoarrow -name "*.pyi" -delete
 
-echo "$LICENSE" > src/nanoarrow/_ipc_lib.pyi
-cat build/tmp/nanoarrow/_ipc_lib.pyi >> src/nanoarrow/_ipc_lib.pyi
+pushd src/nanoarrow
+for mod in $(find . -name "*.pyx" | sed -e "s|./||" -e "s|.pyx||"); do
+  stubgen --module "nanoarrow.${mod}" --include-docstrings -o ../../build/tmp
+  echo "$LICENSE" > "${mod}.pyi"
+  cat "../../build/tmp/${mod}.pyi" >> "${mod}.pyi"
+  black "${mod}.pyi"
+done
+popd
 
-# Reformat stubs
-black src/nanoarrow/*.pyi
+# echo "$LICENSE" > src/nanoarrow/_ipc_lib.pyi
+# cat build/tmp/nanoarrow/_ipc_lib.pyi >> src/nanoarrow/_ipc_lib.pyi
+
+# # Reformat stubs
+# black src/nanoarrow/*.pyi
 
 popd
