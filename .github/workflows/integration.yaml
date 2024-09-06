@@ -21,10 +21,13 @@ on:
   push:
     branches:
       - main
+      - 'maint-**'
   pull_request:
     paths:
       - .github/workflows/integration.yaml
-      - src/nanoarrow/**
+      - docker-compose.yml
+  schedule:
+    - cron: '5 0 * * 0'
 
 permissions:
   contents: read

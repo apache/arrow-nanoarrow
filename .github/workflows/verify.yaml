@@ -18,6 +18,9 @@
 name: Verification
 
 on:
+  push:
+    branches:
+      - 'maint-**'
   workflow_dispatch:
     inputs:
       version:

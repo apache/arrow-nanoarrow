@@ -31,6 +31,7 @@ on:
   push:
     branches:
       - main
+      - 'maint-**'
   workflow_dispatch:
 
 permissions:
