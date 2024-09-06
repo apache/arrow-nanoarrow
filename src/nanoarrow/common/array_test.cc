@@ -904,7 +904,7 @@ TEST(ArrayTest, ArrayTestAppendToStringViewArray) {
   // Check that we can reserve
   ASSERT_EQ(ArrowArrayReserve(&array, 5), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayBuffer(&array, 1)->capacity_bytes,
-            (5 + 1) * sizeof(union ArrowBinaryViewType));
+            5 * sizeof(union ArrowBinaryViewType));
 
   EXPECT_EQ(ArrowArrayAppendString(&array, "1234"_asv), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayAppendNull(&array, 2), NANOARROW_OK);
@@ -916,10 +916,21 @@ TEST(ArrayTest, ArrayTestAppendToStringViewArray) {
   EXPECT_EQ(array.length, 5);
   EXPECT_EQ(array.null_count, 2);
   auto validity_buffer = reinterpret_cast<const uint8_t*>(array.buffers[0]);
-  auto data_buffer = reinterpret_cast<const int64_t*>(array.buffers[1]);
-  auto out_of_line_buffer = reinterpret_cast<const char*>(array.buffers[2]);
+  auto inline_buffer =
+      reinterpret_cast<const union ArrowBinaryViewType*>(array.buffers[1]);
+  auto variable_buffer = reinterpret_cast<const char*>(array.buffers[2]);
+  auto sizes_buffer = reinterpret_cast<const int32_t*>(array.buffers[3]);
+
   EXPECT_EQ(validity_buffer[0], 0b00011001);
-  EXPECT_EQ(memcmp(data_buffer, "1234", 4), 0);
+  EXPECT_EQ(memcmp(inline_buffer[0].inlined.data, "1234", 4), 0);
+  EXPECT_EQ(inline_buffer[0].inlined.size, 4);
+  EXPECT_EQ(memcmp(inline_buffer[3].ref.data, "long", 4), 0);
+  EXPECT_EQ(inline_buffer[3].ref.size, 27);
+  EXPECT_EQ(inline_buffer[3].ref.buffer_index, 0);
+  EXPECT_EQ(inline_buffer[3].ref.offset, 0);
+
+  EXPECT_EQ(memcmp(variable_buffer, "longer_than_the_inline_size", 27), 0);
+  EXPECT_EQ(sizes_buffer[0], 27);
 
   // TODO: need to add overload for ViewArrayAsBytes
   /*

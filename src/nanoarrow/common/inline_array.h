@@ -22,6 +22,7 @@
 #include <float.h>
 #include <limits.h>
 #include <stdint.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "nanoarrow/common/inline_buffer.h"
@@ -501,20 +502,37 @@ static inline ArrowErrorCode ArrowArrayAppendBytes(struct ArrowArray* array,
       private_data->storage_type == NANOARROW_TYPE_BINARY_VIEW) {
     struct ArrowBuffer* data_buffer = ArrowArrayBuffer(array, 1);
     union ArrowBinaryViewType bvt;
-    bvt.inlined.size = value.size_bytes;
+    // TODO: bounds check
+    bvt.inlined.size = (int32_t)value.size_bytes;
 
     if (value.size_bytes <= NANOARROW_BINARY_VIEW_INLINE_SIZE) {
       memcpy(bvt.inlined.data, value.data.as_char, value.size_bytes);
     } else {
-      struct ArrowBuffer* current_out_buffer = ArrowArrayBuffer(array, 2);
-      // TODO: with C11 would be great to static_assert that sizeof(bvt.ref.data) <=
-      // NANOARROW_BINARY_VIEW_INLINE_SIZE
-      // assert(sizeof(bvt.ref.data) <= NANOARROW_BINARY_VIEW_INLINE_SIZE);
-      memcpy(bvt.ref.data, value.data.as_char, sizeof(bvt.ref.data));
-      // TODO: do not hardcode buffer position
-      bvt.ref.buffer_index = 0;
-      bvt.ref.offset = current_out_buffer->size_bytes;
-      NANOARROW_RETURN_NOT_OK(ArrowBufferAppend(current_out_buffer, &bvt, sizeof(bvt)));
+      int32_t n_vbufs = private_data->n_variadic_buffers;
+      if (n_vbufs == 0 ||
+          private_data->variadic_buffers[n_vbufs - 1].size_bytes + value.size_bytes >
+              NANOARROW_BINARY_VIEW_BLOCK_SIZE) {
+        // TODO: ArrowMalloc?
+        ++n_vbufs;
+        // TODO: these should be realloc for > 0 case
+        private_data->variadic_buffers =
+            (struct ArrowBuffer*)malloc(sizeof(struct ArrowBuffer) * (n_vbufs));
+        private_data->variadic_buffer_sizes =
+            (int32_t*)malloc(sizeof(int32_t) * (n_vbufs));
+        ArrowBufferInit(&private_data->variadic_buffers[n_vbufs - 1]);
+        private_data->n_variadic_buffers = n_vbufs;
+      }
+
+      struct ArrowBuffer* variadic_buf = &private_data->variadic_buffers[n_vbufs - 1];
+      memcpy(bvt.ref.data, value.data.as_char, NANOARROW_BINARY_VIEW_PREVIEW_SIZE);
+      bvt.ref.buffer_index = n_vbufs - 1;
+      // TODO: bounds check
+      bvt.ref.offset = (int32_t)variadic_buf->size_bytes;
+      NANOARROW_RETURN_NOT_OK(
+          ArrowBufferAppend(variadic_buf, value.data.as_char, value.size_bytes));
+      // TODO: bounds check
+      private_data->variadic_buffer_sizes[n_vbufs - 1] =
+          (int32_t)variadic_buf->size_bytes;
     }
     NANOARROW_RETURN_NOT_OK(ArrowBufferAppend(data_buffer, &bvt, sizeof(bvt)));
   } else {

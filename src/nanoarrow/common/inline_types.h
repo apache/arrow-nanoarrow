@@ -626,12 +626,8 @@ enum ArrowBufferType {
   NANOARROW_BUFFER_TYPE_DATA_VIEW
 };
 
-/// \brief The maximum number of buffers in an ArrowArrayView or ArrowLayout
+/// \brief The maximum number of fixed buffers in an ArrowArrayView or ArrowLayout
 /// \ingroup nanoarrow-array-view
-///
-/// All currently supported types have 3 buffers or fewer; however, future types
-/// may involve a variable number of buffers (e.g., string view). These buffers
-/// will be represented by separate members of the ArrowArrayView or ArrowLayout.
 #define NANOARROW_MAX_FIXED_BUFFERS 3
 
 /// \brief An non-owning view of a string
@@ -817,10 +813,10 @@ struct ArrowArrayView {
   int8_t* union_type_id_map;
 
   /// \brief Number of variadic buffers
-  int64_t n_variadic_buffers;
+  int32_t n_variadic_buffers;
 
   /// \brief Size of each variadic buffer
-  int64_t* variadic_buffer_sizes;
+  int32_t* variadic_buffer_sizes;
 
   /// \brief Variadic buffer contents
   struct ArrowBufferView* variadic_buffer_views;
@@ -838,8 +834,8 @@ struct ArrowArrayPrivateData {
 
   // The array of pointers to buffers. This must be updated after a sequence
   // of appends to synchronize its values with the actual buffer addresses
-  // (which may have ben reallocated uring that time)
-  const void* buffer_data[NANOARROW_MAX_FIXED_BUFFERS];
+  // (which may have ben reallocated during that time)
+  const void** buffer_data;
 
   // The storage data type, or NANOARROW_TYPE_UNINITIALIZED if unknown
   enum ArrowType storage_type;
@@ -851,6 +847,15 @@ struct ArrowArrayPrivateData {
   // In the future this could be replaced with a type id<->child mapping
   // to support constructing unions in append mode where type_id != child_index
   int8_t union_type_id_is_child_index;
+
+  // Number of variadic buffers for binary view types
+  int32_t n_variadic_buffers;
+
+  // Variadic buffers for binary view types
+  struct ArrowBuffer* variadic_buffers;
+
+  // Size of each variadic buffer in bytes
+  int32_t* variadic_buffer_sizes;
 };
 
 /// \brief A representation of an interval.
