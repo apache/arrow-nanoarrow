@@ -64,15 +64,12 @@ jobs:
       - name: Check type stubs
         if: success() && matrix.python-version == '3.12'
         run: |
-          pip install mypy "black==22.3.0"
-          python/generate_type_stubs.sh
-
-          if git diff --name-only | grep -e "\\.pxi$"; then
-            echo "Type stubs were changed. Update them with python/generate_type_stubs.sh."
-          fi
-
-          stubtest nanoarrow._lib
-          stubtest nanoarrow._ipc_lib
+          pip install mypy
+          cd src/nanoarrow
+          for mod in $(find . -name "*.pyx" | sed -e "s|./||" -e "s|.pyx||"); do
+            cat $mod
+            stubtest "nanoarrow.$mod"
+          done
 
       - name: Run doctests
         if: success() && matrix.python-version == '3.12'

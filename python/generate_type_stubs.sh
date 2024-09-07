@@ -23,7 +23,7 @@ SOURCE_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 pushd "${SOURCE_DIR}"
 
-# We'll addthe license to the start of the files
+# We'll add the license to the start of the files
 LICENSE='
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
