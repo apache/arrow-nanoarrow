@@ -550,11 +550,11 @@ class Array(ArrayViewVisitable):
 
             with io.BytesIO() as dst:
                 writer = Writer.from_writable(dst)
-                writer.write(self, write_schema=False)
+                writer.write_stream(self, write_schema=False)
                 return dst.getvalue()
         else:
             writer = Writer.from_writable(dst)
-            writer.write(self, write_schema=False)
+            writer.write_stream(self, write_schema=False)
 
     def to_string(self, width_hint=80, items_hint=10) -> str:
         cls_name = _repr_utils.make_class_label(self, module="nanoarrow")

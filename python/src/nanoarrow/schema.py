@@ -482,11 +482,11 @@ class Schema:
 
             with io.BytesIO() as dst:
                 writer = Writer.from_writable(dst)
-                writer.write(empty)
+                writer.write_stream(empty)
                 return dst.getvalue()
         else:
             writer = Writer.from_writable(dst)
-            writer.write(empty)
+            writer.write_stream(empty)
 
     def __repr__(self) -> str:
         return _schema_repr(self)

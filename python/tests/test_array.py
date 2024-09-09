@@ -357,6 +357,32 @@ def test_array_inspect(capsys):
     assert captured.out.startswith("<ArrowArray struct<col0: int32")
 
 
+def test_array_serialize():
+    import io
+
+    c_array = na.c_array_from_buffers(
+        na.struct({"some_col": na.int32()}, nullable=False),
+        length=3,
+        buffers=[],
+        children=[na.c_array([1, 2, 3], na.int32())],
+    )
+    array = na.Array(c_array)
+    schema_serialized = array.schema.serialize()
+
+    serialized = array.serialize()
+    array_roundtrip = na.ArrayStream.from_readable(
+        schema_serialized + serialized
+    ).read_all()
+    assert repr(array_roundtrip) == repr(array)
+
+    out = io.BytesIO()
+    array.serialize(out)
+    array_roundtrip = na.ArrayStream.from_readable(
+        schema_serialized + out.getvalue()
+    ).read_all()
+    assert repr(array_roundtrip) == repr(array)
+
+
 def test_timestamp_array():
     d1 = int(round(datetime(1985, 12, 31, 0, 0, tzinfo=timezone.utc).timestamp() * 1e3))
     d2 = int(round(datetime(2005, 3, 4, 0, 0, tzinfo=timezone.utc).timestamp() * 1e3))
