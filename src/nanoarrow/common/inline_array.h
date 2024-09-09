@@ -488,9 +488,10 @@ struct ArrowBinaryViewTypeRefData {
   int32_t offset;
 };
 
-union ArrowBinaryViewType {  // TODO: C++ impl uses alignas which comes in C11
+union ArrowBinaryViewType {
   struct ArrowBinaryViewTypeInlinedData inlined;
   struct ArrowBinaryViewTypeRefData ref;
+  int64_t alignment_dummy;
 };
 
 static inline ArrowErrorCode ArrowArrayAppendBytes(struct ArrowArray* array,

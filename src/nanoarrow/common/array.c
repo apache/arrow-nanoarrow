@@ -780,7 +780,6 @@ static int ArrowArrayViewSetArrayInternal(struct ArrowArrayView* array_view,
       array_view->variadic_buffer_views[i].data.data =
           array->buffers[i + n_fixed_buffers];
 
-      // TODO: why do we need this?
       // If non-null, set buffer size to unknown.
       if (array->buffers[i + n_fixed_buffers] == NULL) {
         array_view->variadic_buffer_views[i].size_bytes = 0;
