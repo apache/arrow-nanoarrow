@@ -543,6 +543,15 @@ class Array(ArrayViewVisitable):
         )
 
     def serialize(self, dst=None) -> Union[bytes, None]:
+        """Write this Array into dst zero or more encapsulated IPC messages
+
+        Parameters
+        ----------
+        dst : file-like, optional
+            If present, a file-like object into which the chunks of this array
+            should be serialized. If omitted, this will create a ``io.BytesIO()``
+            and return the serialized result.
+        """
         from nanoarrow.ipc import Writer
 
         if dst is None:
