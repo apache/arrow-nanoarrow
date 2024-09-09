@@ -306,6 +306,41 @@ class Writer:
 
     @staticmethod
     def from_writable(obj):
+        """Write an Arrow IPC stream to a writable file
+
+        Wraps a writable object (specificially, an object that implements a
+        ``write()`` method) as a non-owning Writer. Closing ``obj`` remains
+        the caller's responsibility (i.e., closing this object will not call
+        ``obj.close()``.
+
+        Parameters
+        ----------
+        obj : A writable file-like object supporting ``write()``.
+
+        Examples
+        --------
+
+        >>> import io
+        >>> import nanoarrow as na
+        >>> from nanoarrow.ipc import Writer
+        >>>
+        >>> out = io.BytesIO()
+        >>> array = na.c_array_from_buffers(
+        ...     na.struct({"some_col": na.int32()}),
+        ...     length=3,
+        ...     buffers=[],
+        ...     children=[na.c_array([1, 2, 3], na.int32())]
+        ... )
+        >>>
+        >>> with Writer.from_writable(out) as writer:
+        ...     writer.write_all(array)
+        >>>
+        >>> na.ArrayStream.from_readable(out.getvalue()).read_all()
+        nanoarrow.Array<non-nullable struct<some_col: int32>>[3]
+        {'some_col': 1}
+        {'some_col': 2}
+        {'some_col': 3}
+        """
         out = Writer()
         stream = CIpcOutputStream.from_writable(obj, close_obj=False)
         out._desc = repr(obj)
@@ -313,10 +348,56 @@ class Writer:
         out._writer = CIpcWriter(stream)
         return out
 
+    @staticmethod
+    def from_path(obj, *args, **kwargs):
+        """Wrap a local file as an IPC stream
+
+        Wraps a pathlike object (specificially, one that can be passed to ``open()``)
+        as an owning Writer. The file will be opened in (writable) binary mode and
+        will be closed when the returned writer is closed.
+
+        Parameters
+        ----------
+        obj : path-like
+            A string or path-like object that can be passed to ``open()``
+
+        Examples
+        --------
+        >>> import os
+        >>> import tempfile
+        >>> import nanoarrow as na
+        >>> from nanoarrow.ipc import Writer
+        >>>
+        >>> array = na.c_array_from_buffers(
+        ...     na.struct({"some_col": na.int32()}),
+        ...     length=3,
+        ...     buffers=[],
+        ...     children=[na.c_array([1, 2, 3], na.int32())]
+        ... )
+        >>>
+        >>> with tempfile.TemporaryDirectory() as td:
+        ...     path = os.path.join(td, "test.arrows")
+        ...     with Writer.from_path(path) as writer:
+        ...         writer.write_all(array)
+        ...
+        ...     with na.ArrayStream.from_path(path) as stream:
+        ...         stream.read_all()
+        nanoarrow.Array<non-nullable struct<some_col: int32>>[3]
+        {'some_col': 1}
+        {'some_col': 2}
+        {'some_col': 3}
+        """
+        out = Writer()
+        stream = CIpcOutputStream.from_writable(
+            open(obj, "wb", *args, **kwargs), close_obj=True
+        )
+        out._writer = CIpcWriter(stream)
+        return out
+
 
 # A self-contained example whose value is the serialized verison of
 # DataFrame({"some_col": [1, 2, 3]}). Used to make the tests and documentation
-# self-contained since we don't have an IPC writer.
+# self-contained.
 _EXAMPLE_IPC_SCHEMA = (
     b"\xff\xff\xff\xff\x10\x01\x00\x00\x10\x00\x00\x00\x00\x00\x0a\x00\x0e\x00\x06"
     b"\x00\x05\x00\x08\x00\x0a\x00\x00\x00\x00\x01\x04\x00\x10\x00\x00\x00\x00\x00"
