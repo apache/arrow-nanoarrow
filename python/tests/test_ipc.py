@@ -125,7 +125,7 @@ def test_writer_from_writable():
 
     out = io.BytesIO()
     with Writer.from_writable(out) as writer:
-        writer.write_all(array)
+        writer.write_stream(array)
 
     with na.ArrayStream.from_readable(out.getvalue()) as stream:
         assert stream.read_all().to_pylist() == na.Array(array).to_pylist()
@@ -141,7 +141,7 @@ def test_writer_from_writable():
 
     out = io.BytesIO()
     with Writer.from_writable(out) as writer:
-        writer.write_all(array)
+        writer.write_stream(array)
 
     with na.ArrayStream.from_readable(out.getvalue()) as stream:
         assert stream.read_all().to_pylist() == na.Array(array).to_pylist()
@@ -159,7 +159,7 @@ def test_writer_from_path():
         path = os.path.join(td, "test.arrows")
 
         with Writer.from_path(path) as writer:
-            writer.write_all(array)
+            writer.write_stream(array)
 
         with na.ArrayStream.from_path(path) as stream:
             assert stream.read_all().to_pylist() == na.Array(array).to_pylist()
@@ -178,4 +178,4 @@ def test_writer_python_exception_on_write():
 def test_writer_error_on_write():
     with pytest.raises(NanoarrowException, match="RecordBatches cannot be constructed"):
         with Writer.from_writable(io.BytesIO()) as writer:
-            writer.write(na.c_array([], na.int32()))
+            writer.write_stream(na.c_array([], na.int32()))

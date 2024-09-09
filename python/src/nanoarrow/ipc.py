@@ -27,6 +27,7 @@ from nanoarrow._ipc_lib import (
 from nanoarrow._utils import obj_is_buffer
 from nanoarrow.array_stream import c_array_stream
 from nanoarrow.iterator import ArrayViewBaseIterator
+from nanoarrow.schema import c_schema
 
 from nanoarrow import _repr_utils
 
@@ -259,6 +260,7 @@ class Writer:
         self.close()
 
     def release(self):
+        """Close stream without writing the end-of-stream marker"""
         if not self._is_valid():
             return
 
@@ -266,33 +268,73 @@ class Writer:
         self._writer = None
 
     def close(self):
+        """Close stream and write end-of-stream marker"""
         if not self._is_valid():
             return
 
         self._writer.write_end_of_stream()
         self.release()
 
-    def write(self, obj, schema=None, write_schema=True):
+    def write_stream(self, obj, schema=None, *, write_schema=None):
+        """Interpret obj as a stream of arrays and write to stream
+
+        Writes all arrays from obj to the output stream.
+
+        Parameters
+        ----------
+        obj : array stream-like
+            An array-like or array stream-like object as sanitized by
+            :func:`c_array_stream`.
+        schema : schema-like, optional
+            An optional schema, passed to :func:`c_array_stream`.
+        write_schema : bool, optional
+            If True, the schema will always be written to the output stream; if False,
+            the schema will never be written to the output stream. If omitted, the
+            schema will be written if nothing has yet been written to the output.
+        """
         if not self._is_valid():
             raise ValueError("Can't write to released Writer")
 
         with c_array_stream(obj, schema=schema) as stream:
             if self._iterator is None:
                 self._iterator = ArrayViewBaseIterator(stream._get_cached_schema())
+                if write_schema is None:
+                    write_schema = True
+
             if write_schema:
                 self._writer.write_schema(self._iterator._schema)
+
             for array in stream:
                 self._iterator._set_array(array)
                 self._writer.write_array_view(self._iterator._array_view)
 
-    def write_all(self, obj, schema=None):
+    def serialize_stream(self, obj, schema=None, *, write_schema=None):
+        """Interpret obj as a stream of arrays, write to stream, and close
+
+        Like :meth:`write_stream` except always appends the end-of-stream marker
+        to the output. This method also takes a potentially more efficient path
+        that uses fewer Python calls if possible.
+
+        Parameters
+        ----------
+        obj : array stream-like
+            An array-like or array stream-like object as sanitized by
+            :func:`c_array_stream`.
+        schema : schema-like, optional
+            An optional schema, passed to :func:`c_array_stream`.
+        write_schema : bool, optional
+            If True, the schema will always be written to the output stream; if False,
+            the schema will never be written to the output stream. If omitted, the
+            schema will be written if nothing has yet been written to the output.
+        """
         if not self._is_valid():
             raise ValueError("Can't write to released Writer")
 
-        # If we've already written a schema, we can't write using the
-        # stream writer because it automatically appends a schema. We can,
-        # however, write the rest of the stream and EOS using write().
-        if self._iterator is not None:
+        # If we've already written a schema or we've explicitly been asked
+        # to write one, we can't write using the stream writer because it
+        # automatically appends a schema. We can, however, write the rest
+        # of the stream and EOS using write().
+        if self._iterator is not None or not write_schema:
             with self:
                 self.write(obj, schema=schema)
                 return
@@ -333,7 +375,7 @@ class Writer:
         ... )
         >>>
         >>> with Writer.from_writable(out) as writer:
-        ...     writer.write_all(array)
+        ...     writer.write_stream(array)
         >>>
         >>> na.ArrayStream.from_readable(out.getvalue()).read_all()
         nanoarrow.Array<non-nullable struct<some_col: int32>>[3]
@@ -378,7 +420,7 @@ class Writer:
         >>> with tempfile.TemporaryDirectory() as td:
         ...     path = os.path.join(td, "test.arrows")
         ...     with Writer.from_path(path) as writer:
-        ...         writer.write_all(array)
+        ...         writer.write_stream(array)
         ...
         ...     with na.ArrayStream.from_path(path) as stream:
         ...         stream.read_all()
