@@ -27,7 +27,6 @@ from nanoarrow._ipc_lib import (
 from nanoarrow._utils import obj_is_buffer
 from nanoarrow.array_stream import c_array_stream
 from nanoarrow.iterator import ArrayViewBaseIterator
-from nanoarrow.schema import c_schema
 
 from nanoarrow import _repr_utils
 
