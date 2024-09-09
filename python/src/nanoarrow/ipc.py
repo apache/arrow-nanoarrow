@@ -308,12 +308,14 @@ class Writer:
                 self._iterator._set_array(array)
                 self._writer.write_array_view(self._iterator._array_view)
 
-    def serialize_stream(self, obj, schema=None, *, write_schema=None):
+    def serialize_stream(self, obj, schema=None):
         """Interpret obj as a stream of arrays, write to stream, and close
 
-        Like :meth:`write_stream` except always appends the end-of-stream marker
-        to the output. This method also takes a potentially more efficient path
-        that uses fewer Python calls if possible.
+        Like :meth:`write_stream` except always writes a schema message and
+        always appends the end-of-stream marker to the output. This method
+        also takes a potentially more efficient path that uses fewer Python
+        calls at the expense of less flexibility. After calling this method,
+        the writer is released and subequent calls to methods will error.
 
         Parameters
         ----------
@@ -322,10 +324,6 @@ class Writer:
             :func:`c_array_stream`.
         schema : schema-like, optional
             An optional schema, passed to :func:`c_array_stream`.
-        write_schema : bool, optional
-            If True, the schema will always be written to the output stream; if False,
-            the schema will never be written to the output stream. If omitted, the
-            schema will be written if nothing has yet been written to the output.
         """
         if not self._is_valid():
             raise ValueError("Can't write to released Writer")
@@ -334,10 +332,8 @@ class Writer:
         # to write one, we can't write using the stream writer because it
         # automatically appends a schema. We can, however, write the rest
         # of the stream and EOS using write().
-        if self._iterator is not None or not write_schema:
-            with self:
-                self.write(obj, schema=schema)
-                return
+        if self._iterator is not None:
+            raise ValueError("Can't serialize_stream() into a non-empty writer")
 
         # Write the entire stream and release the writer. We can't
         # use close() because that would write the EOS and the stream

@@ -131,22 +131,6 @@ def test_writer_from_writable():
         assert stream.read_all().to_pylist() == na.Array(array).to_pylist()
 
 
-def test_writer_from_writable():
-    array = na.c_array_from_buffers(
-        na.struct({"some_col": na.int32()}),
-        length=3,
-        buffers=[],
-        children=[na.c_array([1, 2, 3], na.int32())],
-    )
-
-    out = io.BytesIO()
-    with Writer.from_writable(out) as writer:
-        writer.write_stream(array)
-
-    with na.ArrayStream.from_readable(out.getvalue()) as stream:
-        assert stream.read_all().to_pylist() == na.Array(array).to_pylist()
-
-
 def test_writer_from_path():
     array = na.c_array_from_buffers(
         na.struct({"some_col": na.int32()}),
@@ -163,6 +147,74 @@ def test_writer_from_path():
 
         with na.ArrayStream.from_path(path) as stream:
             assert stream.read_all().to_pylist() == na.Array(array).to_pylist()
+
+
+def test_writer_write_stream_schema():
+    array = na.c_array_from_buffers(
+        na.struct({"some_col": na.int32()}),
+        length=3,
+        buffers=[],
+        children=[na.c_array([1, 2, 3], na.int32())],
+    )
+    zero_chunk_array = na.Array.from_chunks([], array.schema)
+
+    out = io.BytesIO()
+    with Writer.from_writable(out) as writer:
+        writer.write_stream(zero_chunk_array)
+        schema_bytes = out.getvalue()
+
+    with Writer.from_writable(out) as writer:
+        out.truncate(0)
+        out.seek(0)
+        writer.write_stream(zero_chunk_array)
+        writer.write_stream(zero_chunk_array, write_schema=True)
+        two_schema_bytes = out.getvalue()
+
+    assert (schema_bytes + schema_bytes) == two_schema_bytes
+
+    with Writer.from_writable(out) as writer:
+        out.truncate(0)
+        out.seek(0)
+        writer.write_stream(array, write_schema=False)
+        array_bytes = out.getvalue()
+
+    with Writer.from_writable(out) as writer:
+        out.truncate(0)
+        out.seek(0)
+        writer.write_stream(array, write_schema=True)
+        both_bytes = out.getvalue()
+
+    assert (schema_bytes + array_bytes) == both_bytes
+
+
+def test_writer_serialize_stream():
+    array = na.c_array_from_buffers(
+        na.struct({"some_col": na.int32()}),
+        length=3,
+        buffers=[],
+        children=[na.c_array([1, 2, 3], na.int32())],
+    )
+
+    out = io.BytesIO()
+    with Writer.from_writable(out) as writer:
+        writer.write_stream(array)
+
+        # Check that we can't serialize after we've already written to stream
+        with pytest.raises(ValueError, match="Can't serialize_stream"):
+            writer.serialize_stream(array)
+
+        schema_and_array_bytes = out.getvalue()
+
+    end_of_stream_bytes = b"\xff\xff\xff\xff\x00\x00\x00\x00"
+
+    writer = Writer.from_writable(out)
+    out.truncate(0)
+    out.seek(0)
+    writer.serialize_stream(array)
+    assert writer._is_valid() is False
+
+    serialized_bytes = out.getvalue()
+    assert (schema_and_array_bytes + end_of_stream_bytes) == serialized_bytes
 
 
 def test_writer_python_exception_on_write():
