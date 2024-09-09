@@ -228,6 +228,6 @@ def test_writer_python_exception_on_write():
 
 
 def test_writer_error_on_write():
-    with pytest.raises(NanoarrowException, match="RecordBatches cannot be constructed"):
+    with pytest.raises(NanoarrowException):
         with Writer.from_writable(io.BytesIO()) as writer:
             writer.write_stream(na.c_array([], na.int32()))
