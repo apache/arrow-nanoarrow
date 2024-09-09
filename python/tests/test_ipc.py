@@ -24,11 +24,10 @@ import pytest
 from nanoarrow._utils import NanoarrowException
 
 import nanoarrow as na
-from nanoarrow.ipc import Stream
+from nanoarrow.ipc import Stream, Writer
 
 
 def test_ipc_stream_example():
-
     with Stream.example() as input:
         assert input._is_valid() is True
         assert "BytesIO object" in repr(input)
@@ -95,7 +94,7 @@ def test_ipc_stream_from_url():
 
 def test_ipc_stream_python_exception_on_read():
     class ExtraordinarilyInconvenientFile:
-        def readinto(self, obj):
+        def readinto(self, *args, **kwargs):
             raise RuntimeError("I error for all read requests")
 
     input = Stream.from_readable(ExtraordinarilyInconvenientFile())
@@ -114,3 +113,69 @@ def test_ipc_stream_error_on_read():
                 match="Expected >= 280 bytes of remaining data",
             ):
                 na.c_array_stream(input)
+
+
+def test_writer_from_writable():
+    array = na.c_array_from_buffers(
+        na.struct({"some_col": na.int32()}),
+        length=3,
+        buffers=[],
+        children=[na.c_array([1, 2, 3], na.int32())],
+    )
+
+    out = io.BytesIO()
+    with Writer.from_writable(out) as writer:
+        writer.write_all(array)
+
+    with na.ArrayStream.from_readable(out.getvalue()) as stream:
+        assert stream.read_all().to_pylist() == na.Array(array).to_pylist()
+
+
+def test_writer_from_writable():
+    array = na.c_array_from_buffers(
+        na.struct({"some_col": na.int32()}),
+        length=3,
+        buffers=[],
+        children=[na.c_array([1, 2, 3], na.int32())],
+    )
+
+    out = io.BytesIO()
+    with Writer.from_writable(out) as writer:
+        writer.write_all(array)
+
+    with na.ArrayStream.from_readable(out.getvalue()) as stream:
+        assert stream.read_all().to_pylist() == na.Array(array).to_pylist()
+
+
+def test_writer_from_path():
+    array = na.c_array_from_buffers(
+        na.struct({"some_col": na.int32()}),
+        length=3,
+        buffers=[],
+        children=[na.c_array([1, 2, 3], na.int32())],
+    )
+
+    with tempfile.TemporaryDirectory() as td:
+        path = os.path.join(td, "test.arrows")
+
+        with Writer.from_path(path) as writer:
+            writer.write_all(array)
+
+        with na.ArrayStream.from_path(path) as stream:
+            assert stream.read_all().to_pylist() == na.Array(array).to_pylist()
+
+
+def test_writer_python_exception_on_write():
+    class ExtraordinarilyInconvenientFile:
+        def write(self, *args, **kwargs):
+            raise RuntimeError("I error for all write requests")
+
+    with pytest.raises(NanoarrowException, match="I error for all write requests"):
+        with Writer.from_writable(ExtraordinarilyInconvenientFile()) as writer:
+            writer.write(na.c_array([], na.struct([na.int32()])))
+
+
+def test_writer_error_on_write():
+    with pytest.raises(NanoarrowException, match="RecordBatches cannot be constructed"):
+        with Writer.from_writable(io.BytesIO()) as writer:
+            writer.write(na.c_array([], na.int32()))
