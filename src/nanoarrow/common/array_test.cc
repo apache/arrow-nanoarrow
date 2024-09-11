@@ -3104,9 +3104,7 @@ void TestGetFromBinary(BuilderClass& builder) {
   ARROW_EXPECT_OK(builder.AppendNulls(2));
   ARROW_EXPECT_OK(builder.Append("four"));
 
-  if constexpr (!std::is_same_v<BuilderClass, FixedSizeBinaryBuilder>) {
-    ARROW_EXPECT_OK(builder.Append("this_is_a_relatively_long_string"));
-  }
+  ARROW_EXPECT_OK(builder.Append("this_is_a_relatively_long_string"));
 
   auto maybe_arrow_array = builder.Finish();
   ARROW_EXPECT_OK(maybe_arrow_array);
@@ -3129,19 +3127,55 @@ void TestGetFromBinary(BuilderClass& builder) {
   EXPECT_EQ(buffer_view.size_bytes, strlen("four"));
   EXPECT_EQ(memcmp(buffer_view.data.as_char, "four", buffer_view.size_bytes), 0);
 
-  if constexpr (!std::is_same_v<BuilderClass, FixedSizeBinaryBuilder>) {
-    string_view = ArrowArrayViewGetStringUnsafe(&array_view, 4);
-    EXPECT_EQ(string_view.size_bytes, strlen("this_is_a_relatively_long_string"));
-    EXPECT_EQ(memcmp(string_view.data, "this_is_a_relatively_long_string",
-                     string_view.size_bytes),
-              0);
+  string_view = ArrowArrayViewGetStringUnsafe(&array_view, 4);
+  EXPECT_EQ(string_view.size_bytes, strlen("this_is_a_relatively_long_string"));
+  EXPECT_EQ(memcmp(string_view.data, "this_is_a_relatively_long_string",
+                   string_view.size_bytes),
+            0);
 
-    buffer_view = ArrowArrayViewGetBytesUnsafe(&array_view, 4);
-    EXPECT_EQ(buffer_view.size_bytes, strlen("this_is_a_relatively_long_string"));
-    EXPECT_EQ(memcmp(buffer_view.data.as_char, "this_is_a_relatively_long_string",
-                     buffer_view.size_bytes),
-              0);
-  }
+  buffer_view = ArrowArrayViewGetBytesUnsafe(&array_view, 4);
+  EXPECT_EQ(buffer_view.size_bytes, strlen("this_is_a_relatively_long_string"));
+  EXPECT_EQ(memcmp(buffer_view.data.as_char, "this_is_a_relatively_long_string",
+                   buffer_view.size_bytes),
+            0);
+
+  ArrowArrayViewReset(&array_view);
+  ArrowArrayRelease(&array);
+  ArrowSchemaRelease(&schema);
+}
+
+template <>
+void TestGetFromBinary(FixedSizeBinaryBuilder& builder) {
+  struct ArrowArray array;
+  struct ArrowSchema schema;
+  struct ArrowArrayView array_view;
+  struct ArrowError error;
+
+  auto type = builder.type();
+  ARROW_EXPECT_OK(builder.Append("1234"));
+  ARROW_EXPECT_OK(builder.AppendNulls(2));
+  ARROW_EXPECT_OK(builder.Append("four"));
+
+  auto maybe_arrow_array = builder.Finish();
+  ARROW_EXPECT_OK(maybe_arrow_array);
+  auto arrow_array = maybe_arrow_array.ValueUnsafe();
+
+  ARROW_EXPECT_OK(ExportArray(*arrow_array, &array, &schema));
+  ASSERT_EQ(ArrowArrayViewInitFromSchema(&array_view, &schema, &error), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayViewValidate(&array_view, NANOARROW_VALIDATION_LEVEL_FULL, &error),
+            NANOARROW_OK);
+
+  EXPECT_EQ(ArrowArrayViewIsNull(&array_view, 2), 1);
+  EXPECT_EQ(ArrowArrayViewIsNull(&array_view, 3), 0);
+
+  auto string_view = ArrowArrayViewGetStringUnsafe(&array_view, 3);
+  EXPECT_EQ(string_view.size_bytes, strlen("four"));
+  EXPECT_EQ(memcmp(string_view.data, "four", string_view.size_bytes), 0);
+
+  auto buffer_view = ArrowArrayViewGetBytesUnsafe(&array_view, 3);
+  EXPECT_EQ(buffer_view.size_bytes, strlen("four"));
+  EXPECT_EQ(memcmp(buffer_view.data.as_char, "four", buffer_view.size_bytes), 0);
 
   ArrowArrayViewReset(&array_view);
   ArrowArrayRelease(&array);
