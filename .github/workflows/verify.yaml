@@ -18,6 +18,9 @@
 name: Verification
 
 on:
+  push:
+    branches:
+      - 'maint-**'
   workflow_dispatch:
     inputs:
       version:
@@ -42,6 +45,10 @@ on:
 
 permissions:
   contents: read
+
+concurrency:
+  group: ${{ github.repository }}-${{ github.ref }}-${{ github.workflow }}
+  cancel-in-progress: true
 
 jobs:
   verify:

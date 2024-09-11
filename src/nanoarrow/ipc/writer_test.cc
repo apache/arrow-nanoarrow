@@ -92,6 +92,7 @@ TEST(NanoarrowIpcWriter, OutputStreamFile) {
 
 TEST(NanoarrowIpcWriter, OutputStreamFileError) {
   nanoarrow::ipc::UniqueOutputStream stream;
+  errno = EINVAL;
   EXPECT_EQ(ArrowIpcOutputStreamInitFile(stream.get(), nullptr, /*close_on_release=*/1),
             EINVAL);
 

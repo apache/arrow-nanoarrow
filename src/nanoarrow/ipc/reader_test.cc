@@ -101,6 +101,7 @@ TEST(NanoarrowIpcReader, InputStreamBuffer) {
 
 TEST(NanoarrowIpcReader, InputStreamFile) {
   struct ArrowIpcInputStream stream;
+  errno = EINVAL;
   ASSERT_EQ(ArrowIpcInputStreamInitFile(&stream, nullptr, 1), EINVAL);
 
   uint8_t input_data[] = {0x01, 0x02, 0x03, 0x04, 0x05};

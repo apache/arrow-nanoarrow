@@ -21,13 +21,20 @@ on:
   push:
     branches:
       - main
+      - 'maint-*'
   pull_request:
     paths:
       - .github/workflows/integration.yaml
-      - src/nanoarrow/**
+      - docker-compose.yml
+  schedule:
+    - cron: '5 0 * * 0'
 
 permissions:
   contents: read
+
+concurrency:
+  group: ${{ github.repository }}-${{ github.ref }}-${{ github.workflow }}
+  cancel-in-progress: true
 
 jobs:
   integration:
@@ -37,5 +44,5 @@ jobs:
 
       - name: Run integration tests
         run: |
-          echo "::group::Docker Pull"
+          echo "::group::Docker Build"
           docker compose run --rm -e GITHUB_ACTIONS integration
