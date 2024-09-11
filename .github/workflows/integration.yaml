@@ -21,7 +21,7 @@ on:
   push:
     branches:
       - main
-      - 'maint-**'
+      - 'maint-*'
   pull_request:
     paths:
       - .github/workflows/integration.yaml
