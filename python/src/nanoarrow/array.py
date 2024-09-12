@@ -543,7 +543,7 @@ class Array(ArrayViewVisitable):
         )
 
     def serialize(self, dst=None) -> Union[bytes, None]:
-        """Write this Array into dst zero or more encapsulated IPC messages
+        """Write this Array into dst as zero or more encapsulated IPC messages
 
         Parameters
         ----------
