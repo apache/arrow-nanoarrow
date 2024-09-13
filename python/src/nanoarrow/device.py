@@ -25,8 +25,8 @@ def cpu():
     return DEVICE_CPU
 
 
-def resolve(device_type, device_id):
-    return Device.resolve(device_type, device_id)
+def resolve(device_type: DeviceType, device_id: int):
+    return Device.resolve(DeviceType(device_type).value, device_id)
 
 
 def c_device_array(obj, schema=None):

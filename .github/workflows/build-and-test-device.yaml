@@ -149,6 +149,7 @@ jobs:
         run: |
           cd python
           python3 -m pip install ".[test]" -vv
+          python3 -m pip install cupy-cuda12x
 
       - name: Test Python bindings with CUDA
         if: matrix.config.label == 'with-cuda'
