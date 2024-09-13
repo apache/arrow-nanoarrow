@@ -32,6 +32,23 @@ def resolve(device_type: DeviceType, device_id: int):
 
 
 def c_device_array(obj, schema=None):
+    """ArrowDeviceArray wrapper
+
+    This class provides a user-facing interface to access the fields of an
+    ArrowDeviceArray
+
+    These objects are created using :func:`c_device_array`, which accepts any
+    device array or array-like object according to the Arrow device PyCapsule
+    interface, the DLPack protocol, or any object accepted by :func:`c_array`.
+
+    Parameters
+    ----------
+    obj : device array-like
+        An object supporting the Arrow device PyCapsule interface, the DLPack
+        protocol, or any object accepted by :func:`c_array`.
+    schema : schema-like or None
+        A schema-like object as sanitized by :func:`c_schema` or None.
+    """
     if schema is not None:
         schema = c_schema(schema)
 
