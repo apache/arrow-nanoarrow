@@ -64,12 +64,7 @@ jobs:
       - name: Ensure CMake
         if: matrix.config.label == 'with-cuda'
         run: |
-          mkdir tmp_cmake && cd tmp_cmake
-          CMAKE_VERSION="3.22.1"
-          curl -L https://github.com/Kitware/CMake/releases/download/v${CMAKE_VERSION}/cmake-${CMAKE_VERSION}-Linux-x86_64.tar.gz |
-            tar -zxf -
-          CMAKE_PATH=$(find $(pwd) -name "bin")
-          echo "PATH=${CMAKE_PATH}:${PATH}" >> $GITHUB_ENV
+          sudo apt-get install cmake build-essential
           # Debug install location of cuda toolkit
           ldconfig -p | grep libcuda
 
@@ -82,7 +77,7 @@ jobs:
           # The self-hosted runner needs its own Arrow build since it is running
           # a much older linux distribution. When the Arrow C++ requirement for tests is
           # dropped, we don't have to use this at all as part of the CI configuration.
-          key: arrow-device-${{ runner.os }}-${{ runner.arch }}-${{ matrix.config.label }}-1
+          key: arrow-device-${{ runner.os }}-${{ runner.arch }}-${{ matrix.config.label }}-2
 
       - name: Build Arrow C++
         if: steps.cache-arrow-build.outputs.cache-hit != 'true'
