@@ -60,6 +60,30 @@ def test_c_device_array():
     assert array.buffers == darray.array.buffers
 
 
+def test_c_device_array_from_dlpack():
+    from nanoarrow.device import DeviceType, resolve
+
+    cp = pytest.importorskip("cupy")
+
+    try:
+        cuda_device = resolve(DeviceType.CUDA, 0)
+    except ValueError:
+        pytest.skip("CUDA device not available")
+
+    assert cuda_device.device_type == DeviceType.CUDA
+    assert cuda_device.device_id == 0
+
+    gpu_array = cp.array([1, 2, 3])
+    darray = device.c_device_array(gpu_array)
+    assert isinstance(darray, device.CDeviceArray)
+    assert darray.device_type == DeviceType.CUDA
+    assert len(darray.array) == 3
+    assert darray.array.null_count == 0
+
+    gpu_buffer_view = darray.array.view().buffer(1)
+    cp.testing.assert_array_equal(cp.from_dlpack(gpu_buffer_view), gpu_array)
+
+
 def test_c_device_array_protocol():
     # Wrapper to prevent c_device_array() from returning early when it detects the
     # input is already a CDeviceArray

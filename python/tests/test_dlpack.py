@@ -97,9 +97,6 @@ def test_dlpack_cuda():
     except ValueError:
         pytest.skip("CUDA device not available")
 
-    assert cuda_device.device_type == DeviceType.CUDA
-    assert cuda_device.device_id == 0
-
     gpu_array = cp.array([1, 2, 3])
     gpu_buffer = na.c_buffer(gpu_array)
     assert gpu_buffer.device == cuda_device
