@@ -160,7 +160,7 @@ cdef class CArrayView:
             self._ptr.null_count = 0
         elif validity_bits == NULL:
             self._ptr.null_count = 0
-        elif self._device is DEVICE_CPU:
+        elif self._event.device is DEVICE_CPU:
             self._ptr.null_count = ArrowArrayViewComputeNullCount(self._ptr)
 
         return self._ptr.null_count

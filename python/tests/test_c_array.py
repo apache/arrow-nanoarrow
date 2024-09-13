@@ -664,12 +664,13 @@ def test_array_from_dlpack_cuda():
     except ValueError:
         pytest.skip("CUDA device not available")
 
+    gpu_validity = cp.array([255], cp.uint8)
     gpu_array = cp.array([1, 2, 3], cp.int64)
 
     c_array = na.c_array_from_buffers(
         na.int64(),
         3,
-        [None, CBuffer.from_dlpack(gpu_array)],
+        [CBuffer.from_dlpack(gpu_validity), CBuffer.from_dlpack(gpu_array)],
         move=True,
         device=cuda_device,
     )
@@ -681,6 +682,12 @@ def test_array_from_dlpack_cuda():
     assert c_array_view.storage_type == "int64"
     assert c_array_view.buffer(0).device == cuda_device
     assert c_array_view.buffer(1).device == cuda_device
+    assert len(c_array_view) == 3
+
+    # Make sure we don't attempt accessing a GPU buffer to calculate the null count
+    assert c_array_view.null_count == -1
+
+    # Check that buffers made it all the way through
     cp.testing.assert_array_equal(cp.from_dlpack(c_array_view.buffer(1)), gpu_array)
 
     # Also check a nested array
