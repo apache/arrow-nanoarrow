@@ -586,6 +586,9 @@ cdef class CBuffer:
 
     Like the CBufferView, the CBuffer represents readable buffer content; however,
     unlike the CBufferView, the CBuffer always represents a valid ArrowBuffer C object.
+    Whereas the CBufferView is primarily concerned with accessing the contents of a
+    buffer, the CBuffer is primarily concerned with managing ownership of an external
+    buffer such that it exported as an Arrow array.
     """
 
     def __cinit__(self):
@@ -644,12 +647,23 @@ cdef class CBuffer:
 
     @staticmethod
     def empty():
+        """Create an emtpy CBuffer"""
         cdef CBuffer out = CBuffer()
         out._base = _utils.alloc_c_buffer(&out._ptr)
         return out
 
     @staticmethod
-    def from_pybuffer(obj):
+    def from_pybuffer(obj) -> CBuffer:
+        """Create a CBuffer using the Python buffer protocol
+
+        Wraps a buffer using the Python buffer protocol as a CBuffer that can be
+        used to create an array.
+
+        Parameters
+        ----------
+        obj : buffer-like
+            The object on which to invoke the Python buffer protocol
+        """
         cdef CBuffer out = CBuffer()
         out._base = _utils.alloc_c_buffer(&out._ptr)
         out._set_format(_utils.c_buffer_set_pybuffer(obj, &out._ptr))
@@ -658,8 +672,24 @@ cdef class CBuffer:
         return out
 
     @staticmethod
-    def from_dlpack(obj):
-        capsule = obj.__dlpack__()
+    def from_dlpack(obj, stream=None) -> CBuffer:
+        """Create a CBuffer using the DLPack protocol
+
+        Wraps a tensor from an external library as a CBuffer that can be used
+        to create an array.
+
+        Parameters
+        ----------
+        obj : object with a ``__dlpack__`` attribute
+            The object on which to invoke the DLPack protocol
+        stream : int, optional
+            The stream on which the tensor represented by obj should be made
+            safe for use. This value is passed to the object's ``__dlpack__``
+            method; however, the CBuffer does not keep any record of this (i.e.,
+            the caller is responsible for creating a sync event after creating one
+            or more buffers in this way).
+        """
+        capsule = obj.__dlpack__(stream=stream)
         cdef DLManagedTensor* dlm_tensor = <DLManagedTensor*>PyCapsule_GetPointer(
             capsule, "dltensor"
         )
