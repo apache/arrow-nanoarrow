@@ -624,6 +624,34 @@ def test_c_array_duration():
     ]
 
 
+def test_device_array_errors():
+    from nanoarrow.device import DeviceType, resolve
+
+    try:
+        cuda_device = resolve(DeviceType.CUDA, 0)
+    except ValueError:
+        pytest.skip("CUDA device not available")
+
+    # Check that we can't create a CUDA array from CPU buffers
+    with pytest.raises(ValueError, match="are not identical"):
+        na.c_array_from_buffers(
+            na.int64(),
+            3,
+            [None, na.c_buffer([1, 2, 3], na.int64())],
+            device=cuda_device,
+        )
+
+    # Check that we can't create a CUDA array from CPU children
+    with pytest.raises(ValueError, match="are not identical"):
+        na.c_array_from_buffers(
+            na.struct([na.int64()]),
+            length=0,
+            buffers=[None],
+            children=[na.c_array([], na.int64())],
+            device=cuda_device,
+        )
+
+
 def test_array_from_dlpack_cuda():
     from nanoarrow.c_buffer import CBuffer
 

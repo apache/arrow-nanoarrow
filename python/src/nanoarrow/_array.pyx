@@ -690,7 +690,12 @@ cdef class CArrayBuilder:
             raise IndexError("i must be >= 0 and <= 3")
 
         if buffer._device != self._device:
-            raise ValueError("Source device and buffer device not identical")
+            raise ValueError(
+                f"Builder device ({self._device.device_type}/{self._device.device_id})"
+                " and buffer device "
+                f"({buffer._device.device_type}/{buffer._device.device_id})"
+                " are not identical"
+            )
 
         self.c_array._assert_valid()
         if not move:
@@ -722,7 +727,8 @@ cdef class CArrayBuilder:
             or self._device.device_id != c_array.device_id
         ):
             raise ValueError(
-                f"Builder device ({self._device}) and child device "
+                f"Builder device ({self._device.device_type}/{self._device.device_id})"
+                " and child device "
                 f"({c_array.device_type}/{c_array.device_id}) are not identical"
             )
 
