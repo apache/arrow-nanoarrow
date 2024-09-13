@@ -622,3 +622,35 @@ def test_c_array_duration():
         d2_duration_in_ms,
         d3_duration_in_ms,
     ]
+
+
+def test_array_from_dlpack_cuda():
+    from nanoarrow.device import DeviceType, resolve, CDeviceArray
+    from nanoarrow.c_buffer import CBuffer
+
+    cp = pytest.importorskip("cupy")
+
+    try:
+        cuda_device = resolve(DeviceType.CUDA, 0)
+    except ValueError:
+        pytest.skip("CUDA device not available")
+
+
+    gpu_array = cp.array([1, 2, 3], cp.int64)
+
+    c_array = na.c_array_from_buffers(
+        na.int64(),
+        3,
+        [None, CBuffer.from_dlpack(gpu_array)],
+        move=True,
+        device=cuda_device
+    )
+    assert isinstance(c_array, CDeviceArray)
+    assert c_array.device_type == DeviceType.CUDA
+    assert c_array.device_id == 0
+
+    c_array_view = c_array.view()
+    assert c_array_view.storage_type == "int64"
+    assert c_array_view.buffer(0).device == cuda_device
+    assert c_array_view.buffer(1).device == cuda_device
+    cp.testing.assert_array_equal(cp.from_dlpack(c_array_view.buffer(1)), gpu_array)

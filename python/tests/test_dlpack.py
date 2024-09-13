@@ -87,7 +87,7 @@ def test_dlpack_not_supported():
         view.__dlpack_device__()
 
 
-def test_dlpack_cupy():
+def test_dlpack_cuda():
     from nanoarrow.device import DeviceType, resolve
 
     cp = pytest.importorskip("cupy")
