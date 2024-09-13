@@ -18,7 +18,6 @@
 #include <errno.h>
 #include <inttypes.h>
 #include <stdarg.h>
-#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -463,16 +462,16 @@ static ArrowErrorCode ArrowArrayFinalizeBuffers(struct ArrowArray* array) {
     NANOARROW_RETURN_NOT_OK(ArrowArrayFinalizeBuffers(array->dictionary));
   }
 
-  const int32_t n_vbuf = private_data->n_variadic_buffers;
-  if (n_vbuf > 0) {
-    // TODO: the hard-coded 2's are tied to binary/string view implementations
-    // but maybe we should make them generic
-    private_data->buffer_data = (const void**)realloc(private_data->buffer_data,
-                                                      sizeof(void*) * (2 + n_vbuf + 1));
+  if (private_data->storage_type == NANOARROW_TYPE_STRING_VIEW ||
+      private_data->storage_type == NANOARROW_TYPE_BINARY_VIEW) {
+    const int32_t nfixed_buf = 2;
+    const int32_t n_vbuf = private_data->n_variadic_buffers;
+    private_data->buffer_data = (const void**)realloc(
+        private_data->buffer_data, sizeof(void*) * (nfixed_buf + n_vbuf + 1));
     for (int32_t i = 0; i < n_vbuf; ++i) {
-      private_data->buffer_data[2 + i] = private_data->variadic_buffers[i].data;
+      private_data->buffer_data[nfixed_buf + i] = private_data->variadic_buffers[i].data;
     }
-    private_data->buffer_data[n_vbuf + 2] = private_data->variadic_buffer_sizes;
+    private_data->buffer_data[nfixed_buf + n_vbuf] = private_data->variadic_buffer_sizes;
     array->buffers = (const void**)(private_data->buffer_data);
   }
 
@@ -483,11 +482,13 @@ static void ArrowArrayFlushInternalPointers(struct ArrowArray* array) {
   struct ArrowArrayPrivateData* private_data =
       (struct ArrowArrayPrivateData*)array->private_data;
 
-  // TODO: this does not seem correct - should probably merge changes from
-  // ArrowArrayFinalizeBuffers into this
-  const int32_t limit =
-      private_data->n_variadic_buffers == 0 ? NANOARROW_MAX_FIXED_BUFFERS : 2;
-  for (int32_t i = 0; i < limit; i++) {
+  const int32_t nfixed_buf =
+      private_data->storage_type == NANOARROW_TYPE_STRING_VIEW ||
+              private_data->storage_type == NANOARROW_TYPE_BINARY_VIEW
+          ? 2
+          : NANOARROW_MAX_FIXED_BUFFERS;
+
+  for (int32_t i = 0; i < nfixed_buf; i++) {
     private_data->buffer_data[i] = ArrowArrayBuffer(array, i)->data;
   }
 
@@ -736,7 +737,11 @@ static int ArrowArrayViewSetArrayInternal(struct ArrowArrayView* array_view,
   array_view->n_variadic_buffers = 0;
 
   int64_t buffers_required = 0;
-  for (int i = 0; i < NANOARROW_MAX_FIXED_BUFFERS; i++) {
+  const int nfixed_buf = array_view->storage_type == NANOARROW_TYPE_STRING_VIEW ||
+                                 array_view->storage_type == NANOARROW_TYPE_BINARY_VIEW
+                             ? 2
+                             : NANOARROW_MAX_FIXED_BUFFERS;
+  for (int i = 0; i < nfixed_buf; i++) {
     if (array_view->layout.buffer_type[i] == NANOARROW_BUFFER_TYPE_NONE) {
       break;
     }
@@ -757,17 +762,14 @@ static int ArrowArrayViewSetArrayInternal(struct ArrowArrayView* array_view,
   if (array_view->storage_type == NANOARROW_TYPE_STRING_VIEW ||
       array_view->storage_type == NANOARROW_TYPE_BINARY_VIEW) {
     const int64_t n_buffers = array->n_buffers;
-    const int32_t n_fixed_buffers = 2;
+    const int32_t nfixed_buf = 2;
 
-    // TODO: bounds checking
-    int32_t n_variadic_buffers = (int32_t)(n_buffers - n_fixed_buffers - 1);
-    // Theoretically if the variadic buffers are not used the above subtraction
-    // could yield a negative number
-    n_variadic_buffers = (n_variadic_buffers < 0) ? 0 : n_variadic_buffers;
-    array_view->n_variadic_buffers = n_variadic_buffers;
+    int32_t nvariadic_buf = (int32_t)(n_buffers - nfixed_buf - 1);
+    nvariadic_buf = (nvariadic_buf < 0) ? 0 : nvariadic_buf;
+    array_view->n_variadic_buffers = nvariadic_buf;
 
-    buffers_required += n_variadic_buffers;
-    for (int i = n_fixed_buffers; i < n_fixed_buffers + n_variadic_buffers; ++i) {
+    buffers_required += nvariadic_buf;
+    for (int i = nfixed_buf; i < nfixed_buf + nvariadic_buf; ++i) {
       // Set buffer pointer
       array_view->buffer_views[i].data.data = array->buffers[i];
 

@@ -502,7 +502,6 @@ static inline ArrowErrorCode ArrowArrayAppendBytes(struct ArrowArray* array,
       private_data->storage_type == NANOARROW_TYPE_BINARY_VIEW) {
     struct ArrowBuffer* data_buffer = ArrowArrayBuffer(array, 1);
     union ArrowBinaryViewType bvt;
-    // TODO: bounds check
     bvt.inlined.size = (int32_t)value.size_bytes;
 
     if (value.size_bytes <= NANOARROW_BINARY_VIEW_INLINE_SIZE) {
@@ -525,11 +524,9 @@ static inline ArrowErrorCode ArrowArrayAppendBytes(struct ArrowArray* array,
       struct ArrowBuffer* variadic_buf = &private_data->variadic_buffers[n_vbufs - 1];
       memcpy(bvt.ref.data, value.data.as_char, NANOARROW_BINARY_VIEW_PREVIEW_SIZE);
       bvt.ref.buffer_index = n_vbufs - 1;
-      // TODO: bounds check
       bvt.ref.offset = (int32_t)variadic_buf->size_bytes;
       NANOARROW_RETURN_NOT_OK(
           ArrowBufferAppend(variadic_buf, value.data.as_char, value.size_bytes));
-      // TODO: bounds check
       private_data->variadic_buffer_sizes[n_vbufs - 1] =
           (int32_t)variadic_buf->size_bytes;
     }
