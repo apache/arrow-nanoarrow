@@ -17,7 +17,7 @@
 
 from typing import Any, Iterable, Literal, Tuple, Union
 
-from nanoarrow._array import CArray, CArrayBuilder, CArrayView
+from nanoarrow._array import CArray, CArrayBuilder, CArrayView, CDeviceArray
 from nanoarrow._buffer import CBuffer, CBufferBuilder, NoneAwareWrapperIterator
 from nanoarrow._device import DEVICE_CPU, Device
 from nanoarrow._schema import CSchema, CSchemaBuilder
@@ -292,14 +292,12 @@ def c_array_from_buffers(
     # the objects in the input children would be marked released).
     n_children = 0
     for child_src in children:
-        if device is not DEVICE_CPU:
-            raise NotImplementedError(
-                "Setting children of a non-CPU array is not yet supported"
-            )
-
         # If we're setting a CArray from something else, we can avoid an extra
         # level of Python wrapping by using move=True
-        move = move or not isinstance(child_src, CArray)
+        move = move or not isinstance(child_src, (CArray, CDeviceArray))
+        if move and isinstance(child_src, CDeviceArray):
+            child_src = child_src.array
+
         builder.set_child(n_children, c_array(child_src), move=move)
         n_children += 1
 

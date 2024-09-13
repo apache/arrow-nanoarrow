@@ -292,7 +292,7 @@ cdef class CArray:
         self._ptr = <ArrowArray*>addr
         self._schema = schema
         self._device_type = ARROW_DEVICE_CPU
-        self._device_id = 0
+        self._device_id = -1
         self._sync_event = NULL
 
     cdef _set_device(self, ArrowDeviceType device_type, int64_t device_id, void* sync_event):
@@ -716,6 +716,25 @@ cdef class CArrayBuilder:
         cdef CArray child = self.c_array.child(i)
         if child._ptr.release != NULL:
             ArrowArrayRelease(child._ptr)
+
+        if (
+            self._device.device_type_id != c_array.device_type_id
+            or self._device.device_id != c_array.device_id
+        ):
+            raise ValueError(
+                f"Builder device ({self._device}) and child device "
+                f"({c_array.device_type}/{c_array.device_id}) are not identical"
+            )
+
+        # There is probably a way to avoid a full synchronize for each child
+        # (e.g., perhaps the ArrayBuilder could allocate a stream to use such
+        # that an event can be allocated on finish_device() and synchronization
+        # could be avoided entirely). Including this for now for safety.
+        cdef CSharedSyncEvent sync = CSharedSyncEvent(
+            self._device,
+            <uintptr_t>c_array._sync_event
+        )
+        sync.synchronize()
 
         if not move:
             c_array_shallow_copy(c_array._base, c_array._ptr, child._ptr)

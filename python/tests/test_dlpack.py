@@ -102,8 +102,6 @@ def test_dlpack_cuda():
 
     gpu_array = cp.array([1, 2, 3])
     gpu_buffer = CBuffer.from_dlpack(gpu_array)
-    assert gpu_buffer.device() == cuda_device
-
     assert gpu_buffer.device == cuda_device
 
     gpu_array_roundtrip = cp.from_dlpack(gpu_buffer.view())

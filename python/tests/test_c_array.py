@@ -625,8 +625,9 @@ def test_c_array_duration():
 
 
 def test_array_from_dlpack_cuda():
-    from nanoarrow.device import DeviceType, resolve, CDeviceArray
     from nanoarrow.c_buffer import CBuffer
+
+    from nanoarrow.device import CDeviceArray, DeviceType, resolve
 
     cp = pytest.importorskip("cupy")
 
@@ -635,7 +636,6 @@ def test_array_from_dlpack_cuda():
     except ValueError:
         pytest.skip("CUDA device not available")
 
-
     gpu_array = cp.array([1, 2, 3], cp.int64)
 
     c_array = na.c_array_from_buffers(
@@ -643,7 +643,7 @@ def test_array_from_dlpack_cuda():
         3,
         [None, CBuffer.from_dlpack(gpu_array)],
         move=True,
-        device=cuda_device
+        device=cuda_device,
     )
     assert isinstance(c_array, CDeviceArray)
     assert c_array.device_type == DeviceType.CUDA
@@ -654,3 +654,26 @@ def test_array_from_dlpack_cuda():
     assert c_array_view.buffer(0).device == cuda_device
     assert c_array_view.buffer(1).device == cuda_device
     cp.testing.assert_array_equal(cp.from_dlpack(c_array_view.buffer(1)), gpu_array)
+
+    # Also check a nested array
+    c_array_struct = na.c_array_from_buffers(
+        na.struct({"col": na.int64()}),
+        3,
+        buffers=[None],
+        children=[c_array],
+        move=True,
+        device=cuda_device,
+    )
+    assert c_array_struct.device_type == DeviceType.CUDA
+    assert c_array_struct.device_id == 0
+
+    c_array_view_struct = c_array_struct.view()
+    assert c_array_view_struct.storage_type == "struct"
+    assert c_array_view_struct.buffer(0).device == cuda_device
+
+    c_array_view_child = c_array_view_struct.child(0)
+    assert c_array_view_child.buffer(0).device == cuda_device
+    assert c_array_view_child.buffer(1).device == cuda_device
+    cp.testing.assert_array_equal(
+        cp.from_dlpack(c_array_view_child.buffer(1)), gpu_array
+    )
