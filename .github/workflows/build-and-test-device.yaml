@@ -64,7 +64,7 @@ jobs:
       - name: Ensure CMake
         if: matrix.config.label == 'with-cuda'
         run: |
-          sudo apt-get update && sudo apt-get install -y cmake build-essential cuda-nvcc
+          sudo apt-get update && sudo apt-get install -y cmake build-essential cuda-toolkit
           # Debug install location of cuda toolkit
           ldconfig -p | grep libcuda
 
