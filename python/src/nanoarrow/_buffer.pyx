@@ -51,6 +51,7 @@ from nanoarrow_c cimport (
     ArrowBitmapReserve,
     ArrowBitmapAppend,
     ArrowBitmapAppendUnsafe,
+    ArrowBuffer,
     ArrowBufferMove,
 )
 
@@ -624,6 +625,23 @@ cdef class CBuffer:
 
         snprintf(self._view._format, sizeof(self._view._format), "%s", self._format)
 
+    def view(self):
+        """Export this buffer as a CBufferView
+
+        Returns a :class:`CBufferView` of this buffer. After calling this
+        method, the original CBuffer will be invalidated and cannot be used.
+        In general, the view of the buffer should be used to consume a buffer
+        (whereas the CBuffer is primarily used to wrap an existing object in
+        a way that it can be used to build a :class:`CArray`).
+        """
+        self._assert_valid()
+        self._assert_buffer_count_zero()
+        cdef ArrowBuffer* new_ptr
+        self._view._base = _utils.alloc_c_buffer(&new_ptr)
+        ArrowBufferMove(self._ptr, new_ptr)
+        self._ptr = NULL
+        return self._view
+
     @staticmethod
     def empty():
         cdef CBuffer out = CBuffer()
@@ -650,7 +668,10 @@ cdef class CBuffer:
         if not dlpack_strides_are_contiguous(dl_tensor):
             raise ValueError("Non-contiguous dlpack strides not supported")
 
-        cdef Device device = Device.resolve(dl_tensor.device.device_type, dl_tensor.device.device_id)
+        cdef Device device = Device.resolve(
+            dl_tensor.device.device_type,
+            dl_tensor.device.device_id
+        )
         cdef int arrow_type = dlpack_data_type_to_arrow(dl_tensor.dtype)
         cdef uint8_t* data_ptr = <uint8_t*>dl_tensor.data + dl_tensor.byte_offset
 
@@ -709,14 +730,17 @@ cdef class CBuffer:
 
     @property
     def data_type(self):
+        self._assert_valid()
         return ArrowTypeString(self._data_type).decode("UTF-8")
 
     @property
     def data_type_id(self):
+        self._assert_valid()
         return self._data_type
 
     @property
     def element_size_bits(self):
+        self._assert_valid()
         return self._element_size_bits
 
     @property
@@ -726,7 +750,13 @@ cdef class CBuffer:
 
     @property
     def format(self):
+        self._assert_valid()
         return self._format.decode("UTF-8")
+
+    @property
+    def device(self):
+        self._assert_valid()
+        return self._view.device
 
     def __len__(self):
         self._assert_valid()

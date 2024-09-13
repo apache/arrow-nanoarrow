@@ -87,21 +87,24 @@ def test_dlpack_not_supported():
         view.__dlpack_device__()
 
 
-def test_dlpack_cuda():
+def test_dlpack_cupy():
     from nanoarrow.device import DeviceType, resolve
 
     cp = pytest.importorskip("cupy")
 
-    cuda_device = resolve(DeviceType.CUDA, 0)
+    try:
+        cuda_device = resolve(DeviceType.CUDA, 0)
+    except ValueError:
+        pytest.skip("CUDA device not available")
+
     assert cuda_device.device_type == DeviceType.CUDA
     assert cuda_device.device_id == 0
 
     gpu_array = cp.array([1, 2, 3])
-
     gpu_buffer = CBuffer.from_dlpack(gpu_array)
-    gpu_arrow_array = na.c_array_from_buffers(
-        na.int64(), len(gpu_array), [None, gpu_buffer], device=cuda_device, move=True
-    )
+    assert gpu_buffer.device() == cuda_device
 
-    gpu_array_roundtrip = cp.from_dlpack(gpu_arrow_array.view().buffer(1))
+    assert gpu_buffer.device == cuda_device
+
+    gpu_array_roundtrip = cp.from_dlpack(gpu_buffer.view())
     cp.testing.assert_array_equal(gpu_array_roundtrip, gpu_array)
