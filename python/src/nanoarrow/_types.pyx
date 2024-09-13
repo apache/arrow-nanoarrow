@@ -181,10 +181,10 @@ cdef int to_format(int type_id, int element_size_bits, size_t out_size, char* ou
 
     cdef const char* format_const = ""
     cdef int element_size_bits_calc = 0
-    if type_id in (_types.STRING, _types.LARGE_STRING):
+    if type_id == _types.STRING:
         format_const = "c"
         element_size_bits_calc = 0
-    elif type_id in (_types.BINARY, _types.LARGE_BINARY):
+    elif type_id == _types.BINARY:
         format_const = "B"
         element_size_bits_calc = 0
     elif type_id == _types.BOOL:
