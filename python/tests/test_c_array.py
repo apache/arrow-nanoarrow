@@ -22,9 +22,9 @@ import pytest
 from nanoarrow._array import CArrayBuilder
 from nanoarrow._utils import NanoarrowException
 from nanoarrow.c_schema import c_schema_view
-from nanoarrow import device
 
 import nanoarrow as na
+from nanoarrow import device
 
 
 def test_c_array_from_c_array():
