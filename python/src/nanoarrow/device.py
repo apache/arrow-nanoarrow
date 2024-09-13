@@ -35,7 +35,7 @@ def c_device_array(obj, schema=None):
     """ArrowDeviceArray wrapper
 
     This class provides a user-facing interface to access the fields of an
-    ArrowDeviceArray
+    ArrowDeviceArray.
 
     These objects are created using :func:`c_device_array`, which accepts any
     device array or array-like object according to the Arrow device PyCapsule
