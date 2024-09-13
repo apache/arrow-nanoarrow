@@ -673,10 +673,6 @@ void ArrowArrayViewReset(struct ArrowArrayView* array_view) {
     ArrowFree(array_view->union_type_id_map);
   }
 
-  if (array_view->variadic_buffer_views != NULL) {
-    ArrowFree(array_view->variadic_buffer_views);
-  }
-
   ArrowArrayViewInitFromType(array_view, NANOARROW_TYPE_UNINITIALIZED);
 }
 
@@ -737,7 +733,6 @@ static int ArrowArrayViewSetArrayInternal(struct ArrowArrayView* array_view,
   array_view->length = array->length;
   array_view->null_count = array->null_count;
   array_view->variadic_buffer_sizes = NULL;
-  array_view->variadic_buffer_views = NULL;
   array_view->n_variadic_buffers = 0;
 
   int64_t buffers_required = 0;
@@ -769,27 +764,22 @@ static int ArrowArrayViewSetArrayInternal(struct ArrowArrayView* array_view,
     // Theoretically if the variadic buffers are not used the above subtraction
     // could yield a negative number
     n_variadic_buffers = (n_variadic_buffers < 0) ? 0 : n_variadic_buffers;
-
     array_view->n_variadic_buffers = n_variadic_buffers;
-    // TODO: check malloc failures
-    array_view->variadic_buffer_views = (struct ArrowBufferView*)ArrowMalloc(
-        sizeof(struct ArrowBufferView) * n_variadic_buffers);
 
-    for (int32_t i = 0; i < n_variadic_buffers; ++i) {
-      ++buffers_required;
-      array_view->variadic_buffer_views[i].data.data =
-          array->buffers[i + n_fixed_buffers];
+    buffers_required += n_variadic_buffers;
+    for (int i = n_fixed_buffers; i < n_fixed_buffers + n_variadic_buffers; ++i) {
+      // Set buffer pointer
+      array_view->buffer_views[i].data.data = array->buffers[i];
 
       // If non-null, set buffer size to unknown.
-      if (array->buffers[i + n_fixed_buffers] == NULL) {
-        array_view->variadic_buffer_views[i].size_bytes = 0;
+      if (array->buffers[i] == NULL) {
+        array_view->buffer_views[i].size_bytes = 0;
       } else {
-        array_view->variadic_buffer_views[i].size_bytes = -1;
+        array_view->buffer_views[i].size_bytes = -1;
       }
     }
 
-    // final buffer
-    ++buffers_required;
+    buffers_required++;
     array_view->variadic_buffer_sizes = (int32_t*)array->buffers[n_buffers - 1];
   }
 
