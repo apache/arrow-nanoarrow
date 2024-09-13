@@ -653,8 +653,6 @@ def test_device_array_errors():
 
 
 def test_array_from_dlpack_cuda():
-    from nanoarrow.c_buffer import CBuffer
-
     from nanoarrow.device import CDeviceArray, DeviceType, resolve
 
     cp = pytest.importorskip("cupy")
@@ -670,7 +668,7 @@ def test_array_from_dlpack_cuda():
     c_array = na.c_array_from_buffers(
         na.int64(),
         3,
-        [CBuffer.from_dlpack(gpu_validity), CBuffer.from_dlpack(gpu_array)],
+        [gpu_validity, gpu_array],
         move=True,
         device=cuda_device,
     )
@@ -692,7 +690,7 @@ def test_array_from_dlpack_cuda():
 
     # Also check a nested array
     c_array_struct = na.c_array_from_buffers(
-        na.struct({"col": na.int64()}),
+        na.struct([na.int64()]),
         3,
         buffers=[None],
         children=[c_array],

@@ -17,7 +17,9 @@
 
 from nanoarrow._array import CDeviceArray
 from nanoarrow._device import DEVICE_CPU, Device, DeviceType  # noqa: F401
-from nanoarrow.c_array import c_array
+from nanoarrow._schema import CSchemaBuilder
+from nanoarrow.c_array import c_array, c_array_from_buffers
+from nanoarrow.c_buffer import c_buffer
 from nanoarrow.c_schema import c_schema
 
 
@@ -42,6 +44,18 @@ def c_device_array(obj, schema=None):
             requested_schema=schema_capsule
         )
         return CDeviceArray._import_from_c_capsule(schema_capsule, device_array_capsule)
+
+    if hasattr(obj, "__dlpack__"):
+        buffer = c_buffer(obj, schema=schema)
+        schema = CSchemaBuilder.allocate().set_type(buffer.data_type_id).finish()
+        return c_array_from_buffers(
+            schema,
+            len(buffer),
+            [None, buffer],
+            null_count=0,
+            move=True,
+            device=buffer.device,
+        )
 
     # Attempt to create a CPU array and wrap it
     cpu_array = c_array(obj, schema=schema)
