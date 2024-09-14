@@ -552,17 +552,17 @@ class Array(ArrayViewVisitable):
             should be serialized. If omitted, this will create a ``io.BytesIO()``
             and return the serialized result.
         """
-        from nanoarrow.ipc import Writer
+        from nanoarrow.ipc import StreamWriter
 
         if dst is None:
             import io
 
             with io.BytesIO() as dst:
-                writer = Writer.from_writable(dst)
+                writer = StreamWriter.from_writable(dst)
                 writer.write_stream(self, write_schema=False)
                 return dst.getvalue()
         else:
-            writer = Writer.from_writable(dst)
+            writer = StreamWriter.from_writable(dst)
             writer.write_stream(self, write_schema=False)
 
     def to_string(self, width_hint=80, items_hint=10) -> str:

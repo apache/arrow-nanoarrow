@@ -482,7 +482,7 @@ class Schema:
         """
         from nanoarrow.c_array_stream import CArrayStream
 
-        from nanoarrow.ipc import Writer
+        from nanoarrow.ipc import StreamWriter
 
         empty = CArrayStream.from_c_arrays([], self._c_schema, validate=False)
 
@@ -490,11 +490,11 @@ class Schema:
             import io
 
             with io.BytesIO() as dst:
-                writer = Writer.from_writable(dst)
+                writer = StreamWriter.from_writable(dst)
                 writer.write_stream(empty)
                 return dst.getvalue()
         else:
-            writer = Writer.from_writable(dst)
+            writer = StreamWriter.from_writable(dst)
             writer.write_stream(empty)
 
     def __repr__(self) -> str:

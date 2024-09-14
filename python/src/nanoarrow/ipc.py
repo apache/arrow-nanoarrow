@@ -243,7 +243,7 @@ class InputStream:
             return f"<{class_label} <invalid>>"
 
 
-class Writer:
+class StreamWriter:
     def __init__(self):
         self._writer = None
         self._desc = None
@@ -378,7 +378,7 @@ class Writer:
         {'some_col': 2}
         {'some_col': 3}
         """
-        out = Writer()
+        out = StreamWriter()
         stream = CIpcOutputStream.from_writable(obj, close_obj=False)
         out._desc = repr(obj)
 
@@ -424,7 +424,7 @@ class Writer:
         {'some_col': 2}
         {'some_col': 3}
         """
-        out = Writer()
+        out = StreamWriter()
         stream = CIpcOutputStream.from_writable(
             open(obj, "wb", *args, **kwargs), close_obj=True
         )
