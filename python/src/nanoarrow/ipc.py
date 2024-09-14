@@ -31,7 +31,7 @@ from nanoarrow.iterator import ArrayViewBaseIterator
 from nanoarrow import _repr_utils
 
 
-class Stream:
+class InputStream:
     """Stream of serialized Arrow data
 
     Reads file paths or otherwise readable file objects that contain
@@ -48,8 +48,8 @@ class Stream:
     --------
 
     >>> import nanoarrow as na
-    >>> from nanoarrow.ipc import Stream
-    >>> with Stream.example() as inp, na.c_array_stream(inp) as stream:
+    >>> from nanoarrow.ipc import InputStream
+    >>> with InputStream.example() as inp, na.c_array_stream(inp) as stream:
     ...     stream
     <nanoarrow.c_array_stream.CArrayStream>
     - get_schema(): struct<some_col: int32>
@@ -69,7 +69,7 @@ class Stream:
         input stream to an ArrowArrayStream wrapped by a PyCapsule.
         """
         if not self._is_valid():
-            raise RuntimeError("nanoarrow.ipc.Stream is no longer valid")
+            raise RuntimeError("nanoarrow.ipc.InputStream is no longer valid")
 
         with CArrayStream.allocate() as array_stream:
             init_array_stream(self._stream, array_stream._addr())
@@ -88,7 +88,7 @@ class Stream:
         """Wrap an open readable file or buffer as an Arrow IPC stream
 
         Wraps a readable object (specificially, an object that implements a
-        ``readinto()`` method) as a non-owning Stream. Closing ``obj`` remains
+        ``readinto()`` method) as a non-owning InputStream. Closing ``obj`` remains
         the caller's responsibility: neither this stream nor the resulting array
         stream will call ``obj.close()``.
 
@@ -101,8 +101,8 @@ class Stream:
         --------
 
         >>> import nanoarrow as na
-        >>> from nanoarrow.ipc import Stream
-        >>> ipc_stream = Stream.from_readable(Stream.example_bytes())
+        >>> from nanoarrow.ipc import InputStream
+        >>> ipc_stream = InputStream.from_readable(InputStream.example_bytes())
         >>> na.c_array_stream(ipc_stream)
         <nanoarrow.c_array_stream.CArrayStream>
         - get_schema(): struct<some_col: int32>
@@ -113,7 +113,7 @@ class Stream:
         else:
             close_obj = False
 
-        out = Stream()
+        out = InputStream()
         out._stream = CIpcInputStream.from_readable(obj, close_obj=close_obj)
         out._desc = repr(obj)
         return out
@@ -123,7 +123,7 @@ class Stream:
         """Wrap a local file as an IPC stream
 
         Wraps a pathlike object (specificially, one that can be passed to ``open()``)
-        as an owning Stream. The file will be opened in binary mode and will be closed
+        as an owning InputStream. The file will be opened in binary mode and will be closed
         when this stream or the resulting array stream is released.
 
         Parameters
@@ -137,18 +137,18 @@ class Stream:
         >>> import tempfile
         >>> import os
         >>> import nanoarrow as na
-        >>> from nanoarrow.ipc import Stream
+        >>> from nanoarrow.ipc import InputStream
         >>> with tempfile.TemporaryDirectory() as td:
         ...     path = os.path.join(td, "test.arrows")
         ...     with open(path, "wb") as f:
-        ...         nbytes = f.write(Stream.example_bytes())
+        ...         nbytes = f.write(InputStream.example_bytes())
         ...
-        ...     with Stream.from_path(path) as inp, na.c_array_stream(inp) as stream:
+        ...     with InputStream.from_path(path) as inp, na.c_array_stream(inp) as stream:
         ...         stream
         <nanoarrow.c_array_stream.CArrayStream>
         - get_schema(): struct<some_col: int32>
         """
-        out = Stream()
+        out = InputStream()
         out._stream = CIpcInputStream.from_readable(
             open(obj, "rb", *args, **kwargs), close_obj=True
         )
@@ -160,7 +160,7 @@ class Stream:
         """Wrap a URL as an IPC stream
 
         Wraps a URL (specificially, one that can be passed to
-        ``urllib.request.urlopen()``) as an owning Stream. The URL will be
+        ``urllib.request.urlopen()``) as an owning InputStream. The URL will be
         closed when this stream or the resulting array stream is released.
 
         Parameters
@@ -175,21 +175,21 @@ class Stream:
         >>> import tempfile
         >>> import os
         >>> import nanoarrow as na
-        >>> from nanoarrow.ipc import Stream
+        >>> from nanoarrow.ipc import InputStream
         >>> with tempfile.TemporaryDirectory() as td:
         ...     path = os.path.join(td, "test.arrows")
         ...     with open(path, "wb") as f:
-        ...         nbytes = f.write(Stream.example_bytes())
+        ...         nbytes = f.write(InputStream.example_bytes())
         ...
         ...     uri = pathlib.Path(path).as_uri()
-        ...     with Stream.from_url(uri) as inp, na.c_array_stream(inp) as stream:
+        ...     with InputStream.from_url(uri) as inp, na.c_array_stream(inp) as stream:
         ...         stream
         <nanoarrow.c_array_stream.CArrayStream>
         - get_schema(): struct<some_col: int32>
         """
         import urllib.request
 
-        out = Stream()
+        out = InputStream()
         out._stream = CIpcInputStream.from_readable(
             urllib.request.urlopen(obj, *args, **kwargs), close_obj=True
         )
@@ -198,7 +198,7 @@ class Stream:
 
     @staticmethod
     def example():
-        """Example IPC Stream
+        """Example IPC InputStream
 
         A self-contained example whose value is the serialized version of
         ``DataFrame({"some_col": [1, 2, 3]})``. This may be used for testing
@@ -208,17 +208,17 @@ class Stream:
         Examples
         --------
 
-        >>> from nanoarrow.ipc import Stream
-        >>> Stream.example()
-        <nanoarrow.ipc.Stream <_io.BytesIO object at ...>>
+        >>> from nanoarrow.ipc import InputStream
+        >>> InputStream.example()
+        <nanoarrow.ipc.InputStream <_io.BytesIO object at ...>>
         """
-        return Stream.from_readable(Stream.example_bytes())
+        return InputStream.from_readable(InputStream.example_bytes())
 
     @staticmethod
     def example_bytes():
         """Example stream bytes
 
-        The underlying bytes of the :staticmethod:`example` Stream. This is useful
+        The underlying bytes of the :staticmethod:`example` InputStream. This is useful
         for writing files or creating other types of test input.
 
         Examples
@@ -226,11 +226,11 @@ class Stream:
 
         >>> import os
         >>> import tempfile
-        >>> from nanoarrow.ipc import Stream
+        >>> from nanoarrow.ipc import InputStream
         >>> with tempfile.TemporaryDirectory() as td:
         ...     path = os.path.join(td, "test.arrows")
         ...     with open(path, "wb") as f:
-        ...         f.write(Stream.example_bytes())
+        ...         f.write(InputStream.example_bytes())
         440
         """
         return _EXAMPLE_IPC_SCHEMA + _EXAMPLE_IPC_BATCH

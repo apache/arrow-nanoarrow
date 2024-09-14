@@ -219,9 +219,9 @@ class ArrayStream(ArrayViewVisitable):
         {'some_col': 2}
         {'some_col': 3}
         """
-        from nanoarrow.ipc import Stream
+        from nanoarrow.ipc import InputStream
 
-        with Stream.from_readable(obj) as ipc_stream:
+        with InputStream.from_readable(obj) as ipc_stream:
             return ArrayStream(ipc_stream)
 
     @staticmethod
@@ -246,9 +246,9 @@ class ArrayStream(ArrayViewVisitable):
         {'some_col': 2}
         {'some_col': 3}
         """
-        from nanoarrow.ipc import Stream
+        from nanoarrow.ipc import InputStream
 
-        with Stream.from_path(obj, *args, **kwargs) as ipc_stream:
+        with InputStream.from_path(obj, *args, **kwargs) as ipc_stream:
             return ArrayStream(ipc_stream)
 
     @staticmethod
@@ -275,7 +275,7 @@ class ArrayStream(ArrayViewVisitable):
         {'some_col': 2}
         {'some_col': 3}
         """
-        from nanoarrow.ipc import Stream
+        from nanoarrow.ipc import InputStream
 
-        with Stream.from_url(obj, *args, **kwargs) as ipc_stream:
+        with InputStream.from_url(obj, *args, **kwargs) as ipc_stream:
             return ArrayStream(ipc_stream)

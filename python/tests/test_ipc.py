@@ -24,18 +24,18 @@ import pytest
 from nanoarrow._utils import NanoarrowException
 
 import nanoarrow as na
-from nanoarrow.ipc import Stream, Writer
+from nanoarrow.ipc import InputStream, Writer
 
 
 def test_ipc_stream_example():
-    with Stream.example() as input:
+    with InputStream.example() as input:
         assert input._is_valid() is True
         assert "BytesIO object" in repr(input)
 
         stream = na.c_array_stream(input)
         assert input._is_valid() is False
         assert stream.is_valid() is True
-        assert repr(input) == "<nanoarrow.ipc.Stream <invalid>>"
+        assert repr(input) == "<nanoarrow.ipc.InputStream <invalid>>"
         with pytest.raises(RuntimeError, match="no longer valid"):
             stream = na.c_array_stream(input)
 
@@ -53,8 +53,8 @@ def test_ipc_stream_example():
 
 
 def test_ipc_stream_from_readable():
-    with io.BytesIO(Stream.example_bytes()) as f:
-        with Stream.from_readable(f) as input:
+    with io.BytesIO(InputStream.example_bytes()) as f:
+        with InputStream.from_readable(f) as input:
             assert input._is_valid() is True
             assert "BytesIO object" in repr(input)
 
@@ -68,9 +68,9 @@ def test_ipc_stream_from_path():
     with tempfile.TemporaryDirectory() as td:
         path = os.path.join(td, "test.arrows")
         with open(path, "wb") as f:
-            f.write(Stream.example_bytes())
+            f.write(InputStream.example_bytes())
 
-        with Stream.from_path(path) as input:
+        with InputStream.from_path(path) as input:
             assert repr(path) in repr(input)
             with na.c_array_stream(input) as stream:
                 batches = list(stream)
@@ -82,10 +82,10 @@ def test_ipc_stream_from_url():
     with tempfile.TemporaryDirectory() as td:
         path = os.path.join(td, "test.arrows")
         with open(path, "wb") as f:
-            f.write(Stream.example_bytes())
+            f.write(InputStream.example_bytes())
 
         uri = pathlib.Path(path).as_uri()
-        with Stream.from_url(uri) as input:
+        with InputStream.from_url(uri) as input:
             with na.c_array_stream(input) as stream:
                 batches = list(stream)
                 assert len(batches) == 1
@@ -97,7 +97,7 @@ def test_ipc_stream_python_exception_on_read():
         def readinto(self, *args, **kwargs):
             raise RuntimeError("I error for all read requests")
 
-    input = Stream.from_readable(ExtraordinarilyInconvenientFile())
+    input = InputStream.from_readable(ExtraordinarilyInconvenientFile())
     with pytest.raises(
         NanoarrowException, match="RuntimeError: I error for all read requests"
     ):
@@ -105,8 +105,8 @@ def test_ipc_stream_python_exception_on_read():
 
 
 def test_ipc_stream_error_on_read():
-    with io.BytesIO(Stream.example_bytes()[:100]) as f:
-        with Stream.from_readable(f) as input:
+    with io.BytesIO(InputStream.example_bytes()[:100]) as f:
+        with InputStream.from_readable(f) as input:
 
             with pytest.raises(
                 NanoarrowException,
