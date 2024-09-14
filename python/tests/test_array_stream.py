@@ -23,7 +23,7 @@ import tempfile
 import pytest
 
 import nanoarrow as na
-from nanoarrow.ipc import Stream
+from nanoarrow.ipc import InputStream
 
 
 def test_array_stream_iter():
@@ -120,7 +120,7 @@ def test_array_stream_context_manager():
 
 
 def test_array_stream_from_readable():
-    stream = na.ArrayStream.from_readable(Stream.example_bytes())
+    stream = na.ArrayStream.from_readable(InputStream.example_bytes())
     assert stream.schema.type == na.Type.STRUCT
     assert list(stream.read_all().iter_tuples()) == [(1,), (2,), (3,)]
 
@@ -129,7 +129,7 @@ def test_array_stream_from_path():
     with tempfile.TemporaryDirectory() as td:
         path = os.path.join(td, "test.arrows")
         with open(path, "wb") as f:
-            f.write(Stream.example_bytes())
+            f.write(InputStream.example_bytes())
 
         stream = na.ArrayStream.from_path(path)
         assert stream.schema.type == na.Type.STRUCT
@@ -140,7 +140,7 @@ def test_array_stream_from_url():
     with tempfile.TemporaryDirectory() as td:
         path = os.path.join(td, "test.arrows")
         with open(path, "wb") as f:
-            f.write(Stream.example_bytes())
+            f.write(InputStream.example_bytes())
 
         uri = pathlib.Path(path).as_uri()
         with na.ArrayStream.from_url(uri) as stream:

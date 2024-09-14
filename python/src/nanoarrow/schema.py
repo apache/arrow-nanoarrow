@@ -470,6 +470,33 @@ class Schema:
         """
         return [self.field(i) for i in range(self.n_fields)]
 
+    def serialize(self, dst=None) -> Union[bytes, None]:
+        """Write this Schema into dst as an encapsulated IPC message
+
+        Parameters
+        ----------
+        dst : file-like, optional
+            If present, a file-like object into which the schema should be
+            serialized. If omitted, this will create a ``io.BytesIO()`` and
+            return the serialized result.
+        """
+        from nanoarrow.c_array_stream import CArrayStream
+
+        from nanoarrow.ipc import StreamWriter
+
+        empty = CArrayStream.from_c_arrays([], self._c_schema, validate=False)
+
+        if dst is None:
+            import io
+
+            with io.BytesIO() as dst:
+                writer = StreamWriter.from_writable(dst)
+                writer.write_stream(empty)
+                return dst.getvalue()
+        else:
+            writer = StreamWriter.from_writable(dst)
+            writer.write_stream(empty)
+
     def __repr__(self) -> str:
         return _schema_repr(self)
 

@@ -43,12 +43,12 @@ class IpcReaderSuite:
         return os.path.join(self.fixtures_dir, name)
 
     def read_fixture_file(self, name):
-        with ipc.Stream.from_path(self.fixture_path(name)) as in_stream:
+        with ipc.InputStream.from_path(self.fixture_path(name)) as in_stream:
             list(na.c_array_stream(in_stream))
 
     def read_fixture_buffer(self, name):
         f = io.BytesIO(self.fixture_buffer[name])
-        with ipc.Stream.from_readable(f) as in_stream:
+        with ipc.InputStream.from_readable(f) as in_stream:
             list(na.c_array_stream(in_stream))
 
     def time_read_float64_basic_file(self):

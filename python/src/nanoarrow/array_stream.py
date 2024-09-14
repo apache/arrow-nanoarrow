@@ -211,17 +211,17 @@ class ArrayStream(ArrayViewVisitable):
         Examples
         --------
         >>> import nanoarrow as na
-        >>> from nanoarrow.ipc import Stream
-        >>> with na.ArrayStream.from_readable(Stream.example_bytes()) as stream:
+        >>> from nanoarrow.ipc import InputStream
+        >>> with na.ArrayStream.from_readable(InputStream.example_bytes()) as stream:
         ...     stream.read_all()
         nanoarrow.Array<non-nullable struct<some_col: int32>>[3]
         {'some_col': 1}
         {'some_col': 2}
         {'some_col': 3}
         """
-        from nanoarrow.ipc import Stream
+        from nanoarrow.ipc import InputStream
 
-        with Stream.from_readable(obj) as ipc_stream:
+        with InputStream.from_readable(obj) as ipc_stream:
             return ArrayStream(ipc_stream)
 
     @staticmethod
@@ -233,11 +233,11 @@ class ArrayStream(ArrayViewVisitable):
         >>> import tempfile
         >>> import os
         >>> import nanoarrow as na
-        >>> from nanoarrow.ipc import Stream
+        >>> from nanoarrow.ipc import InputStream
         >>> with tempfile.TemporaryDirectory() as td:
         ...     path = os.path.join(td, "test.arrows")
         ...     with open(path, "wb") as f:
-        ...         nbytes = f.write(Stream.example_bytes())
+        ...         nbytes = f.write(InputStream.example_bytes())
         ...
         ...     with na.ArrayStream.from_path(path) as stream:
         ...         stream.read_all()
@@ -246,9 +246,9 @@ class ArrayStream(ArrayViewVisitable):
         {'some_col': 2}
         {'some_col': 3}
         """
-        from nanoarrow.ipc import Stream
+        from nanoarrow.ipc import InputStream
 
-        with Stream.from_path(obj, *args, **kwargs) as ipc_stream:
+        with InputStream.from_path(obj, *args, **kwargs) as ipc_stream:
             return ArrayStream(ipc_stream)
 
     @staticmethod
@@ -261,11 +261,11 @@ class ArrayStream(ArrayViewVisitable):
         >>> import tempfile
         >>> import os
         >>> import nanoarrow as na
-        >>> from nanoarrow.ipc import Stream
+        >>> from nanoarrow.ipc import InputStream
         >>> with tempfile.TemporaryDirectory() as td:
         ...     path = os.path.join(td, "test.arrows")
         ...     with open(path, "wb") as f:
-        ...         nbytes = f.write(Stream.example_bytes())
+        ...         nbytes = f.write(InputStream.example_bytes())
         ...
         ...     uri = pathlib.Path(path).as_uri()
         ...     with na.ArrayStream.from_url(uri) as stream:
@@ -275,7 +275,7 @@ class ArrayStream(ArrayViewVisitable):
         {'some_col': 2}
         {'some_col': 3}
         """
-        from nanoarrow.ipc import Stream
+        from nanoarrow.ipc import InputStream
 
-        with Stream.from_url(obj, *args, **kwargs) as ipc_stream:
+        with InputStream.from_url(obj, *args, **kwargs) as ipc_stream:
             return ArrayStream(ipc_stream)

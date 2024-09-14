@@ -244,3 +244,18 @@ def test_schema_extension():
 def test_schema_alias_constructor():
     schema = na.schema(na.Type.INT32)
     assert isinstance(schema, na.Schema)
+
+
+def test_schema_serialize():
+    import io
+
+    schema = na.struct({"some_col": na.int32()}, nullable=False)
+
+    serialized = schema.serialize()
+    schema_roundtrip = na.ArrayStream.from_readable(serialized).schema
+    assert repr(schema_roundtrip) == repr(schema)
+
+    out = io.BytesIO()
+    schema.serialize(out)
+    schema_roundtrip = na.ArrayStream.from_readable(out.getvalue()).schema
+    assert repr(schema_roundtrip) == repr(schema)

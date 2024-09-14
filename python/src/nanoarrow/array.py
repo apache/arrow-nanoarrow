@@ -17,7 +17,7 @@
 
 import itertools
 from functools import cached_property
-from typing import Iterable, Tuple
+from typing import Iterable, Tuple, Union
 
 from nanoarrow._array import CArray, CArrayView
 from nanoarrow._array_stream import CMaterializedArrayStream
@@ -541,6 +541,29 @@ class Array(ArrayViewVisitable):
             "Use iter_scalar(), iter_py(), or iter_tuples() "
             "to iterate over elements of this Array"
         )
+
+    def serialize(self, dst=None) -> Union[bytes, None]:
+        """Write this Array into dst as zero or more encapsulated IPC messages
+
+        Parameters
+        ----------
+        dst : file-like, optional
+            If present, a file-like object into which the chunks of this array
+            should be serialized. If omitted, this will create a ``io.BytesIO()``
+            and return the serialized result.
+        """
+        from nanoarrow.ipc import StreamWriter
+
+        if dst is None:
+            import io
+
+            with io.BytesIO() as dst:
+                writer = StreamWriter.from_writable(dst)
+                writer.write_stream(self, write_schema=False)
+                return dst.getvalue()
+        else:
+            writer = StreamWriter.from_writable(dst)
+            writer.write_stream(self, write_schema=False)
 
     def to_string(self, width_hint=80, items_hint=10) -> str:
         cls_name = _repr_utils.make_class_label(self, module="nanoarrow")
