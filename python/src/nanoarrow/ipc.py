@@ -244,6 +244,39 @@ class InputStream:
 
 
 class StreamWriter:
+    """Write streams of serialized Arrow data
+
+    Provides various ways of writing Arrow schemas and record batches as
+    binary data serialized using the Arrow IPC streaming format.
+
+    Use :staticmethod:`from_writeable` or :staticmethod:`from_path`, or
+    to construct a writer.
+
+    Examples
+    --------
+
+    >>> import io
+    >>> import nanoarrow as na
+    >>> from nanoarrow.ipc import StreamWriter
+    >>>
+    >>> out = io.BytesIO()
+    >>> array = na.c_array_from_buffers(
+    ...     na.struct({"some_col": na.int32()}),
+    ...     length=3,
+    ...     buffers=[],
+    ...     children=[na.c_array([1, 2, 3], na.int32())]
+    ... )
+    >>>
+    >>> with StreamWriter.from_writable(out) as writer:
+    ...     writer.write_stream(array)
+    >>>
+    >>> na.ArrayStream.from_readable(out.getvalue()).read_all()
+    nanoarrow.Array<non-nullable struct<some_col: int32>>[3]
+    {'some_col': 1}
+    {'some_col': 2}
+    {'some_col': 3}
+    """
+
     def __init__(self):
         self._writer = None
         self._desc = None
@@ -292,7 +325,7 @@ class StreamWriter:
             schema will be written if nothing has yet been written to the output.
         """
         if not self._is_valid():
-            raise ValueError("Can't write to released Writer")
+            raise ValueError("Can't write to released StreamWriter")
 
         with c_array_stream(obj, schema=schema) as stream:
             if self._iterator is None:
@@ -325,7 +358,7 @@ class StreamWriter:
             An optional schema, passed to :func:`c_array_stream`.
         """
         if not self._is_valid():
-            raise ValueError("Can't write to released Writer")
+            raise ValueError("Can't write to released StreamWriter")
 
         # If we've already written a schema or we've explicitly been asked
         # to write one, we can't write using the stream writer because it
@@ -346,7 +379,7 @@ class StreamWriter:
         """Write an Arrow IPC stream to a writable file
 
         Wraps a writable object (specificially, an object that implements a
-        ``write()`` method) as a non-owning Writer. Closing ``obj`` remains
+        ``write()`` method) as a non-owning StreamWriter. Closing ``obj`` remains
         the caller's responsibility (i.e., closing this object will not call
         ``obj.close()``.
 
@@ -359,7 +392,7 @@ class StreamWriter:
 
         >>> import io
         >>> import nanoarrow as na
-        >>> from nanoarrow.ipc import Writer
+        >>> from nanoarrow.ipc import StreamWriter
         >>>
         >>> out = io.BytesIO()
         >>> array = na.c_array_from_buffers(
@@ -369,7 +402,7 @@ class StreamWriter:
         ...     children=[na.c_array([1, 2, 3], na.int32())]
         ... )
         >>>
-        >>> with Writer.from_writable(out) as writer:
+        >>> with StreamWriter.from_writable(out) as writer:
         ...     writer.write_stream(array)
         >>>
         >>> na.ArrayStream.from_readable(out.getvalue()).read_all()
@@ -390,7 +423,7 @@ class StreamWriter:
         """Wrap a local file as an IPC stream
 
         Wraps a pathlike object (specificially, one that can be passed to ``open()``)
-        as an owning Writer. The file will be opened in (writable) binary mode and
+        as an owning StreamWriter. The file will be opened in (writable) binary mode and
         will be closed when the returned writer is closed.
 
         Parameters
@@ -403,7 +436,7 @@ class StreamWriter:
         >>> import os
         >>> import tempfile
         >>> import nanoarrow as na
-        >>> from nanoarrow.ipc import Writer
+        >>> from nanoarrow.ipc import StreamWriter
         >>>
         >>> array = na.c_array_from_buffers(
         ...     na.struct({"some_col": na.int32()}),
@@ -414,7 +447,7 @@ class StreamWriter:
         >>>
         >>> with tempfile.TemporaryDirectory() as td:
         ...     path = os.path.join(td, "test.arrows")
-        ...     with Writer.from_path(path) as writer:
+        ...     with StreamWriter.from_path(path) as writer:
         ...         writer.write_stream(array)
         ...
         ...     with na.ArrayStream.from_path(path) as stream:
