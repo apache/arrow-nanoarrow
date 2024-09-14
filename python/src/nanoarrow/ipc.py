@@ -124,8 +124,8 @@ class InputStream:
         """Wrap a local file as an IPC stream
 
         Wraps a pathlike object (specificially, one that can be passed to ``open()``)
-        as an owning InputStream. The file will be opened in binary mode and will be closed
-        when this stream or the resulting array stream is released.
+        as an owning InputStream. The file will be opened in binary mode and will be
+        closed when this stream or the resulting array stream is released.
 
         Parameters
         ----------
@@ -144,8 +144,8 @@ class InputStream:
         ...     with open(path, "wb") as f:
         ...         nbytes = f.write(InputStream.example_bytes())
         ...
-        ...     with InputStream.from_path(path) as inp, na.c_array_stream(inp) as stream:
-        ...         stream
+        ...     with InputStream.from_path(path) as inp, na.c_array_stream(inp) as s:
+        ...         s
         <nanoarrow.c_array_stream.CArrayStream>
         - get_schema(): struct<some_col: int32>
         """
