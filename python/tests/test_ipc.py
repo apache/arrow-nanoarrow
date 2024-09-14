@@ -125,7 +125,7 @@ def test_writer_from_writable():
 
     out = io.BytesIO()
     with StreamWriter.from_writable(out) as writer:
-        writer.write_stream(array)
+        writer.write_array(array)
 
     with na.ArrayStream.from_readable(out.getvalue()) as stream:
         assert stream.read_all().to_pylist() == na.Array(array).to_pylist()
@@ -143,7 +143,7 @@ def test_writer_from_path():
         path = os.path.join(td, "test.arrows")
 
         with StreamWriter.from_path(path) as writer:
-            writer.write_stream(array)
+            writer.write_array(array)
 
         with na.ArrayStream.from_path(path) as stream:
             assert stream.read_all().to_pylist() == na.Array(array).to_pylist()
@@ -175,13 +175,13 @@ def test_writer_write_stream_schema():
     with StreamWriter.from_writable(out) as writer:
         out.truncate(0)
         out.seek(0)
-        writer.write_stream(array, write_schema=False)
+        writer.write_array(array, write_schema=False)
         array_bytes = out.getvalue()
 
     with StreamWriter.from_writable(out) as writer:
         out.truncate(0)
         out.seek(0)
-        writer.write_stream(array, write_schema=True)
+        writer.write_array(array, write_schema=True)
         both_bytes = out.getvalue()
 
     assert (schema_bytes + array_bytes) == both_bytes
@@ -197,7 +197,7 @@ def test_writer_serialize_stream():
 
     out = io.BytesIO()
     with StreamWriter.from_writable(out) as writer:
-        writer.write_stream(array)
+        writer.write_array(array)
 
         # Check that we can't serialize after we've already written to stream
         with pytest.raises(ValueError, match="Can't serialize_stream"):

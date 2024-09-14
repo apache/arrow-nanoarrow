@@ -25,6 +25,7 @@ from nanoarrow._ipc_lib import (
     init_array_stream,
 )
 from nanoarrow._utils import obj_is_buffer
+from nanoarrow.array import c_array
 from nanoarrow.array_stream import c_array_stream
 from nanoarrow.iterator import ArrayViewBaseIterator
 
@@ -306,6 +307,21 @@ class StreamWriter:
 
         self._writer.write_end_of_stream()
         self.release()
+
+    def write_array(self, obj, schema=None, *, write_schema=None):
+        """Interpret obj as an array and write to stream
+
+        Parameters
+        ----------
+        obj : array-like
+            An array-like object as sanitized by :func:`c_array`.
+        schema : schema-like, optional
+            An optional schema, passed to :func:`c_array`.
+        write_schema : bool, optional
+            See :meth:`write_stream`.
+        """
+        obj = c_array(obj)
+        return self.write_stream(obj, schema, write_schema=write_schema)
 
     def write_stream(self, obj, schema=None, *, write_schema=None):
         """Interpret obj as a stream of arrays and write to stream
