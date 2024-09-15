@@ -273,8 +273,7 @@ SEXP nanoarrow_c_ipc_writer_connection(SEXP con) {
   nanoarrow_preserve_sexp(con);
 
   SEXP writer_xptr = PROTECT(writer_owning_xptr());
-  struct ArrowIpcWriter* writer =
-      (struct ArrowIpcWriter*)R_ExternalPtrAddr(writer_xptr);
+  struct ArrowIpcWriter* writer = (struct ArrowIpcWriter*)R_ExternalPtrAddr(writer_xptr);
 
   int code = ArrowIpcWriterInit(writer, output_stream);
   if (code != NANOARROW_OK) {
@@ -286,8 +285,7 @@ SEXP nanoarrow_c_ipc_writer_connection(SEXP con) {
 }
 
 SEXP nanoarrow_c_ipc_writer_write_stream(SEXP writer_xptr, SEXP array_stream_xptr) {
-  struct ArrowIpcWriter* writer =
-      (struct ArrowIpcWriter*)R_ExternalPtrAddr(writer_xptr);
+  struct ArrowIpcWriter* writer = (struct ArrowIpcWriter*)R_ExternalPtrAddr(writer_xptr);
   struct ArrowArrayStream* array_stream =
       nanoarrow_array_stream_from_xptr(array_stream_xptr);
 
