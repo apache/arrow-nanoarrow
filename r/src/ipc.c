@@ -148,7 +148,7 @@ static SEXP call_readbin(void* hdata) {
   SEXP n = PROTECT(Rf_ScalarReal((double)data->buf_size_bytes));
   SEXP call = PROTECT(Rf_lang4(nanoarrow_sym_readbin, data->con, nanoarrow_ptype_raw, n));
 
-  SEXP result = PROTECT(Rf_eval(call, R_BaseEnv));
+  SEXP result = PROTECT(Rf_eval(call, nanoarrow_ns_pkg));
   R_xlen_t bytes_read = Rf_xlength(result);
   memcpy(data->buf, RAW(result), bytes_read);
   *(data->size_read_out) = bytes_read;
@@ -160,13 +160,13 @@ static SEXP call_readbin(void* hdata) {
 static SEXP call_writebin(void* hdata) {
   struct ConnectionInputStreamHandler* data = (struct ConnectionInputStreamHandler*)hdata;
 
-  // Write 1MB chunks
-  int64_t chunk_buffer_size = 1048576;
+  // Write 16MB chunks
+  int64_t chunk_buffer_size = 16777216;
   SEXP chunk_buffer = PROTECT(Rf_allocVector(RAWSXP, chunk_buffer_size));
   SEXP call = PROTECT(Rf_lang3(nanoarrow_sym_writebin, chunk_buffer, data->con));
   while (data->buf_size_bytes > chunk_buffer_size) {
     memcpy(RAW(chunk_buffer), data->buf, chunk_buffer_size);
-    Rf_eval(call, R_BaseEnv);
+    Rf_eval(call, nanoarrow_ns_pkg);
     data->buf_size_bytes -= chunk_buffer_size;
     data->buf += chunk_buffer_size;
   }
@@ -178,7 +178,7 @@ static SEXP call_writebin(void* hdata) {
     chunk_buffer = PROTECT(Rf_allocVector(RAWSXP, data->buf_size_bytes));
     call = PROTECT(Rf_lang3(nanoarrow_sym_writebin, chunk_buffer, data->con));
     memcpy(RAW(chunk_buffer), data->buf, data->buf_size_bytes);
-    Rf_eval(call, R_BaseEnv);
+    Rf_eval(call, nanoarrow_ns_pkg);
     UNPROTECT(2);
   }
 

@@ -243,3 +243,25 @@ guess_zip_filename <- function(x) {
 
   files
 }
+
+# The C-level R_tryCatch() does not provide for handling interrupts (or
+# I couldn't figure out how to make it work), so instead we provide wrappers
+# around readBin() and writeBin() that convert interrupt conditions to errors
+# (which the C code does know how to handle).
+read_bin_wrapper <- function(con, what, n) {
+  withCallingHandlers(
+    readBin(con, what, n),
+    interrupt = function(e) {
+      stop("user interrupt")
+    }
+  )
+}
+
+write_bin_wrapper <- function(object, con) {
+  withCallingHandlers(
+    writeBin(object, con),
+    interrupt = function(e) {
+      stop("user interrupt")
+    }
+  )
+}
