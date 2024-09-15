@@ -88,7 +88,7 @@ static SEXP writer_owning_xptr(void) {
       (struct ArrowIpcWriter*)ArrowMalloc(sizeof(struct ArrowIpcWriter));
   writer->private_data = NULL;
   SEXP writer_xptr = PROTECT(R_MakeExternalPtr(writer, R_NilValue, R_NilValue));
-  R_RegisterCFinalizer(writer_xptr, &finalize_output_stream_xptr);
+  R_RegisterCFinalizer(writer_xptr, &finalize_writer_xptr);
   UNPROTECT(1);
   return writer_xptr;
 }
@@ -262,7 +262,7 @@ SEXP nanoarrow_c_ipc_array_reader_connection(SEXP con) {
   return array_stream_xptr;
 }
 
-SEXP nanoarrow_c_ipc_output_stream_connection(SEXP con) {
+SEXP nanoarrow_c_ipc_writer_connection(SEXP con) {
   SEXP output_stream_xptr = PROTECT(output_stream_owning_xptr());
   struct ArrowIpcOutputStream* output_stream =
       (struct ArrowIpcOutputStream*)R_ExternalPtrAddr(output_stream_xptr);
@@ -272,6 +272,31 @@ SEXP nanoarrow_c_ipc_output_stream_connection(SEXP con) {
   output_stream->private_data = (SEXP)con;
   nanoarrow_preserve_sexp(con);
 
-  UNPROTECT(1);
-  return output_stream_xptr;
+  SEXP writer_xptr = PROTECT(writer_owning_xptr());
+  struct ArrowIpcWriter* writer =
+      (struct ArrowIpcWriter*)R_ExternalPtrAddr(writer_xptr);
+
+  int code = ArrowIpcWriterInit(writer, output_stream);
+  if (code != NANOARROW_OK) {
+    Rf_error("ArrowIpcWriterInit() failed");
+  }
+
+  UNPROTECT(2);
+  return writer_xptr;
+}
+
+SEXP nanoarrow_c_ipc_writer_write_stream(SEXP writer_xptr, SEXP array_stream_xptr) {
+  struct ArrowIpcWriter* writer =
+      (struct ArrowIpcWriter*)R_ExternalPtrAddr(writer_xptr);
+  struct ArrowArrayStream* array_stream =
+      nanoarrow_array_stream_from_xptr(array_stream_xptr);
+
+  struct ArrowError error;
+  ArrowErrorInit(&error);
+  int code = ArrowIpcWriterWriteArrayStream(writer, array_stream, &error);
+  if (code != NANOARROW_OK) {
+    Rf_error("ArrowIpcWriterWriteArrayStream() failed: %s", error.message);
+  }
+
+  return R_NilValue;
 }

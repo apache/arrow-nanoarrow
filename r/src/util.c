@@ -44,7 +44,7 @@ void nanoarrow_init_cached_sexps(void) {
   nanoarrow_cls_array_stream = PROTECT(Rf_mkString("nanoarrow_array_stream"));
   nanoarrow_cls_buffer = PROTECT(Rf_mkString("nanoarrow_buffer"));
   nanoarrow_sym_readbin = PROTECT(Rf_install("readBin"));
-  nanoarrow_sym_writebin = PROTECT(Rf_install("readBin"));
+  nanoarrow_sym_writebin = PROTECT(Rf_install("writeBin"));
   nanoarrow_ptype_raw = PROTECT(Rf_allocVector(RAWSXP, 0));
 
   R_PreserveObject(nanoarrow_ns_pkg);

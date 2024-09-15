@@ -24,8 +24,8 @@
 #' from files or URLs and is essentially a high performance equivalent of
 #' a CSV file that does a better job maintaining types.
 #'
-#' The nanoarrow package does not currently have the ability to write serialized
-#' IPC data: use [arrow::write_ipc_stream()] to write data from R, or use
+#' The nanoarrow package implements an IPC writer; however, you can also
+#' use [arrow::write_ipc_stream()] to write data from R, or use
 #' the equivalent writer from another Arrow implementation in Python, C++,
 #' Rust, JavaScript, Julia, C#, and beyond.
 #'
@@ -35,6 +35,8 @@
 #' @param x A `raw()` vector, connection, or file path from which to read
 #'   binary data. Common extensions indicating compression (.gz, .bz2, .zip)
 #'   are automatically uncompressed.
+#' @param data An object to write as an Arrow IPC stream, converted using
+#'   [as_nanoarrow_array_stream()].
 #' @param lazy By default, `read_nanoarrow()` will read and discard a copy of
 #'   the reader's schema to ensure that invalid streams are discovered as
 #'   soon as possible. Use `lazy = TRUE` to defer this check until the reader
@@ -105,6 +107,42 @@ read_nanoarrow.connection <- function(x, ..., lazy = FALSE) {
   }
 
   check_stream_if_requested(reader, lazy)
+}
+
+#' @rdname read_nanoarrow
+#' @export
+write_nanoarrow <- function(data, x, ...) {
+  UseMethod("write_nanoarrow", x)
+}
+
+#' @export
+write_nanoarrow.connection <- function(data, x, ...) {
+  if (!isOpen(x)) {
+    open(x, "wb")
+    on.exit(close(x))
+  }
+
+  writer <- .Call(nanoarrow_c_ipc_writer_connection, x)
+  stream <- as_nanoarrow_array_stream(data)
+  on.exit(nanoarrow_pointer_release(stream), add = TRUE)
+
+  .Call(nanoarrow_c_ipc_writer_write_stream, writer, stream)
+  invisible(data)
+}
+
+#' @export
+write_nanoarrow.character <- function(data, x, ...) {
+  if (length(x) != 1) {
+    stop(sprintf("Can't interpret character(%d) as file path", length(x)))
+  }
+
+  con_type <- guess_connection_type(x)
+  if (con_type == "unz") {
+    stop("zip compression not supported for write_nanoarrow()")
+  }
+
+  con <- do.call(con_type, list(x))
+  write_nanoarrow(data, con)
 }
 
 #' @rdname read_nanoarrow

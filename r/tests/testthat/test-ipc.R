@@ -36,6 +36,20 @@ test_that("read_nanoarrow() works for open connections", {
   )
 })
 
+test_that("write_nanoarrow() works for open connections", {
+  tf <- tempfile()
+  on.exit(unlink(tf))
+
+  con <- rawConnection(raw(), "wb")
+  on.exit(close(con))
+
+  write_nanoarrow(data.frame(), con)
+  expect_identical(
+    as.data.frame(read_nanoarrow(rawConnectionValue(con))),
+    data.frame()
+  )
+})
+
 test_that("read_nanoarrow() works for unopened connections", {
   tf <- tempfile()
   on.exit(unlink(tf))
@@ -50,6 +64,20 @@ test_that("read_nanoarrow() works for unopened connections", {
   stream <- read_nanoarrow(con)
   expect_true(isOpen(con))
   stream$release()
+  expect_error(
+    close(con),
+    "invalid connection"
+  )
+})
+
+test_that("write_nanoarrow() works for unopened connections", {
+  tf <- tempfile()
+  on.exit(unlink(tf))
+
+  con <- file(tf)
+  # Don't close on exit, because we're supposed to do that
+
+  write_nanoarrow(data.frame(), con)
   expect_error(
     close(con),
     "invalid connection"
@@ -71,6 +99,15 @@ test_that("read_nanoarrow() works for file paths", {
   )
 })
 
+test_that("write_nanoarrow() works for file paths", {
+  tf <- tempfile()
+  on.exit(unlink(tf))
+
+  df <- data.frame(letters = letters)
+  expect_identical(write_nanoarrow(df, tf), df)
+  expect_identical(as.data.frame(read_nanoarrow(tf)), df)
+})
+
 test_that("read_nanoarrow() works for URLs", {
   tf <- tempfile()
   on.exit(unlink(tf))
@@ -84,6 +121,15 @@ test_that("read_nanoarrow() works for URLs", {
     as.data.frame(stream),
     data.frame(some_col = c(1L, 2L, 3L))
   )
+})
+
+test_that("write_nanoarrow() works for URLs", {
+  tf <- tempfile()
+  on.exit(unlink(tf))
+
+  df <- data.frame(letters = letters)
+  expect_identical(write_nanoarrow(df, paste0("file://", tf)), df)
+  expect_identical(as.data.frame(read_nanoarrow(tf)), df)
 })
 
 test_that("read_nanoarrow() works for compressed .gz file paths", {
@@ -101,6 +147,15 @@ test_that("read_nanoarrow() works for compressed .gz file paths", {
   )
 })
 
+test_that("write_nanoarrow() works for compressed .gz file paths", {
+  tf <- tempfile(fileext = ".gz")
+  on.exit(unlink(tf))
+
+  df <- data.frame(letters = letters)
+  expect_identical(write_nanoarrow(df, tf), df)
+  expect_identical(as.data.frame(read_nanoarrow(tf)), df)
+})
+
 test_that("read_nanoarrow() works for compressed .bz2 file paths", {
   tf <- tempfile(fileext = ".bz2")
   on.exit(unlink(tf))
@@ -114,6 +169,15 @@ test_that("read_nanoarrow() works for compressed .bz2 file paths", {
     as.data.frame(stream),
     data.frame(some_col = c(1L, 2L, 3L))
   )
+})
+
+test_that("write_nanoarrow() works for compressed .bz2 file paths", {
+  tf <- tempfile(fileext = ".bz2")
+  on.exit(unlink(tf))
+
+  df <- data.frame(letters = letters)
+  expect_identical(write_nanoarrow(df, tf), df)
+  expect_identical(as.data.frame(read_nanoarrow(tf)), df)
 })
 
 test_that("read_nanoarrow() works for compressed .zip file paths", {
@@ -144,6 +208,17 @@ test_that("read_nanoarrow() works for compressed .zip file paths", {
   )
 })
 
+test_that("write_nanoarrow() errors for compressed .zip file paths", {
+  tf <- tempfile(fileext = ".zip")
+  on.exit(unlink(tf))
+
+  df <- data.frame(letters = letters)
+  expect_error(
+    write_nanoarrow(df, tf),
+    "zip compression not supported"
+  )
+})
+
 test_that("read_nanoarrow() errors for compressed URL paths", {
   expect_error(
     read_nanoarrow("https://something.zip"),
@@ -151,9 +226,13 @@ test_that("read_nanoarrow() errors for compressed URL paths", {
   )
 })
 
-test_that("read_nanoarrow() errors for input with length != 1", {
+test_that("read|write_nanoarrow() errors for input with length != 1", {
   expect_error(
     read_nanoarrow(character(0)),
+    "Can't interpret character"
+  )
+  expect_error(
+    write_nanoarrow(data.frame(), character(0)),
     "Can't interpret character"
   )
 })
@@ -187,10 +266,22 @@ test_that("read_nanoarrow() reports errors from readBin", {
   writeLines("this is not a binary file", tf)
 
   con <- file(tf, open = "r")
-  on.exit(close(con))
+  on.exit(close(con), add = TRUE)
 
   expect_error(
     read_nanoarrow(con),
+    "R execution error"
+  )
+})
+
+test_that("write_nanoarrow() reports errors from writeBin", {
+  tf <- tempfile()
+  on.exit(unlink(tf))
+  con <- file(tf, open = "w")
+  on.exit(close(con), add = TRUE)
+
+  expect_error(
+    write_nanoarrow(data.frame(), con),
     "R execution error"
   )
 })
