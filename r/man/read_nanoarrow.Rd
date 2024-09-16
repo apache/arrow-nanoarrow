@@ -25,7 +25,7 @@ soon as possible. Use \code{lazy = TRUE} to defer this check until the reader
 is actually consumed.}
 
 \item{data}{An object to write as an Arrow IPC stream, converted using
-\code{\link[=as_nanoarrow_array_stream]{as_nanoarrow_array_stream()}}.}
+\code{\link[=as_nanoarrow_array_stream]{as_nanoarrow_array_stream()}}. Notably, this includes a \code{\link[=data.frame]{data.frame()}}.}
 }
 \value{
 A \link[=as_nanoarrow_array_stream]{nanoarrow_array_stream}

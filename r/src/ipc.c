@@ -160,7 +160,9 @@ static SEXP call_readbin(void* hdata) {
 static SEXP call_writebin(void* hdata) {
   struct ConnectionInputStreamHandler* data = (struct ConnectionInputStreamHandler*)hdata;
 
-  // Write 16MB chunks
+  // Write 16MB chunks. This a balance between being small enough not to
+  // copy too much of the source unnecessarily and big enough to avoid
+  // unnecessary R evaluation overhead.
   int64_t chunk_buffer_size = 16777216;
   SEXP chunk_buffer = PROTECT(Rf_allocVector(RAWSXP, chunk_buffer_size));
   SEXP call = PROTECT(Rf_lang3(nanoarrow_sym_writebin, chunk_buffer, data->con));
@@ -255,7 +257,7 @@ SEXP nanoarrow_c_ipc_array_reader_connection(SEXP con) {
 
   int code = ArrowIpcArrayStreamReaderInit(array_stream, input_stream, NULL);
   if (code != NANOARROW_OK) {
-    Rf_error("ArrowIpcArrayStreamReaderInit() failed");
+    Rf_error("ArrowIpcArrayStreamReaderInit() failed with errno %d", code);
   }
 
   UNPROTECT(2);
@@ -277,7 +279,7 @@ SEXP nanoarrow_c_ipc_writer_connection(SEXP con) {
 
   int code = ArrowIpcWriterInit(writer, output_stream);
   if (code != NANOARROW_OK) {
-    Rf_error("ArrowIpcWriterInit() failed");
+    Rf_error("ArrowIpcWriterInit() failed with errno %d", code);
   }
 
   UNPROTECT(2);

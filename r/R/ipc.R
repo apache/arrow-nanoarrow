@@ -36,7 +36,7 @@
 #'   binary data. Common extensions indicating compression (.gz, .bz2, .zip)
 #'   are automatically uncompressed.
 #' @param data An object to write as an Arrow IPC stream, converted using
-#'   [as_nanoarrow_array_stream()].
+#'   [as_nanoarrow_array_stream()]. Notably, this includes a [data.frame()].
 #' @param lazy By default, `read_nanoarrow()` will read and discard a copy of
 #'   the reader's schema to ensure that invalid streams are discovered as
 #'   soon as possible. Use `lazy = TRUE` to defer this check until the reader
