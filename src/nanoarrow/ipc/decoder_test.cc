@@ -984,7 +984,13 @@ TEST_P(ArrowSchemaParameterizedTestFixture, NanoarrowIpcNanoarrowFooterRoundtrip
   EXPECT_EQ(
       ArrowIpcEncoderFinalizeBuffer(encoder.get(), /*encapsulate=*/false, buffer.get()),
       NANOARROW_OK);
+
+#ifdef __BIG_ENDIAN__
+  uint32_t footer_size_le = bswap32(static_cast<int32_t>(buffer->size_bytes));
+  EXPECT_EQ(ArrowBufferAppendInt32(buffer.get(), footer_size_le), NANOARROW_OK);
+#else
   EXPECT_EQ(ArrowBufferAppendInt32(buffer.get(), buffer->size_bytes), NANOARROW_OK);
+#endif
   EXPECT_EQ(ArrowBufferAppendStringView(buffer.get(), "ARROW1"_asv), NANOARROW_OK);
 
   struct ArrowBufferView buffer_view;
@@ -1005,6 +1011,12 @@ TEST_P(ArrowSchemaParameterizedTestFixture, NanoarrowIpcNanoarrowFooterRoundtrip
   struct ArrowIpcFileBlock roundtripped_block;
   memcpy(&roundtripped_block, decoder->footer->record_batch_blocks.data,
          sizeof(roundtripped_block));
+
+#ifdef __BIG_ENDIAN__
+  roundtripped_block.offset = bswap64(roundtripped_block.offset);
+  roundtripped_block.metadata_length = bswap32(roundtripped_block.metadata_length);
+  roundtripped_block.body_length = bswap64(roundtripped_block.body_length);
+#endif
   EXPECT_EQ(roundtripped_block.offset, dummy_block.offset);
   EXPECT_EQ(roundtripped_block.metadata_length, dummy_block.metadata_length);
   EXPECT_EQ(roundtripped_block.body_length, dummy_block.body_length);
