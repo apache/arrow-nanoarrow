@@ -148,7 +148,6 @@ endif()
 
 # Add the nanoarrow library target
 add_library(nanoarrow ${NANOARROW_BUILD_SOURCES})
-add_library(nanoarrow::nanoarrow ALIAS nanoarrow)
 
 target_include_directories(nanoarrow
                            PUBLIC $<BUILD_INTERFACE:${NANOARROW_BUILD_INCLUDE_DIR}>
@@ -220,8 +219,8 @@ if(NANOARROW_IPC)
                                     $<INSTALL_INTERFACE:include>)
 
   install(TARGETS nanoarrow_ipc DESTINATION lib)
-  install(FILES src/nanoarrow/nanoarrow_ipc.h src/nanoarrow/ipc/flatcc_generated.h
-          DESTINATION include/nanoarrow)
+  install(FILES src/nanoarrow/nanoarrow_ipc.h src/nanoarrow/nanoarrow_ipc.hpp
+                src/nanoarrow/ipc/flatcc_generated.h DESTINATION include/nanoarrow)
 endif()
 
 if(NANOARROW_IPC AND (NANOARROW_BUILD_INTEGRATION_TESTS OR NANOARROW_BUILD_TESTS))
@@ -312,7 +311,8 @@ if(NANOARROW_DEVICE)
                                ${NANOARROW_DEVICE_LIBS_METAL} nanoarrow_coverage_config)
 
   install(TARGETS nanoarrow_device DESTINATION lib)
-  install(FILES src/nanoarrow/nanoarrow_device.h DESTINATION include/nanoarrow)
+  install(FILES src/nanoarrow/nanoarrow_device.h src/nanoarrow/nanoarrow_device.hpp
+          DESTINATION include/nanoarrow)
 endif()
 
 if(NANOARROW_TESTING
@@ -340,6 +340,7 @@ if(NANOARROW_TESTING
   target_link_libraries(nanoarrow_testing PRIVATE nlohmann_json::nlohmann_json nanoarrow)
   target_link_libraries(nanoarrow_testing PUBLIC nanoarrow)
   set_target_properties(nanoarrow_testing PROPERTIES POSITION_INDEPENDENT_CODE ON)
+  install(FILES src/nanoarrow/nanoarrow_testing.hpp DESTINATION include/nanoarrow)
 endif()
 
 # Always build integration test if building tests
@@ -365,12 +366,19 @@ foreach(target
         nanoarrow_c_data_integration
         nanoarrow_ipc_json_integration)
   if(TARGET ${target})
+    # Define the nanoarrow::xxx alias target
+    add_library(nanoarrow::${target} ALIAS ${target})
+
+    # Ensure NANOARROW_DEBUG is defined for debug builds
     target_compile_definitions(${target} PUBLIC "$<$<CONFIG:Debug>:NANOARROW_DEBUG>")
 
+    # Ensure target is added to nanoarrow-exports
     install(TARGETS ${target}
             DESTINATION lib
             EXPORT nanoarrow-exports)
 
+    # For debug builds, ensure we aggressively set compiler warning flags and
+    # error for any compiler warnings
     if(CMAKE_C_COMPILER_ID STREQUAL "GNU")
       target_compile_options(${target}
                              PRIVATE $<$<CONFIG:Debug>:-Wall

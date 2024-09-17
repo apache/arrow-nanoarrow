@@ -15,6 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
+#include "nanoarrow/nanoarrow.hpp"
 #include "nanoarrow/nanoarrow_device.h"
 
 #ifndef NANOARROW_DEVICE_HPP_INCLUDED
@@ -24,17 +25,19 @@ namespace nanoarrow {
 
 namespace internal {
 
-static inline void init_pointer(struct ArrowDeviceArray* data) {
+template <>
+inline void init_pointer(struct ArrowDeviceArray* data) {
   data->array.release = nullptr;
   data->sync_event = nullptr;
 }
 
-static inline void move_pointer(struct ArrowDeviceArray* src,
-                                struct ArrowDeviceArray* dst) {
+template <>
+inline void move_pointer(struct ArrowDeviceArray* src, struct ArrowDeviceArray* dst) {
   ArrowDeviceArrayMove(src, dst);
 }
 
-static inline void release_pointer(struct ArrowDeviceArray* data) {
+template <>
+inline void release_pointer(struct ArrowDeviceArray* data) {
   if (data->array.release != nullptr) {
     ArrowArrayRelease(&data->array);
   }
@@ -42,45 +45,56 @@ static inline void release_pointer(struct ArrowDeviceArray* data) {
   data->sync_event = nullptr;
 }
 
-static inline void init_pointer(struct ArrowDeviceArrayStream* data) {
+template <>
+inline void init_pointer(struct ArrowDeviceArrayStream* data) {
   data->release = nullptr;
 }
 
-static inline void move_pointer(struct ArrowDeviceArrayStream* src,
-                                struct ArrowDeviceArrayStream* dst) {
+template <>
+inline void move_pointer(struct ArrowDeviceArrayStream* src,
+                         struct ArrowDeviceArrayStream* dst) {
   memcpy(dst, src, sizeof(struct ArrowDeviceArrayStream));
   src->release = nullptr;
 }
 
-static inline void release_pointer(struct ArrowDeviceArrayStream* data) {
+template <>
+inline void release_pointer(struct ArrowDeviceArrayStream* data) {
   if (data->release != nullptr) {
     data->release(data);
   }
 }
 
-static inline void init_pointer(struct ArrowDeviceArrayView* data) {
+template <>
+inline void init_pointer(struct ArrowDeviceArrayView* data) {
   ArrowDeviceArrayViewInit(data);
 }
 
-static inline void move_pointer(struct ArrowDeviceArrayView* src,
-                                struct ArrowDeviceArrayView* dst) {
+template <>
+inline void move_pointer(struct ArrowDeviceArrayView* src,
+                         struct ArrowDeviceArrayView* dst) {
   ArrowArrayViewMove(&src->array_view, &dst->array_view);
   dst->device = src->device;
   src->device = nullptr;
 }
 
-static inline void release_pointer(struct ArrowDeviceArrayView* data) {
+template <>
+inline void release_pointer(struct ArrowDeviceArrayView* data) {
   ArrowArrayViewReset(&data->array_view);
 }
 
-static inline void init_pointer(struct ArrowDevice* data) { data->release = nullptr; }
+template <>
+inline void init_pointer(struct ArrowDevice* data) {
+  data->release = nullptr;
+}
 
-static inline void move_pointer(struct ArrowDevice* src, struct ArrowDevice* dst) {
+template <>
+inline void move_pointer(struct ArrowDevice* src, struct ArrowDevice* dst) {
   memcpy(dst, src, sizeof(struct ArrowDevice));
   src->release = nullptr;
 }
 
-static inline void release_pointer(struct ArrowDevice* data) {
+template <>
+inline void release_pointer(struct ArrowDevice* data) {
   if (data->release != nullptr) {
     data->release(data);
   }
