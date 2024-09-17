@@ -53,6 +53,8 @@ services:
       dockerfile: ci/docker/integration.dockerfile
     volumes:
       - ${NANOARROW_DOCKER_SOURCE_DIR}:/arrow-integration/nanoarrow
+    environment:
+      ARCHERY_INTEGRATION_TARGET_LANGUAGES: "nanoarrow"
     command:
       ["echo '::group::Build nanoarrow' &&
         conda run --no-capture-output /arrow-integration/ci/scripts/nanoarrow_build.sh /arrow-integration /build &&
