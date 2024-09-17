@@ -32,6 +32,7 @@ extern SEXP nanoarrow_cls_schema;
 extern SEXP nanoarrow_cls_array_stream;
 extern SEXP nanoarrow_cls_buffer;
 extern SEXP nanoarrow_sym_readbin;
+extern SEXP nanoarrow_sym_writebin;
 extern SEXP nanoarrow_ptype_raw;
 
 void nanoarrow_init_cached_sexps(void);

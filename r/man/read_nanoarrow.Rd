@@ -2,10 +2,13 @@
 % Please edit documentation in R/ipc.R
 \name{read_nanoarrow}
 \alias{read_nanoarrow}
+\alias{write_nanoarrow}
 \alias{example_ipc_stream}
-\title{Read serialized streams of Arrow data}
+\title{Read/write serialized streams of Arrow data}
 \usage{
 read_nanoarrow(x, ..., lazy = FALSE)
+
+write_nanoarrow(data, x, ...)
 
 example_ipc_stream()
 }
@@ -20,21 +23,24 @@ are automatically uncompressed.}
 the reader's schema to ensure that invalid streams are discovered as
 soon as possible. Use \code{lazy = TRUE} to defer this check until the reader
 is actually consumed.}
+
+\item{data}{An object to write as an Arrow IPC stream, converted using
+\code{\link[=as_nanoarrow_array_stream]{as_nanoarrow_array_stream()}}. Notably, this includes a \code{\link[=data.frame]{data.frame()}}.}
 }
 \value{
 A \link[=as_nanoarrow_array_stream]{nanoarrow_array_stream}
 }
 \description{
-Reads connections, file paths, URLs, or raw vectors of serialized Arrow
-data. Arrow documentation typically refers to this format as "Arrow IPC",
-since its origin was as a means to transmit tables between processes
+Reads/writes connections, file paths, URLs, or raw vectors from/to serialized
+Arrow data. Arrow documentation typically refers to this format as "Arrow
+IPC", since its origin was as a means to transmit tables between processes
 (e.g., multiple R sessions). This format can also be written to and read
 from files or URLs and is essentially a high performance equivalent of
 a CSV file that does a better job maintaining types.
 }
 \details{
-The nanoarrow package does not currently have the ability to write serialized
-IPC data: use \code{\link[arrow:write_ipc_stream]{arrow::write_ipc_stream()}} to write data from R, or use
+The nanoarrow package implements an IPC writer; however, you can also
+use \code{\link[arrow:write_ipc_stream]{arrow::write_ipc_stream()}} to write data from R, or use
 the equivalent writer from another Arrow implementation in Python, C++,
 Rust, JavaScript, Julia, C#, and beyond.
 

@@ -30,6 +30,7 @@ SEXP nanoarrow_cls_schema = NULL;
 SEXP nanoarrow_cls_array_stream = NULL;
 SEXP nanoarrow_cls_buffer = NULL;
 SEXP nanoarrow_sym_readbin = NULL;
+SEXP nanoarrow_sym_writebin = NULL;
 SEXP nanoarrow_ptype_raw = NULL;
 
 void nanoarrow_init_cached_sexps(void) {
@@ -42,7 +43,8 @@ void nanoarrow_init_cached_sexps(void) {
   nanoarrow_cls_schema = PROTECT(Rf_mkString("nanoarrow_schema"));
   nanoarrow_cls_array_stream = PROTECT(Rf_mkString("nanoarrow_array_stream"));
   nanoarrow_cls_buffer = PROTECT(Rf_mkString("nanoarrow_buffer"));
-  nanoarrow_sym_readbin = PROTECT(Rf_install("readBin"));
+  nanoarrow_sym_readbin = PROTECT(Rf_install("read_bin_wrapper"));
+  nanoarrow_sym_writebin = PROTECT(Rf_install("write_bin_wrapper"));
   nanoarrow_ptype_raw = PROTECT(Rf_allocVector(RAWSXP, 0));
 
   R_PreserveObject(nanoarrow_ns_pkg);
@@ -54,9 +56,10 @@ void nanoarrow_init_cached_sexps(void) {
   R_PreserveObject(nanoarrow_cls_array_stream);
   R_PreserveObject(nanoarrow_cls_buffer);
   R_PreserveObject(nanoarrow_sym_readbin);
+  R_PreserveObject(nanoarrow_sym_writebin);
   R_PreserveObject(nanoarrow_ptype_raw);
 
-  UNPROTECT(11);
+  UNPROTECT(12);
 }
 
 SEXP nanoarrow_c_preserved_count(void) {
