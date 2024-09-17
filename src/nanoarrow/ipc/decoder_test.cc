@@ -986,7 +986,7 @@ TEST_P(ArrowSchemaParameterizedTestFixture, NanoarrowIpcNanoarrowFooterRoundtrip
       NANOARROW_OK);
 
 #ifdef __BIG_ENDIAN__
-  uint32_t footer_size_le = bswap32(static_cast<int32_t>(buffer->size_bytes));
+  uint32_t footer_size_le = bswap32(static_cast<uint32_t>(buffer->size_bytes));
   EXPECT_EQ(ArrowBufferAppendInt32(buffer.get(), footer_size_le), NANOARROW_OK);
 #else
   EXPECT_EQ(ArrowBufferAppendInt32(buffer.get(), buffer->size_bytes), NANOARROW_OK);
