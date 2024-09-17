@@ -573,6 +573,7 @@ if(NANOARROW_BUILD_TESTS)
       target_link_libraries(nanoarrow_device_cuda_test
                             nanoarrow_device
                             nanoarrow
+                            CUDA::cuda_driver
                             gtest_main
                             nanoarrow_coverage_config)
       gtest_discover_tests(nanoarrow_device_cuda_test)
