@@ -350,8 +350,8 @@ ArrowErrorCode ArrowIpcWriterWriteArrayStream(struct ArrowIpcWriter* writer,
   struct ArrowArrayView array_view;
   ArrowArrayViewInitFromType(&array_view, NANOARROW_TYPE_UNINITIALIZED);
 
-  NANOARROW_RETURN_NOT_OK(ArrowIpcWriterWriteArrayStreamImpl(writer, in, &schema, &array,
-                                                             &array_view, error));
+  ArrowErrorCode result =
+      ArrowIpcWriterWriteArrayStreamImpl(writer, in, &schema, &array, &array_view, error);
 
   if (schema.release != NULL) {
     ArrowSchemaRelease(&schema);
@@ -362,7 +362,8 @@ ArrowErrorCode ArrowIpcWriterWriteArrayStream(struct ArrowIpcWriter* writer,
   }
 
   ArrowArrayViewReset(&array_view);
-  return NANOARROW_OK;
+
+  return result;
 }
 
 #define NANOARROW_IPC_FILE_PADDED_MAGIC "ARROW1\0"
