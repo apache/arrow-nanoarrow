@@ -15,11 +15,11 @@
 # specific language governing permissions and limitations
 # under the License.
 
-#' Read serialized streams of Arrow data
+#' Read/write serialized streams of Arrow data
 #'
-#' Reads connections, file paths, URLs, or raw vectors of serialized Arrow
-#' data. Arrow documentation typically refers to this format as "Arrow IPC",
-#' since its origin was as a means to transmit tables between processes
+#' Reads/writes connections, file paths, URLs, or raw vectors from/to serialized
+#' Arrow data. Arrow documentation typically refers to this format as "Arrow
+#' IPC", since its origin was as a means to transmit tables between processes
 #' (e.g., multiple R sessions). This format can also be written to and read
 #' from files or URLs and is essentially a high performance equivalent of
 #' a CSV file that does a better job maintaining types.

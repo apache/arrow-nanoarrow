@@ -4,7 +4,7 @@
 \alias{read_nanoarrow}
 \alias{write_nanoarrow}
 \alias{example_ipc_stream}
-\title{Read serialized streams of Arrow data}
+\title{Read/write serialized streams of Arrow data}
 \usage{
 read_nanoarrow(x, ..., lazy = FALSE)
 
@@ -31,9 +31,9 @@ is actually consumed.}
 A \link[=as_nanoarrow_array_stream]{nanoarrow_array_stream}
 }
 \description{
-Reads connections, file paths, URLs, or raw vectors of serialized Arrow
-data. Arrow documentation typically refers to this format as "Arrow IPC",
-since its origin was as a means to transmit tables between processes
+Reads/writes connections, file paths, URLs, or raw vectors from/to serialized
+Arrow data. Arrow documentation typically refers to this format as "Arrow
+IPC", since its origin was as a means to transmit tables between processes
 (e.g., multiple R sessions). This format can also be written to and read
 from files or URLs and is essentially a high performance equivalent of
 a CSV file that does a better job maintaining types.
