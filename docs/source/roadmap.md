@@ -56,7 +56,7 @@ have not yet been scheduled for implementation.
 - **Dictionary support**: The IPC extension does not currently support reading
   dictionary messages an IPC stream.
 - **Compression**: The IPC extension does not currently support compressed
-  streams using per-buffer compression, although streams can be compresed
+  streams using per-buffer compression, although streams can be compressed
   outside the nanoarrow library (e.g., gzip compression of the entire stream).
 
 ## Device extension
