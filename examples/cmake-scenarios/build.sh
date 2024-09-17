@@ -26,15 +26,15 @@ cmake -S ../.. -B scratch/nanoarrow_build_static/ \
 cmake --build scratch/nanoarrow_build_static/
 cmake --install scratch/nanoarrow_build_static/
 
-# # Build nanoarrow dynamically.
-# cmake -S ../.. -B scratch/nanoarrow_build_shared/ \
-#     -DCMAKE_INSTALL_PREFIX=scratch/nanoarrow_install_shared/ \
-#     -DBUILD_SHARED_LIBS=ON \
-#     -DNANOARROW_IPC=ON -DNANOARROW_DEVICE=ON -DNANOARROW_TESTING=ON
-# cmake --build scratch/nanoarrow_build_shared/
-# cmake --install scratch/nanoarrow_build_shared/
+# Build nanoarrow dynamically.
+cmake -S ../.. -B scratch/nanoarrow_build_shared/ \
+    -DCMAKE_INSTALL_PREFIX=scratch/nanoarrow_install_shared/ \
+    -DBUILD_SHARED_LIBS=ON \
+    -DNANOARROW_IPC=ON -DNANOARROW_DEVICE=ON -DNANOARROW_TESTING=ON
+cmake --build scratch/nanoarrow_build_shared/
+cmake --install scratch/nanoarrow_build_shared/
 
-for nanoarrow_build_type in static; do
+for nanoarrow_build_type in static shared; do
     # Build the project against the built nanoarrow.
     cmake -S . -B scratch/build_${nanoarrow_build_type}/ -Dnanoarrow_ROOT=scratch/nanoarrow_build_${nanoarrow_build_type}/
     cmake --build scratch/build_${nanoarrow_build_type}/
