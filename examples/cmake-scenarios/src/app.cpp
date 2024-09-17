@@ -15,9 +15,9 @@
 // specific language governing permissions and limitations
 // under the License.
 
-#include <iostream>
 #include <cstdio>
 #include <cstring>
+#include <iostream>
 
 // Usually, including either .h or .hpp is fine; however, use this version
 // to make sure all the include paths used in all the files will work.
