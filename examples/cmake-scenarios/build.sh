@@ -30,7 +30,8 @@ cmake --install scratch/nanoarrow_build_static/
 cmake -S ../.. -B scratch/nanoarrow_build_shared/ \
     -DCMAKE_INSTALL_PREFIX=scratch/nanoarrow_install_shared/ \
     -DBUILD_SHARED_LIBS=ON \
-    -DNANOARROW_IPC=ON -DNANOARROW_DEVICE=ON -DNANOARROW_TESTING=ON
+    -DNANOARROW_IPC=ON -DNANOARROW_DEVICE=ON -DNANOARROW_TESTING=ON \
+    -DCMAKE_POSITION_INDEPENDENT_CODE=ON
 cmake --build scratch/nanoarrow_build_shared/
 cmake --install scratch/nanoarrow_build_shared/
 
