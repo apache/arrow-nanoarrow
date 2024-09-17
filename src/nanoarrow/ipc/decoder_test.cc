@@ -1012,11 +1012,6 @@ TEST_P(ArrowSchemaParameterizedTestFixture, NanoarrowIpcNanoarrowFooterRoundtrip
   memcpy(&roundtripped_block, decoder->footer->record_batch_blocks.data,
          sizeof(roundtripped_block));
 
-#ifdef __BIG_ENDIAN__
-  roundtripped_block.offset = bswap64(roundtripped_block.offset);
-  roundtripped_block.metadata_length = bswap32(roundtripped_block.metadata_length);
-  roundtripped_block.body_length = bswap64(roundtripped_block.body_length);
-#endif
   EXPECT_EQ(roundtripped_block.offset, dummy_block.offset);
   EXPECT_EQ(roundtripped_block.metadata_length, dummy_block.metadata_length);
   EXPECT_EQ(roundtripped_block.body_length, dummy_block.body_length);

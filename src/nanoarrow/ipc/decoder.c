@@ -1288,9 +1288,9 @@ ArrowErrorCode ArrowIpcDecoderDecodeFooter(struct ArrowIpcDecoder* decoder,
   struct ArrowIpcFileBlock* record_batches =
       (struct ArrowIpcFileBlock*)private_data->footer.record_batch_blocks.data;
   for (int64_t i = 0; i < n; i++) {
-    record_batches[i].offset = blocks[i].offset;
-    record_batches[i].metadata_length = blocks[i].metaDataLength;
-    record_batches[i].body_length = blocks[i].bodyLength;
+    record_batches[i].offset = ns(Block_offset(blocks + i));
+    record_batches[i].metadata_length = ns(Block_metaDataLength(blocks + i));
+    record_batches[i].body_length = ns(Block_bodyLength(blocks + i));
   }
 
   decoder->footer = &private_data->footer;
