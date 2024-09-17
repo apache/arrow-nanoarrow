@@ -17,6 +17,13 @@
   under the License.
 -->
 
+# nanoarrow 0.5.0
+
+- Add experimental `nanoarrow_vctr` to wrap a list of arrays (#461)
+- Add bindings for IPC reader (#390)
+- Fix tests for platforms where arrow dataset and/or zip is not available (#415)
+- Remove unnecessary package name call (#381)
+
 # nanoarrow 0.4.0
 
 - Fix source links from pkgdown site (#315).
