@@ -29,7 +29,9 @@ option(FIND_NANOARROW "Find an existing nanoarrow" ON)
 # link to their own copy of nanoarrow. You may wish to include the namespace only
 # on release builds, since the namespace implementation obscures inline help
 # available in many text editors.
-set(NANOARROW_NAMESPACE "ExampleCmakeMinimal")
+set(NANOARROW_NAMESPACE "ExampleCmakeScenarios")
+
+include(FetchContent)
 
 if(FIND_NANOARROW)
   # Users should pin to a specific version of nanoarrow if they choose
@@ -37,13 +39,21 @@ if(FIND_NANOARROW)
   # FetchContent.
   find_package(nanoarrow REQUIRED)
 else()
-  include(FetchContent)
-  fetchcontent_declare(nanoarrow_example_cmake_minimal
-                       GIT_REPOSITORY https://github.com/apache/arrow-nanoarrow.git
-                       GIT_TAG main
-                       GIT_SHALLOW TRUE)
-  fetchcontent_makeavailable(nanoarrow_example_cmake_minimal)
+  # We need all these components for our test
+  set(NANOARROW_DEVICE ON)
+  set(NANOARROW_IPC ON)
+  set(NANOARROW_TESTING ON)
+
+  # Using SOURCE_DIR here such that CI accurately reflects the state of the
+  # source; however, using GIT_TAG or URL of a pinned version is a more realistic
+  # user pattern.
+  fetchcontent_declare(nanoarrow SOURCE_DIR "${CMAKE_CURRENT_LIST_DIR}/../..")
+  fetchcontent_makeavailable(nanoarrow)
 endif()
 
 add_executable(minimal_cpp_app src/app.cpp)
-target_link_libraries(minimal_cpp_app nanoarrow::nanoarrow)
+target_link_libraries(minimal_cpp_app
+                      nanoarrow::nanoarrow
+                      nanoarrow::nanoarrow_device
+                      nanoarrow::nanoarrow_ipc
+                      nanoarrow::nanoarrow_testing)
