@@ -470,7 +470,7 @@ static inline ArrowErrorCode ArrowArrayAppendDouble(struct ArrowArray* array,
 
 #define NANOARROW_BINARY_VIEW_INLINE_SIZE 12
 #define NANOARROW_BINARY_VIEW_PREVIEW_SIZE 4
-#define NANOARROW_BINARY_VIEW_BLOCK_SIZE 32 << 10  // 32KB
+#define NANOARROW_BINARY_VIEW_BLOCK_SIZE (32 << 10)  // 32KB
 
 // The Arrow C++ implementation uses anonymous structs as members
 // of the ArrowBinaryViewType. For Cython support in this library, we define
@@ -875,6 +875,15 @@ static inline int64_t ArrowArrayViewListChildOffset(
 
 static inline struct ArrowBufferView ArrowArrayViewBufferView(
     const struct ArrowArrayView* array_view, int64_t i) {
+  if (array_view->storage_type == NANOARROW_TYPE_BINARY_VIEW ||
+      array_view->storage_type == NANOARROW_TYPE_STRING_VIEW) {
+    const int32_t nfixed_buf = 2;
+    if (i < nfixed_buf) {
+      return array_view->buffer_views[i];
+    } else {
+      return array_view->variadic_buffer_views[i];
+    }
+  }
   return array_view->buffer_views[i];
 }
 
@@ -1019,9 +1028,8 @@ static inline struct ArrowStringView ArrowArrayViewGetStringUnsafe(
                     sizeof(((union ArrowBinaryViewType*)0)->inlined.size);
       } else {
         const int32_t buf_index = bvt.ref.buffer_index;
-        const int32_t nfixed_buf = 2;
-        view.data = array_view->buffer_views[nfixed_buf + buf_index].data.as_char +
-                    bvt.ref.offset;
+        view.data =
+            array_view->variadic_buffer_views[buf_index].data.as_char + bvt.ref.offset;
       }
       break;
     }
@@ -1072,10 +1080,8 @@ static inline struct ArrowBufferView ArrowArrayViewGetBytesUnsafe(
                              sizeof(((union ArrowBinaryViewType*)0)->inlined.size);
       } else {
         const int32_t buf_index = bvt.ref.buffer_index;
-        const int32_t nfixed_buf = 2;
         view.data.as_uint8 =
-            array_view->buffer_views[nfixed_buf + buf_index].data.as_uint8 +
-            bvt.ref.offset;
+            array_view->variadic_buffer_views[buf_index].data.as_uint8 + bvt.ref.offset;
       }
       break;
     }

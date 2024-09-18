@@ -672,6 +672,10 @@ void ArrowArrayViewReset(struct ArrowArrayView* array_view) {
     ArrowFree(array_view->union_type_id_map);
   }
 
+  if (array_view->variadic_buffer_views != NULL) {
+    ArrowFree(array_view->variadic_buffer_views);
+  }
+
   ArrowArrayViewInitFromType(array_view, NANOARROW_TYPE_UNINITIALIZED);
 }
 
@@ -732,6 +736,7 @@ static int ArrowArrayViewSetArrayInternal(struct ArrowArrayView* array_view,
   array_view->length = array->length;
   array_view->null_count = array->null_count;
   array_view->variadic_buffer_sizes = NULL;
+  array_view->variadic_buffer_views = NULL;
   array_view->n_variadic_buffers = 0;
 
   int64_t buffers_required = 0;
@@ -765,17 +770,19 @@ static int ArrowArrayViewSetArrayInternal(struct ArrowArrayView* array_view,
     int32_t nvariadic_buf = (int32_t)(n_buffers - nfixed_buf - 1);
     nvariadic_buf = (nvariadic_buf < 0) ? 0 : nvariadic_buf;
     array_view->n_variadic_buffers = nvariadic_buf;
+    array_view->variadic_buffer_views = (struct ArrowBufferView*)ArrowMalloc(
+        sizeof(struct ArrowBufferView) * nvariadic_buf);
 
     buffers_required += nvariadic_buf;
-    for (int i = nfixed_buf; i < nfixed_buf + nvariadic_buf; ++i) {
+    for (int i = 0; i < nvariadic_buf; ++i) {
       // Set buffer pointer
-      array_view->buffer_views[i].data.data = array->buffers[i];
+      array_view->variadic_buffer_views[i].data.data = array->buffers[i + nfixed_buf];
 
       // If non-null, set buffer size to unknown.
-      if (array->buffers[i] == NULL) {
-        array_view->buffer_views[i].size_bytes = 0;
+      if (array->buffers[i + nfixed_buf] == NULL) {
+        array_view->variadic_buffer_views[i].size_bytes = 0;
       } else {
-        array_view->buffer_views[i].size_bytes = -1;
+        array_view->variadic_buffer_views[i].size_bytes = -1;
       }
     }
 
