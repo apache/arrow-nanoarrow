@@ -27,9 +27,9 @@ have not yet been scheduled for implementation.
 ## C library
 
 - **Type coverage**: The C library currently provides support for all types that
-  are available via the Arrow C Data interface. Now that the run-end encoded (REE)
-  types and string view/list view types are available via the Arrow C Data interface,
-  support should be added in nanoarrow as well.
+  are available via the Arrow C Data interface except run-end encoded (REE)
+  types and string view/list view types. Support for these should be added in
+  nanoarrow as well.
 - **Array append**: The `ArrowArrayAppend*()` family of functions provide a means
   by which to incrementally build arrays; however, there is no built-in way to
   append an `ArrowArrayView`, potentially more efficiently appending multiple
