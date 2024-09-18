@@ -44,7 +44,7 @@ have not yet been scheduled for implementation.
 - **Test verbosity**: Tests for the C library were written before testing utilities
   in the `nanoarrow_testing` library were available (and before there was a
   `nanoarrow_testing` library in which to put new ones). As a result, some of them
-  are very verbose and can be difficult to read. W
+  are very verbose and can be difficult to read, which can and should be improved.
 - **C++ integration**: The existing C++ integration is intentionally minimal;
   however, there are likely improvements that could be made to better integrate
   nanoarrow into existing C++ projects.
