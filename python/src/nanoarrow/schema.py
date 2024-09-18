@@ -770,8 +770,8 @@ def string_view(nullable: bool = True) -> Schema:
     --------
 
     >>> import nanoarrow as na
-    >>> na.large_binary()
-    <Schema> large_binary
+    >>> na.string_view()
+    <Schema> string_view
     """
     return Schema(Type.STRING_VIEW, nullable=nullable)
 
@@ -824,8 +824,8 @@ def binary_view(nullable: bool = True) -> Schema:
     --------
 
     >>> import nanoarrow as na
-    >>> na.large_binary()
-    <Schema> large_binary
+    >>> na.binary_view()
+    <Schema> binary_view
     """
     return Schema(Type.BINARY_VIEW, nullable=nullable)
 
