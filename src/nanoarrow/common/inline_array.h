@@ -512,11 +512,10 @@ static inline ArrowErrorCode ArrowArrayAppendBytes(struct ArrowArray* array,
           private_data->variadic_buffers[n_vbufs - 1].size_bytes + value.size_bytes >
               NANOARROW_BINARY_VIEW_BLOCK_SIZE) {
         ++n_vbufs;
-        // TODO: these should be realloc for > 0 case
-        private_data->variadic_buffers =
-            (struct ArrowBuffer*)ArrowMalloc(sizeof(struct ArrowBuffer) * (n_vbufs));
-        private_data->variadic_buffer_sizes =
-            (int32_t*)ArrowMalloc(sizeof(int32_t) * (n_vbufs));
+        private_data->variadic_buffers = (struct ArrowBuffer*)ArrowRealloc(
+            private_data->variadic_buffers, sizeof(struct ArrowBuffer) * (n_vbufs));
+        private_data->variadic_buffer_sizes = (int32_t*)ArrowRealloc(
+            private_data->variadic_buffer_sizes, sizeof(int32_t) * (n_vbufs));
         ArrowBufferInit(&private_data->variadic_buffers[n_vbufs - 1]);
         private_data->n_variadic_buffers = n_vbufs;
       }
