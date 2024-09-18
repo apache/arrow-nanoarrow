@@ -211,8 +211,9 @@ if(NANOARROW_IPC)
   endif()
 
   add_library(nanoarrow_ipc ${NANOARROW_IPC_BUILD_SOURCES})
-  target_link_libraries(nanoarrow_ipc PRIVATE flatccrt)
-  target_link_libraries(nanoarrow_ipc PUBLIC nanoarrow nanoarrow_coverage_config)
+  target_link_libraries(nanoarrow_ipc
+                        PRIVATE flatccrt
+                        PUBLIC nanoarrow nanoarrow_coverage_config)
   target_include_directories(nanoarrow_ipc
                              PUBLIC $<BUILD_INTERFACE:${NANOARROW_BUILD_INCLUDE_DIR}>
                                     $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/src>
@@ -307,9 +308,10 @@ if(NANOARROW_DEVICE)
 
   target_compile_definitions(nanoarrow_device PRIVATE ${NANOARROW_DEVICE_DEFS_METAL}
                                                       ${NANOARROW_DEVICE_DEFS_CUDA})
-  target_link_libraries(nanoarrow_device PRIVATE ${NANOARROW_DEVICE_LIBS_CUDA}
-                                                 ${NANOARROW_DEVICE_LIBS_METAL})
-  target_link_libraries(nanoarrow_device PUBLIC nanoarrow nanoarrow_coverage_config)
+  target_link_libraries(nanoarrow_device
+                        PRIVATE ${NANOARROW_DEVICE_LIBS_CUDA}
+                                ${NANOARROW_DEVICE_LIBS_METAL}
+                        PUBLIC nanoarrow nanoarrow_coverage_config)
 
   install(TARGETS nanoarrow_device DESTINATION lib)
   install(FILES src/nanoarrow/nanoarrow_device.h src/nanoarrow/nanoarrow_device.hpp
@@ -338,8 +340,9 @@ if(NANOARROW_TESTING
                              PUBLIC $<BUILD_INTERFACE:${NANOARROW_BUILD_INCLUDE_DIR}>
                                     $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/src>
                                     $<INSTALL_INTERFACE:include>)
-  target_link_libraries(nanoarrow_testing PRIVATE nlohmann_json::nlohmann_json)
-  target_link_libraries(nanoarrow_testing PUBLIC nanoarrow nanoarrow_coverage_config)
+  target_link_libraries(nanoarrow_testing
+                        PRIVATE nlohmann_json::nlohmann_json
+                        PUBLIC nanoarrow nanoarrow_coverage_config)
   set_target_properties(nanoarrow_testing PROPERTIES POSITION_INDEPENDENT_CODE ON)
   install(FILES src/nanoarrow/nanoarrow_testing.hpp DESTINATION include/nanoarrow)
 endif()
