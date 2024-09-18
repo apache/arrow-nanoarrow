@@ -196,7 +196,7 @@ cdef object view_to_dlpack(CBufferView view, stream=None):
         elif stream in (1, 2):
             # Technically we are mixing the per-thread and legacy default streams here;
             # however, the nanoarrow_device API currently has no mechanism to expose
-            # a pointer these streams specifically.
+            # a pointer to these streams specifically.
             cuda_pstream = <void*>0
             view._event.synchronize_stream(<uintptr_t>&cuda_pstream)
         else:
