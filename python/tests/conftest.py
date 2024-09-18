@@ -17,9 +17,11 @@
 
 import pytest
 
+
 @pytest.fixture
 def cuda_device():
-    from nanoarrow.device import resolve, DeviceType
+    from nanoarrow.device import DeviceType, resolve
+
     try:
         return resolve(DeviceType.CUDA, 0)
     except ValueError:
