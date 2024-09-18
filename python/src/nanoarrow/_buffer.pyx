@@ -647,7 +647,7 @@ cdef class CBuffer:
 
     @staticmethod
     def empty():
-        """Create an emtpy CBuffer"""
+        """Create an empty CBuffer"""
         cdef CBuffer out = CBuffer()
         out._base = _utils.alloc_c_buffer(&out._ptr)
         return out
