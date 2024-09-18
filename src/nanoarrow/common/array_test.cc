@@ -940,6 +940,51 @@ TEST(ArrayTest, ArrayTestAppendToStringViewArray) {
   ArrowArrayRelease(&array);
 }
 
+TEST(ArrayTest, ArrayTestAppendToBinaryViewArray) {
+  struct ArrowArray array;
+
+  ASSERT_EQ(ArrowArrayInitFromType(&array, NANOARROW_TYPE_BINARY_VIEW), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayStartAppending(&array), NANOARROW_OK);
+
+  // Check that we can reserve
+  ASSERT_EQ(ArrowArrayReserve(&array, 5), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayBuffer(&array, 1)->capacity_bytes,
+            5 * sizeof(union ArrowBinaryViewType));
+
+  EXPECT_EQ(ArrowArrayAppendBytes(&array, {{"1234"}, 4}), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayAppendNull(&array, 2), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayAppendBytes(&array, {{"longer_than_the_inline_size"}, 27}),
+            NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayAppendEmpty(&array, 1), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayFinishBuildingDefault(&array, nullptr), NANOARROW_OK);
+
+  EXPECT_EQ(array.length, 5);
+  EXPECT_EQ(array.null_count, 2);
+  auto validity_buffer = reinterpret_cast<const uint8_t*>(array.buffers[0]);
+  auto inline_buffer =
+      reinterpret_cast<const union ArrowBinaryViewType*>(array.buffers[1]);
+  auto variable_buffer = reinterpret_cast<const char*>(array.buffers[2]);
+  auto sizes_buffer = reinterpret_cast<const int32_t*>(array.buffers[3]);
+
+  EXPECT_EQ(validity_buffer[0], 0b00011001);
+  EXPECT_EQ(memcmp(inline_buffer[0].inlined.data, "1234", 4), 0);
+  EXPECT_EQ(inline_buffer[0].inlined.size, 4);
+  EXPECT_EQ(memcmp(inline_buffer[3].ref.data, "long", 4), 0);
+  EXPECT_EQ(inline_buffer[3].ref.size, 27);
+  EXPECT_EQ(inline_buffer[3].ref.buffer_index, 0);
+  EXPECT_EQ(inline_buffer[3].ref.offset, 0);
+
+  EXPECT_EQ(memcmp(variable_buffer, "longer_than_the_inline_size", 27), 0);
+  EXPECT_EQ(sizes_buffer[0], 27);
+
+  // TODO: need to add overload for ViewArrayAsBytes
+  /*
+  EXPECT_THAT(nanoarrow::ViewArrayAsBytes<64>(&array),
+              ElementsAre("1234"_asv, NA, NA, "56789"_asv, ""_asv));
+  */
+  ArrowArrayRelease(&array);
+}
+
 TEST(ArrayTest, ArrayTestAppendToFixedSizeBinaryArray) {
   struct ArrowArray array;
   struct ArrowSchema schema;
