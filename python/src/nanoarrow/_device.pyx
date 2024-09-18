@@ -39,6 +39,8 @@ from nanoarrow_device_c cimport (
     ArrowDeviceResolve
 )
 
+from nanoarrow._utils cimport Error
+
 from enum import Enum
 
 from nanoarrow import _repr_utils
@@ -84,6 +86,13 @@ cdef class Device:
         self._base = base,
         self._ptr = <ArrowDevice*>addr
 
+    def __eq__(self, other) -> bool:
+        return (
+            isinstance(other, Device) and
+            other.device_type == self.device_type and
+            other.device_id == self.device_id
+        )
+
     def __repr__(self):
         return _repr_utils.device_repr(self)
 
@@ -114,3 +123,27 @@ cdef class Device:
 # Cache the CPU device
 # The CPU device is statically allocated (so base is None)
 DEVICE_CPU = Device(None, <uintptr_t>ArrowDeviceCpu())
+
+
+cdef class CSharedSyncEvent:
+
+    def __cinit__(self, Device device, uintptr_t sync_event=0):
+        self.device = device
+        self.sync_event = <void*>sync_event
+
+    cdef synchronize(self):
+        if self.sync_event == NULL:
+            return
+
+        cdef Error error = Error()
+        cdef ArrowDevice* c_device = self.device._ptr
+        cdef int code = c_device.synchronize_event(c_device, self.sync_event, NULL, &error.c_error)
+        error.raise_message_not_ok("ArrowDevice::synchronize_event", code)
+
+        self.sync_event = NULL
+
+    cdef synchronize_stream(self, uintptr_t stream):
+        cdef Error error = Error()
+        cdef ArrowDevice* c_device = self.device._ptr
+        cdef int code = c_device.synchronize_event(c_device, self.sync_event, <void*>stream, &error.c_error)
+        error.raise_message_not_ok("ArrowDevice::synchronize_event with stream", code)

@@ -43,9 +43,10 @@ def c_buffer(obj, schema=None) -> CBuffer:
     Parameters
     ----------
 
-    obj : buffer-like or iterable
-        A Python object that supports the Python buffer protocol. This includes
-        bytes, memoryview, bytearray, bulit-in types as well as numpy arrays.
+    obj : buffer-like, tensor, or iterable
+        A Python object that supports the Python buffer or DLPack protocols.
+        This includes bytes, memoryview, bytearray, bulit-in types as well
+        as numpy arrays.
     schema :  schema-like, optional
         The data type of the desired buffer as sanitized by
         :func:`c_schema`. Only values that make sense as buffer types are
@@ -70,6 +71,13 @@ def c_buffer(obj, schema=None) -> CBuffer:
                 "c_buffer() with schema for pybuffer is not implemented"
             )
         return CBuffer.from_pybuffer(obj)
+
+    if _obj_is_tensor(obj):
+        if schema is not None:
+            raise NotImplementedError(
+                "c_buffer() with schema for DLPack is not implemented"
+            )
+        return CBuffer.from_dlpack(obj)
 
     if _obj_is_iterable(obj):
         buffer, _ = _c_buffer_from_iterable(obj, schema)
@@ -122,3 +130,7 @@ def _c_buffer_from_iterable(obj, schema=None) -> CBuffer:
 
 def _obj_is_iterable(obj):
     return hasattr(obj, "__iter__")
+
+
+def _obj_is_tensor(obj):
+    return hasattr(obj, "__dlpack__")

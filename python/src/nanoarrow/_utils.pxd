@@ -17,6 +17,8 @@
 
 # cython: language_level = 3
 
+from libc.stdint cimport uint8_t, int64_t
+
 from nanoarrow_c cimport (
     ArrowSchema,
     ArrowArray,
@@ -45,6 +47,8 @@ cdef void c_device_array_shallow_copy(object base, const ArrowDeviceArray* src,
                                       ArrowDeviceArray* dst)
 
 cdef object c_buffer_set_pybuffer(object obj, ArrowBuffer** c_buffer)
+
+cdef void c_buffer_set_pyobject(object base, uint8_t* data, int64_t size_bytes, ArrowBuffer** c_buffer)
 
 cdef class Error:
     cdef ArrowError c_error

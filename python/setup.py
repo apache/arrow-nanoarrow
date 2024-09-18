@@ -85,7 +85,7 @@ if cuda_toolkit_root:
 
     device_include_dirs.append(str(include_dir))
     device_libraries.append("cuda")
-    device_define_macros.append(("NANOARROW_DEVICE_WITH_CUDA", 1))
+    extra_define_macros.append(("NANOARROW_DEVICE_WITH_CUDA", 1))
 
     # Library might be already in a system library directory such that no -L flag
     # is needed

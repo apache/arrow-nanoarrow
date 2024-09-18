@@ -15,10 +15,11 @@
 # specific language governing permissions and limitations
 # under the License.
 
-from typing import Any, Iterable, Literal, Tuple
+from typing import Any, Iterable, Literal, Tuple, Union
 
-from nanoarrow._array import CArray, CArrayBuilder, CArrayView
+from nanoarrow._array import CArray, CArrayBuilder, CArrayView, CDeviceArray
 from nanoarrow._buffer import CBuffer, CBufferBuilder, NoneAwareWrapperIterator
+from nanoarrow._device import DEVICE_CPU, Device
 from nanoarrow._schema import CSchema, CSchemaBuilder
 from nanoarrow._utils import obj_is_buffer, obj_is_capsule
 from nanoarrow.c_buffer import c_buffer
@@ -201,6 +202,7 @@ def c_array_from_buffers(
     children: Iterable[Any] = (),
     validation_level: Literal[None, "full", "default", "minimal", "none"] = None,
     move: bool = False,
+    device: Union[Device, None] = None,
 ) -> CArray:
     """Create an ArrowArray wrapper from components
 
@@ -241,6 +243,10 @@ def c_array_from_buffers(
     move : bool, optional
         Use ``True`` to move ownership of any input buffers or children to the
         output array.
+    device : Device, optional
+        An explicit device to use when constructing this array. If specified,
+        this function will construct a :class:`CDeviceArray`; if unspecified,
+        this function will construct a :class:`CArray` on the CPU device.
 
     Examples
     --------
@@ -258,8 +264,14 @@ def c_array_from_buffers(
     - dictionary: NULL
     - children[0]:
     """
+    if device is None:
+        explicit_device = False
+        device = DEVICE_CPU
+    else:
+        explicit_device = True
+
     schema = c_schema(schema)
-    builder = CArrayBuilder.allocate()
+    builder = CArrayBuilder.allocate(device)
 
     # Ensures that the output array->n_buffers is set and that the correct number
     # of children have been initialized.
@@ -282,7 +294,10 @@ def c_array_from_buffers(
     for child_src in children:
         # If we're setting a CArray from something else, we can avoid an extra
         # level of Python wrapping by using move=True
-        move = move or not isinstance(child_src, CArray)
+        move = move or not isinstance(child_src, (CArray, CDeviceArray))
+        if move and isinstance(child_src, CDeviceArray):
+            child_src = child_src.array
+
         builder.set_child(n_children, c_array(child_src), move=move)
         n_children += 1
 
@@ -297,8 +312,12 @@ def c_array_from_buffers(
     # Calculates the null count if -1 (and if applicable)
     builder.resolve_null_count()
 
-    # Validate + finish
-    return builder.finish(validation_level=validation_level)
+    # Validate + finish. If device is specified (even CPU), always
+    # return a device array.
+    if not explicit_device:
+        return builder.finish(validation_level=validation_level)
+    else:
+        return builder.finish_device()
 
 
 class ArrayBuilder:

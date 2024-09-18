@@ -51,16 +51,20 @@ from nanoarrow_c cimport (
     ArrowBitmapReserve,
     ArrowBitmapAppend,
     ArrowBitmapAppendUnsafe,
+    ArrowBuffer,
     ArrowBufferMove,
 )
 
 from nanoarrow_device_c cimport (
     ARROW_DEVICE_CPU,
+    ARROW_DEVICE_CUDA,
+    ArrowDevice,
 )
 
 from nanoarrow_dlpack cimport (
     DLDataType,
     DLDevice,
+    DLDeviceType,
     DLManagedTensor,
     DLTensor,
     kDLCPU,
@@ -71,7 +75,7 @@ from nanoarrow_dlpack cimport (
 
 from nanoarrow cimport _utils
 from nanoarrow cimport _types
-from nanoarrow._device cimport Device
+from nanoarrow._device cimport CSharedSyncEvent, Device
 
 from struct import unpack_from, iter_unpack, calcsize, Struct
 
@@ -121,8 +125,36 @@ cdef DLDataType view_to_dlpack_data_type(CBufferView view):
 
     return dtype
 
+cdef int dlpack_data_type_to_arrow(DLDataType dtype):
+    if dtype.code == kDLInt:
+        if dtype.bits == 8:
+            return _types.INT8
+        elif dtype.bits == 16:
+            return _types.INT16
+        elif dtype.bits == 32:
+            return _types.INT32
+        elif dtype.bits == 64:
+            return _types.INT64
+    elif dtype.code == kDLUInt:
+        if dtype.bits == 8:
+            return _types.UINT8
+        elif dtype.bits == 16:
+            return _types.UINT16
+        elif dtype.bits == 32:
+            return _types.UINT32
+        elif dtype.bits == 64:
+            return _types.UINT64
+    elif dtype.code == kDLFloat:
+        if dtype.bits == 16:
+            return _types.HALF_FLOAT
+        elif dtype.bits == 32:
+            return _types.FLOAT
+        elif dtype.bits == 64:
+            return _types.DOUBLE
 
-cdef object view_to_dlpack(CBufferView view):
+    raise ValueError("Can't convert dlpack data type to Arrow type")
+
+cdef object view_to_dlpack(CBufferView view, stream=None):
     # Define DLDevice and DLDataType struct and
     # with that check for data type support first
     cdef DLDevice device = view_to_dlpack_device(view)
@@ -146,6 +178,32 @@ cdef object view_to_dlpack(CBufferView view):
     Py_INCREF(view)
     dlm_tensor.deleter = view_dlpack_deleter
 
+    # stream has a DLPack + device specific interpretation
+
+    # nanoarrow_device needs a CUstream* (i.e., a CUstream_st**), but dlpack
+    # gives us a CUstream_st*.
+    cdef void* cuda_pstream
+
+    if view._event.device is DEVICE_CPU:
+        if stream is not None and stream != -1:
+            raise ValueError("dlpack stream must be None or -1 for the CPU device")
+    elif view._event.device.device_type_id == ARROW_DEVICE_CUDA:
+        if stream == 0:
+            raise ValueError("dlpack stream value of 0 is not permitted for CUDA")
+        elif stream == -1:
+            # Sentinel for "do not synchronize"
+            pass
+        elif stream in (1, 2):
+            # Technically we are mixing the per-thread and legacy default streams here;
+            # however, the nanoarrow_device API currently has no mechanism to expose
+            # a pointer to these streams specifically.
+            cuda_pstream = <void*>0
+            view._event.synchronize_stream(<uintptr_t>&cuda_pstream)
+        else:
+            # Otherwise, this is a CUstream** (i.e., CUstream_st*)
+            cuda_pstream = <void*><uintptr_t>stream
+            view._event.synchronize_stream(<uintptr_t>&cuda_pstream)
+
     return PyCapsule_New(dlm_tensor, 'dltensor', pycapsule_dlpack_deleter)
 
 
@@ -163,13 +221,29 @@ cdef DLDevice view_to_dlpack_device(CBufferView view):
         raise ValueError('DataType is not compatible with DLPack spec: ' + view.data_type)
 
     # Define DLDevice struct
-    if view._device.device_type_id == ARROW_DEVICE_CPU:
+    cdef ArrowDevice* arrow_device = view._event.device._ptr
+    if arrow_device.device_type is ARROW_DEVICE_CPU:
+        # DLPack uses 0 for the CPU device id where Arrow uses -1
         device.device_type = kDLCPU
         device.device_id =  0
     else:
-        raise ValueError('Only CPU device is currently supported.')
+        # Otherwise, Arrow's device identifiers and types are intentionally
+        # identical to DLPack
+        device.device_type = <DLDeviceType>arrow_device.device_type
+        device.device_id = arrow_device.device_id
 
     return device
+
+
+cdef bint dlpack_strides_are_contiguous(DLTensor* dl_tensor):
+    if dl_tensor.strides == NULL:
+        return True
+
+    if dl_tensor.ndim != 1:
+        raise NotImplementedError("Contiguous stride check not implemented for ndim != 1")
+
+    # DLTensor strides are in elemements, not bytes
+    return dl_tensor.strides[0] == 1
 
 
 cdef class CBufferView:
@@ -183,12 +257,12 @@ cdef class CBufferView:
 
     def __cinit__(self, object base, uintptr_t addr, int64_t size_bytes,
                   ArrowType data_type,
-                  Py_ssize_t element_size_bits, Device device):
+                  Py_ssize_t element_size_bits, CSharedSyncEvent event):
         self._base = base
         self._ptr.data.data = <void*>addr
         self._ptr.size_bytes = size_bytes
         self._data_type = data_type
-        self._device = device
+        self._event = event
         self._format[0] = 0
         self._element_size_bits = _types.to_format(
             self._data_type,
@@ -208,7 +282,7 @@ cdef class CBufferView:
 
     @property
     def device(self):
-        return self._device
+        return self._event.device
 
     @property
     def element_size_bits(self):
@@ -439,7 +513,7 @@ cdef class CBufferView:
         Parameters
         ----------
         stream : int, optional
-            A Python integer representing a pointer to a stream. Currently not supported.
+            A Python integer representing a pointer to a stream.
             Stream is provided by the consumer to the producer to instruct the producer
             to ensure that operations can safely be performed on the array.
 
@@ -449,13 +523,7 @@ cdef class CBufferView:
             A DLPack capsule for the array, pointing to a DLManagedTensor.
         """
         # Note: parent offset not applied!
-
-        if stream is None:
-            return view_to_dlpack(self)
-        else:
-            raise NotImplementedError(
-                "Only stream=None is supported."
-            )
+        return view_to_dlpack(self, stream)
 
 
     def __dlpack_device__(self):
@@ -469,9 +537,8 @@ cdef class CBufferView:
             CPU = 1, see python/src/nanoarrow/dpack_abi.h) and index of the
             device which is 0 by default for CPU.
         """
-        return (view_to_dlpack_device(self).device_type,
-                view_to_dlpack_device(self).device_id)
-
+        cdef DLDevice dlpack_device = view_to_dlpack_device(self)
+        return dlpack_device.device_type, dlpack_device.device_id
 
     # These are special methods, which can't be cdef and we can't
     # call them from elsewhere. We implement the logic for the buffer
@@ -483,7 +550,7 @@ cdef class CBufferView:
         self._do_releasebuffer(buffer)
 
     cdef _do_getbuffer(self, Py_buffer *buffer, int flags):
-        if self._device is not DEVICE_CPU:
+        if self.device is not DEVICE_CPU:
             raise RuntimeError("CBufferView is not a CPU buffer")
 
         if flags & PyBUF_WRITABLE:
@@ -519,6 +586,9 @@ cdef class CBuffer:
 
     Like the CBufferView, the CBuffer represents readable buffer content; however,
     unlike the CBufferView, the CBuffer always represents a valid ArrowBuffer C object.
+    Whereas the CBufferView is primarily concerned with accessing the contents of a
+    buffer, the CBuffer is primarily concerned with managing ownership of an external
+    buffer such that it exported as an Arrow array.
     """
 
     def __cinit__(self):
@@ -531,7 +601,11 @@ cdef class CBuffer:
         self._format[0] = 66
         self._format[1] = 0
         self._get_buffer_count = 0
-        self._view = CBufferView(None, 0, 0, _types.BINARY, 0, self._device)
+        self._view = CBufferView(
+            None, 0,
+            0, _types.BINARY, 0,
+            CSharedSyncEvent(self._device)
+        )
 
     cdef _assert_valid(self):
         if self._ptr == NULL:
@@ -549,24 +623,101 @@ cdef class CBuffer:
         self._view = CBufferView(
             self._base, <uintptr_t>self._ptr.data,
             self._ptr.size_bytes, self._data_type, self._element_size_bits,
-            self._device
+            CSharedSyncEvent(self._device)
         )
 
         snprintf(self._view._format, sizeof(self._view._format), "%s", self._format)
 
+    def view(self):
+        """Export this buffer as a CBufferView
+
+        Returns a :class:`CBufferView` of this buffer. After calling this
+        method, the original CBuffer will be invalidated and cannot be used.
+        In general, the view of the buffer should be used to consume a buffer
+        (whereas the CBuffer is primarily used to wrap an existing object in
+        a way that it can be used to build a :class:`CArray`).
+        """
+        self._assert_valid()
+        self._assert_buffer_count_zero()
+        cdef ArrowBuffer* new_ptr
+        self._view._base = _utils.alloc_c_buffer(&new_ptr)
+        ArrowBufferMove(self._ptr, new_ptr)
+        self._ptr = NULL
+        return self._view
+
     @staticmethod
     def empty():
+        """Create an empty CBuffer"""
         cdef CBuffer out = CBuffer()
         out._base = _utils.alloc_c_buffer(&out._ptr)
         return out
 
     @staticmethod
-    def from_pybuffer(obj):
+    def from_pybuffer(obj) -> CBuffer:
+        """Create a CBuffer using the Python buffer protocol
+
+        Wraps a buffer using the Python buffer protocol as a CBuffer that can be
+        used to create an array.
+
+        Parameters
+        ----------
+        obj : buffer-like
+            The object on which to invoke the Python buffer protocol
+        """
         cdef CBuffer out = CBuffer()
         out._base = _utils.alloc_c_buffer(&out._ptr)
         out._set_format(_utils.c_buffer_set_pybuffer(obj, &out._ptr))
         out._device = DEVICE_CPU
         out._populate_view()
+        return out
+
+    @staticmethod
+    def from_dlpack(obj, stream=None) -> CBuffer:
+        """Create a CBuffer using the DLPack protocol
+
+        Wraps a tensor from an external library as a CBuffer that can be used
+        to create an array.
+
+        Parameters
+        ----------
+        obj : object with a ``__dlpack__`` attribute
+            The object on which to invoke the DLPack protocol
+        stream : int, optional
+            The stream on which the tensor represented by obj should be made
+            safe for use. This value is passed to the object's ``__dlpack__``
+            method; however, the CBuffer does not keep any record of this (i.e.,
+            the caller is responsible for creating a sync event after creating one
+            or more buffers in this way).
+        """
+        capsule = obj.__dlpack__(stream=stream)
+        cdef DLManagedTensor* dlm_tensor = <DLManagedTensor*>PyCapsule_GetPointer(
+            capsule, "dltensor"
+        )
+        cdef DLTensor* dl_tensor = &dlm_tensor.dl_tensor
+
+        if not dlpack_strides_are_contiguous(dl_tensor):
+            raise ValueError("Non-contiguous dlpack strides not supported")
+
+        cdef Device device = Device.resolve(
+            dl_tensor.device.device_type,
+            dl_tensor.device.device_id
+        )
+        cdef int arrow_type = dlpack_data_type_to_arrow(dl_tensor.dtype)
+        cdef uint8_t* data_ptr = <uint8_t*>dl_tensor.data + dl_tensor.byte_offset
+
+        cdef int64_t size_bytes = 1
+        cdef int64_t element_size_bytes = dl_tensor.dtype.bits // 8
+        for i in range(dl_tensor.ndim):
+            size_bytes *= dl_tensor.shape[i] * element_size_bytes
+
+        cdef CBuffer out = CBuffer()
+
+        out._base = _utils.alloc_c_buffer(&out._ptr)
+        _utils.c_buffer_set_pyobject(capsule, data_ptr, size_bytes, &out._ptr)
+        out._set_data_type(arrow_type)
+        out._device = device
+        out._populate_view()
+
         return out
 
     def _set_format(self, str format):
@@ -609,14 +760,17 @@ cdef class CBuffer:
 
     @property
     def data_type(self):
+        self._assert_valid()
         return ArrowTypeString(self._data_type).decode("UTF-8")
 
     @property
     def data_type_id(self):
+        self._assert_valid()
         return self._data_type
 
     @property
     def element_size_bits(self):
+        self._assert_valid()
         return self._element_size_bits
 
     @property
@@ -626,7 +780,13 @@ cdef class CBuffer:
 
     @property
     def format(self):
+        self._assert_valid()
         return self._format.decode("UTF-8")
+
+    @property
+    def device(self):
+        self._assert_valid()
+        return self._view.device
 
     def __len__(self):
         self._assert_valid()

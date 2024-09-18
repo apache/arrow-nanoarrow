@@ -16,6 +16,7 @@
 # under the License.
 
 import pytest
+from nanoarrow._buffer import CBuffer
 from nanoarrow._utils import obj_is_capsule
 
 import nanoarrow as na
@@ -24,13 +25,20 @@ np = pytest.importorskip("numpy")
 
 
 def check_dlpack_export(view, expected_arr):
-    DLTensor = view.__dlpack__()
-    assert obj_is_capsule(DLTensor, "dltensor") is True
+    # Check device spec
+    assert view.__dlpack_device__() == (1, 0)
 
+    # Check capsule export
+    capsule = view.__dlpack__()
+    assert obj_is_capsule(capsule, "dltensor") is True
+
+    # Check roundtrip through numpy
     result = np.from_dlpack(view)
     np.testing.assert_array_equal(result, expected_arr, strict=True)
 
-    assert view.__dlpack_device__() == (1, 0)
+    # Check roundtrip through CBuffer
+    buffer = CBuffer.from_dlpack(view)
+    np.testing.assert_array_equal(np.array(buffer), expected_arr, strict=True)
 
 
 @pytest.mark.parametrize(
@@ -78,5 +86,15 @@ def test_dlpack_not_supported():
     ):
         view.__dlpack_device__()
 
-    with pytest.raises(NotImplementedError, match="Only stream=None is supported."):
-        view.__dlpack__(stream=3)
+
+def test_dlpack_cuda(cuda_device):
+    cp = pytest.importorskip("cupy")
+    if not cuda_device:
+        pytest.skip("CUDA device not available")
+
+    gpu_array = cp.array([1, 2, 3])
+    gpu_buffer = na.c_buffer(gpu_array)
+    assert gpu_buffer.device == cuda_device
+
+    gpu_array_roundtrip = cp.from_dlpack(gpu_buffer.view())
+    cp.testing.assert_array_equal(gpu_array_roundtrip, gpu_array)

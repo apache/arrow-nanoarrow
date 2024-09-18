@@ -15,19 +15,14 @@
 # specific language governing permissions and limitations
 # under the License.
 
-# cython: language_level = 3
+import pytest
 
-from libc.stdint cimport uintptr_t
 
-from nanoarrow_device_c cimport ArrowDevice
+@pytest.fixture
+def cuda_device():
+    from nanoarrow.device import DeviceType, resolve
 
-cdef class Device:
-    cdef object _base
-    cdef ArrowDevice* _ptr
-
-cdef class CSharedSyncEvent:
-    cdef Device device
-    cdef void* sync_event
-
-    cdef synchronize(self)
-    cdef synchronize_stream(self, uintptr_t stream)
+    try:
+        return resolve(DeviceType.CUDA, 0)
+    except ValueError:
+        return None

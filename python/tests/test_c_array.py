@@ -24,6 +24,7 @@ from nanoarrow._utils import NanoarrowException
 from nanoarrow.c_schema import c_schema_view
 
 import nanoarrow as na
+from nanoarrow import device
 
 
 def test_c_array_from_c_array():
@@ -520,6 +521,17 @@ def test_c_array_from_buffers_validation():
         assert c_array.length == 2
 
 
+def test_c_array_from_buffers_device():
+    c_device_array = na.c_array_from_buffers(
+        na.uint8(), 5, [None, b"12345"], device=device.cpu()
+    )
+    assert isinstance(c_device_array, device.CDeviceArray)
+
+    c_array = na.c_array(c_device_array)
+    assert c_array.length == 5
+    assert bytes(c_array.view().buffer(1)) == b"12345"
+
+
 def test_c_array_timestamp_seconds():
     d1 = int(round(datetime(1970, 1, 1, tzinfo=timezone.utc).timestamp()))
     d2 = int(round(datetime(1985, 12, 31, tzinfo=timezone.utc).timestamp()))
@@ -610,3 +622,84 @@ def test_c_array_duration():
         d2_duration_in_ms,
         d3_duration_in_ms,
     ]
+
+
+def test_device_array_errors(cuda_device):
+    if not cuda_device:
+        pytest.skip("CUDA device not available")
+
+    # Check that we can't create a CUDA array from CPU buffers
+    with pytest.raises(ValueError, match="are not identical"):
+        na.c_array_from_buffers(
+            na.int64(),
+            3,
+            [None, na.c_buffer([1, 2, 3], na.int64())],
+            device=cuda_device,
+        )
+
+    # Check that we can't create a CUDA array from CPU children
+    with pytest.raises(ValueError, match="are not identical"):
+        na.c_array_from_buffers(
+            na.struct([na.int64()]),
+            length=0,
+            buffers=[None],
+            children=[na.c_array([], na.int64())],
+            device=cuda_device,
+        )
+
+
+def test_array_from_dlpack_cuda(cuda_device):
+    from nanoarrow.device import CDeviceArray, DeviceType
+
+    cp = pytest.importorskip("cupy")
+    if not cuda_device:
+        pytest.skip("CUDA device not available")
+
+    gpu_validity = cp.array([255], cp.uint8)
+    gpu_array = cp.array([1, 2, 3], cp.int64)
+
+    c_array = na.c_array_from_buffers(
+        na.int64(),
+        3,
+        [gpu_validity, gpu_array],
+        move=True,
+        device=cuda_device,
+    )
+    assert isinstance(c_array, CDeviceArray)
+    assert c_array.device_type == DeviceType.CUDA
+    assert c_array.device_id == 0
+
+    c_array_view = c_array.view()
+    assert c_array_view.storage_type == "int64"
+    assert c_array_view.buffer(0).device == cuda_device
+    assert c_array_view.buffer(1).device == cuda_device
+    assert len(c_array_view) == 3
+
+    # Make sure we don't attempt accessing a GPU buffer to calculate the null count
+    assert c_array_view.null_count == -1
+
+    # Check that buffers made it all the way through
+    cp.testing.assert_array_equal(cp.from_dlpack(c_array_view.buffer(1)), gpu_array)
+
+    # Also check a nested array
+    c_array_struct = na.c_array_from_buffers(
+        na.struct([na.int64()]),
+        3,
+        buffers=[None],
+        children=[c_array],
+        move=True,
+        device=cuda_device,
+    )
+    assert c_array_struct.device_type == DeviceType.CUDA
+    assert c_array_struct.device_id == 0
+
+    c_array_view_struct = c_array_struct.view()
+    assert c_array_view_struct.storage_type == "struct"
+    assert c_array_view_struct.buffer(0).device == cuda_device
+
+    c_array_view_child = c_array_view_struct.child(0)
+    assert c_array_view_child.buffer(0).device == cuda_device
+    assert c_array_view_child.buffer(1).device == cuda_device
+    cp.testing.assert_array_equal(
+        cp.from_dlpack(c_array_view_child.buffer(1)), gpu_array
+    )
