@@ -60,14 +60,11 @@ def test_c_device_array():
     assert array.buffers == darray.array.buffers
 
 
-def test_c_device_array_from_dlpack():
-    from nanoarrow.device import DeviceType, resolve
+def test_c_device_array_from_dlpack(cuda_device):
+    from nanoarrow.device import DeviceType
 
     cp = pytest.importorskip("cupy")
-
-    try:
-        cuda_device = resolve(DeviceType.CUDA, 0)
-    except ValueError:
+    if not cuda_device:
         pytest.skip("CUDA device not available")
 
     assert cuda_device.device_type == DeviceType.CUDA

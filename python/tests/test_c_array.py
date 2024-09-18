@@ -624,12 +624,8 @@ def test_c_array_duration():
     ]
 
 
-def test_device_array_errors():
-    from nanoarrow.device import DeviceType, resolve
-
-    try:
-        cuda_device = resolve(DeviceType.CUDA, 0)
-    except ValueError:
+def test_device_array_errors(cuda_device):
+    if not cuda_device:
         pytest.skip("CUDA device not available")
 
     # Check that we can't create a CUDA array from CPU buffers
@@ -652,14 +648,11 @@ def test_device_array_errors():
         )
 
 
-def test_array_from_dlpack_cuda():
-    from nanoarrow.device import CDeviceArray, DeviceType, resolve
+def test_array_from_dlpack_cuda(cuda_device):
+    from nanoarrow.device import CDeviceArray, DeviceType
 
     cp = pytest.importorskip("cupy")
-
-    try:
-        cuda_device = resolve(DeviceType.CUDA, 0)
-    except ValueError:
+    if not cuda_device:
         pytest.skip("CUDA device not available")
 
     gpu_validity = cp.array([255], cp.uint8)

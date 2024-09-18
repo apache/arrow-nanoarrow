@@ -87,14 +87,9 @@ def test_dlpack_not_supported():
         view.__dlpack_device__()
 
 
-def test_dlpack_cuda():
-    from nanoarrow.device import DeviceType, resolve
-
+def test_dlpack_cuda(cuda_device):
     cp = pytest.importorskip("cupy")
-
-    try:
-        cuda_device = resolve(DeviceType.CUDA, 0)
-    except ValueError:
+    if not cuda_device:
         pytest.skip("CUDA device not available")
 
     gpu_array = cp.array([1, 2, 3])
