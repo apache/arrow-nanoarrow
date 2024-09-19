@@ -76,6 +76,7 @@ class Type(enum.Enum):
     LARGE_BINARY = int(_types.LARGE_BINARY)
     LARGE_LIST = int(_types.LARGE_LIST)
     INTERVAL_MONTH_DAY_NANO = int(_types.INTERVAL_MONTH_DAY_NANO)
+    RUN_END_ENCODED = int(_types.RUN_END_ENCODED)
     BINARY_VIEW = int(_types.BINARY_VIEW)
     STRING_VIEW = int(_types.STRING_VIEW)
 
