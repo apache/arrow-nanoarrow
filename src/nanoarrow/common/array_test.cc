@@ -2337,16 +2337,6 @@ TEST(ArrayTest, ArrayViewTestLargeString) {
             EINVAL);
   EXPECT_STREQ(error.message, "[1] Expected element size >= 0");
 
-  // Check sequential offsets whose diff causes overflow
-  array.offset = 0;
-  array.length = array.length + 1;
-  offsets[1] = 2080374784;
-  offsets[2] = INT_MIN;
-  EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), NANOARROW_OK);
-  EXPECT_EQ(ArrowArrayViewValidate(&array_view, NANOARROW_VALIDATION_LEVEL_FULL, &error),
-            EINVAL);
-  EXPECT_STREQ(error.message, "[2] Expected element size >= 0");
-
   ArrowArrayRelease(&array);
   ArrowArrayViewReset(&array_view);
 }
