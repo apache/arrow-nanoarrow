@@ -998,6 +998,11 @@ static int ArrowArrayViewValidateDefault(struct ArrowArrayView* array_view,
         }
 
         last_offset = array_view->buffer_views[1].data.as_int32[offset_plus_length];
+        if (last_offset < 0) {
+          ArrowErrorSet(error, "Expected last offset >= 0 but found %" PRId64,
+                        last_offset);
+          return EINVAL;
+        }
 
         // If the data buffer size is unknown, assign it; otherwise, check it
         if (array_view->buffer_views[2].size_bytes == -1) {
@@ -1029,6 +1034,11 @@ static int ArrowArrayViewValidateDefault(struct ArrowArrayView* array_view,
         }
 
         last_offset = array_view->buffer_views[1].data.as_int64[offset_plus_length];
+        if (first_offset < 0) {
+          ArrowErrorSet(error, "Expected last offset >= 0 but found %" PRId64,
+                        last_offset);
+          return EINVAL;
+        }
 
         // If the data buffer size is unknown, assign it; otherwise, check it
         if (array_view->buffer_views[2].size_bytes == -1) {
@@ -1073,6 +1083,12 @@ static int ArrowArrayViewValidateDefault(struct ArrowArrayView* array_view,
         }
 
         last_offset = array_view->buffer_views[1].data.as_int32[offset_plus_length];
+        if (last_offset < 0) {
+          ArrowErrorSet(error, "Expected last offset >= 0 but found %" PRId64,
+                        last_offset);
+          return EINVAL;
+        }
+
         if (array_view->children[0]->length < last_offset) {
           ArrowErrorSet(error,
                         "Expected child of %s array to have length >= %" PRId64
@@ -1095,6 +1111,12 @@ static int ArrowArrayViewValidateDefault(struct ArrowArrayView* array_view,
         }
 
         last_offset = array_view->buffer_views[1].data.as_int64[offset_plus_length];
+        if (last_offset < 0) {
+          ArrowErrorSet(error, "Expected last offset >= 0 but found %" PRId64,
+                        last_offset);
+          return EINVAL;
+        }
+
         if (array_view->children[0]->length < last_offset) {
           ArrowErrorSet(error,
                         "Expected child of large list array to have length >= %" PRId64

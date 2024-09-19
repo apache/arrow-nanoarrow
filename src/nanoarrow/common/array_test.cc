@@ -2215,22 +2215,20 @@ TEST(ArrayTest, ArrayViewTestString) {
   EXPECT_STREQ(error.message, "[1] Expected element size >= 0");
 
   // Sliced array should also fail validation because the first element is negative
-  array.offset = 0;
-  array.length = array_view.length + 1;
-  EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), NANOARROW_OK);
-  EXPECT_EQ(ArrowArrayViewValidate(&array_view, NANOARROW_VALIDATION_LEVEL_FULL, &error),
-            EINVAL);
-  EXPECT_STREQ(error.message, "[1] Expected element size >= 0");
+  array.offset = 1;
+  array.length = array_view.length - 1;
+  EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), EINVAL);
+  EXPECT_STREQ(error.message, "Expected first offset >= 0 but found -1");
 
   // Check sequential offsets whose diff causes overflow
   array.offset = 0;
   array.length = array.length + 1;
-  offsets[1] = 2080374784;
-  offsets[2] = INT_MIN;
+  offsets[0] = 2080374784;
+  offsets[1] = INT_MIN;
   EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayViewValidate(&array_view, NANOARROW_VALIDATION_LEVEL_FULL, &error),
             EINVAL);
-  EXPECT_STREQ(error.message, "[2] Expected element size >= 0");
+  EXPECT_STREQ(error.message, "[1] Expected element size >= 0");
 
   ArrowArrayRelease(&array);
   ArrowArrayViewReset(&array_view);
@@ -2330,12 +2328,10 @@ TEST(ArrayTest, ArrayViewTestLargeString) {
   EXPECT_STREQ(error.message, "[1] Expected element size >= 0");
 
   // Sliced array should also fail validation because the first element is negative
-  array.offset = 0;
-  array.length = array_view.length + 1;
-  EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), NANOARROW_OK);
-  EXPECT_EQ(ArrowArrayViewValidate(&array_view, NANOARROW_VALIDATION_LEVEL_FULL, &error),
-            EINVAL);
-  EXPECT_STREQ(error.message, "[1] Expected element size >= 0");
+  array.offset = 1;
+  array.length = array_view.length - 1;
+  EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), EINVAL);
+  EXPECT_STREQ(error.message, "Expected first offset >= 0 but found -1");
 
   ArrowArrayRelease(&array);
   ArrowArrayViewReset(&array_view);
@@ -2404,7 +2400,7 @@ TEST(ArrayTest, ArrayViewTestList) {
   EXPECT_EQ(array_view.buffer_views[0].size_bytes, 1);
   EXPECT_EQ(array_view.buffer_views[1].size_bytes, (5 + 1) * sizeof(int32_t));
 
-  // Build a valid array
+  // Build a valid array ([[1234], []])
   struct ArrowArray array;
   ASSERT_EQ(ArrowArrayInitFromType(&array, NANOARROW_TYPE_LIST), NANOARROW_OK);
   ASSERT_EQ(ArrowArrayAllocateChildren(&array, 1), NANOARROW_OK);
@@ -2412,6 +2408,7 @@ TEST(ArrayTest, ArrayViewTestList) {
             NANOARROW_OK);
   ASSERT_EQ(ArrowArrayStartAppending(&array), NANOARROW_OK);
   ASSERT_EQ(ArrowArrayAppendInt(array.children[0], 1234), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayFinishElement(&array), NANOARROW_OK);
   ASSERT_EQ(ArrowArrayFinishElement(&array), NANOARROW_OK);
   ASSERT_EQ(ArrowArrayFinishBuildingDefault(&array, nullptr), NANOARROW_OK);
 
@@ -2445,22 +2442,18 @@ TEST(ArrayTest, ArrayViewTestList) {
   EXPECT_STREQ(error.message, "[1] Expected element size >= 0");
 
   // Sliced array should also fail validation because the first element is negative
-  array.offset = 0;
-  array.length = array_view.length + 1;
-  EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), NANOARROW_OK);
-  EXPECT_EQ(ArrowArrayViewValidate(&array_view, NANOARROW_VALIDATION_LEVEL_FULL, &error),
-            EINVAL);
-  EXPECT_STREQ(error.message, "[1] Expected element size >= 0");
+  array.offset = 1;
+  array.length = array_view.length - 1;
+  EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), EINVAL);
+  EXPECT_STREQ(error.message, "Expected first offset >= 0 but found -1");
 
-  // Check sequential offsets whose diff causes overflow
+  // Check for last element >= 0
   array.offset = 0;
   array.length = array.length + 1;
-  offsets[1] = 2080374784;
-  offsets[2] = INT_MIN;
-  EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), NANOARROW_OK);
-  EXPECT_EQ(ArrowArrayViewValidate(&array_view, NANOARROW_VALIDATION_LEVEL_FULL, &error),
-            EINVAL);
-  EXPECT_STREQ(error.message, "[2] Expected element size >= 0");
+  offsets[1] = 1;
+  offsets[2] = -1;
+  EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), EINVAL);
+  EXPECT_STREQ(error.message, "Expected last offset >= 0 but found -1");
 
   ArrowArrayRelease(&array);
   ArrowArrayViewReset(&array_view);
@@ -2562,7 +2555,7 @@ TEST(ArrayTest, ArrayViewTestLargeList) {
   EXPECT_EQ(array_view.buffer_views[0].size_bytes, 1);
   EXPECT_EQ(array_view.buffer_views[1].size_bytes, (5 + 1) * sizeof(int64_t));
 
-  // Build a valid array
+  // Build a valid array ([[1234], []])
   struct ArrowArray array;
   ASSERT_EQ(ArrowArrayInitFromType(&array, NANOARROW_TYPE_LARGE_LIST), NANOARROW_OK);
   ASSERT_EQ(ArrowArrayAllocateChildren(&array, 1), NANOARROW_OK);
@@ -2570,6 +2563,7 @@ TEST(ArrayTest, ArrayViewTestLargeList) {
             NANOARROW_OK);
   ASSERT_EQ(ArrowArrayStartAppending(&array), NANOARROW_OK);
   ASSERT_EQ(ArrowArrayAppendInt(array.children[0], 1234), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayFinishElement(&array), NANOARROW_OK);
   ASSERT_EQ(ArrowArrayFinishElement(&array), NANOARROW_OK);
   ASSERT_EQ(ArrowArrayFinishBuildingDefault(&array, nullptr), NANOARROW_OK);
 
@@ -2603,12 +2597,18 @@ TEST(ArrayTest, ArrayViewTestLargeList) {
   EXPECT_STREQ(error.message, "[1] Expected element size >= 0");
 
   // Sliced array should also fail validation because the first element is negative
+  array.offset = 1;
+  array.length = array_view.length - 1;
+  EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), EINVAL);
+  EXPECT_STREQ(error.message, "Expected first offset >= 0 but found -1");
+
+  // Check for last element >= 0
   array.offset = 0;
-  array.length = array_view.length + 1;
-  EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), NANOARROW_OK);
-  EXPECT_EQ(ArrowArrayViewValidate(&array_view, NANOARROW_VALIDATION_LEVEL_FULL, &error),
-            EINVAL);
-  EXPECT_STREQ(error.message, "[1] Expected element size >= 0");
+  array.length = array.length + 1;
+  offsets[1] = 1;
+  offsets[2] = -1;
+  EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), EINVAL);
+  EXPECT_STREQ(error.message, "Expected last offset >= 0 but found -1");
 
   ArrowArrayRelease(&array);
   ArrowArrayViewReset(&array_view);
