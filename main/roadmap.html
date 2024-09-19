@@ -415,78 +415,77 @@ scheduled for implementation.</p>
 <h2>C library<a class="headerlink" href="#c-library" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p><strong>Type coverage</strong>: The C library currently provides support for all
-types that are available via the Arrow C Data interface. When the
-recently-added run-end encoded (REE) types and potentially
-forthcoming string view/list view types are available via the Arrow C
-Data interface, support should be added in nanoarrow as well.</p></li>
-<li><p><strong>Array append</strong>: The <code class="docutils literal notranslate"><span class="pre">ArrowArrayAppend*()</span></code> family of functions
-provide a means by which to incrementally build arrays; however,
-there is no built-in way to append an <code class="docutils literal notranslate"><span class="pre">ArrowArrayView</span></code>, potentially
-more efficiently appending multiple values at once. Among other
-things, this would provide a route to an unoptimized filter/take
-implementation.</p></li>
+types that are available via the Arrow C Data interface except string
+view/list view types. Support for these should be added in nanoarrow
+as well
+(<a class="reference external" href="https://github.com/apache/arrow-nanoarrow/issues/583">#583</a>,
+<a class="reference external" href="https://github.com/apache/arrow-nanoarrow/issues/616">#616</a>,
+<a class="reference external" href="https://github.com/apache/arrow-nanoarrow/issues/510">#510</a>).</p></li>
 <li><p><strong>Remove Arrow C++ dependency for tests</strong>: The C library and IPC
 extension rely on Arrow C++ for some test code that was written early
 in the library’s development. These tests are valuable to ensure
 compatibility between nanoarrow and Arrow C++; however, including
 them in the default test suite complicates release verification for
 some users and prevents testing in environments where Arrow C++ does
-not currently build (e.g., WASM, compilers without C++17 support).</p></li>
+not currently build (e.g., WASM, compilers without C++17 support)
+(<a class="reference external" href="https://github.com/apache/arrow-nanoarrow/issues/619">#619</a>).</p></li>
+<li><p><strong>Test verbosity</strong>: Tests for the C library were written before
+testing utilities in the <code class="docutils literal notranslate"><span class="pre">nanoarrow_testing</span></code> library were available
+(and before there was a <code class="docutils literal notranslate"><span class="pre">nanoarrow_testing</span></code> library in which to put
+new ones). As a result, some of them are very verbose and can be
+difficult to read, which can and should be improved
+(<a class="reference external" href="https://github.com/apache/arrow-nanoarrow/issues/577">#577</a>,
+<a class="reference external" href="https://github.com/apache/arrow-nanoarrow/issues/566">#566</a>).</p></li>
 <li><p><strong>C++ integration</strong>: The existing C++ integration is intentionally
 minimal; however, there are likely improvements that could be made to
-better integrate nanoarrow into existing C++ projects.</p></li>
+better integrate nanoarrow into existing C++ projects
+(<a class="reference external" href="https://github.com/apache/arrow-nanoarrow/issues/599">#599</a>).</p></li>
 <li><p><strong>Documentation</strong>: As the C library and its user base evolves,
 documentation needs to be refined and expanded to support the current
-set of use cases.</p></li>
+set of use cases
+(<a class="reference external" href="https://github.com/apache/arrow-nanoarrow/issues/187">#187</a>,
+<a class="reference external" href="https://github.com/apache/arrow-nanoarrow/issues/497">#497</a>).</p></li>
+<li><p><strong>IPC Dictionary support</strong>: The IPC extension does not currently
+support reading dictionary messages an IPC stream
+(<a class="reference external" href="https://github.com/apache/arrow-nanoarrow/issues/622">#622</a>).</p></li>
+<li><p><strong>IPC Compression support</strong>: The IPC extension does not currently
+support compressed streams using per-buffer compression, although
+streams can be compressed outside the nanoarrow library (e.g., gzip
+compression of the entire stream)
+(<a class="reference external" href="https://github.com/apache/arrow-nanoarrow/issues/621">#621</a>)</p></li>
 </ul>
-</section>
-<section id="ipc-extension">
-<h2>IPC extension<a class="headerlink" href="#ipc-extension" title="Link to this heading">#</a></h2>
-<ul class="simple">
-<li><p><strong>Write support</strong>: The IPC extension currently provides support for
-reading IPC streams but not writing them.</p></li>
-<li><p><strong>Dictionary support</strong>: The IPC extension does not currently support
-reading dictionary messages an IPC stream.</p></li>
-<li><p><strong>Compression</strong>: The IPC extension does not currently support
-compressed streams.</p></li>
-</ul>
-</section>
-<section id="device-extension">
-<h2>Device extension<a class="headerlink" href="#device-extension" title="Link to this heading">#</a></h2>
-<p>This entire extension is currently experimental and awaiting use-cases
-that will drive future development.</p>
 </section>
 <section id="r-bindings">
 <h2>R bindings<a class="headerlink" href="#r-bindings" title="Link to this heading">#</a></h2>
 <ul class="simple">
-<li><p><strong>Type support</strong>: The R bindings currently do not provide support for
-extension types and relies on Arrow C++ for some dictionary-encoded
-types.</p></li>
+<li><p><strong>Conversion internals</strong>: The initial implementation of conversion
+from Arrow data to R vectors was implemented in C and its verbosity
+makes it difficult to add support for new types. The internals should
+be refactored to make the conversion code easier to understand for
+new developers
+(<a class="reference external" href="https://github.com/apache/arrow-nanoarrow/pull/392">#392</a>).</p></li>
+<li><p><strong>Type support</strong>: The R bindings currently rely on the Arrow R
+package for conversion of some R types (e.g., list_of), and some
+types are not supported in nanoarrow nor the arrow R package (e.g.,
+run-end encoding, list view, and string/binary view)
+(<a class="reference external" href="https://github.com/apache/arrow-nanoarrow/issues/617">#617</a>).</p></li>
 <li><p><strong>ALTREP support</strong>: A recent R release added enhanced ALTREP support
 such that types that convert to <code class="docutils literal notranslate"><span class="pre">list()</span></code> can defer materialization
 cost/allocation. Arrow sources that arrive in chunks (e.g., from a
 <code class="docutils literal notranslate"><span class="pre">Table</span></code> or <code class="docutils literal notranslate"><span class="pre">ChunkedArray</span></code>) currently can’t be converted via any
-ALTREP mechanism and support could be added.</p></li>
-<li><p><strong>IPC support</strong>: The IPC reader is not currently exposed in the R
-bindings.</p></li>
+ALTREP mechanism and support could be added
+(<a class="reference external" href="https://github.com/apache/arrow-nanoarrow/issues/219">#219</a>).</p></li>
 </ul>
 </section>
 <section id="python-bindings">
 <h2>Python bindings<a class="headerlink" href="#python-bindings" title="Link to this heading">#</a></h2>
 <ul class="simple">
-<li><p><strong>Packaging</strong>: The Python bindings are currently unpublished (pypi or
-conda) and are not included in release verification.</p></li>
-<li><p><strong>Element conversion</strong>: There is currently no mechanism to extract an
-element of an <code class="docutils literal notranslate"><span class="pre">ArrowArrayView</span></code> as a Python object (e.g., an <code class="docutils literal notranslate"><span class="pre">int</span></code>
-or <code class="docutils literal notranslate"><span class="pre">str</span></code>).</p></li>
-<li><p><strong>numpy/Pandas conversion</strong>: The Python bindings currently expose the
-<code class="docutils literal notranslate"><span class="pre">ArrowArrayView</span></code> but do not provide a means by which to convert to
-popular packages such as numpy or Pandas.</p></li>
-<li><p><strong>Creating arrays</strong>: The Python bindings do not currently provide a
-means by which to create an <code class="docutils literal notranslate"><span class="pre">ArrowArray</span></code> from buffers or
-incrementally.</p></li>
-<li><p><strong>IPC support</strong>: The IPC reader is not currently exposed in the
-Python bindings.</p></li>
+<li><p><strong>Type support</strong>: The Python bindings do not currently support
+unions, string/binary view, or list view, or run-end-encoded types.
+When creating Arrow arrays from iterables of Python objects, some
+types are not yet supported (e.g., struct, list, datetime objects)
+(<a class="reference external" href="https://github.com/apache/arrow-nanoarrow/issues/618">#618</a>,
+<a class="reference external" href="https://github.com/apache/arrow-nanoarrow/issues/620">#620</a>).</p></li>
 </ul>
 </section>
 </section>
@@ -538,8 +537,6 @@ Python bindings.</p></li>
   <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="visible nav section-nav flex-column">
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#c-library">C library</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#ipc-extension">IPC extension</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#device-extension">Device extension</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#r-bindings">R bindings</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#python-bindings">Python bindings</a></li>
 </ul>
