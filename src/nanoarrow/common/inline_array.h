@@ -514,8 +514,8 @@ static inline ArrowErrorCode ArrowArrayAppendBytes(struct ArrowArray* array,
         ++n_vbufs;
         private_data->variadic_buffers = (struct ArrowBuffer*)ArrowRealloc(
             private_data->variadic_buffers, sizeof(struct ArrowBuffer) * (n_vbufs));
-        private_data->variadic_buffer_sizes = (int32_t*)ArrowRealloc(
-            private_data->variadic_buffer_sizes, sizeof(int32_t) * (n_vbufs));
+        private_data->variadic_buffer_sizes = (int64_t*)ArrowRealloc(
+            private_data->variadic_buffer_sizes, sizeof(int64_t) * (n_vbufs));
         ArrowBufferInit(&private_data->variadic_buffers[n_vbufs - 1]);
         private_data->n_variadic_buffers = n_vbufs;
       }
@@ -526,8 +526,7 @@ static inline ArrowErrorCode ArrowArrayAppendBytes(struct ArrowArray* array,
       bvt.ref.offset = (int32_t)variadic_buf->size_bytes;
       NANOARROW_RETURN_NOT_OK(
           ArrowBufferAppend(variadic_buf, value.data.as_char, value.size_bytes));
-      private_data->variadic_buffer_sizes[n_vbufs - 1] =
-          (int32_t)variadic_buf->size_bytes;
+      private_data->variadic_buffer_sizes[n_vbufs - 1] = variadic_buf->size_bytes;
     }
     NANOARROW_RETURN_NOT_OK(ArrowBufferAppend(data_buffer, &bvt, sizeof(bvt)));
   } else {

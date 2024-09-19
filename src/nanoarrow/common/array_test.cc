@@ -931,7 +931,7 @@ TEST(ArrayTest, ArrayTestAppendToStringViewArray) {
       reinterpret_cast<const union ArrowBinaryViewType*>(array.buffers[1]);
   auto vbuf1 = reinterpret_cast<const char*>(array.buffers[2]);
   auto vbuf2 = reinterpret_cast<const char*>(array.buffers[3]);
-  auto sizes_buffer = reinterpret_cast<const int32_t*>(array.buffers[4]);
+  auto sizes_buffer = reinterpret_cast<const int64_t*>(array.buffers[4]);
 
   EXPECT_EQ(validity_buffer[0], 0b01111001);
   EXPECT_EQ(memcmp(inline_buffer[0].inlined.data, "1234", 4), 0);
@@ -1001,7 +1001,7 @@ TEST(ArrayTest, ArrayTestAppendToBinaryViewArray) {
       reinterpret_cast<const union ArrowBinaryViewType*>(array.buffers[1]);
   auto vbuf1 = reinterpret_cast<const char*>(array.buffers[2]);
   auto vbuf2 = reinterpret_cast<const char*>(array.buffers[3]);
-  auto sizes_buffer = reinterpret_cast<const int32_t*>(array.buffers[4]);
+  auto sizes_buffer = reinterpret_cast<const int64_t*>(array.buffers[4]);
 
   EXPECT_EQ(validity_buffer[0], 0b01111001);
   EXPECT_EQ(memcmp(inline_buffer[0].inlined.data, "1234", 4), 0);
@@ -3273,16 +3273,7 @@ void TestGetFromBinaryView(BuilderClass& builder) {
 
   EXPECT_EQ(array_view.n_variadic_buffers, 2);
   EXPECT_EQ(array_view.variadic_buffer_sizes[0], str1.size() + filler.size());
-
-  // TODO: is this a bug in the Arrow C++ export? Within gdb I see
-  // (gdb) p ((int32_t*)array->buffers[4])[0]
-  // $34 = 32766
-  // (gdb) p ((int32_t*)array->buffers[4])[1]
-  // $35 = 0
-  // (gdb) p ((int32_t*)array->buffers[4])[2]
-  // $36 = 32
-  // where does the 0 for the second array element come from?
-  EXPECT_EQ(array_view.variadic_buffer_sizes[2], str2.size());
+  EXPECT_EQ(array_view.variadic_buffer_sizes[1], str2.size());
 
   EXPECT_EQ(ArrowArrayViewIsNull(&array_view, 2), 1);
   EXPECT_EQ(ArrowArrayViewIsNull(&array_view, 3), 0);

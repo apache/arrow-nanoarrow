@@ -816,7 +816,7 @@ struct ArrowArrayView {
   int32_t n_variadic_buffers;
 
   /// \brief Size of each variadic buffer
-  int32_t* variadic_buffer_sizes;
+  int64_t* variadic_buffer_sizes;
 };
 
 // Used as the private data member for ArrowArrays allocated here and accessed
@@ -852,7 +852,7 @@ struct ArrowArrayPrivateData {
   struct ArrowBuffer* variadic_buffers;
 
   // Size of each variadic buffer in bytes
-  int32_t* variadic_buffer_sizes;
+  int64_t* variadic_buffer_sizes;
 };
 
 /// \brief A representation of an interval.

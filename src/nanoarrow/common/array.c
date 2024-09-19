@@ -766,7 +766,7 @@ static int ArrowArrayViewSetArrayInternal(struct ArrowArrayView* array_view,
     nvariadic_buf = (nvariadic_buf < 0) ? 0 : nvariadic_buf;
     array_view->n_variadic_buffers = nvariadic_buf;
     buffers_required += nvariadic_buf + 1;
-    array_view->variadic_buffer_sizes = (int32_t*)array->buffers[n_buffers - 1];
+    array_view->variadic_buffer_sizes = (int64_t*)array->buffers[n_buffers - 1];
   }
 
   if (buffers_required != array->n_buffers) {
