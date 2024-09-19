@@ -184,6 +184,7 @@ cdef class CArrayStream:
         return array_stream_capsule
 
     def _addr(self) -> int:
+        """test to see if this causes a ci fail"""
         return <uintptr_t>self._ptr
 
     def is_valid(self) -> bool:
