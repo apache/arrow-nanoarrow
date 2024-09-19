@@ -125,6 +125,7 @@ jobs:
           CIBW_TEST_REQUIRES: pytest
           CIBW_TEST_COMMAND: pytest {package}/tests -vv
           CIBW_PLATFORM: ${{ matrix.config.platform }}
+          CIBW_FREE_THREADED_SUPPORT: "true"
 
       - uses: actions/upload-artifact@v4
         with:
