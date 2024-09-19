@@ -2138,6 +2138,10 @@ TEST(ArrayTest, ArrayViewTestString) {
   EXPECT_EQ(array_view.buffer_views[1].size_bytes, 0);
   EXPECT_EQ(array_view.buffer_views[2].size_bytes, 0);
 
+  // This should pass validation even if all buffers are empty
+  ASSERT_EQ(ArrowArrayViewValidate(&array_view, NANOARROW_VALIDATION_LEVEL_FULL, &error),
+            NANOARROW_OK);
+
   ArrowArrayViewSetLength(&array_view, 5);
   EXPECT_EQ(array_view.buffer_views[0].size_bytes, 1);
   EXPECT_EQ(array_view.buffer_views[1].size_bytes, (5 + 1) * sizeof(int32_t));
@@ -2192,15 +2196,35 @@ TEST(ArrayTest, ArrayViewTestString) {
   offsets[0] = -1;
   EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), EINVAL);
   EXPECT_STREQ(error.message, "Expected first offset >= 0 but found -1");
-  offsets[0] = 0;
 
+  // For a sliced array, this can still pass validation
+  array.offset = 1;
+  array.length = array_view.length - 1;
+  EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayViewValidate(&array_view, NANOARROW_VALIDATION_LEVEL_FULL, &error),
+            NANOARROW_OK);
+
+  // Check for negative element sizes
+  array.offset = 0;
+  array.length = array.length + 1;
+  offsets[0] = 0;
   offsets[1] = -1;
   EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayViewValidate(&array_view, NANOARROW_VALIDATION_LEVEL_FULL, &error),
             EINVAL);
   EXPECT_STREQ(error.message, "[1] Expected element size >= 0");
 
+  // Sliced array should also fail validation because the first element is negative
+  array.offset = 0;
+  array.length = array_view.length + 1;
+  EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayViewValidate(&array_view, NANOARROW_VALIDATION_LEVEL_FULL, &error),
+            EINVAL);
+  EXPECT_STREQ(error.message, "[1] Expected element size >= 0");
+
   // Check sequential offsets whose diff causes overflow
+  array.offset = 0;
+  array.length = array.length + 1;
   offsets[1] = 2080374784;
   offsets[2] = INT_MIN;
   EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), NANOARROW_OK);

@@ -990,7 +990,7 @@ static int ArrowArrayViewValidateDefault(struct ArrowArrayView* array_view,
     case NANOARROW_TYPE_STRING:
     case NANOARROW_TYPE_BINARY:
       if (array_view->buffer_views[1].size_bytes != 0) {
-        first_offset = array_view->buffer_views[1].data.as_int32[0];
+        first_offset = array_view->buffer_views[1].data.as_int32[array_view->offset];
         if (first_offset < 0) {
           ArrowErrorSet(error, "Expected first offset >= 0 but found %" PRId64,
                         first_offset);
@@ -1021,7 +1021,7 @@ static int ArrowArrayViewValidateDefault(struct ArrowArrayView* array_view,
     case NANOARROW_TYPE_LARGE_STRING:
     case NANOARROW_TYPE_LARGE_BINARY:
       if (array_view->buffer_views[1].size_bytes != 0) {
-        first_offset = array_view->buffer_views[1].data.as_int64[0];
+        first_offset = array_view->buffer_views[1].data.as_int64[array_view->offset];
         if (first_offset < 0) {
           ArrowErrorSet(error, "Expected first offset >= 0 but found %" PRId64,
                         first_offset);
@@ -1065,7 +1065,7 @@ static int ArrowArrayViewValidateDefault(struct ArrowArrayView* array_view,
     case NANOARROW_TYPE_LIST:
     case NANOARROW_TYPE_MAP:
       if (array_view->buffer_views[1].size_bytes != 0) {
-        first_offset = array_view->buffer_views[1].data.as_int32[0];
+        first_offset = array_view->buffer_views[1].data.as_int32[array_view->offset];
         if (first_offset < 0) {
           ArrowErrorSet(error, "Expected first offset >= 0 but found %" PRId64,
                         first_offset);
@@ -1087,7 +1087,7 @@ static int ArrowArrayViewValidateDefault(struct ArrowArrayView* array_view,
 
     case NANOARROW_TYPE_LARGE_LIST:
       if (array_view->buffer_views[1].size_bytes != 0) {
-        first_offset = array_view->buffer_views[1].data.as_int64[0];
+        first_offset = array_view->buffer_views[1].data.as_int64[array_view->offset];
         if (first_offset < 0) {
           ArrowErrorSet(error, "Expected first offset >= 0 but found %" PRId64,
                         first_offset);
