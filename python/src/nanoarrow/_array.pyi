@@ -101,12 +101,21 @@ class CArrayBuilder:
             validation if possible. Validation may not be possible if children
             were set that were not created by nanoarrow.
         """
+    def finish_device(self, *args, **kwargs):
+        """Finish building this array and export to an ArrowDeviceArray
+
+        Calls :meth:`finish`, propagating device information into an ArrowDeviceArray.
+        """
     def init_from_schema(self, *args, **kwargs): ...
     def init_from_type(self, *args, **kwargs): ...
     def is_empty(self, *args, **kwargs):
         """Check if any items have been appended to this builder"""
     def resolve_null_count(self, *args, **kwargs):
-        """Ensure the output null count is synchronized with existing buffers"""
+        """Ensure the output null count is synchronized with existing buffers
+
+        Note that this will not attempt to access non-CPU buffers such that
+        :attr:`null_count` might still be -1 after calling this method.
+        """
     def set_buffer(self, *args, **kwargs):
         """Set an ArrowArray buffer
 

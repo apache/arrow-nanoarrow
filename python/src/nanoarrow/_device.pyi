@@ -25,6 +25,13 @@ __reduce_cython__: _cython_3_0_11.cython_function_or_method
 __setstate_cython__: _cython_3_0_11.cython_function_or_method
 __test__: dict
 
+class CSharedSyncEvent:
+    __pyx_vtable__: ClassVar[PyCapsule] = ...
+    @classmethod
+    def __init__(cls, *args, **kwargs) -> None:
+        """Create and return a new object.  See help(type) for accurate signature."""
+    def __reduce__(self): ...
+
 class Device:
     device_id: Incomplete
     device_type: Incomplete
@@ -34,6 +41,18 @@ class Device:
         """Create and return a new object.  See help(type) for accurate signature."""
     @staticmethod
     def resolve(*args, **kwargs): ...
+    def __eq__(self, other: object) -> bool:
+        """Return self==value."""
+    def __ge__(self, other: object) -> bool:
+        """Return self>=value."""
+    def __gt__(self, other: object) -> bool:
+        """Return self>value."""
+    def __le__(self, other: object) -> bool:
+        """Return self<=value."""
+    def __lt__(self, other: object) -> bool:
+        """Return self<value."""
+    def __ne__(self, other: object) -> bool:
+        """Return self!=value."""
     def __reduce__(self): ...
 
 class DeviceType(enum.Enum):

@@ -29,6 +29,7 @@ class CBuffer:
     __pyx_vtable__: ClassVar[PyCapsule] = ...
     data_type: Incomplete
     data_type_id: Incomplete
+    device: Incomplete
     element_size_bits: Incomplete
     format: Incomplete
     itemsize: Incomplete
@@ -40,9 +41,47 @@ class CBuffer:
     def element(self, *args, **kwargs): ...
     def elements(self, *args, **kwargs): ...
     @staticmethod
-    def empty(*args, **kwargs): ...
+    def empty(*args, **kwargs):
+        """Create an empty CBuffer"""
     @staticmethod
-    def from_pybuffer(*args, **kwargs): ...
+    def from_dlpack(*args, **kwargs):
+        """Create a CBuffer using the DLPack protocol
+
+        Wraps a tensor from an external library as a CBuffer that can be used
+        to create an array.
+
+        Parameters
+        ----------
+        obj : object with a ``__dlpack__`` attribute
+            The object on which to invoke the DLPack protocol
+        stream : int, optional
+            The stream on which the tensor represented by obj should be made
+            safe for use. This value is passed to the object's ``__dlpack__``
+            method; however, the CBuffer does not keep any record of this (i.e.,
+            the caller is responsible for creating a sync event after creating one
+            or more buffers in this way).
+        """
+    @staticmethod
+    def from_pybuffer(*args, **kwargs):
+        """Create a CBuffer using the Python buffer protocol
+
+        Wraps a buffer using the Python buffer protocol as a CBuffer that can be
+        used to create an array.
+
+        Parameters
+        ----------
+        obj : buffer-like
+            The object on which to invoke the Python buffer protocol
+        """
+    def view(self, *args, **kwargs):
+        """Export this buffer as a CBufferView
+
+        Returns a :class:`CBufferView` of this buffer. After calling this
+        method, the original CBuffer will be invalidated and cannot be used.
+        In general, the view of the buffer should be used to consume a buffer
+        (whereas the CBuffer is primarily used to wrap an existing object in
+        a way that it can be used to build a :class:`CArray`).
+        """
     def __buffer__(self, *args, **kwargs):
         """Return a buffer object that exposes the underlying memory of the object."""
     def __getitem__(self, index):
@@ -147,7 +186,7 @@ class CBufferView:
         Parameters
         ----------
         stream : int, optional
-            A Python integer representing a pointer to a stream. Currently not supported.
+            A Python integer representing a pointer to a stream.
             Stream is provided by the consumer to the producer to instruct the producer
             to ensure that operations can safely be performed on the array.
 
