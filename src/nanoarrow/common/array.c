@@ -1256,15 +1256,13 @@ static int ArrowArrayViewValidateFull(struct ArrowArrayView* array_view,
           struct ArrowBufferView offset_minimal;
           offset_minimal.data.as_int32 =
               array_view->buffer_views[i].data.as_int32 + array_view->offset;
-          offset_minimal.size_bytes =
-              (array_view->offset + array_view->length + 1) * sizeof(int32_t);
+          offset_minimal.size_bytes = (array_view->length + 1) * sizeof(int32_t);
           NANOARROW_RETURN_NOT_OK(ArrowAssertIncreasingInt32(offset_minimal, error));
         } else if (array_view->length > 0) {
           struct ArrowBufferView offset_minimal;
           offset_minimal.data.as_int64 =
               array_view->buffer_views[i].data.as_int64 + array_view->offset;
-          offset_minimal.size_bytes =
-              (array_view->offset + array_view->length + 1) * sizeof(int64_t);
+          offset_minimal.size_bytes = (array_view->length + 1) * sizeof(int64_t);
           NANOARROW_RETURN_NOT_OK(ArrowAssertIncreasingInt64(offset_minimal, error));
         }
         break;
