@@ -2139,7 +2139,7 @@ TEST(ArrayTest, ArrayViewTestString) {
   EXPECT_EQ(array_view.buffer_views[2].size_bytes, 0);
 
   // This should pass validation even if all buffers are empty
-  ASSERT_EQ(ArrowArrayViewValidate(&array_view, NANOARROW_VALIDATION_LEVEL_FULL, &error),
+  EXPECT_EQ(ArrowArrayViewValidate(&array_view, NANOARROW_VALIDATION_LEVEL_FULL, &error),
             NANOARROW_OK);
 
   ArrowArrayViewSetLength(&array_view, 5);
@@ -2257,7 +2257,7 @@ TEST(ArrayTest, ArrayViewTestLargeString) {
   EXPECT_EQ(array_view.buffer_views[2].size_bytes, 0);
 
   // This should pass validation even if all buffers are empty
-  ASSERT_EQ(ArrowArrayViewValidate(&array_view, NANOARROW_VALIDATION_LEVEL_FULL, &error),
+  EXPECT_EQ(ArrowArrayViewValidate(&array_view, NANOARROW_VALIDATION_LEVEL_FULL, &error),
             NANOARROW_OK);
 
   ArrowArrayViewSetLength(&array_view, 5);
@@ -2307,6 +2307,10 @@ TEST(ArrayTest, ArrayViewTestLargeString) {
   // Expect error for offsets that will cause bad access
   int64_t* offsets =
       const_cast<int64_t*>(reinterpret_cast<const int64_t*>(array.buffers[1]));
+
+  offsets[0] = -1;
+  EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), EINVAL);
+  EXPECT_STREQ(error.message, "Expected first offset >= 0 but found -1");
 
   // For a sliced array, this can still pass validation
   array.offset = 1;
@@ -2382,6 +2386,7 @@ TEST(ArrayTest, ArrayViewTestStruct) {
 
 TEST(ArrayTest, ArrayViewTestList) {
   struct ArrowArrayView array_view;
+  struct ArrowError error;
   ArrowArrayViewInitFromType(&array_view, NANOARROW_TYPE_LIST);
 
   EXPECT_EQ(array_view.array, nullptr);
@@ -2395,6 +2400,15 @@ TEST(ArrayTest, ArrayViewTestList) {
   EXPECT_EQ(array_view.n_children, 1);
   ArrowArrayViewInitFromType(array_view.children[0], NANOARROW_TYPE_INT32);
   EXPECT_EQ(array_view.children[0]->storage_type, NANOARROW_TYPE_INT32);
+
+  // Can't assume the offsets buffer exists for length == 0
+  ArrowArrayViewSetLength(&array_view, 0);
+  EXPECT_EQ(array_view.buffer_views[0].size_bytes, 0);
+  EXPECT_EQ(array_view.buffer_views[1].size_bytes, 0);
+
+  // This should pass validation even if all buffers are empty
+  EXPECT_EQ(ArrowArrayViewValidate(&array_view, NANOARROW_VALIDATION_LEVEL_FULL, &error),
+            NANOARROW_OK);
 
   ArrowArrayViewSetLength(&array_view, 5);
   EXPECT_EQ(array_view.buffer_views[0].size_bytes, 1);
@@ -2416,20 +2430,47 @@ TEST(ArrayTest, ArrayViewTestList) {
             NANOARROW_OK);
 
   // Expect error for offsets that will cause bad access
-  struct ArrowError error;
   int32_t* offsets =
       const_cast<int32_t*>(reinterpret_cast<const int32_t*>(array.buffers[1]));
 
   offsets[0] = -1;
   EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), EINVAL);
   EXPECT_STREQ(error.message, "Expected first offset >= 0 but found -1");
-  offsets[0] = 0;
 
+  // For a sliced array, this can still pass validation
+  array.offset = 1;
+  array.length = array_view.length - 1;
+  EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayViewValidate(&array_view, NANOARROW_VALIDATION_LEVEL_FULL, &error),
+            NANOARROW_OK);
+
+  // Check for negative element sizes
+  array.offset = 0;
+  array.length = array.length + 1;
+  offsets[0] = 0;
   offsets[1] = -1;
   EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayViewValidate(&array_view, NANOARROW_VALIDATION_LEVEL_FULL, &error),
             EINVAL);
   EXPECT_STREQ(error.message, "[1] Expected element size >= 0");
+
+  // Sliced array should also fail validation because the first element is negative
+  array.offset = 0;
+  array.length = array_view.length + 1;
+  EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayViewValidate(&array_view, NANOARROW_VALIDATION_LEVEL_FULL, &error),
+            EINVAL);
+  EXPECT_STREQ(error.message, "[1] Expected element size >= 0");
+
+  // Check sequential offsets whose diff causes overflow
+  array.offset = 0;
+  array.length = array.length + 1;
+  offsets[1] = 2080374784;
+  offsets[2] = INT_MIN;
+  EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayViewValidate(&array_view, NANOARROW_VALIDATION_LEVEL_FULL, &error),
+            EINVAL);
+  EXPECT_STREQ(error.message, "[2] Expected element size >= 0");
 
   ArrowArrayRelease(&array);
   ArrowArrayViewReset(&array_view);
@@ -2503,6 +2544,7 @@ TEST(ArrayTest, ArrayViewTestLargeListGet) {
 
 TEST(ArrayTest, ArrayViewTestLargeList) {
   struct ArrowArrayView array_view;
+  struct ArrowError error;
   ArrowArrayViewInitFromType(&array_view, NANOARROW_TYPE_LARGE_LIST);
 
   EXPECT_EQ(array_view.array, nullptr);
@@ -2516,6 +2558,15 @@ TEST(ArrayTest, ArrayViewTestLargeList) {
   EXPECT_EQ(array_view.n_children, 1);
   ArrowArrayViewInitFromType(array_view.children[0], NANOARROW_TYPE_INT32);
   EXPECT_EQ(array_view.children[0]->storage_type, NANOARROW_TYPE_INT32);
+
+  // Can't assume the offsets buffer exists for length == 0
+  ArrowArrayViewSetLength(&array_view, 0);
+  EXPECT_EQ(array_view.buffer_views[0].size_bytes, 0);
+  EXPECT_EQ(array_view.buffer_views[1].size_bytes, 0);
+
+  // This should pass validation even if all buffers are empty
+  EXPECT_EQ(ArrowArrayViewValidate(&array_view, NANOARROW_VALIDATION_LEVEL_FULL, &error),
+            NANOARROW_OK);
 
   ArrowArrayViewSetLength(&array_view, 5);
   EXPECT_EQ(array_view.buffer_views[0].size_bytes, 1);
@@ -2537,16 +2588,33 @@ TEST(ArrayTest, ArrayViewTestLargeList) {
             NANOARROW_OK);
 
   // Expect error for offsets that will cause bad access
-  struct ArrowError error;
   int64_t* offsets =
       const_cast<int64_t*>(reinterpret_cast<const int64_t*>(array.buffers[1]));
 
   offsets[0] = -1;
   EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), EINVAL);
   EXPECT_STREQ(error.message, "Expected first offset >= 0 but found -1");
-  offsets[0] = 0;
 
+  // For a sliced array, this can still pass validation
+  array.offset = 1;
+  array.length = array_view.length - 1;
+  EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayViewValidate(&array_view, NANOARROW_VALIDATION_LEVEL_FULL, &error),
+            NANOARROW_OK);
+
+  // Check for negative element sizes
+  array.offset = 0;
+  array.length = array.length + 1;
+  offsets[0] = 0;
   offsets[1] = -1;
+  EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayViewValidate(&array_view, NANOARROW_VALIDATION_LEVEL_FULL, &error),
+            EINVAL);
+  EXPECT_STREQ(error.message, "[1] Expected element size >= 0");
+
+  // Sliced array should also fail validation because the first element is negative
+  array.offset = 0;
+  array.length = array_view.length + 1;
   EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayViewValidate(&array_view, NANOARROW_VALIDATION_LEVEL_FULL, &error),
             EINVAL);
