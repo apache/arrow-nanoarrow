@@ -817,9 +817,6 @@ struct ArrowArrayView {
 
   /// \brief Size of each variadic buffer
   int32_t* variadic_buffer_sizes;
-
-  /// \brief Variadic buffer contents
-  struct ArrowBufferView* variadic_buffer_views;
 };
 
 // Used as the private data member for ArrowArrays allocated here and accessed

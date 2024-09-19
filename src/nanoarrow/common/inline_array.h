@@ -881,7 +881,14 @@ static inline struct ArrowBufferView ArrowArrayViewBufferView(
     if (i < nfixed_buf) {
       return array_view->buffer_views[i];
     } else {
-      return array_view->variadic_buffer_views[i];
+      struct ArrowBufferView buf_vw;
+      buf_vw.data.data = array_view->array->buffers[i];
+      if (buf_vw.data.data == NULL) {
+        buf_vw.size_bytes = 0;
+      } else {
+        buf_vw.size_bytes = -1;
+      }
+      return buf_vw;
     }
   }
   return array_view->buffer_views[i];
@@ -1028,8 +1035,10 @@ static inline struct ArrowStringView ArrowArrayViewGetStringUnsafe(
                     sizeof(((union ArrowBinaryViewType*)0)->inlined.size);
       } else {
         const int32_t buf_index = bvt.ref.buffer_index;
-        view.data =
-            array_view->variadic_buffer_views[buf_index].data.as_char + bvt.ref.offset;
+        const int32_t nfixed_buf = 2;
+        const struct ArrowBufferView variadic_vw =
+            ArrowArrayViewBufferView(array_view, buf_index + nfixed_buf);
+        view.data = variadic_vw.data.as_char + bvt.ref.offset;
       }
       break;
     }
@@ -1080,8 +1089,10 @@ static inline struct ArrowBufferView ArrowArrayViewGetBytesUnsafe(
                              sizeof(((union ArrowBinaryViewType*)0)->inlined.size);
       } else {
         const int32_t buf_index = bvt.ref.buffer_index;
-        view.data.as_uint8 =
-            array_view->variadic_buffer_views[buf_index].data.as_uint8 + bvt.ref.offset;
+        const int32_t nfixed_buf = 2;
+        const struct ArrowBufferView variadic_vw =
+            ArrowArrayViewBufferView(array_view, buf_index + nfixed_buf);
+        view.data.as_uint8 = variadic_vw.data.as_uint8 + bvt.ref.offset;
       }
       break;
     }
