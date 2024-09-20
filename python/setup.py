@@ -94,6 +94,13 @@ if cuda_toolkit_root:
         device_library_dirs.append(str(lib_dirs[0].parent))
 
 
+# This mechanism to build a static c library against which extensions
+# can be linked is not well documented but is a better solution than
+# simply including these files as sources to the extensions that need
+# them. A more robust solution would be to use Meson or CMake to build
+# the Python extensions since they can both build a shared nanoarrow
+# and link it. This mechanism is the build_clib command available in
+# setuptools (and previously from distutils).
 common_libraries = [
     [
         "nanoarrow_python_shared",
