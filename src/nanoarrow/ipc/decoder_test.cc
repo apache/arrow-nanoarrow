@@ -129,28 +129,28 @@ TEST(NanoarrowIpcTest, NanoarrowIpcCheckHeader) {
   EXPECT_STREQ(error.message,
                "Expected data of at least 8 bytes but only 1 bytes remain");
 
-  uint32_t eight_bad_bytes[] = {0, 0};
-  data.data.as_uint8 = reinterpret_cast<uint8_t*>(eight_bad_bytes);
-  data.size_bytes = 8;
+  uint32_t eight_bad_bytes[] = {negative_one_le * 256, 999};
+  data.data.as_uint32 = eight_bad_bytes;
+  data.size_bytes = sizeof(eight_bad_bytes);
   EXPECT_EQ(ArrowIpcDecoderVerifyHeader(&decoder, data, &error), EINVAL);
   EXPECT_STREQ(error.message,
-               "Expected 0xFFFFFFFF at start of message but found 0x00000000");
+               "Expected 0xFFFFFFFF at start of message but found 0xFFFFFF00");
 
   ArrowErrorInit(&error);
   EXPECT_EQ(ArrowIpcDecoderDecodeHeader(&decoder, data, &error), EINVAL);
   EXPECT_STREQ(error.message,
-               "Expected 0xFFFFFFFF at start of message but found 0x00000000");
+               "Expected 0xFFFFFFFF at start of message but found 0xFFFFFF00");
 
   eight_bad_bytes[0] = 0xFFFFFFFF;
   eight_bad_bytes[1] = negative_one_le;
   EXPECT_EQ(ArrowIpcDecoderVerifyHeader(&decoder, data, &error), EINVAL);
   EXPECT_STREQ(error.message,
-               "Expected message body size > 0 but found message body size of -1 bytes");
+               "Expected message size > 0 but found message size of -1 bytes");
 
   ArrowErrorInit(&error);
   EXPECT_EQ(ArrowIpcDecoderDecodeHeader(&decoder, data, &error), EINVAL);
   EXPECT_STREQ(error.message,
-               "Expected message body size > 0 but found message body size of -1 bytes");
+               "Expected message size > 0 but found message size of -1 bytes");
 
   eight_bad_bytes[1] = one_le;
   EXPECT_EQ(ArrowIpcDecoderVerifyHeader(&decoder, data, &error), ESPIPE);
@@ -168,6 +168,17 @@ TEST(NanoarrowIpcTest, NanoarrowIpcCheckHeader) {
   ArrowErrorInit(&error);
   EXPECT_EQ(ArrowIpcDecoderDecodeHeader(&decoder, data, &error), ENODATA);
   EXPECT_STREQ(error.message, "End of Arrow stream");
+
+  uint32_t pre_continuation[] = {0, 0};
+  data.data.as_uint32 = pre_continuation;
+  data.size_bytes = sizeof(pre_continuation);
+  EXPECT_EQ(ArrowIpcDecoderVerifyHeader(&decoder, data, &error), ENODATA);
+  EXPECT_STREQ(error.message, "End of Arrow stream");
+
+  pre_continuation[0] = one_le << 3;
+  EXPECT_EQ(ArrowIpcDecoderVerifyHeader(&decoder, data, &error), ESPIPE);
+  EXPECT_STREQ(error.message,
+               "Expected >= 12 bytes of remaining data but found 8 bytes in buffer");
 
   ArrowIpcDecoderReset(&decoder);
 }
