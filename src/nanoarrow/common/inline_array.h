@@ -770,7 +770,7 @@ static inline int8_t ArrowArrayViewUnionTypeId(const struct ArrowArrayView* arra
   switch (array_view->storage_type) {
     case NANOARROW_TYPE_DENSE_UNION:
     case NANOARROW_TYPE_SPARSE_UNION:
-      return array_view->buffer_views[0].data.as_int8[i];
+      return array_view->buffer_views[0].data.as_int8[array_view->offset + i];
     default:
       return -1;
   }
@@ -790,9 +790,9 @@ static inline int64_t ArrowArrayViewUnionChildOffset(
     const struct ArrowArrayView* array_view, int64_t i) {
   switch (array_view->storage_type) {
     case NANOARROW_TYPE_DENSE_UNION:
-      return array_view->buffer_views[1].data.as_int32[i];
+      return array_view->buffer_views[1].data.as_int32[array_view->offset + i];
     case NANOARROW_TYPE_SPARSE_UNION:
-      return i;
+      return array_view->offset + i;
     default:
       return -1;
   }
