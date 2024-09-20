@@ -262,10 +262,18 @@ def test_schema_serialize():
 
 
 def test_schema_repr():
-    schema = na.struct({"col1": na.int32(), "col2": na.int16(), "col3": na.string(),
-                        "col4": na.timestamp(unit=na.TimeUnit.SECOND)},
-                        nullable=False)
+    schema = na.struct(
+        {
+            "col1": na.int32(),
+            "col2": na.int16(),
+            "col3": na.string(),
+            "col4": na.timestamp(unit=na.TimeUnit.SECOND),
+        },
+        nullable=False,
+    )
 
-    assert repr(schema) == ("<Schema> non-nullable struct"
-                            "<col1: int32, col2: int16, col3: string, "
-                            "col4: timestamp('s', '')>")
+    assert repr(schema) == (
+        "<Schema> non-nullable struct"
+        "<col1: int32, col2: int16, col3: string, "
+        "col4: timestamp('s', '')>"
+    )
