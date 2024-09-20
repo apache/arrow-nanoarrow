@@ -1298,6 +1298,15 @@ static int ArrowArrayViewValidateFull(struct ArrowArrayView* array_view,
 
   if (array_view->storage_type == NANOARROW_TYPE_DENSE_UNION ||
       array_view->storage_type == NANOARROW_TYPE_SPARSE_UNION) {
+    struct ArrowBufferView type_ids;
+    type_ids.size_bytes = array_view->length * sizeof(int8_t);
+    if (array_view->length > 0) {
+      type_ids.data.as_int8 =
+          array_view->buffer_views[0].data.as_int8 + array_view->offset;
+    } else {
+      type_ids.data.as_int8 = NULL;
+    }
+
     if (array_view->union_type_id_map == NULL) {
       // If the union_type_id map is NULL (e.g., when using ArrowArrayInitFromType() +
       // ArrowArrayAllocateChildren() + ArrowArrayFinishBuilding()), we don't have enough
@@ -1308,12 +1317,11 @@ static int ArrowArrayViewValidateFull(struct ArrowArrayView* array_view,
     } else if (_ArrowParsedUnionTypeIdsWillEqualChildIndices(
                    array_view->union_type_id_map, array_view->n_children,
                    array_view->n_children)) {
-      NANOARROW_RETURN_NOT_OK(ArrowAssertRangeInt8(
-          array_view->buffer_views[0], 0, (int8_t)(array_view->n_children - 1), error));
+      NANOARROW_RETURN_NOT_OK(
+          ArrowAssertRangeInt8(type_ids, 0, (int8_t)(array_view->n_children - 1), error));
     } else {
-      NANOARROW_RETURN_NOT_OK(ArrowAssertInt8In(array_view->buffer_views[0],
-                                                array_view->union_type_id_map + 128,
-                                                array_view->n_children, error));
+      NANOARROW_RETURN_NOT_OK(ArrowAssertInt8In(
+          type_ids, array_view->union_type_id_map + 128, array_view->n_children, error));
     }
   }
 
