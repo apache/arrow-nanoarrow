@@ -2878,7 +2878,7 @@ TEST(ArrayTest, ArrayViewTestUnionChildIndices) {
   EXPECT_EQ(ArrowArrayViewUnionChildIndex(&array_view, 0), 0);
   EXPECT_EQ(ArrowArrayViewUnionChildIndex(&array_view, 1), 1);
 
-  // Check that bad type ids/offset are caught by validate full
+  // Check that bad type ids are caught by validate full
   struct ArrowError error;
   int8_t* type_ids =
       const_cast<int8_t*>(reinterpret_cast<const int8_t*>(array.buffers[0]));
@@ -2889,8 +2889,18 @@ TEST(ArrayTest, ArrayViewTestUnionChildIndices) {
             EINVAL);
   EXPECT_STREQ(error.message,
                "[0] Expected buffer value between 0 and 1 but found value -1");
+
+  // For a sliced array without the first element, this should pass
+  array_view.offset = 1;
+  array_view.length -= 1;
+  EXPECT_EQ(ArrowArrayViewValidate(&array_view, NANOARROW_VALIDATION_LEVEL_FULL, &error),
+            NANOARROW_OK);
+
+  array_view.offset = 0;
+  array_view.length += 1;
   type_ids[0] = 0;
 
+  // Check that bad offsets are caught by validate full
   offsets[0] = -1;
   EXPECT_EQ(ArrowArrayViewValidate(&array_view, NANOARROW_VALIDATION_LEVEL_FULL, &error),
             EINVAL);

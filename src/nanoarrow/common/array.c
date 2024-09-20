@@ -1278,17 +1278,17 @@ static int ArrowArrayViewValidateFull(struct ArrowArrayView* array_view,
           continue;
         }
         if (array_view->layout.element_size_bits[i] == 32) {
-          struct ArrowBufferView offset_minimal;
-          offset_minimal.data.as_int32 =
+          struct ArrowBufferView sliced_offsets;
+          sliced_offsets.data.as_int32 =
               array_view->buffer_views[i].data.as_int32 + array_view->offset;
-          offset_minimal.size_bytes = (array_view->length + 1) * sizeof(int32_t);
-          NANOARROW_RETURN_NOT_OK(ArrowAssertIncreasingInt32(offset_minimal, error));
+          sliced_offsets.size_bytes = (array_view->length + 1) * sizeof(int32_t);
+          NANOARROW_RETURN_NOT_OK(ArrowAssertIncreasingInt32(sliced_offsets, error));
         } else {
-          struct ArrowBufferView offset_minimal;
-          offset_minimal.data.as_int64 =
+          struct ArrowBufferView sliced_offsets;
+          sliced_offsets.data.as_int64 =
               array_view->buffer_views[i].data.as_int64 + array_view->offset;
-          offset_minimal.size_bytes = (array_view->length + 1) * sizeof(int64_t);
-          NANOARROW_RETURN_NOT_OK(ArrowAssertIncreasingInt64(offset_minimal, error));
+          sliced_offsets.size_bytes = (array_view->length + 1) * sizeof(int64_t);
+          NANOARROW_RETURN_NOT_OK(ArrowAssertIncreasingInt64(sliced_offsets, error));
         }
         break;
       default:
@@ -1298,6 +1298,15 @@ static int ArrowArrayViewValidateFull(struct ArrowArrayView* array_view,
 
   if (array_view->storage_type == NANOARROW_TYPE_DENSE_UNION ||
       array_view->storage_type == NANOARROW_TYPE_SPARSE_UNION) {
+    struct ArrowBufferView sliced_type_ids;
+    sliced_type_ids.size_bytes = array_view->length * sizeof(int8_t);
+    if (array_view->length > 0) {
+      sliced_type_ids.data.as_int8 =
+          array_view->buffer_views[0].data.as_int8 + array_view->offset;
+    } else {
+      sliced_type_ids.data.as_int8 = NULL;
+    }
+
     if (array_view->union_type_id_map == NULL) {
       // If the union_type_id map is NULL (e.g., when using ArrowArrayInitFromType() +
       // ArrowArrayAllocateChildren() + ArrowArrayFinishBuilding()), we don't have enough
@@ -1309,9 +1318,9 @@ static int ArrowArrayViewValidateFull(struct ArrowArrayView* array_view,
                    array_view->union_type_id_map, array_view->n_children,
                    array_view->n_children)) {
       NANOARROW_RETURN_NOT_OK(ArrowAssertRangeInt8(
-          array_view->buffer_views[0], 0, (int8_t)(array_view->n_children - 1), error));
+          sliced_type_ids, 0, (int8_t)(array_view->n_children - 1), error));
     } else {
-      NANOARROW_RETURN_NOT_OK(ArrowAssertInt8In(array_view->buffer_views[0],
+      NANOARROW_RETURN_NOT_OK(ArrowAssertInt8In(sliced_type_ids,
                                                 array_view->union_type_id_map + 128,
                                                 array_view->n_children, error));
     }
