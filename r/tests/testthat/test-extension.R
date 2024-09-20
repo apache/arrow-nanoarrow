@@ -126,6 +126,20 @@ test_that("as_nanoarrow_array() dispatches on registered extension spec", {
   )
 })
 
+test_that("inferring the type of an unregistered extension warns", {
+  expect_warning(
+    infer_nanoarrow_ptype(na_extension(na_int32(), "definitely not registered")),
+    "Converting unknown extension"
+  )
+
+  previous_opts <- options(nanoarrow.warn_unregistered_extension = FALSE)
+  on.exit(options(previous_opts))
+  expect_warning(
+    infer_nanoarrow_ptype(na_extension(na_int32(), "definitely not registered")),
+    NA
+  )
+})
+
 test_that("extensions can infer a schema of a nanoarrow_vctr() subclass", {
   register_nanoarrow_extension(
     "some_ext",

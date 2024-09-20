@@ -164,6 +164,12 @@ nanoarrow_extension_array <- function(storage_array, extension_name,
 }
 
 warn_unregistered_extension_type <- function(x) {
+  # Allow an opt-out of this warning for consumers that don't have
+  # control over their source and want to drop unknown extensions
+  if (!getOption("nanoarrow.warn_unregistered_extension", TRUE)) {
+    return()
+  }
+
   # Warn that we're about to ignore an extension type
   if (!is.null(x$name) && !identical(x$name, "")) {
     warning(
