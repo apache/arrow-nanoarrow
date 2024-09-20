@@ -113,7 +113,7 @@ common_libraries = [
 ]
 
 
-def nanoarrow_extension(name):
+def nanoarrow_extension(name, *, link_device=False):
     return Extension(
         name=name,
         include_dirs=["vendor", "src/nanoarrow"],
@@ -122,7 +122,7 @@ def nanoarrow_extension(name):
         extra_compile_args=extra_compile_args,
         extra_link_args=extra_link_args,
         define_macros=extra_define_macros + device_define_macros,
-        libraries=["nanoarrow_python_shared"],
+        libraries=["nanoarrow_python_shared"] + device_libraries if link_device else [],
     )
 
 
@@ -130,8 +130,8 @@ setup(
     ext_modules=[
         nanoarrow_extension("nanoarrow._types"),
         nanoarrow_extension("nanoarrow._utils"),
-        nanoarrow_extension("nanoarrow._device"),
-        nanoarrow_extension("nanoarrow._array"),
+        nanoarrow_extension("nanoarrow._device", link_device=True),
+        nanoarrow_extension("nanoarrow._array", link_device=True),
         nanoarrow_extension("nanoarrow._array_stream"),
         nanoarrow_extension("nanoarrow._buffer"),
         nanoarrow_extension("nanoarrow._ipc_lib"),
