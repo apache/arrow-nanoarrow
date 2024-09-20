@@ -831,7 +831,7 @@ struct ArrowArrayPrivateData {
 
   // The array of pointers to buffers. This must be updated after a sequence
   // of appends to synchronize its values with the actual buffer addresses
-  // (which may have ben reallocated during that time)
+  // (which may have been reallocated during that time)
   const void** buffer_data;
 
   // The storage data type, or NANOARROW_TYPE_UNINITIALIZED if unknown

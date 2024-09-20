@@ -111,9 +111,11 @@ static ArrowErrorCode ArrowArraySetStorageType(struct ArrowArray* array,
     case NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO:
     case NANOARROW_TYPE_FIXED_SIZE_BINARY:
     case NANOARROW_TYPE_DENSE_UNION:
+      array->n_buffers = 2;
+      break;
     case NANOARROW_TYPE_BINARY_VIEW:
     case NANOARROW_TYPE_STRING_VIEW:
-      array->n_buffers = 2;
+      array->n_buffers = NANOARROW_BINARY_VIEW_FIXED_BUFFERS;
       break;
     case NANOARROW_TYPE_STRING:
     case NANOARROW_TYPE_LARGE_STRING:
@@ -482,7 +484,7 @@ static void ArrowArrayFlushInternalPointers(struct ArrowArray* array) {
     const int32_t nvirt_buf = private_data->n_variadic_buffers;
     private_data->buffer_data = (const void**)ArrowRealloc(
         private_data->buffer_data, sizeof(void*) * (nfixed_buf + nvirt_buf + 1));
-    for (int32_t i = 0; i < nvirt_buf; ++i) {
+    for (int32_t i = 0; i < nvirt_buf; i++) {
       private_data->buffer_data[nfixed_buf + i] = private_data->variadic_buffers[i].data;
     }
     private_data->buffer_data[nfixed_buf + nvirt_buf] =
@@ -737,7 +739,7 @@ static int ArrowArrayViewSetArrayInternal(struct ArrowArrayView* array_view,
   int64_t buffers_required = 0;
   const int nfixed_buf = array_view->storage_type == NANOARROW_TYPE_STRING_VIEW ||
                                  array_view->storage_type == NANOARROW_TYPE_BINARY_VIEW
-                             ? 2
+                             ? NANOARROW_BINARY_VIEW_FIXED_BUFFERS
                              : NANOARROW_MAX_FIXED_BUFFERS;
   for (int i = 0; i < nfixed_buf; i++) {
     if (array_view->layout.buffer_type[i] == NANOARROW_BUFFER_TYPE_NONE) {
@@ -760,7 +762,7 @@ static int ArrowArrayViewSetArrayInternal(struct ArrowArrayView* array_view,
   if (array_view->storage_type == NANOARROW_TYPE_STRING_VIEW ||
       array_view->storage_type == NANOARROW_TYPE_BINARY_VIEW) {
     const int64_t n_buffers = array->n_buffers;
-    const int32_t nfixed_buf = 2;
+    const int32_t nfixed_buf = NANOARROW_BINARY_VIEW_FIXED_BUFFERS;
 
     int32_t nvariadic_buf = (int32_t)(n_buffers - nfixed_buf - 1);
     nvariadic_buf = (nvariadic_buf < 0) ? 0 : nvariadic_buf;

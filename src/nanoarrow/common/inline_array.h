@@ -468,6 +468,7 @@ static inline ArrowErrorCode ArrowArrayAppendDouble(struct ArrowArray* array,
   return NANOARROW_OK;
 }
 
+#define NANOARROW_BINARY_VIEW_FIXED_BUFFERS 2
 #define NANOARROW_BINARY_VIEW_INLINE_SIZE 12
 #define NANOARROW_BINARY_VIEW_PREVIEW_SIZE 4
 #define NANOARROW_BINARY_VIEW_BLOCK_SIZE (32 << 10)  // 32KB
@@ -493,6 +494,35 @@ union ArrowBinaryViewType {
   int64_t alignment_dummy;
 };
 
+static inline ArrowErrorCode ArrowArrayAddVariadicBuffers(struct ArrowArray* array,
+                                                          int32_t nbuffers,
+                                                          int64_t* new_buffer_start) {
+  struct ArrowArrayPrivateData* private_data =
+      (struct ArrowArrayPrivateData*)array->private_data;
+
+  const int32_t n_current_bufs = private_data->n_variadic_buffers;
+  const int32_t n_bufs_needed = n_current_bufs + nbuffers;
+
+  private_data->variadic_buffers = (struct ArrowBuffer*)ArrowRealloc(
+      private_data->variadic_buffers, sizeof(struct ArrowBuffer) * n_bufs_needed);
+  if (private_data->variadic_buffers == NULL) {
+    return ENOMEM;
+  }
+  private_data->variadic_buffer_sizes = (int64_t*)ArrowRealloc(
+      private_data->variadic_buffer_sizes, sizeof(int64_t) * n_bufs_needed);
+  if (private_data->variadic_buffer_sizes == NULL) {
+    return ENOMEM;
+  }
+
+  for (int32_t i = 0; i < nbuffers; i++) {
+    ArrowBufferInit(&private_data->variadic_buffers[n_current_bufs + i]);
+  }
+  private_data->n_variadic_buffers = n_bufs_needed;
+  *new_buffer_start = n_current_bufs;
+
+  return NANOARROW_OK;
+}
+
 static inline ArrowErrorCode ArrowArrayAppendBytes(struct ArrowArray* array,
                                                    struct ArrowBufferView value) {
   struct ArrowArrayPrivateData* private_data =
@@ -507,26 +537,21 @@ static inline ArrowErrorCode ArrowArrayAppendBytes(struct ArrowArray* array,
     if (value.size_bytes <= NANOARROW_BINARY_VIEW_INLINE_SIZE) {
       memcpy(bvt.inlined.data, value.data.as_char, value.size_bytes);
     } else {
-      int32_t n_vbufs = private_data->n_variadic_buffers;
+      const int32_t n_vbufs = private_data->n_variadic_buffers;
+      int64_t buf_index = n_vbufs - 1;
       if (n_vbufs == 0 ||
           private_data->variadic_buffers[n_vbufs - 1].size_bytes + value.size_bytes >
               NANOARROW_BINARY_VIEW_BLOCK_SIZE) {
-        ++n_vbufs;
-        private_data->variadic_buffers = (struct ArrowBuffer*)ArrowRealloc(
-            private_data->variadic_buffers, sizeof(struct ArrowBuffer) * (n_vbufs));
-        private_data->variadic_buffer_sizes = (int64_t*)ArrowRealloc(
-            private_data->variadic_buffer_sizes, sizeof(int64_t) * (n_vbufs));
-        ArrowBufferInit(&private_data->variadic_buffers[n_vbufs - 1]);
-        private_data->n_variadic_buffers = n_vbufs;
+        NANOARROW_RETURN_NOT_OK(ArrowArrayAddVariadicBuffers(array, 1, &buf_index));
       }
 
-      struct ArrowBuffer* variadic_buf = &private_data->variadic_buffers[n_vbufs - 1];
+      struct ArrowBuffer* variadic_buf = &private_data->variadic_buffers[buf_index];
       memcpy(bvt.ref.data, value.data.as_char, NANOARROW_BINARY_VIEW_PREVIEW_SIZE);
-      bvt.ref.buffer_index = n_vbufs - 1;
+      bvt.ref.buffer_index = (int32_t)buf_index;
       bvt.ref.offset = (int32_t)variadic_buf->size_bytes;
       NANOARROW_RETURN_NOT_OK(
           ArrowBufferAppend(variadic_buf, value.data.as_char, value.size_bytes));
-      private_data->variadic_buffer_sizes[n_vbufs - 1] = variadic_buf->size_bytes;
+      private_data->variadic_buffer_sizes[buf_index] = variadic_buf->size_bytes;
     }
     NANOARROW_RETURN_NOT_OK(ArrowBufferAppend(data_buffer, &bvt, sizeof(bvt)));
   } else {
@@ -876,7 +901,7 @@ static inline struct ArrowBufferView ArrowArrayViewBufferView(
     const struct ArrowArrayView* array_view, int64_t i) {
   if (array_view->storage_type == NANOARROW_TYPE_BINARY_VIEW ||
       array_view->storage_type == NANOARROW_TYPE_STRING_VIEW) {
-    const int32_t nfixed_buf = 2;
+    const int32_t nfixed_buf = NANOARROW_BINARY_VIEW_FIXED_BUFFERS;
     if (i < nfixed_buf) {
       return array_view->buffer_views[i];
     } else {
@@ -885,7 +910,8 @@ static inline struct ArrowBufferView ArrowArrayViewBufferView(
       if (buf_vw.data.data == NULL) {
         buf_vw.size_bytes = 0;
       } else {
-        buf_vw.size_bytes = -1;
+        buf_vw.size_bytes =
+            array_view->variadic_buffer_sizes[i - NANOARROW_BINARY_VIEW_FIXED_BUFFERS];
       }
       return buf_vw;
     }
@@ -1034,7 +1060,7 @@ static inline struct ArrowStringView ArrowArrayViewGetStringUnsafe(
                     sizeof(((union ArrowBinaryViewType*)0)->inlined.size);
       } else {
         const int32_t buf_index = bvt.ref.buffer_index;
-        const int32_t nfixed_buf = 2;
+        const int32_t nfixed_buf = NANOARROW_BINARY_VIEW_FIXED_BUFFERS;
         const struct ArrowBufferView variadic_vw =
             ArrowArrayViewBufferView(array_view, buf_index + nfixed_buf);
         view.data = variadic_vw.data.as_char + bvt.ref.offset;
@@ -1088,7 +1114,7 @@ static inline struct ArrowBufferView ArrowArrayViewGetBytesUnsafe(
                              sizeof(((union ArrowBinaryViewType*)0)->inlined.size);
       } else {
         const int32_t buf_index = bvt.ref.buffer_index;
-        const int32_t nfixed_buf = 2;
+        const int32_t nfixed_buf = NANOARROW_BINARY_VIEW_FIXED_BUFFERS;
         const struct ArrowBufferView variadic_vw =
             ArrowArrayViewBufferView(array_view, buf_index + nfixed_buf);
         view.data.as_uint8 = variadic_vw.data.as_uint8 + bvt.ref.offset;

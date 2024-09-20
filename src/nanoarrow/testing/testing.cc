@@ -286,7 +286,6 @@ ArrowErrorCode WriteData(std::ostream& out, const ArrowArrayView* value,
 
     case NANOARROW_TYPE_STRING:
     case NANOARROW_TYPE_LARGE_STRING:
-    case NANOARROW_TYPE_STRING_VIEW:
       WriteString(out, ArrowArrayViewGetStringUnsafe(value, 0));
       for (int64_t i = 1; i < value->length; i++) {
         out << ", ";
@@ -296,7 +295,6 @@ ArrowErrorCode WriteData(std::ostream& out, const ArrowArrayView* value,
 
     case NANOARROW_TYPE_BINARY:
     case NANOARROW_TYPE_LARGE_BINARY:
-    case NANOARROW_TYPE_BINARY_VIEW:
     case NANOARROW_TYPE_FIXED_SIZE_BINARY: {
       WriteBytesMaybeNull(out, value, 0);
       for (int64_t i = 1; i < value->length; i++) {
@@ -406,17 +404,11 @@ ArrowErrorCode WriteTypeFromView(std::ostream& out, const ArrowSchemaView* field
     case NANOARROW_TYPE_LARGE_STRING:
       out << R"("name": "largeutf8")";
       break;
-    case NANOARROW_TYPE_STRING_VIEW:
-      out << R"("name": "stringview")";
-      break;
     case NANOARROW_TYPE_BINARY:
       out << R"("name": "binary")";
       break;
     case NANOARROW_TYPE_LARGE_BINARY:
       out << R"("name": "largebinary")";
-      break;
-    case NANOARROW_TYPE_BINARY_VIEW:
-      out << R"("name": "binaryview")";
       break;
     case NANOARROW_TYPE_FIXED_SIZE_BINARY:
       out << R"("name": "fixedsizebinary", "byteWidth": )" << field->fixed_size;

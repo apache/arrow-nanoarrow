@@ -108,6 +108,10 @@ TEST(SchemaTest, SchemaInitSimple) {
   ExpectSchemaInitOk(NANOARROW_TYPE_INTERVAL_MONTHS, month_interval());
   ExpectSchemaInitOk(NANOARROW_TYPE_INTERVAL_DAY_TIME, day_time_interval());
   ExpectSchemaInitOk(NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO, month_day_nano_interval());
+#if defined(ARROW_VERSION_MAJOR) && ARROW_VERSION_MAJOR >= 15
+  ExpectSchemaInitOk(NANOARROW_TYPE_STRING_VIEW, utf8_view());
+  ExpectSchemaInitOk(NANOARROW_TYPE_BINARY_VIEW, binary_view());
+#endif
 }
 
 TEST(SchemaTest, SchemaInitSimpleError) {
@@ -907,6 +911,32 @@ TEST(SchemaViewTest, SchemaViewInitBinaryAndString) {
   EXPECT_EQ(schema_view.layout.element_size_bits[1], 64);
   EXPECT_EQ(schema_view.layout.element_size_bits[2], 0);
   EXPECT_EQ(ArrowSchemaToStdString(&schema), "large_string");
+  ArrowSchemaRelease(&schema);
+
+  ARROW_EXPECT_OK(ExportType(*utf8_view(), &schema));
+  EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), NANOARROW_OK);
+  EXPECT_EQ(schema_view.type, NANOARROW_TYPE_STRING_VIEW);
+  EXPECT_EQ(schema_view.storage_type, NANOARROW_TYPE_STRING_VIEW);
+  EXPECT_EQ(schema_view.layout.buffer_type[0], NANOARROW_BUFFER_TYPE_VALIDITY);
+  EXPECT_EQ(schema_view.layout.buffer_type[1], NANOARROW_BUFFER_TYPE_DATA_VIEW);
+  EXPECT_EQ(schema_view.layout.buffer_data_type[0], NANOARROW_TYPE_BOOL);
+  EXPECT_EQ(schema_view.layout.buffer_data_type[1], NANOARROW_TYPE_STRING_VIEW);
+  EXPECT_EQ(schema_view.layout.element_size_bits[0], 1);
+  EXPECT_EQ(schema_view.layout.element_size_bits[1], 128);
+  EXPECT_EQ(ArrowSchemaToStdString(&schema), "string_view");
+  ArrowSchemaRelease(&schema);
+
+  ARROW_EXPECT_OK(ExportType(*binary_view(), &schema));
+  EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), NANOARROW_OK);
+  EXPECT_EQ(schema_view.type, NANOARROW_TYPE_BINARY_VIEW);
+  EXPECT_EQ(schema_view.storage_type, NANOARROW_TYPE_BINARY_VIEW);
+  EXPECT_EQ(schema_view.layout.buffer_type[0], NANOARROW_BUFFER_TYPE_VALIDITY);
+  EXPECT_EQ(schema_view.layout.buffer_type[1], NANOARROW_BUFFER_TYPE_DATA_VIEW);
+  EXPECT_EQ(schema_view.layout.buffer_data_type[0], NANOARROW_TYPE_BOOL);
+  EXPECT_EQ(schema_view.layout.buffer_data_type[1], NANOARROW_TYPE_BINARY_VIEW);
+  EXPECT_EQ(schema_view.layout.element_size_bits[0], 1);
+  EXPECT_EQ(schema_view.layout.element_size_bits[1], 128);
+  EXPECT_EQ(ArrowSchemaToStdString(&schema), "binary_view");
   ArrowSchemaRelease(&schema);
 }
 
