@@ -27,12 +27,15 @@ def make_class_label(obj, module=None):
 
 
 def c_schema_to_string(obj, max_char_width=80):
-    max_char_width = max(max_char_width, 10)
-    c_schema_string = obj._to_string(recursive=True, max_chars=max_char_width + 1)
-    if len(c_schema_string) > max_char_width:
-        return c_schema_string[: (max_char_width - 3)] + "..."
+    c_schema_string = ""
+    if max_char_width == 0:
+        c_schema_string = obj._to_string(recursive=True, max_chars=max_char_width)
     else:
-        return c_schema_string
+        max_char_width = max(max_char_width, 10)
+        c_schema_string = obj._to_string(recursive=True, max_chars=max_char_width + 1)
+        if len(c_schema_string) > max_char_width:
+            c_schema_string = c_schema_string[: (max_char_width - 3)] + "..."
+    return c_schema_string
 
 
 def metadata_repr(obj, indent=0, max_char_width=80):

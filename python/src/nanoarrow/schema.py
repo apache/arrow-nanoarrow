@@ -498,7 +498,8 @@ class Schema:
             writer.write_stream(empty)
 
     def __repr__(self) -> str:
-        return _schema_repr(self)
+        # An empty max_char_width prints the entire schema
+        return _schema_repr(self, max_char_width=0)
 
     def __arrow_c_schema__(self):
         return self._c_schema.__arrow_c_schema__()
@@ -1302,10 +1303,9 @@ def _schema_repr(obj, max_char_width=80, prefix="<Schema> ", include_metadata=Tr
 
     modifiers_str = " ".join(modifiers)
     first_line_prefix = f"{prefix}{modifiers_str}"
+    max_char_width = max(max_char_width - len(first_line_prefix), 0)
 
-    schema_str = _repr_utils.c_schema_to_string(
-        obj._c_schema, max_char_width - len(first_line_prefix)
-    )
+    schema_str = _repr_utils.c_schema_to_string(obj._c_schema, max_char_width)
     lines.append(f"{first_line_prefix}{schema_str}")
 
     if include_metadata:
