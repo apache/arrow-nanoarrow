@@ -990,7 +990,7 @@ static int ArrowArrayViewValidateDefault(struct ArrowArrayView* array_view,
     case NANOARROW_TYPE_STRING:
     case NANOARROW_TYPE_BINARY:
       if (array_view->buffer_views[1].size_bytes != 0) {
-        first_offset = array_view->buffer_views[1].data.as_int32[0];
+        first_offset = array_view->buffer_views[1].data.as_int32[array_view->offset];
         if (first_offset < 0) {
           ArrowErrorSet(error, "Expected first offset >= 0 but found %" PRId64,
                         first_offset);
@@ -998,6 +998,11 @@ static int ArrowArrayViewValidateDefault(struct ArrowArrayView* array_view,
         }
 
         last_offset = array_view->buffer_views[1].data.as_int32[offset_plus_length];
+        if (last_offset < 0) {
+          ArrowErrorSet(error, "Expected last offset >= 0 but found %" PRId64,
+                        last_offset);
+          return EINVAL;
+        }
 
         // If the data buffer size is unknown, assign it; otherwise, check it
         if (array_view->buffer_views[2].size_bytes == -1) {
@@ -1021,7 +1026,7 @@ static int ArrowArrayViewValidateDefault(struct ArrowArrayView* array_view,
     case NANOARROW_TYPE_LARGE_STRING:
     case NANOARROW_TYPE_LARGE_BINARY:
       if (array_view->buffer_views[1].size_bytes != 0) {
-        first_offset = array_view->buffer_views[1].data.as_int64[0];
+        first_offset = array_view->buffer_views[1].data.as_int64[array_view->offset];
         if (first_offset < 0) {
           ArrowErrorSet(error, "Expected first offset >= 0 but found %" PRId64,
                         first_offset);
@@ -1029,6 +1034,11 @@ static int ArrowArrayViewValidateDefault(struct ArrowArrayView* array_view,
         }
 
         last_offset = array_view->buffer_views[1].data.as_int64[offset_plus_length];
+        if (last_offset < 0) {
+          ArrowErrorSet(error, "Expected last offset >= 0 but found %" PRId64,
+                        last_offset);
+          return EINVAL;
+        }
 
         // If the data buffer size is unknown, assign it; otherwise, check it
         if (array_view->buffer_views[2].size_bytes == -1) {
@@ -1065,7 +1075,7 @@ static int ArrowArrayViewValidateDefault(struct ArrowArrayView* array_view,
     case NANOARROW_TYPE_LIST:
     case NANOARROW_TYPE_MAP:
       if (array_view->buffer_views[1].size_bytes != 0) {
-        first_offset = array_view->buffer_views[1].data.as_int32[0];
+        first_offset = array_view->buffer_views[1].data.as_int32[array_view->offset];
         if (first_offset < 0) {
           ArrowErrorSet(error, "Expected first offset >= 0 but found %" PRId64,
                         first_offset);
@@ -1073,6 +1083,12 @@ static int ArrowArrayViewValidateDefault(struct ArrowArrayView* array_view,
         }
 
         last_offset = array_view->buffer_views[1].data.as_int32[offset_plus_length];
+        if (last_offset < 0) {
+          ArrowErrorSet(error, "Expected last offset >= 0 but found %" PRId64,
+                        last_offset);
+          return EINVAL;
+        }
+
         if (array_view->children[0]->length < last_offset) {
           ArrowErrorSet(error,
                         "Expected child of %s array to have length >= %" PRId64
@@ -1087,7 +1103,7 @@ static int ArrowArrayViewValidateDefault(struct ArrowArrayView* array_view,
 
     case NANOARROW_TYPE_LARGE_LIST:
       if (array_view->buffer_views[1].size_bytes != 0) {
-        first_offset = array_view->buffer_views[1].data.as_int64[0];
+        first_offset = array_view->buffer_views[1].data.as_int64[array_view->offset];
         if (first_offset < 0) {
           ArrowErrorSet(error, "Expected first offset >= 0 but found %" PRId64,
                         first_offset);
@@ -1095,6 +1111,12 @@ static int ArrowArrayViewValidateDefault(struct ArrowArrayView* array_view,
         }
 
         last_offset = array_view->buffer_views[1].data.as_int64[offset_plus_length];
+        if (last_offset < 0) {
+          ArrowErrorSet(error, "Expected last offset >= 0 but found %" PRId64,
+                        last_offset);
+          return EINVAL;
+        }
+
         if (array_view->children[0]->length < last_offset) {
           ArrowErrorSet(error,
                         "Expected child of large list array to have length >= %" PRId64
@@ -1249,13 +1271,24 @@ static int ArrowArrayViewValidateFull(struct ArrowArrayView* array_view,
                                       struct ArrowError* error) {
   for (int i = 0; i < NANOARROW_MAX_FIXED_BUFFERS; i++) {
     switch (array_view->layout.buffer_type[i]) {
+      // Only validate the portion of the buffer that is strictly required,
+      // which includes not validating the offset buffer of a zero-length array.
       case NANOARROW_BUFFER_TYPE_DATA_OFFSET:
+        if (array_view->length == 0) {
+          continue;
+        }
         if (array_view->layout.element_size_bits[i] == 32) {
-          NANOARROW_RETURN_NOT_OK(
-              ArrowAssertIncreasingInt32(array_view->buffer_views[i], error));
+          struct ArrowBufferView offset_minimal;
+          offset_minimal.data.as_int32 =
+              array_view->buffer_views[i].data.as_int32 + array_view->offset;
+          offset_minimal.size_bytes = (array_view->length + 1) * sizeof(int32_t);
+          NANOARROW_RETURN_NOT_OK(ArrowAssertIncreasingInt32(offset_minimal, error));
         } else {
-          NANOARROW_RETURN_NOT_OK(
-              ArrowAssertIncreasingInt64(array_view->buffer_views[i], error));
+          struct ArrowBufferView offset_minimal;
+          offset_minimal.data.as_int64 =
+              array_view->buffer_views[i].data.as_int64 + array_view->offset;
+          offset_minimal.size_bytes = (array_view->length + 1) * sizeof(int64_t);
+          NANOARROW_RETURN_NOT_OK(ArrowAssertIncreasingInt64(offset_minimal, error));
         }
         break;
       default:

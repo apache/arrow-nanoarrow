@@ -25,6 +25,7 @@ on:
   pull_request:
     paths:
       - .github/workflows/integration.yaml
+      - ci/docker/integration.dockerfile
       - docker-compose.yml
   schedule:
     - cron: '5 0 * * 0'
