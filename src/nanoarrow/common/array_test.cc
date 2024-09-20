@@ -2306,7 +2306,7 @@ TEST(ArrayTest, ArrayViewTestLargeString) {
   ASSERT_EQ(ArrowBufferAppendInt64(ArrowArrayBuffer(&array, 1), 0), NANOARROW_OK);
   ASSERT_EQ(ArrowBufferAppendInt64(ArrowArrayBuffer(&array, 1), 4), NANOARROW_OK);
   ASSERT_EQ(ArrowBufferAppendInt64(ArrowArrayBuffer(&array, 1), 7), NANOARROW_OK);
-  ASSERT_EQ(ArrowBufferReserve(ArrowArrayBuffer(&array, 2), 4), NANOARROW_OK);
+  ASSERT_EQ(ArrowBufferReserve(ArrowArrayBuffer(&array, 2), 7), NANOARROW_OK);
   ArrowBufferAppendUnsafe(ArrowArrayBuffer(&array, 2), "abcd", 4);
   ArrowBufferAppendUnsafe(ArrowArrayBuffer(&array, 2), "efg", 3);
   array.length = 2;
