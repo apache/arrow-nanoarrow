@@ -94,55 +94,56 @@ if cuda_toolkit_root:
         device_library_dirs.append(str(lib_dirs[0].parent))
 
 
-def nanoarrow_extension(
-    name, *, nanoarrow_c=False, nanoarrow_device=False, nanoarrow_ipc=False
-):
-    sources = ["src/" + name.replace(".", "/") + ".pyx"]
-    libraries = []
-    library_dirs = []
-    include_dirs = ["src/nanoarrow", "vendor"]
-    define_macros = list(extra_define_macros)
+# This mechanism to build a static c library against which extensions
+# can be linked is not well documented but is a better solution than
+# simply including these files as sources to the extensions that need
+# them. A more robust solution would be to use Meson or CMake to build
+# the Python extensions since they can both build a shared nanoarrow
+# and link it. This mechanism is the build_clib command available in
+# setuptools (and previously from distutils).
+common_libraries = [
+    [
+        "nanoarrow_python_shared",
+        {
+            "sources": [
+                "vendor/nanoarrow.c",
+                "vendor/nanoarrow_device.c",
+                "vendor/nanoarrow_ipc.c",
+                "vendor/flatcc.c",
+            ],
+            "include_dirs": ["vendor"] + device_include_dirs,
+            "libraries": device_libraries,
+            "library_dirs": device_library_dirs,
+            "macros": extra_define_macros + device_define_macros,
+        },
+    ]
+]
 
-    if nanoarrow_c:
-        sources.append("vendor/nanoarrow.c")
 
-    if nanoarrow_device:
-        sources.append("vendor/nanoarrow_device.c")
-        include_dirs.extend(device_include_dirs)
-        libraries.extend(device_libraries)
-        library_dirs.extend(device_library_dirs)
-        define_macros.extend(device_define_macros)
-
-    if nanoarrow_ipc:
-        sources.extend(["vendor/nanoarrow_ipc.c", "vendor/flatcc.c"])
-
+def nanoarrow_extension(name, *, link_device=False):
     return Extension(
         name=name,
-        include_dirs=include_dirs,
+        include_dirs=["vendor", "src/nanoarrow"],
         language="c",
-        sources=sources,
+        sources=["src/" + name.replace(".", "/") + ".pyx"],
         extra_compile_args=extra_compile_args,
         extra_link_args=extra_link_args,
-        define_macros=define_macros,
-        library_dirs=library_dirs,
-        libraries=libraries,
+        define_macros=extra_define_macros + device_define_macros,
+        libraries=["nanoarrow_python_shared"] + device_libraries if link_device else [],
     )
 
 
 setup(
     ext_modules=[
         nanoarrow_extension("nanoarrow._types"),
-        nanoarrow_extension("nanoarrow._utils", nanoarrow_c=True),
-        nanoarrow_extension(
-            "nanoarrow._device", nanoarrow_c=True, nanoarrow_device=True
-        ),
-        nanoarrow_extension(
-            "nanoarrow._array", nanoarrow_c=True, nanoarrow_device=True
-        ),
-        nanoarrow_extension("nanoarrow._array_stream", nanoarrow_c=True),
-        nanoarrow_extension("nanoarrow._buffer", nanoarrow_c=True),
-        nanoarrow_extension("nanoarrow._ipc_lib", nanoarrow_c=True, nanoarrow_ipc=True),
-        nanoarrow_extension("nanoarrow._schema", nanoarrow_c=True),
+        nanoarrow_extension("nanoarrow._utils"),
+        nanoarrow_extension("nanoarrow._device", link_device=True),
+        nanoarrow_extension("nanoarrow._array", link_device=True),
+        nanoarrow_extension("nanoarrow._array_stream"),
+        nanoarrow_extension("nanoarrow._buffer"),
+        nanoarrow_extension("nanoarrow._ipc_lib"),
+        nanoarrow_extension("nanoarrow._schema"),
     ],
     version=version,
+    libraries=common_libraries,
 )
