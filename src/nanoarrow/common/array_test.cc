@@ -2204,11 +2204,26 @@ TEST(ArrayTest, ArrayViewTestString) {
   EXPECT_EQ(ArrowArrayViewValidate(&array_view, NANOARROW_VALIDATION_LEVEL_FULL, &error),
             NANOARROW_OK);
 
-  // Check for negative element sizes
+  // Check for last element >= 0
   array.offset = 0;
   array.length = array.length + 1;
   offsets[0] = 0;
+  offsets[1] = 1;
+  offsets[2] = -1;
+  EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), EINVAL);
+  EXPECT_STREQ(error.message, "Expected last offset >= 0 but found -1");
+
+  // ...but the array should be valid if we make it one element shorter
+  array.length = array.length - 1;
+  EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayViewValidate(&array_view, NANOARROW_VALIDATION_LEVEL_FULL, &error),
+            NANOARROW_OK);
+
+  // Check for negative element sizes
+  array.length = array.length + 1;
+  offsets[0] = 0;
   offsets[1] = -1;
+  offsets[2] = 2;
   EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayViewValidate(&array_view, NANOARROW_VALIDATION_LEVEL_FULL, &error),
             EINVAL);
@@ -2287,20 +2302,22 @@ TEST(ArrayTest, ArrayViewTestLargeString) {
   EXPECT_EQ(array_view.buffer_views[1].size_bytes, 0);
   EXPECT_EQ(array_view.buffer_views[2].size_bytes, 0);
 
-  // Build non-zero length (the array ["abcd"])
+  // Build non-zero length (the array ["abcd", "efg"])
   ASSERT_EQ(ArrowBufferAppendInt64(ArrowArrayBuffer(&array, 1), 0), NANOARROW_OK);
   ASSERT_EQ(ArrowBufferAppendInt64(ArrowArrayBuffer(&array, 1), 4), NANOARROW_OK);
+  ASSERT_EQ(ArrowBufferAppendInt64(ArrowArrayBuffer(&array, 1), 7), NANOARROW_OK);
   ASSERT_EQ(ArrowBufferReserve(ArrowArrayBuffer(&array, 2), 4), NANOARROW_OK);
   ArrowBufferAppendUnsafe(ArrowArrayBuffer(&array, 2), "abcd", 4);
-  array.length = 1;
+  ArrowBufferAppendUnsafe(ArrowArrayBuffer(&array, 2), "efg", 3);
+  array.length = 2;
   ASSERT_EQ(ArrowArrayFinishBuildingDefault(&array, nullptr), NANOARROW_OK);
 
   EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayViewValidate(&array_view, NANOARROW_VALIDATION_LEVEL_FULL, &error),
             NANOARROW_OK);
   EXPECT_EQ(array_view.buffer_views[0].size_bytes, 0);
-  EXPECT_EQ(array_view.buffer_views[1].size_bytes, (1 + 1) * sizeof(int64_t));
-  EXPECT_EQ(array_view.buffer_views[2].size_bytes, 4);
+  EXPECT_EQ(array_view.buffer_views[1].size_bytes, (1 + 2) * sizeof(int64_t));
+  EXPECT_EQ(array_view.buffer_views[2].size_bytes, 7);
 
   // Expect error for offsets that will cause bad access
   int64_t* offsets =
@@ -2317,11 +2334,26 @@ TEST(ArrayTest, ArrayViewTestLargeString) {
   EXPECT_EQ(ArrowArrayViewValidate(&array_view, NANOARROW_VALIDATION_LEVEL_FULL, &error),
             NANOARROW_OK);
 
-  // Check for negative element sizes
+  // Check for last element >= 0
   array.offset = 0;
   array.length = array.length + 1;
   offsets[0] = 0;
+  offsets[1] = 1;
+  offsets[2] = -1;
+  EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), EINVAL);
+  EXPECT_STREQ(error.message, "Expected last offset >= 0 but found -1");
+
+  // ...but the array should be valid if we make it one element shorter
+  array.length = array.length - 1;
+  EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayViewValidate(&array_view, NANOARROW_VALIDATION_LEVEL_FULL, &error),
+            NANOARROW_OK);
+
+  // Check for negative element sizes
+  array.length = array.length + 1;
+  offsets[0] = 0;
   offsets[1] = -1;
+  offsets[2] = 2;
   EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayViewValidate(&array_view, NANOARROW_VALIDATION_LEVEL_FULL, &error),
             EINVAL);
@@ -2454,6 +2486,12 @@ TEST(ArrayTest, ArrayViewTestList) {
   offsets[2] = -1;
   EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), EINVAL);
   EXPECT_STREQ(error.message, "Expected last offset >= 0 but found -1");
+
+  // ...but the array should be valid if we make it one element shorter
+  array.length = 1;
+  EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayViewValidate(&array_view, NANOARROW_VALIDATION_LEVEL_FULL, &error),
+            NANOARROW_OK);
 
   ArrowArrayRelease(&array);
   ArrowArrayViewReset(&array_view);
@@ -2609,6 +2647,12 @@ TEST(ArrayTest, ArrayViewTestLargeList) {
   offsets[2] = -1;
   EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), EINVAL);
   EXPECT_STREQ(error.message, "Expected last offset >= 0 but found -1");
+
+  // ...but the array should be valid if we make it one element shorter
+  array.length = 1;
+  EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayViewValidate(&array_view, NANOARROW_VALIDATION_LEVEL_FULL, &error),
+            NANOARROW_OK);
 
   ArrowArrayRelease(&array);
   ArrowArrayViewReset(&array_view);

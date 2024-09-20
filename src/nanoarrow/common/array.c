@@ -1034,7 +1034,7 @@ static int ArrowArrayViewValidateDefault(struct ArrowArrayView* array_view,
         }
 
         last_offset = array_view->buffer_views[1].data.as_int64[offset_plus_length];
-        if (first_offset < 0) {
+        if (last_offset < 0) {
           ArrowErrorSet(error, "Expected last offset >= 0 but found %" PRId64,
                         last_offset);
           return EINVAL;
