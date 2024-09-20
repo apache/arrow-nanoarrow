@@ -104,7 +104,7 @@ common_libraries = [
                 "vendor/nanoarrow_ipc.c",
                 "vendor/flatcc.c",
             ],
-            "include_dirs": ["vendor"],
+            "include_dirs": ["vendor"] + device_include_dirs,
             "libraries": device_libraries,
             "library_dirs": device_library_dirs,
             "macros": extra_define_macros + device_define_macros,
