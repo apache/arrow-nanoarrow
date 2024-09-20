@@ -1274,13 +1274,16 @@ static int ArrowArrayViewValidateFull(struct ArrowArrayView* array_view,
       // Only validate the portion of the buffer that is strictly required,
       // which includes not validating the offset buffer of a zero-length array.
       case NANOARROW_BUFFER_TYPE_DATA_OFFSET:
-        if (array_view->layout.element_size_bits[i] == 32 && array_view->length > 0) {
+        if (array_view->length == 0) {
+          continue;
+        }
+        if (array_view->layout.element_size_bits[i] == 32) {
           struct ArrowBufferView offset_minimal;
           offset_minimal.data.as_int32 =
               array_view->buffer_views[i].data.as_int32 + array_view->offset;
           offset_minimal.size_bytes = (array_view->length + 1) * sizeof(int32_t);
           NANOARROW_RETURN_NOT_OK(ArrowAssertIncreasingInt32(offset_minimal, error));
-        } else if (array_view->length > 0) {
+        } else {
           struct ArrowBufferView offset_minimal;
           offset_minimal.data.as_int64 =
               array_view->buffer_views[i].data.as_int64 + array_view->offset;
