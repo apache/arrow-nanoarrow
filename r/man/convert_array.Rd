@@ -28,6 +28,10 @@ dispatching on \code{to}: developers may implement their own S3 methods for
 custom vector types.
 }
 \details{
+Note that unregistered extension types will by default issue a warning.
+Use \code{options(nanoarrow.warn_unregistered_extension = FALSE)} to disable
+this behaviour.
+
 Conversions are implemented for the following R vector types:
 \itemize{
 \item \code{\link[=logical]{logical()}}: Any numeric type can be converted to \code{\link[=logical]{logical()}} in addition
