@@ -904,7 +904,7 @@ TEST(ArrayTest, ArrayTestAppendToStringViewArray) {
   // Check that we can reserve
   ASSERT_EQ(ArrowArrayReserve(&array, 5), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayBuffer(&array, 1)->capacity_bytes,
-            5 * sizeof(union ArrowBinaryViewType));
+            5 * sizeof(union ArrowBinaryView));
 
   std::string str1{"this_is_a_relatively_long_string"};
   std::string filler(NANOARROW_BINARY_VIEW_BLOCK_SIZE - 34, 'x');
@@ -927,8 +927,7 @@ TEST(ArrayTest, ArrayTestAppendToStringViewArray) {
   EXPECT_EQ(array.length, 7);
   EXPECT_EQ(array.null_count, 2);
   auto validity_buffer = reinterpret_cast<const uint8_t*>(array.buffers[0]);
-  auto inline_buffer =
-      reinterpret_cast<const union ArrowBinaryViewType*>(array.buffers[1]);
+  auto inline_buffer = reinterpret_cast<const union ArrowBinaryView*>(array.buffers[1]);
   auto vbuf1 = reinterpret_cast<const char*>(array.buffers[2]);
   auto vbuf2 = reinterpret_cast<const char*>(array.buffers[3]);
   auto sizes_buffer = reinterpret_cast<const int64_t*>(array.buffers[4]);
@@ -936,17 +935,17 @@ TEST(ArrayTest, ArrayTestAppendToStringViewArray) {
   EXPECT_EQ(validity_buffer[0], 0b01111001);
   EXPECT_EQ(memcmp(inline_buffer[0].inlined.data, "1234", 4), 0);
   EXPECT_EQ(inline_buffer[0].inlined.size, 4);
-  EXPECT_EQ(memcmp(inline_buffer[3].ref.data, str1.data(), 4), 0);
+  EXPECT_EQ(memcmp(inline_buffer[3].ref.prefix, str1.data(), 4), 0);
   EXPECT_EQ(inline_buffer[3].ref.size, str1.size());
   EXPECT_EQ(inline_buffer[3].ref.buffer_index, 0);
   EXPECT_EQ(inline_buffer[3].ref.offset, 0);
 
-  EXPECT_EQ(memcmp(inline_buffer[5].ref.data, filler.data(), 4), 0);
+  EXPECT_EQ(memcmp(inline_buffer[5].ref.prefix, filler.data(), 4), 0);
   EXPECT_EQ(inline_buffer[5].ref.size, filler.size());
   EXPECT_EQ(inline_buffer[5].ref.buffer_index, 0);
   EXPECT_EQ(inline_buffer[5].ref.offset, str1.size());
 
-  EXPECT_EQ(memcmp(inline_buffer[6].ref.data, str2.data(), 4), 0);
+  EXPECT_EQ(memcmp(inline_buffer[6].ref.prefix, str2.data(), 4), 0);
   EXPECT_EQ(inline_buffer[6].ref.size, str2.size());
   EXPECT_EQ(inline_buffer[6].ref.buffer_index, 1);
   EXPECT_EQ(inline_buffer[6].ref.offset, 0);
@@ -974,7 +973,7 @@ TEST(ArrayTest, ArrayTestAppendToBinaryViewArray) {
   // Check that we can reserve
   ASSERT_EQ(ArrowArrayReserve(&array, 5), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayBuffer(&array, 1)->capacity_bytes,
-            5 * sizeof(union ArrowBinaryViewType));
+            5 * sizeof(union ArrowBinaryView));
 
   std::string str1{"this_is_a_relatively_long_string"};
   std::string filler(NANOARROW_BINARY_VIEW_BLOCK_SIZE - 34, 'x');
@@ -997,8 +996,7 @@ TEST(ArrayTest, ArrayTestAppendToBinaryViewArray) {
   EXPECT_EQ(array.length, 7);
   EXPECT_EQ(array.null_count, 2);
   auto validity_buffer = reinterpret_cast<const uint8_t*>(array.buffers[0]);
-  auto inline_buffer =
-      reinterpret_cast<const union ArrowBinaryViewType*>(array.buffers[1]);
+  auto inline_buffer = reinterpret_cast<const union ArrowBinaryView*>(array.buffers[1]);
   auto vbuf1 = reinterpret_cast<const char*>(array.buffers[2]);
   auto vbuf2 = reinterpret_cast<const char*>(array.buffers[3]);
   auto sizes_buffer = reinterpret_cast<const int64_t*>(array.buffers[4]);
@@ -1006,17 +1004,17 @@ TEST(ArrayTest, ArrayTestAppendToBinaryViewArray) {
   EXPECT_EQ(validity_buffer[0], 0b01111001);
   EXPECT_EQ(memcmp(inline_buffer[0].inlined.data, "1234", 4), 0);
   EXPECT_EQ(inline_buffer[0].inlined.size, 4);
-  EXPECT_EQ(memcmp(inline_buffer[3].ref.data, str1.data(), 4), 0);
+  EXPECT_EQ(memcmp(inline_buffer[3].ref.prefix, str1.data(), 4), 0);
   EXPECT_EQ(inline_buffer[3].ref.size, str1.size());
   EXPECT_EQ(inline_buffer[3].ref.buffer_index, 0);
   EXPECT_EQ(inline_buffer[3].ref.offset, 0);
 
-  EXPECT_EQ(memcmp(inline_buffer[5].ref.data, filler.data(), 4), 0);
+  EXPECT_EQ(memcmp(inline_buffer[5].ref.prefix, filler.data(), 4), 0);
   EXPECT_EQ(inline_buffer[5].ref.size, filler.size());
   EXPECT_EQ(inline_buffer[5].ref.buffer_index, 0);
   EXPECT_EQ(inline_buffer[5].ref.offset, str1.size());
 
-  EXPECT_EQ(memcmp(inline_buffer[6].ref.data, str2.data(), 4), 0);
+  EXPECT_EQ(memcmp(inline_buffer[6].ref.prefix, str2.data(), 4), 0);
   EXPECT_EQ(inline_buffer[6].ref.size, str2.size());
   EXPECT_EQ(inline_buffer[6].ref.buffer_index, 1);
   EXPECT_EQ(inline_buffer[6].ref.offset, 0);

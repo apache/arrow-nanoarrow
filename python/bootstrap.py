@@ -174,7 +174,7 @@ class NanoarrowPxdGenerator(PxdGenerator):
     def _preprocess_content(self, content):
         content = re.sub(r"NANOARROW_MAX_FIXED_BUFFERS", "3", content)
         content = re.sub(r"NANOARROW_BINARY_VIEW_INLINE_SIZE", "12", content)
-        content = re.sub(r"NANOARROW_BINARY_VIEW_PREVIEW_SIZE", "4", content)
+        content = re.sub(r"NANOARROW_BINARY_VIEW_PREFIX_SIZE", "4", content)
         return content
 
     def _pxd_header(self):

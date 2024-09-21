@@ -674,6 +674,7 @@ union ArrowBufferViewData {
   const double* as_double;
   const float* as_float;
   const char* as_char;
+  const union ArrowBinaryView* as_binary_view;
 };
 
 /// \brief An non-owning view of a buffer
