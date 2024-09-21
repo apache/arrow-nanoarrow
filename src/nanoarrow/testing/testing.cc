@@ -1933,6 +1933,7 @@ ArrowErrorCode SetArrayColumnBuffers(const json& value, ArrowArrayView* array_vi
       break;
     }
     case NANOARROW_BUFFER_TYPE_DATA_VIEW:
+      return ENOTSUP;
     case NANOARROW_BUFFER_TYPE_NONE:
       break;
   }
