@@ -171,22 +171,21 @@ warn_unregistered_extension_type <- function(x) {
   }
 
   # Warn that we're about to ignore an extension type
+  message <- sprintf(
+    paste0(
+      "Converting unknown extension %s as storage type\n",
+      "Disable warning with ",
+      "options(nanoarrow.warn_unregistered_extension = FALSE)"
+    ),
+    nanoarrow_schema_formatted(x)
+  )
+
+  # Add the field name if we know it
   if (!is.null(x$name) && !identical(x$name, "")) {
-    warning(
-      sprintf(
-        "%s: Converting unknown extension %s as storage type",
-        x$name,
-        nanoarrow_schema_formatted(x)
-      )
-    )
-  } else {
-    warning(
-      sprintf(
-        "Converting unknown extension %s as storage type",
-        nanoarrow_schema_formatted(x)
-      )
-    )
+    message <- paste0(x$name, ": ", message)
   }
+
+  warning(message)
 }
 
 # Mutable registry to look up extension specifications

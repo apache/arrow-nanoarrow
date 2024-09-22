@@ -127,15 +127,23 @@ test_that("as_nanoarrow_array() dispatches on registered extension spec", {
 })
 
 test_that("inferring the type of an unregistered extension warns", {
+  unknown_extension <- na_extension(na_int32(), "definitely not registered")
   expect_warning(
-    infer_nanoarrow_ptype(na_extension(na_int32(), "definitely not registered")),
+    infer_nanoarrow_ptype(unknown_extension),
     "Converting unknown extension"
+  )
+
+  # Check that warning contains a field name if present
+  struct_with_unknown_ext <- na_struct(list(some_col = unknown_extension))
+  expect_warning(
+    infer_nanoarrow_ptype(struct_with_unknown_ext),
+    "some_col: Converting unknown extension"
   )
 
   previous_opts <- options(nanoarrow.warn_unregistered_extension = FALSE)
   on.exit(options(previous_opts))
   expect_warning(
-    infer_nanoarrow_ptype(na_extension(na_int32(), "definitely not registered")),
+    infer_nanoarrow_ptype(unknown_extension),
     NA
   )
 })
