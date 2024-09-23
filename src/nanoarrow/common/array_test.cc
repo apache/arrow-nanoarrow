@@ -956,7 +956,7 @@ TEST(ArrayTest, ArrayTestAppendToStringViewArray) {
   EXPECT_EQ(memcmp(vbuf2, str2.c_str(), str2.size()), 0);
   EXPECT_EQ(sizes_buffer[1], str2.size());
 
-  // TODO: need to add overload for ViewArrayAsBytes
+  // TODO: issue #633
   /*
   EXPECT_THAT(nanoarrow::ViewArrayAsBytes<64>(&array),
               ElementsAre("1234"_asv, NA, NA, "56789"_asv, ""_asv));
@@ -1025,7 +1025,7 @@ TEST(ArrayTest, ArrayTestAppendToBinaryViewArray) {
   EXPECT_EQ(memcmp(vbuf2, str2.c_str(), str2.size()), 0);
   EXPECT_EQ(sizes_buffer[1], str2.size());
 
-  // TODO: need to add overload for ViewArrayAsBytes
+  // TODO: issue #633
   /*
   EXPECT_THAT(nanoarrow::ViewArrayAsBytes<64>(&array),
               ElementsAre("1234"_asv, NA, NA, "56789"_asv, ""_asv));
