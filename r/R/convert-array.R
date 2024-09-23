@@ -24,6 +24,10 @@
 #' dispatching on `to`: developers may implement their own S3 methods for
 #' custom vector types.
 #'
+#' Note that unregistered extension types will by default issue a warning.
+#' Use `options(nanoarrow.warn_unregistered_extension = FALSE)` to disable
+#' this behaviour.
+#'
 #' @param array A [nanoarrow_array][as_nanoarrow_array].
 #' @param to A target prototype object describing the type to which `array`
 #'   should be converted, or `NULL` to use the default conversion as
