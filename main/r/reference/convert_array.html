@@ -80,7 +80,10 @@ a function of <code>array</code> and the default inference of the prototype.</p>
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
-    <p>Conversions are implemented for the following R vector types:</p><ul><li><p><code><a href="https://rdrr.io/r/base/logical.html" class="external-link">logical()</a></code>: Any numeric type can be converted to <code><a href="https://rdrr.io/r/base/logical.html" class="external-link">logical()</a></code> in addition
+    <p>Note that unregistered extension types will by default issue a warning.
+Use <code>options(nanoarrow.warn_unregistered_extension = FALSE)</code> to disable
+this behaviour.</p>
+<p>Conversions are implemented for the following R vector types:</p><ul><li><p><code><a href="https://rdrr.io/r/base/logical.html" class="external-link">logical()</a></code>: Any numeric type can be converted to <code><a href="https://rdrr.io/r/base/logical.html" class="external-link">logical()</a></code> in addition
 to the bool type. For numeric types, any non-zero value is considered <code>TRUE</code>.</p></li>
 <li><p><code><a href="https://rdrr.io/r/base/integer.html" class="external-link">integer()</a></code>: Any numeric type can be converted to <code><a href="https://rdrr.io/r/base/integer.html" class="external-link">integer()</a></code>; however,
 a warning will be signaled if the any value is outside the range of the
@@ -135,7 +138,7 @@ converted as their storage type.</p>
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.1.0.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.1.1.</p>
 </div>
 
     </footer></div>
