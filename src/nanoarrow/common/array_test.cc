@@ -895,10 +895,12 @@ TEST(ArrayTest, ArrayTestAppendToLargeStringArray) {
   ArrowArrayRelease(&array);
 }
 
-TEST(ArrayTest, ArrayTestAppendToStringViewArray) {
+template <enum ArrowType ArrowT, typename ValueT,
+          ArrowErrorCode (*AppendFunc)(struct ArrowArray*, ValueT)>
+void TestAppendToDataViewArray() {
   struct ArrowArray array;
 
-  ASSERT_EQ(ArrowArrayInitFromType(&array, NANOARROW_TYPE_STRING_VIEW), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayInitFromType(&array, ArrowT), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayStartAppending(&array), NANOARROW_OK);
 
   // Check that we can reserve
@@ -910,18 +912,15 @@ TEST(ArrayTest, ArrayTestAppendToStringViewArray) {
   std::string filler(NANOARROW_BINARY_VIEW_BLOCK_SIZE - 34, 'x');
   std::string str2{"goes_into_second_variadic_buffer"};
 
-  EXPECT_EQ(ArrowArrayAppendString(&array, "1234"_asv), NANOARROW_OK);
+  EXPECT_EQ(AppendFunc(&array, ValueT{{"1234"}, 4}), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayAppendNull(&array, 2), NANOARROW_OK);
-  EXPECT_EQ(
-      ArrowArrayAppendString(&array, {{str1.c_str()}, static_cast<int64_t>(str1.size())}),
-      NANOARROW_OK);
-  EXPECT_EQ(ArrowArrayAppendEmpty(&array, 1), NANOARROW_OK);
-  EXPECT_EQ(ArrowArrayAppendString(
-                &array, {{filler.c_str()}, static_cast<int64_t>(filler.size())}),
+  EXPECT_EQ(AppendFunc(&array, {{str1.c_str()}, static_cast<int64_t>(str1.size())}),
             NANOARROW_OK);
-  EXPECT_EQ(
-      ArrowArrayAppendString(&array, {{str2.c_str()}, static_cast<int64_t>(str2.size())}),
-      NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayAppendEmpty(&array, 1), NANOARROW_OK);
+  EXPECT_EQ(AppendFunc(&array, {{filler.c_str()}, static_cast<int64_t>(filler.size())}),
+            NANOARROW_OK);
+  EXPECT_EQ(AppendFunc(&array, {{str2.c_str()}, static_cast<int64_t>(str2.size())}),
+            NANOARROW_OK);
   EXPECT_EQ(ArrowArrayFinishBuildingDefault(&array, nullptr), NANOARROW_OK);
 
   EXPECT_EQ(array.length, 7);
@@ -962,76 +961,17 @@ TEST(ArrayTest, ArrayTestAppendToStringViewArray) {
               ElementsAre("1234"_asv, NA, NA, "56789"_asv, ""_asv));
   */
   ArrowArrayRelease(&array);
-}
+};
 
 TEST(ArrayTest, ArrayTestAppendToBinaryViewArray) {
-  struct ArrowArray array;
+  TestAppendToDataViewArray<NANOARROW_TYPE_STRING_VIEW, struct ArrowStringView,
+                            ArrowArrayAppendString>();
+};
 
-  ASSERT_EQ(ArrowArrayInitFromType(&array, NANOARROW_TYPE_BINARY_VIEW), NANOARROW_OK);
-  EXPECT_EQ(ArrowArrayStartAppending(&array), NANOARROW_OK);
-
-  // Check that we can reserve
-  ASSERT_EQ(ArrowArrayReserve(&array, 5), NANOARROW_OK);
-  EXPECT_EQ(ArrowArrayBuffer(&array, 1)->capacity_bytes,
-            5 * sizeof(union ArrowBinaryView));
-
-  std::string str1{"this_is_a_relatively_long_string"};
-  std::string filler(NANOARROW_BINARY_VIEW_BLOCK_SIZE - 34, 'x');
-  std::string str2{"goes_into_second_variadic_buffer"};
-
-  EXPECT_EQ(ArrowArrayAppendBytes(&array, {{"1234"}, 4}), NANOARROW_OK);
-  EXPECT_EQ(ArrowArrayAppendNull(&array, 2), NANOARROW_OK);
-  EXPECT_EQ(
-      ArrowArrayAppendBytes(&array, {{str1.c_str()}, static_cast<int64_t>(str1.size())}),
-      NANOARROW_OK);
-  EXPECT_EQ(ArrowArrayAppendEmpty(&array, 1), NANOARROW_OK);
-  EXPECT_EQ(ArrowArrayAppendBytes(
-                &array, {{filler.c_str()}, static_cast<int64_t>(filler.size())}),
-            NANOARROW_OK);
-  EXPECT_EQ(
-      ArrowArrayAppendBytes(&array, {{str2.c_str()}, static_cast<int64_t>(str2.size())}),
-      NANOARROW_OK);
-  EXPECT_EQ(ArrowArrayFinishBuildingDefault(&array, nullptr), NANOARROW_OK);
-
-  EXPECT_EQ(array.length, 7);
-  EXPECT_EQ(array.null_count, 2);
-  auto validity_buffer = reinterpret_cast<const uint8_t*>(array.buffers[0]);
-  auto inline_buffer = reinterpret_cast<const union ArrowBinaryView*>(array.buffers[1]);
-  auto vbuf1 = reinterpret_cast<const char*>(array.buffers[2]);
-  auto vbuf2 = reinterpret_cast<const char*>(array.buffers[3]);
-  auto sizes_buffer = reinterpret_cast<const int64_t*>(array.buffers[4]);
-
-  EXPECT_EQ(validity_buffer[0], 0b01111001);
-  EXPECT_EQ(memcmp(inline_buffer[0].inlined.data, "1234", 4), 0);
-  EXPECT_EQ(inline_buffer[0].inlined.size, 4);
-  EXPECT_EQ(memcmp(inline_buffer[3].ref.prefix, str1.data(), 4), 0);
-  EXPECT_EQ(inline_buffer[3].ref.size, str1.size());
-  EXPECT_EQ(inline_buffer[3].ref.buffer_index, 0);
-  EXPECT_EQ(inline_buffer[3].ref.offset, 0);
-
-  EXPECT_EQ(memcmp(inline_buffer[5].ref.prefix, filler.data(), 4), 0);
-  EXPECT_EQ(inline_buffer[5].ref.size, filler.size());
-  EXPECT_EQ(inline_buffer[5].ref.buffer_index, 0);
-  EXPECT_EQ(inline_buffer[5].ref.offset, str1.size());
-
-  EXPECT_EQ(memcmp(inline_buffer[6].ref.prefix, str2.data(), 4), 0);
-  EXPECT_EQ(inline_buffer[6].ref.size, str2.size());
-  EXPECT_EQ(inline_buffer[6].ref.buffer_index, 1);
-  EXPECT_EQ(inline_buffer[6].ref.offset, 0);
-
-  EXPECT_EQ(memcmp(vbuf1, str1.c_str(), str1.size()), 0);
-  EXPECT_EQ(sizes_buffer[0], str1.size() + filler.size());
-
-  EXPECT_EQ(memcmp(vbuf2, str2.c_str(), str2.size()), 0);
-  EXPECT_EQ(sizes_buffer[1], str2.size());
-
-  // TODO: issue #633
-  /*
-  EXPECT_THAT(nanoarrow::ViewArrayAsBytes<64>(&array),
-              ElementsAre("1234"_asv, NA, NA, "56789"_asv, ""_asv));
-  */
-  ArrowArrayRelease(&array);
-}
+TEST(ArrayTest, ArrayTestAppendToStringViewArray) {
+  TestAppendToDataViewArray<NANOARROW_TYPE_BINARY_VIEW, struct ArrowBufferView,
+                            ArrowArrayAppendBytes>();
+};
 
 TEST(ArrayTest, ArrayTestAppendToFixedSizeBinaryArray) {
   struct ArrowArray array;
