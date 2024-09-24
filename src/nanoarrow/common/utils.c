@@ -179,6 +179,16 @@ void ArrowLayoutInit(struct ArrowLayout* layout, enum ArrowType storage_type) {
       layout->buffer_data_type[2] = NANOARROW_TYPE_BINARY;
       break;
 
+    case NANOARROW_TYPE_BINARY_VIEW:
+      layout->buffer_type[1] = NANOARROW_BUFFER_TYPE_DATA_VIEW;
+      layout->buffer_data_type[1] = NANOARROW_TYPE_BINARY_VIEW;
+      layout->element_size_bits[1] = 128;
+      break;
+    case NANOARROW_TYPE_STRING_VIEW:
+      layout->buffer_type[1] = NANOARROW_BUFFER_TYPE_DATA_VIEW;
+      layout->buffer_data_type[1] = NANOARROW_TYPE_STRING_VIEW;
+      layout->element_size_bits[1] = 128;
+
     default:
       break;
   }

@@ -18,6 +18,7 @@
 #include <errno.h>
 #include <inttypes.h>
 #include <stdarg.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -32,6 +33,12 @@ static void ArrowArrayReleaseInternal(struct ArrowArray* array) {
     ArrowBitmapReset(&private_data->bitmap);
     ArrowBufferReset(&private_data->buffers[0]);
     ArrowBufferReset(&private_data->buffers[1]);
+    ArrowFree(private_data->buffer_data);
+    for (int32_t i = 0; i < private_data->n_variadic_buffers; ++i) {
+      ArrowBufferReset(&private_data->variadic_buffers[i]);
+    }
+    ArrowFree(private_data->variadic_buffers);
+    ArrowFree(private_data->variadic_buffer_sizes);
     ArrowFree(private_data);
   }
 
@@ -106,6 +113,10 @@ static ArrowErrorCode ArrowArraySetStorageType(struct ArrowArray* array,
     case NANOARROW_TYPE_DENSE_UNION:
       array->n_buffers = 2;
       break;
+    case NANOARROW_TYPE_BINARY_VIEW:
+    case NANOARROW_TYPE_STRING_VIEW:
+      array->n_buffers = NANOARROW_BINARY_VIEW_FIXED_BUFFERS;
+      break;
     case NANOARROW_TYPE_STRING:
     case NANOARROW_TYPE_LARGE_STRING:
     case NANOARROW_TYPE_BINARY:
@@ -148,12 +159,17 @@ ArrowErrorCode ArrowArrayInitFromType(struct ArrowArray* array,
   ArrowBitmapInit(&private_data->bitmap);
   ArrowBufferInit(&private_data->buffers[0]);
   ArrowBufferInit(&private_data->buffers[1]);
-  private_data->buffer_data[0] = NULL;
-  private_data->buffer_data[1] = NULL;
-  private_data->buffer_data[2] = NULL;
+  private_data->buffer_data =
+      (const void**)ArrowMalloc(sizeof(void*) * NANOARROW_MAX_FIXED_BUFFERS);
+  for (int i = 0; i < NANOARROW_MAX_FIXED_BUFFERS; ++i) {
+    private_data->buffer_data[i] = NULL;
+  }
+  private_data->n_variadic_buffers = 0;
+  private_data->variadic_buffers = NULL;
+  private_data->variadic_buffer_sizes = NULL;
 
   array->private_data = private_data;
-  array->buffers = (const void**)(&private_data->buffer_data);
+  array->buffers = (const void**)(private_data->buffer_data);
 
   // These are not technically "storage" in the sense that they do not appear
   // in the ArrowSchemaView's storage_type member; however, allowing them here
@@ -456,8 +472,24 @@ static void ArrowArrayFlushInternalPointers(struct ArrowArray* array) {
   struct ArrowArrayPrivateData* private_data =
       (struct ArrowArrayPrivateData*)array->private_data;
 
-  for (int64_t i = 0; i < NANOARROW_MAX_FIXED_BUFFERS; i++) {
+  const bool is_binary_view = private_data->storage_type == NANOARROW_TYPE_STRING_VIEW ||
+                              private_data->storage_type == NANOARROW_TYPE_BINARY_VIEW;
+  const int32_t nfixed_buf = is_binary_view ? 2 : NANOARROW_MAX_FIXED_BUFFERS;
+
+  for (int32_t i = 0; i < nfixed_buf; i++) {
     private_data->buffer_data[i] = ArrowArrayBuffer(array, i)->data;
+  }
+
+  if (is_binary_view) {
+    const int32_t nvirt_buf = private_data->n_variadic_buffers;
+    private_data->buffer_data = (const void**)ArrowRealloc(
+        private_data->buffer_data, sizeof(void*) * (nfixed_buf + nvirt_buf + 1));
+    for (int32_t i = 0; i < nvirt_buf; i++) {
+      private_data->buffer_data[nfixed_buf + i] = private_data->variadic_buffers[i].data;
+    }
+    private_data->buffer_data[nfixed_buf + nvirt_buf] =
+        private_data->variadic_buffer_sizes;
+    array->buffers = (const void**)(private_data->buffer_data);
   }
 
   for (int64_t i = 0; i < array->n_children; i++) {
@@ -664,6 +696,7 @@ void ArrowArrayViewSetLength(struct ArrowArrayView* array_view, int64_t length) 
             _ArrowRoundUpToMultipleOf8(array_view->layout.element_size_bits[i] * length) /
             8;
         continue;
+      case NANOARROW_BUFFER_TYPE_DATA_VIEW:
       case NANOARROW_BUFFER_TYPE_TYPE_ID:
       case NANOARROW_BUFFER_TYPE_UNION_OFFSET:
         array_view->buffer_views[i].size_bytes = element_size_bytes * length;
@@ -700,9 +733,15 @@ static int ArrowArrayViewSetArrayInternal(struct ArrowArrayView* array_view,
   array_view->offset = array->offset;
   array_view->length = array->length;
   array_view->null_count = array->null_count;
+  array_view->variadic_buffer_sizes = NULL;
+  array_view->n_variadic_buffers = 0;
 
   int64_t buffers_required = 0;
-  for (int i = 0; i < NANOARROW_MAX_FIXED_BUFFERS; i++) {
+  const int nfixed_buf = array_view->storage_type == NANOARROW_TYPE_STRING_VIEW ||
+                                 array_view->storage_type == NANOARROW_TYPE_BINARY_VIEW
+                             ? NANOARROW_BINARY_VIEW_FIXED_BUFFERS
+                             : NANOARROW_MAX_FIXED_BUFFERS;
+  for (int i = 0; i < nfixed_buf; i++) {
     if (array_view->layout.buffer_type[i] == NANOARROW_BUFFER_TYPE_NONE) {
       break;
     }
@@ -720,7 +759,19 @@ static int ArrowArrayViewSetArrayInternal(struct ArrowArrayView* array_view,
     }
   }
 
-  // Check the number of buffers
+  if (array_view->storage_type == NANOARROW_TYPE_STRING_VIEW ||
+      array_view->storage_type == NANOARROW_TYPE_BINARY_VIEW) {
+    const int64_t n_buffers = array->n_buffers;
+    const int32_t nfixed_buf = NANOARROW_BINARY_VIEW_FIXED_BUFFERS;
+
+    const int32_t nvariadic_buf = (int32_t)(n_buffers - nfixed_buf - 1);
+    if (nvariadic_buf > 0) {
+      array_view->n_variadic_buffers = nvariadic_buf;
+      buffers_required += nvariadic_buf + 1;
+      array_view->variadic_buffer_sizes = (int64_t*)array->buffers[n_buffers - 1];
+    }
+  }
+
   if (buffers_required != array->n_buffers) {
     ArrowErrorSet(error,
                   "Expected array with %" PRId64 " buffer(s) but found %" PRId64
@@ -814,6 +865,7 @@ static int ArrowArrayViewValidateMinimal(struct ArrowArrayView* array_view,
         break;
       case NANOARROW_BUFFER_TYPE_TYPE_ID:
       case NANOARROW_BUFFER_TYPE_UNION_OFFSET:
+      case NANOARROW_BUFFER_TYPE_DATA_VIEW:
         min_buffer_size_bytes = element_size_bytes * offset_plus_length;
         break;
       case NANOARROW_BUFFER_TYPE_NONE:

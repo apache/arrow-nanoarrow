@@ -895,6 +895,84 @@ TEST(ArrayTest, ArrayTestAppendToLargeStringArray) {
   ArrowArrayRelease(&array);
 }
 
+template <enum ArrowType ArrowT, typename ValueT,
+          ArrowErrorCode (*AppendFunc)(struct ArrowArray*, ValueT)>
+void TestAppendToDataViewArray() {
+  struct ArrowArray array;
+
+  ASSERT_EQ(ArrowArrayInitFromType(&array, ArrowT), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayStartAppending(&array), NANOARROW_OK);
+
+  // Check that we can reserve
+  ASSERT_EQ(ArrowArrayReserve(&array, 5), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayBuffer(&array, 1)->capacity_bytes,
+            5 * sizeof(union ArrowBinaryView));
+
+  std::string str1{"this_is_a_relatively_long_string"};
+  std::string filler(NANOARROW_BINARY_VIEW_BLOCK_SIZE - 34, 'x');
+  std::string str2{"goes_into_second_variadic_buffer"};
+
+  EXPECT_EQ(AppendFunc(&array, ValueT{{"1234"}, 4}), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayAppendNull(&array, 2), NANOARROW_OK);
+  EXPECT_EQ(AppendFunc(&array, {{str1.c_str()}, static_cast<int64_t>(str1.size())}),
+            NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayAppendEmpty(&array, 1), NANOARROW_OK);
+  EXPECT_EQ(AppendFunc(&array, {{filler.c_str()}, static_cast<int64_t>(filler.size())}),
+            NANOARROW_OK);
+  EXPECT_EQ(AppendFunc(&array, {{str2.c_str()}, static_cast<int64_t>(str2.size())}),
+            NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayFinishBuildingDefault(&array, nullptr), NANOARROW_OK);
+
+  EXPECT_EQ(array.length, 7);
+  EXPECT_EQ(array.null_count, 2);
+  auto validity_buffer = reinterpret_cast<const uint8_t*>(array.buffers[0]);
+  auto inline_buffer = reinterpret_cast<const union ArrowBinaryView*>(array.buffers[1]);
+  auto vbuf1 = reinterpret_cast<const char*>(array.buffers[2]);
+  auto vbuf2 = reinterpret_cast<const char*>(array.buffers[3]);
+  auto sizes_buffer = reinterpret_cast<const int64_t*>(array.buffers[4]);
+
+  EXPECT_EQ(validity_buffer[0], 0b01111001);
+  EXPECT_EQ(memcmp(inline_buffer[0].inlined.data, "1234", 4), 0);
+  EXPECT_EQ(inline_buffer[0].inlined.size, 4);
+  EXPECT_EQ(memcmp(inline_buffer[3].ref.prefix, str1.data(), 4), 0);
+  EXPECT_EQ(inline_buffer[3].ref.size, str1.size());
+  EXPECT_EQ(inline_buffer[3].ref.buffer_index, 0);
+  EXPECT_EQ(inline_buffer[3].ref.offset, 0);
+
+  EXPECT_EQ(memcmp(inline_buffer[5].ref.prefix, filler.data(), 4), 0);
+  EXPECT_EQ(inline_buffer[5].ref.size, filler.size());
+  EXPECT_EQ(inline_buffer[5].ref.buffer_index, 0);
+  EXPECT_EQ(inline_buffer[5].ref.offset, str1.size());
+
+  EXPECT_EQ(memcmp(inline_buffer[6].ref.prefix, str2.data(), 4), 0);
+  EXPECT_EQ(inline_buffer[6].ref.size, str2.size());
+  EXPECT_EQ(inline_buffer[6].ref.buffer_index, 1);
+  EXPECT_EQ(inline_buffer[6].ref.offset, 0);
+
+  EXPECT_EQ(memcmp(vbuf1, str1.c_str(), str1.size()), 0);
+  EXPECT_EQ(sizes_buffer[0], str1.size() + filler.size());
+
+  EXPECT_EQ(memcmp(vbuf2, str2.c_str(), str2.size()), 0);
+  EXPECT_EQ(sizes_buffer[1], str2.size());
+
+  // TODO: issue #633
+  /*
+  EXPECT_THAT(nanoarrow::ViewArrayAsBytes<64>(&array),
+              ElementsAre("1234"_asv, NA, NA, "56789"_asv, ""_asv));
+  */
+  ArrowArrayRelease(&array);
+};
+
+TEST(ArrayTest, ArrayTestAppendToBinaryViewArray) {
+  TestAppendToDataViewArray<NANOARROW_TYPE_STRING_VIEW, struct ArrowStringView,
+                            ArrowArrayAppendString>();
+};
+
+TEST(ArrayTest, ArrayTestAppendToStringViewArray) {
+  TestAppendToDataViewArray<NANOARROW_TYPE_BINARY_VIEW, struct ArrowBufferView,
+                            ArrowArrayAppendBytes>();
+};
+
 TEST(ArrayTest, ArrayTestAppendToFixedSizeBinaryArray) {
   struct ArrowArray array;
   struct ArrowSchema schema;
@@ -3263,6 +3341,80 @@ TEST(ArrayViewTest, ArrayViewTestGetString) {
 
   auto fixed_size_builder = FixedSizeBinaryBuilder(fixed_size_binary(4));
   TestGetFromBinary<FixedSizeBinaryBuilder>(fixed_size_builder);
+}
+
+template <typename BuilderClass>
+void TestGetFromBinaryView(BuilderClass& builder) {
+  struct ArrowArray array;
+  struct ArrowSchema schema;
+  struct ArrowArrayView array_view;
+  struct ArrowError error;
+
+  auto type = builder.type();
+  ARROW_EXPECT_OK(builder.Append("1234"));
+  ARROW_EXPECT_OK(builder.AppendNulls(2));
+  ARROW_EXPECT_OK(builder.Append("four"));
+
+  std::string str1{"this_is_a_relatively_long_string"};
+  std::string filler(NANOARROW_BINARY_VIEW_BLOCK_SIZE - 34, 'x');
+  std::string str2{"goes_into_second_variadic_buffer"};
+
+  ARROW_EXPECT_OK(builder.Append(str1));
+  ARROW_EXPECT_OK(builder.Append(filler));
+  ARROW_EXPECT_OK(builder.Append(str2));
+
+  auto maybe_arrow_array = builder.Finish();
+  ARROW_EXPECT_OK(maybe_arrow_array);
+  auto arrow_array = maybe_arrow_array.ValueUnsafe();
+
+  ARROW_EXPECT_OK(ExportArray(*arrow_array, &array, &schema));
+  ASSERT_EQ(ArrowArrayViewInitFromSchema(&array_view, &schema, &error), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayViewValidate(&array_view, NANOARROW_VALIDATION_LEVEL_FULL, &error),
+            NANOARROW_OK);
+
+  EXPECT_EQ(array_view.n_variadic_buffers, 2);
+  EXPECT_EQ(array_view.variadic_buffer_sizes[0], str1.size() + filler.size());
+  EXPECT_EQ(array_view.variadic_buffer_sizes[1], str2.size());
+
+  EXPECT_EQ(ArrowArrayViewIsNull(&array_view, 2), 1);
+  EXPECT_EQ(ArrowArrayViewIsNull(&array_view, 3), 0);
+
+  auto string_view = ArrowArrayViewGetStringUnsafe(&array_view, 3);
+  EXPECT_EQ(string_view.size_bytes, strlen("four"));
+  EXPECT_EQ(memcmp(string_view.data, "four", string_view.size_bytes), 0);
+
+  auto buffer_view = ArrowArrayViewGetBytesUnsafe(&array_view, 3);
+  EXPECT_EQ(buffer_view.size_bytes, strlen("four"));
+  EXPECT_EQ(memcmp(buffer_view.data.as_char, "four", buffer_view.size_bytes), 0);
+
+  string_view = ArrowArrayViewGetStringUnsafe(&array_view, 4);
+  EXPECT_EQ(string_view.size_bytes, str1.size());
+  EXPECT_EQ(memcmp(string_view.data, str1.c_str(), string_view.size_bytes), 0);
+
+  string_view = ArrowArrayViewGetStringUnsafe(&array_view, 6);
+  EXPECT_EQ(string_view.size_bytes, str2.size());
+  EXPECT_EQ(memcmp(string_view.data, str2.c_str(), string_view.size_bytes), 0);
+
+  buffer_view = ArrowArrayViewGetBytesUnsafe(&array_view, 4);
+  EXPECT_EQ(buffer_view.size_bytes, str1.size());
+  EXPECT_EQ(memcmp(buffer_view.data.as_char, str1.c_str(), buffer_view.size_bytes), 0);
+
+  buffer_view = ArrowArrayViewGetBytesUnsafe(&array_view, 6);
+  EXPECT_EQ(buffer_view.size_bytes, str2.size());
+  EXPECT_EQ(memcmp(buffer_view.data.as_char, str2.c_str(), buffer_view.size_bytes), 0);
+
+  ArrowArrayViewReset(&array_view);
+  ArrowArrayRelease(&array);
+  ArrowSchemaRelease(&schema);
+}
+
+TEST(ArrayViewTest, ArrayViewTestGetStringView) {
+  auto string_view_builder = StringViewBuilder();
+  TestGetFromBinaryView<StringViewBuilder>(string_view_builder);
+
+  auto binary_view_builder = BinaryViewBuilder();
+  TestGetFromBinaryView<BinaryViewBuilder>(binary_view_builder);
 }
 
 TEST(ArrayViewTest, ArrayViewTestGetIntervalYearMonth) {

@@ -301,6 +301,7 @@ static inline ArrowErrorCode _ArrowArrayAppendEmptyInternal(struct ArrowArray* a
         i++;
         continue;
       case NANOARROW_BUFFER_TYPE_DATA:
+      case NANOARROW_BUFFER_TYPE_DATA_VIEW:
         // Zero out the next bit of memory
         if (private_data->layout.element_size_bits[i] % 8 == 0) {
           NANOARROW_RETURN_NOT_OK(ArrowBufferAppendFill(buffer, 0, size_bytes * n));
@@ -467,52 +468,148 @@ static inline ArrowErrorCode ArrowArrayAppendDouble(struct ArrowArray* array,
   return NANOARROW_OK;
 }
 
+#define NANOARROW_BINARY_VIEW_FIXED_BUFFERS 2
+#define NANOARROW_BINARY_VIEW_INLINE_SIZE 12
+#define NANOARROW_BINARY_VIEW_PREFIX_SIZE 4
+#define NANOARROW_BINARY_VIEW_BLOCK_SIZE (32 << 10)  // 32KB
+
+// The Arrow C++ implementation uses anonymous structs as members
+// of the ArrowBinaryView. For Cython support in this library, we define
+// those structs outside of the ArrowBinaryView
+struct ArrowBinaryViewInlined {
+  int32_t size;
+  uint8_t data[NANOARROW_BINARY_VIEW_INLINE_SIZE];
+};
+
+struct ArrowBinaryViewRef {
+  int32_t size;
+  uint8_t prefix[NANOARROW_BINARY_VIEW_PREFIX_SIZE];
+  int32_t buffer_index;
+  int32_t offset;
+};
+
+union ArrowBinaryView {
+  struct ArrowBinaryViewInlined inlined;
+  struct ArrowBinaryViewRef ref;
+  int64_t alignment_dummy;
+};
+
+static inline int32_t ArrowArrayVariadicBufferCount(struct ArrowArray* array) {
+  struct ArrowArrayPrivateData* private_data =
+      (struct ArrowArrayPrivateData*)array->private_data;
+
+  return private_data->n_variadic_buffers;
+}
+
+static inline ArrowErrorCode ArrowArrayAddVariadicBuffers(struct ArrowArray* array,
+                                                          int32_t nbuffers) {
+  const int32_t n_current_bufs = ArrowArrayVariadicBufferCount(array);
+  const int32_t n_bufs_needed = n_current_bufs + nbuffers;
+
+  struct ArrowArrayPrivateData* private_data =
+      (struct ArrowArrayPrivateData*)array->private_data;
+
+  private_data->variadic_buffers = (struct ArrowBuffer*)ArrowRealloc(
+      private_data->variadic_buffers, sizeof(struct ArrowBuffer) * n_bufs_needed);
+  if (private_data->variadic_buffers == NULL) {
+    return ENOMEM;
+  }
+  private_data->variadic_buffer_sizes = (int64_t*)ArrowRealloc(
+      private_data->variadic_buffer_sizes, sizeof(int64_t) * n_bufs_needed);
+  if (private_data->variadic_buffer_sizes == NULL) {
+    return ENOMEM;
+  }
+
+  for (int32_t i = n_current_bufs; i < n_bufs_needed; i++) {
+    ArrowBufferInit(&private_data->variadic_buffers[i]);
+    private_data->variadic_buffer_sizes[i] = 0;
+  }
+  private_data->n_variadic_buffers = n_bufs_needed;
+
+  return NANOARROW_OK;
+}
+
 static inline ArrowErrorCode ArrowArrayAppendBytes(struct ArrowArray* array,
                                                    struct ArrowBufferView value) {
   struct ArrowArrayPrivateData* private_data =
       (struct ArrowArrayPrivateData*)array->private_data;
 
-  struct ArrowBuffer* offset_buffer = ArrowArrayBuffer(array, 1);
-  struct ArrowBuffer* data_buffer = ArrowArrayBuffer(
-      array, 1 + (private_data->storage_type != NANOARROW_TYPE_FIXED_SIZE_BINARY));
-  int32_t offset;
-  int64_t large_offset;
-  int64_t fixed_size_bytes = private_data->layout.element_size_bits[1] / 8;
+  if (private_data->storage_type == NANOARROW_TYPE_STRING_VIEW ||
+      private_data->storage_type == NANOARROW_TYPE_BINARY_VIEW) {
+    struct ArrowBuffer* data_buffer = ArrowArrayBuffer(array, 1);
+    union ArrowBinaryView bvt;
+    bvt.inlined.size = (int32_t)value.size_bytes;
 
-  switch (private_data->storage_type) {
-    case NANOARROW_TYPE_STRING:
-    case NANOARROW_TYPE_BINARY:
-      offset = ((int32_t*)offset_buffer->data)[array->length];
-      if ((((int64_t)offset) + value.size_bytes) > INT32_MAX) {
-        return EOVERFLOW;
+    if (value.size_bytes <= NANOARROW_BINARY_VIEW_INLINE_SIZE) {
+      memcpy(bvt.inlined.data, value.data.as_char, value.size_bytes);
+      memset(bvt.inlined.data + bvt.inlined.size, 0,
+             NANOARROW_BINARY_VIEW_INLINE_SIZE - bvt.inlined.size);
+    } else {
+      int32_t current_n_vbufs = ArrowArrayVariadicBufferCount(array);
+      if (current_n_vbufs == 0 ||
+          private_data->variadic_buffers[current_n_vbufs - 1].size_bytes +
+                  value.size_bytes >
+              NANOARROW_BINARY_VIEW_BLOCK_SIZE) {
+        const int32_t additional_bufs_needed = 1;
+        NANOARROW_RETURN_NOT_OK(
+            ArrowArrayAddVariadicBuffers(array, additional_bufs_needed));
+        current_n_vbufs += additional_bufs_needed;
       }
 
-      offset += (int32_t)value.size_bytes;
-      NANOARROW_RETURN_NOT_OK(ArrowBufferAppend(offset_buffer, &offset, sizeof(int32_t)));
+      const int32_t buf_index = current_n_vbufs - 1;
+      struct ArrowBuffer* variadic_buf = &private_data->variadic_buffers[buf_index];
+      memcpy(bvt.ref.prefix, value.data.as_char, NANOARROW_BINARY_VIEW_PREFIX_SIZE);
+      bvt.ref.buffer_index = (int32_t)buf_index;
+      bvt.ref.offset = (int32_t)variadic_buf->size_bytes;
       NANOARROW_RETURN_NOT_OK(
-          ArrowBufferAppend(data_buffer, value.data.data, value.size_bytes));
-      break;
+          ArrowBufferAppend(variadic_buf, value.data.as_char, value.size_bytes));
+      private_data->variadic_buffer_sizes[buf_index] = variadic_buf->size_bytes;
+    }
+    NANOARROW_RETURN_NOT_OK(ArrowBufferAppend(data_buffer, &bvt, sizeof(bvt)));
+  } else {
+    struct ArrowBuffer* offset_buffer = ArrowArrayBuffer(array, 1);
+    struct ArrowBuffer* data_buffer = ArrowArrayBuffer(
+        array, 1 + (private_data->storage_type != NANOARROW_TYPE_FIXED_SIZE_BINARY));
+    int32_t offset;
+    int64_t large_offset;
+    int64_t fixed_size_bytes = private_data->layout.element_size_bits[1] / 8;
 
-    case NANOARROW_TYPE_LARGE_STRING:
-    case NANOARROW_TYPE_LARGE_BINARY:
-      large_offset = ((int64_t*)offset_buffer->data)[array->length];
-      large_offset += value.size_bytes;
-      NANOARROW_RETURN_NOT_OK(
-          ArrowBufferAppend(offset_buffer, &large_offset, sizeof(int64_t)));
-      NANOARROW_RETURN_NOT_OK(
-          ArrowBufferAppend(data_buffer, value.data.data, value.size_bytes));
-      break;
+    switch (private_data->storage_type) {
+      case NANOARROW_TYPE_STRING:
+      case NANOARROW_TYPE_BINARY:
+        offset = ((int32_t*)offset_buffer->data)[array->length];
+        if ((((int64_t)offset) + value.size_bytes) > INT32_MAX) {
+          return EOVERFLOW;
+        }
 
-    case NANOARROW_TYPE_FIXED_SIZE_BINARY:
-      if (value.size_bytes != fixed_size_bytes) {
+        offset += (int32_t)value.size_bytes;
+        NANOARROW_RETURN_NOT_OK(
+            ArrowBufferAppend(offset_buffer, &offset, sizeof(int32_t)));
+        NANOARROW_RETURN_NOT_OK(
+            ArrowBufferAppend(data_buffer, value.data.data, value.size_bytes));
+        break;
+
+      case NANOARROW_TYPE_LARGE_STRING:
+      case NANOARROW_TYPE_LARGE_BINARY:
+        large_offset = ((int64_t*)offset_buffer->data)[array->length];
+        large_offset += value.size_bytes;
+        NANOARROW_RETURN_NOT_OK(
+            ArrowBufferAppend(offset_buffer, &large_offset, sizeof(int64_t)));
+        NANOARROW_RETURN_NOT_OK(
+            ArrowBufferAppend(data_buffer, value.data.data, value.size_bytes));
+        break;
+
+      case NANOARROW_TYPE_FIXED_SIZE_BINARY:
+        if (value.size_bytes != fixed_size_bytes) {
+          return EINVAL;
+        }
+
+        NANOARROW_RETURN_NOT_OK(
+            ArrowBufferAppend(data_buffer, value.data.data, value.size_bytes));
+        break;
+      default:
         return EINVAL;
-      }
-
-      NANOARROW_RETURN_NOT_OK(
-          ArrowBufferAppend(data_buffer, value.data.data, value.size_bytes));
-      break;
-    default:
-      return EINVAL;
+    }
   }
 
   if (private_data->bitmap.buffer.data != NULL) {
@@ -535,8 +632,10 @@ static inline ArrowErrorCode ArrowArrayAppendString(struct ArrowArray* array,
   switch (private_data->storage_type) {
     case NANOARROW_TYPE_STRING:
     case NANOARROW_TYPE_LARGE_STRING:
+    case NANOARROW_TYPE_STRING_VIEW:
     case NANOARROW_TYPE_BINARY:
     case NANOARROW_TYPE_LARGE_BINARY:
+    case NANOARROW_TYPE_BINARY_VIEW:
       return ArrowArrayAppendBytes(array, buffer_view);
     default:
       return EINVAL;
@@ -810,6 +909,21 @@ static inline int64_t ArrowArrayViewListChildOffset(
   }
 }
 
+static struct ArrowBufferView ArrowArrayViewGetBytesFromViewArrayUnsafe(
+    const struct ArrowArrayView* array_view, int64_t i) {
+  const union ArrowBinaryView* bv = &array_view->buffer_views[1].data.as_binary_view[i];
+  struct ArrowBufferView out = {{NULL}, bv->inlined.size};
+  if (bv->inlined.size <= NANOARROW_BINARY_VIEW_INLINE_SIZE) {
+    out.data.as_uint8 = bv->inlined.data;
+    return out;
+  }
+
+  const int32_t buf_index = bv->ref.buffer_index + NANOARROW_BINARY_VIEW_FIXED_BUFFERS;
+  out.data.data = array_view->array->buffers[buf_index];
+  out.data.as_uint8 += bv->ref.offset;
+  return out;
+}
+
 static inline int64_t ArrowArrayViewGetIntUnsafe(const struct ArrowArrayView* array_view,
                                                  int64_t i) {
   const struct ArrowBufferView* data_view = &array_view->buffer_views[1];
@@ -938,6 +1052,14 @@ static inline struct ArrowStringView ArrowArrayViewGetStringUnsafe(
       view.size_bytes = array_view->layout.element_size_bits[1] / 8;
       view.data = array_view->buffer_views[1].data.as_char + (i * view.size_bytes);
       break;
+    case NANOARROW_TYPE_STRING_VIEW:
+    case NANOARROW_TYPE_BINARY_VIEW: {
+      struct ArrowBufferView buf_view =
+          ArrowArrayViewGetBytesFromViewArrayUnsafe(array_view, i);
+      view.data = buf_view.data.as_char;
+      view.size_bytes = buf_view.size_bytes;
+      break;
+    }
     default:
       view.data = NULL;
       view.size_bytes = 0;
@@ -971,6 +1093,10 @@ static inline struct ArrowBufferView ArrowArrayViewGetBytesUnsafe(
       view.size_bytes = array_view->layout.element_size_bits[1] / 8;
       view.data.as_uint8 =
           array_view->buffer_views[1].data.as_uint8 + (i * view.size_bytes);
+      break;
+    case NANOARROW_TYPE_STRING_VIEW:
+    case NANOARROW_TYPE_BINARY_VIEW:
+      view = ArrowArrayViewGetBytesFromViewArrayUnsafe(array_view, i);
       break;
     default:
       view.data.data = NULL;

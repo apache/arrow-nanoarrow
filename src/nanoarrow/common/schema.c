@@ -101,8 +101,12 @@ static const char* ArrowSchemaFormatTemplate(enum ArrowType type) {
       return "u";
     case NANOARROW_TYPE_LARGE_STRING:
       return "U";
+    case NANOARROW_TYPE_STRING_VIEW:
+      return "vu";
     case NANOARROW_TYPE_BINARY:
       return "z";
+    case NANOARROW_TYPE_BINARY_VIEW:
+      return "vz";
     case NANOARROW_TYPE_LARGE_BINARY:
       return "Z";
 
@@ -1019,6 +1023,24 @@ static ArrowErrorCode ArrowSchemaViewParse(struct ArrowSchemaView* schema_view,
           return EINVAL;
       }
 
+    // view types
+    case 'v': {
+      switch (format[1]) {
+        case 'u':
+          ArrowSchemaViewSetPrimitive(schema_view, NANOARROW_TYPE_STRING_VIEW);
+          *format_end_out = format + 2;
+          return NANOARROW_OK;
+        case 'z':
+          ArrowSchemaViewSetPrimitive(schema_view, NANOARROW_TYPE_BINARY_VIEW);
+          *format_end_out = format + 2;
+          return NANOARROW_OK;
+        default:
+          ArrowErrorSet(error, "Expected 'u', or 'z' following 'v' but found '%s'",
+                        format + 1);
+          return EINVAL;
+      }
+    }
+
     default:
       ArrowErrorSet(error, "Unknown format: '%s'", format);
       return EINVAL;
@@ -1150,6 +1172,8 @@ static ArrowErrorCode ArrowSchemaViewValidate(struct ArrowSchemaView* schema_vie
     case NANOARROW_TYPE_TIME32:
     case NANOARROW_TYPE_TIME64:
     case NANOARROW_TYPE_DURATION:
+    case NANOARROW_TYPE_BINARY_VIEW:
+    case NANOARROW_TYPE_STRING_VIEW:
       return ArrowSchemaViewValidateNChildren(schema_view, 0, error);
 
     case NANOARROW_TYPE_FIXED_SIZE_BINARY:

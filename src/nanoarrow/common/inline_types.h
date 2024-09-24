@@ -451,7 +451,9 @@ enum ArrowType {
   NANOARROW_TYPE_LARGE_BINARY,
   NANOARROW_TYPE_LARGE_LIST,
   NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO,
-  NANOARROW_TYPE_RUN_END_ENCODED
+  NANOARROW_TYPE_RUN_END_ENCODED,
+  NANOARROW_TYPE_BINARY_VIEW,
+  NANOARROW_TYPE_STRING_VIEW
 };
 
 /// \brief Get a string value of an enum ArrowType value
@@ -540,6 +542,10 @@ static inline const char* ArrowTypeString(enum ArrowType type) {
       return "interval_month_day_nano";
     case NANOARROW_TYPE_RUN_END_ENCODED:
       return "run_end_encoded";
+    case NANOARROW_TYPE_BINARY_VIEW:
+      return "binary_view";
+    case NANOARROW_TYPE_STRING_VIEW:
+      return "string_view";
     default:
       return NULL;
   }
@@ -616,15 +622,12 @@ enum ArrowBufferType {
   NANOARROW_BUFFER_TYPE_TYPE_ID,
   NANOARROW_BUFFER_TYPE_UNION_OFFSET,
   NANOARROW_BUFFER_TYPE_DATA_OFFSET,
-  NANOARROW_BUFFER_TYPE_DATA
+  NANOARROW_BUFFER_TYPE_DATA,
+  NANOARROW_BUFFER_TYPE_DATA_VIEW
 };
 
-/// \brief The maximum number of buffers in an ArrowArrayView or ArrowLayout
+/// \brief The maximum number of fixed buffers in an ArrowArrayView or ArrowLayout
 /// \ingroup nanoarrow-array-view
-///
-/// All currently supported types have 3 buffers or fewer; however, future types
-/// may involve a variable number of buffers (e.g., string view). These buffers
-/// will be represented by separate members of the ArrowArrayView or ArrowLayout.
 #define NANOARROW_MAX_FIXED_BUFFERS 3
 
 /// \brief An non-owning view of a string
@@ -671,6 +674,7 @@ union ArrowBufferViewData {
   const double* as_double;
   const float* as_float;
   const char* as_char;
+  const union ArrowBinaryView* as_binary_view;
 };
 
 /// \brief An non-owning view of a buffer
@@ -808,6 +812,12 @@ struct ArrowArrayView {
   /// type_id == union_type_id_map[128 + child_index]. This value may be
   /// NULL in the case where child_id == type_id.
   int8_t* union_type_id_map;
+
+  /// \brief Number of variadic buffers
+  int32_t n_variadic_buffers;
+
+  /// \brief Size of each variadic buffer
+  int64_t* variadic_buffer_sizes;
 };
 
 // Used as the private data member for ArrowArrays allocated here and accessed
@@ -822,8 +832,8 @@ struct ArrowArrayPrivateData {
 
   // The array of pointers to buffers. This must be updated after a sequence
   // of appends to synchronize its values with the actual buffer addresses
-  // (which may have ben reallocated uring that time)
-  const void* buffer_data[NANOARROW_MAX_FIXED_BUFFERS];
+  // (which may have been reallocated during that time)
+  const void** buffer_data;
 
   // The storage data type, or NANOARROW_TYPE_UNINITIALIZED if unknown
   enum ArrowType storage_type;
@@ -835,6 +845,15 @@ struct ArrowArrayPrivateData {
   // In the future this could be replaced with a type id<->child mapping
   // to support constructing unions in append mode where type_id != child_index
   int8_t union_type_id_is_child_index;
+
+  // Number of variadic buffers for binary view types
+  int32_t n_variadic_buffers;
+
+  // Variadic buffers for binary view types
+  struct ArrowBuffer* variadic_buffers;
+
+  // Size of each variadic buffer in bytes
+  int64_t* variadic_buffer_sizes;
 };
 
 /// \brief A representation of an interval.
