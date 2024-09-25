@@ -765,11 +765,9 @@ static int ArrowArrayViewSetArrayInternal(struct ArrowArrayView* array_view,
     const int32_t nfixed_buf = NANOARROW_BINARY_VIEW_FIXED_BUFFERS;
 
     const int32_t nvariadic_buf = (int32_t)(n_buffers - nfixed_buf - 1);
-    if (nvariadic_buf > 0) {
-      array_view->n_variadic_buffers = nvariadic_buf;
-      buffers_required += nvariadic_buf + 1;
-      array_view->variadic_buffer_sizes = (int64_t*)array->buffers[n_buffers - 1];
-    }
+    array_view->n_variadic_buffers = nvariadic_buf;
+    buffers_required += nvariadic_buf + 1;
+    array_view->variadic_buffer_sizes = (int64_t*)array->buffers[n_buffers - 1];
   }
 
   if (buffers_required != array->n_buffers) {
