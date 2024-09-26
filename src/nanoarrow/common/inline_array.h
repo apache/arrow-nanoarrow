@@ -525,6 +525,7 @@ static inline ArrowErrorCode ArrowArrayAddVariadicBuffers(struct ArrowArray* arr
     private_data->variadic_buffer_sizes[i] = 0;
   }
   private_data->n_variadic_buffers = n_bufs_needed;
+  array->n_buffers = NANOARROW_BINARY_VIEW_FIXED_BUFFERS + 1 + n_bufs_needed;
 
   return NANOARROW_OK;
 }

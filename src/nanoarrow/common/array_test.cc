@@ -897,6 +897,45 @@ TEST(ArrayTest, ArrayTestAppendToLargeStringArray) {
 
 template <enum ArrowType ArrowT, typename ValueT,
           ArrowErrorCode (*AppendFunc)(struct ArrowArray*, ValueT)>
+void TestAppendToInlinedDataViewArray() {
+  struct ArrowArray array;
+
+  ASSERT_EQ(ArrowArrayInitFromType(&array, ArrowT), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayStartAppending(&array), NANOARROW_OK);
+
+  // Check that we can reserve
+  ASSERT_EQ(ArrowArrayReserve(&array, 5), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayBuffer(&array, 1)->capacity_bytes,
+            5 * sizeof(union ArrowBinaryView));
+
+  EXPECT_EQ(AppendFunc(&array, ValueT{{"inlinestring"}, 12}), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayAppendNull(&array, 2), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayAppendEmpty(&array, 1), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayFinishBuildingDefault(&array, nullptr), NANOARROW_OK);
+
+  EXPECT_EQ(array.length, 4);
+  EXPECT_EQ(array.null_count, 2);
+  EXPECT_EQ(array.n_buffers, 3);
+  auto validity_buffer = reinterpret_cast<const uint8_t*>(array.buffers[0]);
+  auto inline_buffer = reinterpret_cast<const union ArrowBinaryView*>(array.buffers[1]);
+  auto sizes_buffer = reinterpret_cast<const int64_t*>(array.buffers[2]);
+
+  EXPECT_EQ(validity_buffer[0], 0b00001001);
+  EXPECT_EQ(memcmp(inline_buffer[0].inlined.data, "inlinestring", 12), 0);
+  EXPECT_EQ(inline_buffer[0].inlined.size, 12);
+
+  EXPECT_EQ(sizes_buffer, nullptr);
+
+  // TODO: issue #633
+  /*
+  EXPECT_THAT(nanoarrow::ViewArrayAsBytes<64>(&array),
+              ElementsAre("1234"_asv, NA, NA, "56789"_asv, ""_asv));
+  */
+  ArrowArrayRelease(&array);
+};
+
+template <enum ArrowType ArrowT, typename ValueT,
+          ArrowErrorCode (*AppendFunc)(struct ArrowArray*, ValueT)>
 void TestAppendToDataViewArray() {
   struct ArrowArray array;
 
@@ -925,6 +964,7 @@ void TestAppendToDataViewArray() {
 
   EXPECT_EQ(array.length, 7);
   EXPECT_EQ(array.null_count, 2);
+  EXPECT_EQ(array.n_buffers, 5);
   auto validity_buffer = reinterpret_cast<const uint8_t*>(array.buffers[0]);
   auto inline_buffer = reinterpret_cast<const union ArrowBinaryView*>(array.buffers[1]);
   auto vbuf1 = reinterpret_cast<const char*>(array.buffers[2]);
@@ -964,11 +1004,15 @@ void TestAppendToDataViewArray() {
 };
 
 TEST(ArrayTest, ArrayTestAppendToBinaryViewArray) {
+  TestAppendToInlinedDataViewArray<NANOARROW_TYPE_STRING_VIEW, struct ArrowStringView,
+                                   ArrowArrayAppendString>();
   TestAppendToDataViewArray<NANOARROW_TYPE_STRING_VIEW, struct ArrowStringView,
                             ArrowArrayAppendString>();
 };
 
 TEST(ArrayTest, ArrayTestAppendToStringViewArray) {
+  TestAppendToInlinedDataViewArray<NANOARROW_TYPE_BINARY_VIEW, struct ArrowBufferView,
+                                   ArrowArrayAppendBytes>();
   TestAppendToDataViewArray<NANOARROW_TYPE_BINARY_VIEW, struct ArrowBufferView,
                             ArrowArrayAppendBytes>();
 };

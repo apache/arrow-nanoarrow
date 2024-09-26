@@ -115,7 +115,7 @@ static ArrowErrorCode ArrowArraySetStorageType(struct ArrowArray* array,
       break;
     case NANOARROW_TYPE_BINARY_VIEW:
     case NANOARROW_TYPE_STRING_VIEW:
-      array->n_buffers = NANOARROW_BINARY_VIEW_FIXED_BUFFERS;
+      array->n_buffers = NANOARROW_BINARY_VIEW_FIXED_BUFFERS + 1;
       break;
     case NANOARROW_TYPE_STRING:
     case NANOARROW_TYPE_LARGE_STRING:
