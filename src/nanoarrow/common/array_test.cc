@@ -3343,15 +3343,10 @@ TEST(ArrayViewTest, ArrayViewTestGetString) {
   TestGetFromBinary<FixedSizeBinaryBuilder>(fixed_size_builder);
 }
 
-static const void* GetBinaryData(const struct ArrowBufferView* bv) {
-  return bv->data.data;
-}
-
-static const void* GetBinaryData(const struct ArrowStringView* sv) { return sv->data; }
-
 template <typename BuilderClass, typename ValueT,
           ValueT (*GetFunc)(const struct ArrowArrayView*, int64_t)>
-void TestGetFromInlinedBinaryView(BuilderClass& builder) {
+void TestGetFromInlinedBinaryView(
+    BuilderClass& builder, std::function<const void*(const ValueT*)> GetValueFunc) {
   struct ArrowArray array;
   struct ArrowSchema schema;
   struct ArrowArrayView array_view;
@@ -3378,7 +3373,7 @@ void TestGetFromInlinedBinaryView(BuilderClass& builder) {
 
   const auto value = GetFunc(&array_view, 3);
   EXPECT_EQ(value.size_bytes, strlen("four"));
-  EXPECT_EQ(memcmp(GetBinaryData(&value), "four", value.size_bytes), 0);
+  EXPECT_EQ(memcmp(GetValueFunc(&value), "four", value.size_bytes), 0);
 
   ArrowArrayViewReset(&array_view);
   ArrowArrayRelease(&array);
@@ -3387,7 +3382,8 @@ void TestGetFromInlinedBinaryView(BuilderClass& builder) {
 
 template <typename BuilderClass, typename ValueT,
           ValueT (*GetFunc)(const struct ArrowArrayView*, int64_t)>
-void TestGetFromBinaryView(BuilderClass& builder) {
+void TestGetFromBinaryView(BuilderClass& builder,
+                           std::function<const void*(const ValueT*)> GetValueFunc) {
   struct ArrowArray array;
   struct ArrowSchema schema;
   struct ArrowArrayView array_view;
@@ -3425,15 +3421,15 @@ void TestGetFromBinaryView(BuilderClass& builder) {
 
   const auto value1 = GetFunc(&array_view, 3);
   EXPECT_EQ(value1.size_bytes, strlen("four"));
-  EXPECT_EQ(memcmp(GetBinaryData(&value1), "four", value1.size_bytes), 0);
+  EXPECT_EQ(memcmp(GetValueFunc(&value1), "four", value1.size_bytes), 0);
 
-  const auto value2 = ArrowArrayViewGetStringUnsafe(&array_view, 4);
+  const auto value2 = GetFunc(&array_view, 4);
   EXPECT_EQ(value2.size_bytes, str1.size());
-  EXPECT_EQ(memcmp(GetBinaryData(&value2), str1.c_str(), value2.size_bytes), 0);
+  EXPECT_EQ(memcmp(GetValueFunc(&value2), str1.c_str(), value2.size_bytes), 0);
 
-  const auto value3 = ArrowArrayViewGetStringUnsafe(&array_view, 6);
+  const auto value3 = GetFunc(&array_view, 6);
   EXPECT_EQ(value3.size_bytes, str2.size());
-  EXPECT_EQ(memcmp(GetBinaryData(&value3), str2.c_str(), value3.size_bytes), 0);
+  EXPECT_EQ(memcmp(GetValueFunc(&value3), str2.c_str(), value3.size_bytes), 0);
 
   ArrowArrayViewReset(&array_view);
   ArrowArrayRelease(&array);
@@ -3442,16 +3438,24 @@ void TestGetFromBinaryView(BuilderClass& builder) {
 
 TEST(ArrayViewTest, ArrayViewTestGetStringView) {
   auto string_view_builder = StringViewBuilder();
+  const auto get_string_view = [](const struct ArrowStringView* sv) { return sv->data; };
   TestGetFromInlinedBinaryView<StringViewBuilder, struct ArrowStringView,
-                               ArrowArrayViewGetStringUnsafe>(string_view_builder);
+                               ArrowArrayViewGetStringUnsafe>(string_view_builder,
+                                                              get_string_view);
   TestGetFromBinaryView<StringViewBuilder, struct ArrowStringView,
-                        ArrowArrayViewGetStringUnsafe>(string_view_builder);
+                        ArrowArrayViewGetStringUnsafe>(string_view_builder,
+                                                       get_string_view);
 
   auto binary_view_builder = BinaryViewBuilder();
+  const auto get_buffer_view = [](const struct ArrowBufferView* bv) {
+    return bv->data.data;
+  };
   TestGetFromInlinedBinaryView<BinaryViewBuilder, struct ArrowBufferView,
-                               ArrowArrayViewGetBytesUnsafe>(binary_view_builder);
+                               ArrowArrayViewGetBytesUnsafe>(binary_view_builder,
+                                                             get_buffer_view);
   TestGetFromBinaryView<BinaryViewBuilder, struct ArrowBufferView,
-                        ArrowArrayViewGetBytesUnsafe>(binary_view_builder);
+                        ArrowArrayViewGetBytesUnsafe>(binary_view_builder,
+                                                      get_buffer_view);
 }
 
 TEST(ArrayViewTest, ArrayViewTestGetIntervalYearMonth) {
