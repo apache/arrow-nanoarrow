@@ -781,6 +781,20 @@ test_that("convert to vector works for character()", {
   )
 })
 
+test_that("convert to vector works for string_view -> character()", {
+  array <- as_nanoarrow_array(letters, schema = na_string_view())
+  expect_identical(
+    convert_array(array, character()),
+    letters
+  )
+
+  array_with_nulls <- as_nanoarrow_array(c(letters, NA), schema = na_string_view())
+  expect_identical(
+    convert_array(array_with_nulls, character()),
+    c(letters, NA)
+  )
+})
+
 test_that("convert to vector works for null -> character()", {
   array <- nanoarrow_array_init(na_na())
   array$length <- 10
@@ -890,6 +904,22 @@ test_that("convert to vector works for blob::blob()", {
   expect_identical(
     convert_array(array, blob::blob()),
     blob::blob(as.raw(1:5))
+  )
+})
+
+test_that("convert to vector works for binary_view -> blob::blob()", {
+  skip_if_not_installed("blob")
+
+  array <- as_nanoarrow_array(letters, schema = na_binary_view())
+  expect_identical(
+    convert_array(array, blob::blob()),
+    blob::as_blob(lapply(letters, charToRaw))
+  )
+
+  array_with_nulls <- as_nanoarrow_array(c(letters, NA), schema = na_binary_view())
+  expect_identical(
+    convert_array(array_with_nulls, blob::blob()),
+    blob::as_blob(c(lapply(letters, charToRaw), list(NULL)))
   )
 })
 
