@@ -56,6 +56,7 @@ enum VectorType nanoarrow_infer_vector_type(enum ArrowType type) {
 
     case NANOARROW_TYPE_STRING:
     case NANOARROW_TYPE_LARGE_STRING:
+    case NANOARROW_TYPE_STRING_VIEW:
       return VECTOR_TYPE_CHR;
 
     case NANOARROW_TYPE_DENSE_UNION:

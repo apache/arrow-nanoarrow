@@ -17,9 +17,11 @@
 \alias{na_double}
 \alias{na_string}
 \alias{na_large_string}
+\alias{na_string_view}
 \alias{na_binary}
 \alias{na_large_binary}
 \alias{na_fixed_size_binary}
+\alias{na_binary_view}
 \alias{na_date32}
 \alias{na_date64}
 \alias{na_time32}
@@ -91,11 +93,15 @@ na_string(nullable = TRUE)
 
 na_large_string(nullable = TRUE)
 
+na_string_view(nullable = TRUE)
+
 na_binary(nullable = TRUE)
 
 na_large_binary(nullable = TRUE)
 
 na_fixed_size_binary(byte_width, nullable = TRUE)
+
+na_binary_view(nullable = TRUE)
 
 na_date32(nullable = TRUE)
 

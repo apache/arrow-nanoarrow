@@ -188,6 +188,12 @@ na_large_string <- function(nullable = TRUE) {
 
 #' @rdname na_type
 #' @export
+na_string_view <- function(nullable = TRUE) {
+  .Call(nanoarrow_c_schema_init, NANOARROW_TYPE$STRING_VIEW, isTRUE(nullable))
+}
+
+#' @rdname na_type
+#' @export
 na_binary <- function(nullable = TRUE) {
   .Call(nanoarrow_c_schema_init, NANOARROW_TYPE$BINARY, isTRUE(nullable))
 }
@@ -207,6 +213,12 @@ na_fixed_size_binary <- function(byte_width, nullable = TRUE) {
     as.integer(byte_width)[1],
     isTRUE(nullable)
   )
+}
+
+#' @rdname na_type
+#' @export
+na_binary_view <- function(nullable = TRUE) {
+  .Call(nanoarrow_c_schema_init, NANOARROW_TYPE$BINARY_VIEW, isTRUE(nullable))
 }
 
 #' @rdname na_type
@@ -460,7 +472,10 @@ NANOARROW_TYPE <- list(
   LARGE_STRING = 35L,
   LARGE_BINARY = 36L,
   LARGE_LIST = 37L,
-  INTERVAL_MONTH_DAY_NANO = 38L
+  INTERVAL_MONTH_DAY_NANO = 38L,
+  RUN_END_ENCODED = 39L,
+  BINARY_VIEW = 40L,
+  STRING_VIEW = 41L
 )
 
 ARROW_FLAG <- list(

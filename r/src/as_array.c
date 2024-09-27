@@ -299,14 +299,9 @@ static void as_array_dbl(SEXP x_sexp, struct ArrowArray* array, SEXP schema_xptr
   }
 }
 
-static void as_array_chr(SEXP x_sexp, struct ArrowArray* array, SEXP schema_xptr,
-                         struct ArrowSchemaView* schema_view, struct ArrowError* error) {
-  // Only consider the default create for now
-  if (schema_view->type != NANOARROW_TYPE_STRING) {
-    call_as_nanoarrow_array(x_sexp, array, schema_xptr, "as_nanoarrow_array_from_c");
-    return;
-  }
-
+static void as_array_chr_default(SEXP x_sexp, struct ArrowArray* array, SEXP schema_xptr,
+                                 struct ArrowSchemaView* schema_view,
+                                 struct ArrowError* error) {
   int64_t len = Rf_xlength(x_sexp);
 
   int result = ArrowArrayInitFromType(array, NANOARROW_TYPE_STRING);
@@ -377,6 +372,61 @@ static void as_array_chr(SEXP x_sexp, struct ArrowArray* array, SEXP schema_xptr
   result = ArrowArrayFinishBuildingDefault(array, error);
   if (result != NANOARROW_OK) {
     Rf_error("ArrowArrayFinishBuildingDefault(): %s", error->message);
+  }
+}
+
+static void as_array_chr(SEXP x_sexp, struct ArrowArray* array, SEXP schema_xptr,
+                         struct ArrowSchemaView* schema_view, struct ArrowError* error) {
+  switch (schema_view->type) {
+    case NANOARROW_TYPE_STRING:
+      as_array_chr_default(x_sexp, array, schema_xptr, schema_view, error);
+      return;
+    case NANOARROW_TYPE_LARGE_STRING:
+    case NANOARROW_TYPE_STRING_VIEW:
+      break;
+    default:
+      call_as_nanoarrow_array(x_sexp, array, schema_xptr, "as_nanoarrow_array_from_c");
+      return;
+  }
+
+  int64_t len = Rf_xlength(x_sexp);
+
+  int result = ArrowArrayInitFromType(array, schema_view->type);
+  if (result != NANOARROW_OK) {
+    Rf_error("ArrowArrayInitFromType() failed");
+  }
+
+  result = ArrowArrayStartAppending(array);
+  if (result != NANOARROW_OK) {
+    Rf_error("ArrowArrayStartAppending() failed");
+  }
+
+  struct ArrowStringView item_view;
+  for (int64_t i = 0; i < len; i++) {
+    SEXP item = STRING_ELT(x_sexp, i);
+
+    if (item == NA_STRING) {
+      result = ArrowArrayAppendNull(array, 1);
+      if (result != NANOARROW_OK) {
+        Rf_error("ArrowArrayAppendString() failed");
+      }
+    } else {
+      const void* vmax = vmaxget();
+      item_view.data = Rf_translateCharUTF8(item);
+      item_view.size_bytes = strlen(item_view.data);
+      result = ArrowArrayAppendString(array, item_view);
+      if (result != NANOARROW_OK) {
+        Rf_error("ArrowArrayAppendString() failed");
+      }
+
+      vmaxset(vmax);
+    }
+  }
+
+  result = ArrowArrayFinishBuildingDefault(array, error);
+  if (result != NANOARROW_OK) {
+    Rf_error("ArrowArrayFinishBuildingDefault() failed with code %d: %s", result,
+             error->message);
   }
 }
 

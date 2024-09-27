@@ -66,6 +66,7 @@ static inline int nanoarrow_materialize_chr(struct RConverter* converter) {
 
     case NANOARROW_TYPE_STRING:
     case NANOARROW_TYPE_LARGE_STRING:
+    case NANOARROW_TYPE_STRING_VIEW:
       break;
 
     default:
