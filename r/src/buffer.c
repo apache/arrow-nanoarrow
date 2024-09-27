@@ -165,6 +165,7 @@ SEXP nanoarrow_c_buffer_info(SEXP buffer_xptr) {
         break;
       case NANOARROW_BUFFER_TYPE_DATA_VIEW:
         buffer_type_string = "data_view";
+        break;
       default:
         buffer_type_string = "unknown";
         break;
