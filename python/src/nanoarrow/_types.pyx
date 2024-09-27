@@ -109,6 +109,14 @@ cpdef bint is_union(int type_id):
     )
 
 
+cpdef bint is_data_view(int type_id):
+    """Check if type_id is a binary view or string view type"""
+    return type_id in (
+        _types.BINARY_VIEW,
+        _types.STRING_VIEW
+    )
+
+
 cdef tuple from_format(format):
     """Convert a Python buffer protocol format string to a itemsize/type_id tuple
 
@@ -236,6 +244,9 @@ cdef int to_format(int type_id, int element_size_bits, size_t out_size, char* ou
     elif type_id == _types.DECIMAL256:
         format_const = "32s"
         element_size_bits_calc = 256
+    elif is_data_view(type_id):
+        format_const = "16s"
+        element_size_bits_calc = 128
     else:
         raise ValueError(f"Unsupported Arrow type_id for format conversion: {type_id}")
 

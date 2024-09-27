@@ -288,6 +288,20 @@ def test_c_array_from_iterable_string():
         na.c_array([b"1234"], na.string())
 
 
+def test_c_array_from_iterable_string_view():
+    string = na.c_array(
+        ["abc", None, "a string longer than 12 bytes"], na.string_view()
+    )
+    assert string.length == 3
+    assert string.null_count == 1
+    assert string.n_buffers == 4
+
+    array_view = string.view()
+    assert len(array_view.buffer(0)) == 1
+    assert bytes(array_view.buffer(2)) == b"a string longer than 12 bytes"
+    assert list(array_view.buffer(3)) == [len("a string longer than 12 bytes")]
+
+
 def test_c_array_from_iterable_bytes():
     string = na.c_array([b"abc", None, b"defg"], na.binary())
     assert string.length == 3
