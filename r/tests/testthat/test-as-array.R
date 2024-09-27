@@ -327,10 +327,9 @@ test_that("as_nanoarrow_array() works for character() -> na_string_view()", {
   expect_identical(as.raw(array$buffers[[1]]), raw())
   expect_identical(array$offset, 0L)
   expect_identical(array$null_count, 0L)
-  # expect_identical(
-  #   as.raw(array$buffers[[3]]),
-  #   as.raw(as_nanoarrow_buffer(paste(letters, collapse = "")))
-  # )
+  # All these strings are shorter than four characters and thus are all inlined
+  expect_identical(length(array$buffers), 3L)
+  expect_identical(as.vector(array$buffers[[3]]), double())
 
   # With nulls
   array <- as_nanoarrow_array(c(letters, NA), schema = na_string_view())
@@ -340,10 +339,9 @@ test_that("as_nanoarrow_array() works for character() -> na_string_view()", {
     as.raw(array$buffers[[1]]),
     packBits(c(rep(TRUE, 26), FALSE, rep(FALSE, 5)))
   )
-  # expect_identical(
-  #   as.raw(array$buffers[[3]]),
-  #   as.raw(as_nanoarrow_buffer(paste(letters, collapse = "")))
-  # )
+  # All these strings are shorter than four characters and thus are all inlined
+  expect_identical(length(array$buffers), 3L)
+  expect_identical(as.vector(array$buffers[[3]]), double())
 })
 
 test_that("as_nanoarrow_array() works for factor() -> na_dictionary()", {
@@ -564,10 +562,9 @@ test_that("as_nanoarrow_array() works for blob::blob() -> na_binary_view()", {
   expect_identical(as.raw(array$buffers[[1]]), raw())
   expect_identical(array$offset, 0L)
   expect_identical(array$null_count, 0L)
-  # expect_identical(
-  #   as.raw(array$buffers[[3]]),
-  #   as.raw(as_nanoarrow_buffer(paste(letters, collapse = "")))
-  # )
+  # All these strings are shorter than four characters and thus are all inlined
+  expect_identical(length(array$buffers), 3L)
+  expect_identical(as.vector(array$buffers[[3]]), double())
 
   # With nulls
   array <- as_nanoarrow_array(
@@ -580,12 +577,10 @@ test_that("as_nanoarrow_array() works for blob::blob() -> na_binary_view()", {
     as.raw(array$buffers[[1]]),
     packBits(c(rep(TRUE, 26), FALSE, rep(FALSE, 5)))
   )
-  # expect_identical(
-  #   as.raw(array$buffers[[3]]),
-  #   as.raw(as_nanoarrow_buffer(paste(letters, collapse = "")))
-  # )
+  # All these strings are shorter than four characters and thus are all inlined
+  expect_identical(length(array$buffers), 3L)
+  expect_identical(as.vector(array$buffers[[3]]), double())
 })
-
 
 test_that("as_nanoarrow_array() works for list(raw()) -> na_binary()", {
   # Without nulls
