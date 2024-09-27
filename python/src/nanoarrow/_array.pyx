@@ -22,10 +22,12 @@ from cpython.pycapsule cimport PyCapsule_GetPointer
 from cpython.unicode cimport PyUnicode_AsUTF8AndSize
 from cpython cimport (
     Py_buffer,
-    PyObject_GetBuffer,
     PyBuffer_Release,
     PyBUF_ANY_CONTIGUOUS,
     PyBUF_FORMAT,
+    PyBytes_FromStringAndSize,
+    PyObject_GetBuffer,
+    PyUnicode_FromStringAndSize,
 )
 
 from nanoarrow_c cimport (
@@ -43,6 +45,9 @@ from nanoarrow_c cimport (
     ArrowArrayView,
     ArrowArrayViewComputeNullCount,
     ArrowArrayViewInitFromSchema,
+    ArrowArrayViewIsNull,
+    ArrowArrayViewGetStringUnsafe,
+    ArrowArrayViewGetBytesUnsafe,
     ArrowArrayViewSetArray,
     ArrowArrayViewSetArrayMinimal,
     ArrowBitCountSet,
@@ -288,6 +293,24 @@ cdef class CArrayView:
         dictionary._event = self._event
 
         return dictionary
+
+    def _iter_bytes(self, int64_t offset, int64_t length):
+        cdef ArrowBufferView item_view
+        for i in range(offset, length):
+            if ArrowArrayViewIsNull(self._ptr, i):
+                yield None
+            else:
+                item_view = ArrowArrayViewGetBytesUnsafe(self._ptr, i)
+                yield PyBytes_FromStringAndSize(item_view.data.as_char, item_view.size_bytes)
+
+    def _iter_str(self, int64_t offset, int64_t length):
+        cdef ArrowStringView item_view
+        for i in range(offset, length):
+            if ArrowArrayViewIsNull(self._ptr, i):
+                yield None
+            else:
+                item_view = ArrowArrayViewGetStringUnsafe(self._ptr, i)
+                yield PyUnicode_FromStringAndSize(item_view.data, item_view.size_bytes)
 
     def __repr__(self):
         return _repr_utils.array_view_repr(self)
