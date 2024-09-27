@@ -209,7 +209,7 @@ as_nanoarrow_array.nanoarrow_buffer <- function(x, ..., schema = NULL) {
         buffers = list(NULL, offsets, x)
       )
     )
-  } else if(data_type %in% c("string", "binary")) {
+  } else if (data_type %in% c("string", "binary")) {
     array <- nanoarrow_array_init(na_type(paste0("large_", data_type)))
     offsets <- as_nanoarrow_array(c(0, logical_length), schema = na_int64())$buffers[[2]]
     nanoarrow_array_modify(
@@ -220,6 +220,8 @@ as_nanoarrow_array.nanoarrow_buffer <- function(x, ..., schema = NULL) {
         buffers = list(NULL, offsets, x)
       )
     )
+  } else if (data_type %in% c("string_view", "binary_view")) {
+    stop("Can't convert buffer of type string_view or binary_view to array")
   } else {
     array <- nanoarrow_array_init(na_type(data_type))
     nanoarrow_array_modify(
