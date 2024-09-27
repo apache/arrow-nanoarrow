@@ -299,90 +299,15 @@ static void as_array_dbl(SEXP x_sexp, struct ArrowArray* array, SEXP schema_xptr
   }
 }
 
-static void as_array_chr_default(SEXP x_sexp, struct ArrowArray* array, SEXP schema_xptr,
-                                 struct ArrowSchemaView* schema_view,
-                                 struct ArrowError* error) {
-  int64_t len = Rf_xlength(x_sexp);
-
-  int result = ArrowArrayInitFromType(array, NANOARROW_TYPE_STRING);
-  if (result != NANOARROW_OK) {
-    Rf_error("ArrowArrayInitFromType() failed");
-  }
-
-  // Keep these buffers under the umbrella of the array so that we don't have
-  // to worry about cleaning them up if STRING_ELT jumps
-  struct ArrowBuffer* offset_buffer = ArrowArrayBuffer(array, 1);
-  struct ArrowBuffer* data_buffer = ArrowArrayBuffer(array, 2);
-
-  result = ArrowBufferReserve(offset_buffer, (len + 1) * sizeof(int32_t));
-  if (result != NANOARROW_OK) {
-    Rf_error("ArrowBufferReserve() failed");
-  }
-
-  int64_t null_count = 0;
-  int32_t cumulative_len = 0;
-  ArrowBufferAppendUnsafe(offset_buffer, &cumulative_len, sizeof(int32_t));
-
-  for (int64_t i = 0; i < len; i++) {
-    SEXP item = STRING_ELT(x_sexp, i);
-    if (item == NA_STRING) {
-      null_count++;
-    } else {
-      const void* vmax = vmaxget();
-      const char* item_utf8 = Rf_translateCharUTF8(item);
-      int64_t item_size = strlen(item_utf8);
-      if ((item_size + cumulative_len) > INT_MAX) {
-        Rf_error("Use na_large_string() to convert character() with total size > 2GB");
-      }
-
-      int result = ArrowBufferAppend(data_buffer, item_utf8, item_size);
-      if (result != NANOARROW_OK) {
-        Rf_error("ArrowBufferAppend() failed");
-      }
-      cumulative_len += (int32_t)item_size;
-
-      vmaxset(vmax);
-    }
-
-    ArrowBufferAppendUnsafe(offset_buffer, &cumulative_len, sizeof(int32_t));
-  }
-
-  // Set the array fields
-  array->length = len;
-  array->offset = 0;
-
-  // If there are nulls, pack the validity buffer
-  if (null_count > 0) {
-    struct ArrowBitmap bitmap;
-    ArrowBitmapInit(&bitmap);
-    result = ArrowBitmapReserve(&bitmap, len);
-    if (result != NANOARROW_OK) {
-      Rf_error("ArrowBitmapReserve() failed");
-    }
-
-    for (int64_t i = 0; i < len; i++) {
-      uint8_t is_valid = STRING_ELT(x_sexp, i) != NA_STRING;
-      ArrowBitmapAppendUnsafe(&bitmap, is_valid, 1);
-    }
-
-    ArrowArraySetValidityBitmap(array, &bitmap);
-  }
-
-  array->null_count = null_count;
-  result = ArrowArrayFinishBuildingDefault(array, error);
-  if (result != NANOARROW_OK) {
-    Rf_error("ArrowArrayFinishBuildingDefault(): %s", error->message);
-  }
-}
-
 static void as_array_chr(SEXP x_sexp, struct ArrowArray* array, SEXP schema_xptr,
                          struct ArrowSchemaView* schema_view, struct ArrowError* error) {
   switch (schema_view->type) {
+    case NANOARROW_TYPE_BINARY:
     case NANOARROW_TYPE_STRING:
-      as_array_chr_default(x_sexp, array, schema_xptr, schema_view, error);
-      return;
     case NANOARROW_TYPE_LARGE_STRING:
+    case NANOARROW_TYPE_LARGE_BINARY:
     case NANOARROW_TYPE_STRING_VIEW:
+    case NANOARROW_TYPE_BINARY_VIEW:
       break;
     default:
       call_as_nanoarrow_array(x_sexp, array, schema_xptr, "as_nanoarrow_array_from_c");
@@ -478,83 +403,54 @@ static void as_array_data_frame(SEXP x_sexp, struct ArrowArray* array, SEXP sche
 
 static void as_array_list(SEXP x_sexp, struct ArrowArray* array, SEXP schema_xptr,
                           struct ArrowSchemaView* schema_view, struct ArrowError* error) {
-  // We handle list(raw()) in C but fall back to S3 for other types of list output.
-  // Arbitrary nested list support is complicated in C without some concept of a
-  // "builder", which we don't use.
-  if (schema_view->type != NANOARROW_TYPE_BINARY) {
-    call_as_nanoarrow_array(x_sexp, array, schema_xptr, "as_nanoarrow_array_from_c");
-    return;
+  switch (schema_view->type) {
+    case NANOARROW_TYPE_BINARY:
+    case NANOARROW_TYPE_LARGE_BINARY:
+    case NANOARROW_TYPE_BINARY_VIEW:
+      break;
+    default:
+      call_as_nanoarrow_array(x_sexp, array, schema_xptr, "as_nanoarrow_array_from_c");
+      return;
   }
+
+  int64_t len = Rf_xlength(x_sexp);
 
   int result = ArrowArrayInitFromType(array, schema_view->type);
   if (result != NANOARROW_OK) {
     Rf_error("ArrowArrayInitFromType() failed");
   }
 
-  int64_t len = Rf_xlength(x_sexp);
-  struct ArrowBuffer* offset_buffer = ArrowArrayBuffer(array, 1);
-  struct ArrowBuffer* data_buffer = ArrowArrayBuffer(array, 2);
-
-  result = ArrowBufferReserve(offset_buffer, (len + 1) * sizeof(int32_t));
+  result = ArrowArrayStartAppending(array);
   if (result != NANOARROW_OK) {
-    Rf_error("ArrowBufferReserve() failed");
+    Rf_error("ArrowArrayStartAppending() failed");
   }
 
-  int64_t null_count = 0;
-  int32_t cumulative_len = 0;
-  ArrowBufferAppendUnsafe(offset_buffer, &cumulative_len, sizeof(int32_t));
-
+  struct ArrowBufferView item_view;
   for (int64_t i = 0; i < len; i++) {
     SEXP item = VECTOR_ELT(x_sexp, i);
+
     if (item == R_NilValue) {
-      ArrowBufferAppendUnsafe(offset_buffer, &cumulative_len, sizeof(int32_t));
-      null_count++;
-      continue;
+      result = ArrowArrayAppendNull(array, 1);
+      if (result != NANOARROW_OK) {
+        Rf_error("ArrowArrayAppendString() failed");
+      }
+    } else if (TYPEOF(item) == RAWSXP) {
+      item_view.data.data = RAW(item);
+      item_view.size_bytes = Rf_xlength(item);
+      result = ArrowArrayAppendBytes(array, item_view);
+      if (result != NANOARROW_OK) {
+        Rf_error("ArrowArrayAppendString() failed");
+      }
+    } else {
+      Rf_error("All list items must be raw() or NULL in conversion to %s",
+               ArrowTypeString(schema_view->type));
     }
-
-    if (Rf_isObject(item) || TYPEOF(item) != RAWSXP) {
-      Rf_error("All list items must be raw() or NULL in conversion to na_binary()");
-    }
-
-    int64_t item_size = Rf_xlength(item);
-    if ((item_size + cumulative_len) > INT_MAX) {
-      Rf_error("Use na_large_binary() to convert list(raw()) with total size > 2GB");
-    }
-
-    result = ArrowBufferAppend(data_buffer, RAW(item), item_size);
-    if (result != NANOARROW_OK) {
-      Rf_error("ArrowBufferAppend() failed");
-    }
-
-    cumulative_len += (int32_t)item_size;
-    ArrowBufferAppendUnsafe(offset_buffer, &cumulative_len, sizeof(int32_t));
   }
 
-  // Set the array fields
-  array->length = len;
-  array->offset = 0;
-
-  // If there are nulls, pack the validity buffer
-  if (null_count > 0) {
-    struct ArrowBitmap bitmap;
-    ArrowBitmapInit(&bitmap);
-    result = ArrowBitmapReserve(&bitmap, len);
-    if (result != NANOARROW_OK) {
-      Rf_error("ArrowBitmapReserve() failed");
-    }
-
-    for (int64_t i = 0; i < len; i++) {
-      uint8_t is_valid = VECTOR_ELT(x_sexp, i) != R_NilValue;
-      ArrowBitmapAppendUnsafe(&bitmap, is_valid, 1);
-    }
-
-    ArrowArraySetValidityBitmap(array, &bitmap);
-  }
-
-  array->null_count = null_count;
   result = ArrowArrayFinishBuildingDefault(array, error);
   if (result != NANOARROW_OK) {
-    Rf_error("ArrowArrayFinishBuildingDefault(): %s", error->message);
+    Rf_error("ArrowArrayFinishBuildingDefault() failed with code %d: %s", result,
+             error->message);
   }
 }
 
