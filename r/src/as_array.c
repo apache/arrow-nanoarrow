@@ -406,6 +406,7 @@ static void as_array_list(SEXP x_sexp, struct ArrowArray* array, SEXP schema_xpt
   switch (schema_view->type) {
     case NANOARROW_TYPE_BINARY:
     case NANOARROW_TYPE_LARGE_BINARY:
+    case NANOARROW_TYPE_FIXED_SIZE_BINARY:
     case NANOARROW_TYPE_BINARY_VIEW:
       break;
     default:
@@ -415,9 +416,11 @@ static void as_array_list(SEXP x_sexp, struct ArrowArray* array, SEXP schema_xpt
 
   int64_t len = Rf_xlength(x_sexp);
 
-  int result = ArrowArrayInitFromType(array, schema_view->type);
+  // Use schema here to ensure we fixed-size binary byte width works
+  struct ArrowSchema* schema = nanoarrow_schema_from_xptr(schema_xptr);
+  int result = ArrowArrayInitFromSchema(array, schema, error);
   if (result != NANOARROW_OK) {
-    Rf_error("ArrowArrayInitFromType() failed");
+    Rf_error("ArrowArrayInitFromType() failed: %s", error->message);
   }
 
   result = ArrowArrayStartAppending(array);
@@ -439,7 +442,7 @@ static void as_array_list(SEXP x_sexp, struct ArrowArray* array, SEXP schema_xpt
       item_view.size_bytes = Rf_xlength(item);
       result = ArrowArrayAppendBytes(array, item_view);
       if (result != NANOARROW_OK) {
-        Rf_error("ArrowArrayAppendString() failed");
+        Rf_error("ArrowArrayAppendBytes() failed");
       }
     } else {
       Rf_error("All list items must be raw() or NULL in conversion to %s",

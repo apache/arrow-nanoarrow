@@ -526,6 +526,35 @@ test_that("as_nanoarrow_array() works for blob::blob() -> na_binary()", {
   )
 })
 
+test_that("as_nanoarrow_array() works for blob::blob() -> na_fixed_size_binary()", {
+  # Without nulls
+  array <- as_nanoarrow_array(blob::as_blob(letters), schema = na_fixed_size_binary(1))
+  expect_identical(infer_nanoarrow_schema(array)$format, "w:1")
+  expect_identical(as.raw(array$buffers[[1]]), raw())
+  expect_identical(array$offset, 0L)
+  expect_identical(array$null_count, 0L)
+  expect_identical(
+    as.raw(array$buffers[[2]]),
+    as.raw(as_nanoarrow_buffer(paste(letters, collapse = "")))
+  )
+
+  # With nulls
+  array <- as_nanoarrow_array(
+    blob::as_blob(c(letters, NA)),
+    schema = na_fixed_size_binary(1)
+  )
+  expect_identical(infer_nanoarrow_schema(array)$format, "w:1")
+  expect_identical(array$null_count, 1L)
+  expect_identical(
+    as.raw(array$buffers[[1]]),
+    packBits(c(rep(TRUE, 26), FALSE, rep(FALSE, 5)))
+  )
+  expect_identical(
+    as.raw(array$buffers[[2]]),
+    c(as.raw(as_nanoarrow_buffer(paste(letters, collapse = ""))), as.raw(0x00))
+  )
+})
+
 test_that("as_nanoarrow_array() works for blob::blob() -> na_large_binary()", {
   # Without nulls
   array <- as_nanoarrow_array(blob::as_blob(letters), schema = na_large_binary())
