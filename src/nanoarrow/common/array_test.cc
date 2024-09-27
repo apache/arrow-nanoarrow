@@ -895,9 +895,9 @@ TEST(ArrayTest, ArrayTestAppendToLargeStringArray) {
   ArrowArrayRelease(&array);
 }
 
-template <enum ArrowType ArrowT, typename ValueT,
-          ArrowErrorCode (*AppendFunc)(struct ArrowArray*, ValueT)>
-void TestAppendToInlinedDataViewArray() {
+template <enum ArrowType ArrowT, typename ValueT>
+void TestAppendToInlinedDataViewArray(
+    std::function<ArrowErrorCode(struct ArrowArray*, ValueT)> AppendFunc) {
   struct ArrowArray array;
 
   ASSERT_EQ(ArrowArrayInitFromType(&array, ArrowT), NANOARROW_OK);
@@ -934,9 +934,9 @@ void TestAppendToInlinedDataViewArray() {
   ArrowArrayRelease(&array);
 };
 
-template <enum ArrowType ArrowT, typename ValueT,
-          ArrowErrorCode (*AppendFunc)(struct ArrowArray*, ValueT)>
-void TestAppendToDataViewArray() {
+template <enum ArrowType ArrowT, typename ValueT>
+void TestAppendToDataViewArray(
+    std::function<ArrowErrorCode(struct ArrowArray*, ValueT)> AppendFunc) {
   struct ArrowArray array;
 
   ASSERT_EQ(ArrowArrayInitFromType(&array, ArrowT), NANOARROW_OK);
@@ -1004,17 +1004,17 @@ void TestAppendToDataViewArray() {
 };
 
 TEST(ArrayTest, ArrayTestAppendToBinaryViewArray) {
-  TestAppendToInlinedDataViewArray<NANOARROW_TYPE_STRING_VIEW, struct ArrowStringView,
-                                   ArrowArrayAppendString>();
-  TestAppendToDataViewArray<NANOARROW_TYPE_STRING_VIEW, struct ArrowStringView,
-                            ArrowArrayAppendString>();
+  TestAppendToInlinedDataViewArray<NANOARROW_TYPE_STRING_VIEW, struct ArrowStringView>(
+      ArrowArrayAppendString);
+  TestAppendToDataViewArray<NANOARROW_TYPE_STRING_VIEW, struct ArrowStringView>(
+      ArrowArrayAppendString);
 };
 
 TEST(ArrayTest, ArrayTestAppendToStringViewArray) {
-  TestAppendToInlinedDataViewArray<NANOARROW_TYPE_BINARY_VIEW, struct ArrowBufferView,
-                                   ArrowArrayAppendBytes>();
-  TestAppendToDataViewArray<NANOARROW_TYPE_BINARY_VIEW, struct ArrowBufferView,
-                            ArrowArrayAppendBytes>();
+  TestAppendToInlinedDataViewArray<NANOARROW_TYPE_BINARY_VIEW, struct ArrowBufferView>(
+      ArrowArrayAppendBytes);
+  TestAppendToDataViewArray<NANOARROW_TYPE_BINARY_VIEW, struct ArrowBufferView>(
+      ArrowArrayAppendBytes);
 };
 
 TEST(ArrayTest, ArrayTestAppendToFixedSizeBinaryArray) {
@@ -3489,7 +3489,9 @@ TEST(ArrayViewTest, ArrayViewTestGetStringView) {
       string_view_builder, ArrowArrayViewGetStringUnsafe, get_string_view);
   TestGetFromBinaryView<StringViewBuilder, struct ArrowStringView>(
       string_view_builder, ArrowArrayViewGetStringUnsafe, get_string_view);
+}
 
+TEST(ArrayViewTest, ArrayViewTestGetBinaryView) {
   auto binary_view_builder = BinaryViewBuilder();
   const auto get_buffer_view = [](const struct ArrowBufferView* bv) {
     return bv->data.data;
