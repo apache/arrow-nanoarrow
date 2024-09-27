@@ -895,9 +895,48 @@ TEST(ArrayTest, ArrayTestAppendToLargeStringArray) {
   ArrowArrayRelease(&array);
 }
 
-template <enum ArrowType ArrowT, typename ValueT,
-          ArrowErrorCode (*AppendFunc)(struct ArrowArray*, ValueT)>
-void TestAppendToDataViewArray() {
+template <enum ArrowType ArrowT, typename ValueT>
+void TestAppendToInlinedDataViewArray(
+    std::function<ArrowErrorCode(struct ArrowArray*, ValueT)> AppendFunc) {
+  struct ArrowArray array;
+
+  ASSERT_EQ(ArrowArrayInitFromType(&array, ArrowT), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayStartAppending(&array), NANOARROW_OK);
+
+  // Check that we can reserve
+  ASSERT_EQ(ArrowArrayReserve(&array, 5), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayBuffer(&array, 1)->capacity_bytes,
+            5 * sizeof(union ArrowBinaryView));
+
+  EXPECT_EQ(AppendFunc(&array, ValueT{{"inlinestring"}, 12}), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayAppendNull(&array, 2), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayAppendEmpty(&array, 1), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayFinishBuildingDefault(&array, nullptr), NANOARROW_OK);
+
+  EXPECT_EQ(array.length, 4);
+  EXPECT_EQ(array.null_count, 2);
+  EXPECT_EQ(array.n_buffers, 3);
+  auto validity_buffer = reinterpret_cast<const uint8_t*>(array.buffers[0]);
+  auto inline_buffer = reinterpret_cast<const union ArrowBinaryView*>(array.buffers[1]);
+  auto sizes_buffer = reinterpret_cast<const int64_t*>(array.buffers[2]);
+
+  EXPECT_EQ(validity_buffer[0], 0b00001001);
+  EXPECT_EQ(memcmp(inline_buffer[0].inlined.data, "inlinestring", 12), 0);
+  EXPECT_EQ(inline_buffer[0].inlined.size, 12);
+
+  EXPECT_EQ(sizes_buffer, nullptr);
+
+  // TODO: issue #633
+  /*
+  EXPECT_THAT(nanoarrow::ViewArrayAsBytes<64>(&array),
+              ElementsAre("1234"_asv, NA, NA, "56789"_asv, ""_asv));
+  */
+  ArrowArrayRelease(&array);
+};
+
+template <enum ArrowType ArrowT, typename ValueT>
+void TestAppendToDataViewArray(
+    std::function<ArrowErrorCode(struct ArrowArray*, ValueT)> AppendFunc) {
   struct ArrowArray array;
 
   ASSERT_EQ(ArrowArrayInitFromType(&array, ArrowT), NANOARROW_OK);
@@ -925,6 +964,7 @@ void TestAppendToDataViewArray() {
 
   EXPECT_EQ(array.length, 7);
   EXPECT_EQ(array.null_count, 2);
+  EXPECT_EQ(array.n_buffers, 5);
   auto validity_buffer = reinterpret_cast<const uint8_t*>(array.buffers[0]);
   auto inline_buffer = reinterpret_cast<const union ArrowBinaryView*>(array.buffers[1]);
   auto vbuf1 = reinterpret_cast<const char*>(array.buffers[2]);
@@ -964,13 +1004,17 @@ void TestAppendToDataViewArray() {
 };
 
 TEST(ArrayTest, ArrayTestAppendToBinaryViewArray) {
-  TestAppendToDataViewArray<NANOARROW_TYPE_STRING_VIEW, struct ArrowStringView,
-                            ArrowArrayAppendString>();
+  TestAppendToInlinedDataViewArray<NANOARROW_TYPE_STRING_VIEW, struct ArrowStringView>(
+      ArrowArrayAppendString);
+  TestAppendToDataViewArray<NANOARROW_TYPE_STRING_VIEW, struct ArrowStringView>(
+      ArrowArrayAppendString);
 };
 
 TEST(ArrayTest, ArrayTestAppendToStringViewArray) {
-  TestAppendToDataViewArray<NANOARROW_TYPE_BINARY_VIEW, struct ArrowBufferView,
-                            ArrowArrayAppendBytes>();
+  TestAppendToInlinedDataViewArray<NANOARROW_TYPE_BINARY_VIEW, struct ArrowBufferView>(
+      ArrowArrayAppendBytes);
+  TestAppendToDataViewArray<NANOARROW_TYPE_BINARY_VIEW, struct ArrowBufferView>(
+      ArrowArrayAppendBytes);
 };
 
 TEST(ArrayTest, ArrayTestAppendToFixedSizeBinaryArray) {
@@ -3343,8 +3387,49 @@ TEST(ArrayViewTest, ArrayViewTestGetString) {
   TestGetFromBinary<FixedSizeBinaryBuilder>(fixed_size_builder);
 }
 
-template <typename BuilderClass>
-void TestGetFromBinaryView(BuilderClass& builder) {
+template <typename BuilderClass, typename ValueT>
+void TestGetFromInlinedBinaryView(
+    BuilderClass& builder,
+    std::function<ValueT(const struct ArrowArrayView*, int64_t)> GetValueFunc,
+    std::function<const void*(const ValueT*)> GetValueDataFunc) {
+  struct ArrowArray array;
+  struct ArrowSchema schema;
+  struct ArrowArrayView array_view;
+  struct ArrowError error;
+
+  auto type = builder.type();
+  ARROW_EXPECT_OK(builder.Append("1234"));
+  ARROW_EXPECT_OK(builder.AppendNulls(2));
+  ARROW_EXPECT_OK(builder.Append("four"));
+
+  auto maybe_arrow_array = builder.Finish();
+  ARROW_EXPECT_OK(maybe_arrow_array);
+  auto arrow_array = maybe_arrow_array.ValueUnsafe();
+
+  ARROW_EXPECT_OK(ExportArray(*arrow_array, &array, &schema));
+  ASSERT_EQ(ArrowArrayViewInitFromSchema(&array_view, &schema, &error), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayViewValidate(&array_view, NANOARROW_VALIDATION_LEVEL_FULL, &error),
+            NANOARROW_OK);
+
+  EXPECT_EQ(array_view.n_variadic_buffers, 0);
+  EXPECT_EQ(ArrowArrayViewIsNull(&array_view, 2), 1);
+  EXPECT_EQ(ArrowArrayViewIsNull(&array_view, 3), 0);
+
+  const auto value = GetValueFunc(&array_view, 3);
+  EXPECT_EQ(value.size_bytes, strlen("four"));
+  EXPECT_EQ(memcmp(GetValueDataFunc(&value), "four", value.size_bytes), 0);
+
+  ArrowArrayViewReset(&array_view);
+  ArrowArrayRelease(&array);
+  ArrowSchemaRelease(&schema);
+}
+
+template <typename BuilderClass, typename ValueT>
+void TestGetFromBinaryView(
+    BuilderClass& builder,
+    std::function<ValueT(const struct ArrowArrayView*, int64_t)> GetValueFunc,
+    std::function<const void*(const ValueT*)> GetValueDataFunc) {
   struct ArrowArray array;
   struct ArrowSchema schema;
   struct ArrowArrayView array_view;
@@ -3380,29 +3465,17 @@ void TestGetFromBinaryView(BuilderClass& builder) {
   EXPECT_EQ(ArrowArrayViewIsNull(&array_view, 2), 1);
   EXPECT_EQ(ArrowArrayViewIsNull(&array_view, 3), 0);
 
-  auto string_view = ArrowArrayViewGetStringUnsafe(&array_view, 3);
-  EXPECT_EQ(string_view.size_bytes, strlen("four"));
-  EXPECT_EQ(memcmp(string_view.data, "four", string_view.size_bytes), 0);
+  const auto value1 = GetValueFunc(&array_view, 3);
+  EXPECT_EQ(value1.size_bytes, strlen("four"));
+  EXPECT_EQ(memcmp(GetValueDataFunc(&value1), "four", value1.size_bytes), 0);
 
-  auto buffer_view = ArrowArrayViewGetBytesUnsafe(&array_view, 3);
-  EXPECT_EQ(buffer_view.size_bytes, strlen("four"));
-  EXPECT_EQ(memcmp(buffer_view.data.as_char, "four", buffer_view.size_bytes), 0);
+  const auto value2 = GetValueFunc(&array_view, 4);
+  EXPECT_EQ(value2.size_bytes, str1.size());
+  EXPECT_EQ(memcmp(GetValueDataFunc(&value2), str1.c_str(), value2.size_bytes), 0);
 
-  string_view = ArrowArrayViewGetStringUnsafe(&array_view, 4);
-  EXPECT_EQ(string_view.size_bytes, str1.size());
-  EXPECT_EQ(memcmp(string_view.data, str1.c_str(), string_view.size_bytes), 0);
-
-  string_view = ArrowArrayViewGetStringUnsafe(&array_view, 6);
-  EXPECT_EQ(string_view.size_bytes, str2.size());
-  EXPECT_EQ(memcmp(string_view.data, str2.c_str(), string_view.size_bytes), 0);
-
-  buffer_view = ArrowArrayViewGetBytesUnsafe(&array_view, 4);
-  EXPECT_EQ(buffer_view.size_bytes, str1.size());
-  EXPECT_EQ(memcmp(buffer_view.data.as_char, str1.c_str(), buffer_view.size_bytes), 0);
-
-  buffer_view = ArrowArrayViewGetBytesUnsafe(&array_view, 6);
-  EXPECT_EQ(buffer_view.size_bytes, str2.size());
-  EXPECT_EQ(memcmp(buffer_view.data.as_char, str2.c_str(), buffer_view.size_bytes), 0);
+  const auto value3 = GetValueFunc(&array_view, 6);
+  EXPECT_EQ(value3.size_bytes, str2.size());
+  EXPECT_EQ(memcmp(GetValueDataFunc(&value3), str2.c_str(), value3.size_bytes), 0);
 
   ArrowArrayViewReset(&array_view);
   ArrowArrayRelease(&array);
@@ -3411,10 +3484,22 @@ void TestGetFromBinaryView(BuilderClass& builder) {
 
 TEST(ArrayViewTest, ArrayViewTestGetStringView) {
   auto string_view_builder = StringViewBuilder();
-  TestGetFromBinaryView<StringViewBuilder>(string_view_builder);
+  const auto get_string_view = [](const struct ArrowStringView* sv) { return sv->data; };
+  TestGetFromInlinedBinaryView<StringViewBuilder, struct ArrowStringView>(
+      string_view_builder, ArrowArrayViewGetStringUnsafe, get_string_view);
+  TestGetFromBinaryView<StringViewBuilder, struct ArrowStringView>(
+      string_view_builder, ArrowArrayViewGetStringUnsafe, get_string_view);
+}
 
+TEST(ArrayViewTest, ArrayViewTestGetBinaryView) {
   auto binary_view_builder = BinaryViewBuilder();
-  TestGetFromBinaryView<BinaryViewBuilder>(binary_view_builder);
+  const auto get_buffer_view = [](const struct ArrowBufferView* bv) {
+    return bv->data.data;
+  };
+  TestGetFromInlinedBinaryView<BinaryViewBuilder, struct ArrowBufferView>(
+      binary_view_builder, ArrowArrayViewGetBytesUnsafe, get_buffer_view);
+  TestGetFromBinaryView<BinaryViewBuilder, struct ArrowBufferView>(
+      binary_view_builder, ArrowArrayViewGetBytesUnsafe, get_buffer_view);
 }
 
 TEST(ArrayViewTest, ArrayViewTestGetIntervalYearMonth) {
