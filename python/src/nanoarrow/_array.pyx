@@ -294,7 +294,7 @@ cdef class CArrayView:
 
         return dictionary
 
-    def _iter_bytes(self, int64_t offset, int64_t length):
+    def _iter_bytes(self, int64_t offset, int64_t length) -> bytes | None:
         cdef ArrowBufferView item_view
         for i in range(offset, length):
             if ArrowArrayViewIsNull(self._ptr, i):
