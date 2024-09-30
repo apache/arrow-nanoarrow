@@ -696,11 +696,12 @@ void ArrowArrayViewSetLength(struct ArrowArrayView* array_view, int64_t length) 
             _ArrowRoundUpToMultipleOf8(array_view->layout.element_size_bits[i] * length) /
             8;
         continue;
-      case NANOARROW_BUFFER_TYPE_DATA_VIEW:
       case NANOARROW_BUFFER_TYPE_TYPE_ID:
       case NANOARROW_BUFFER_TYPE_UNION_OFFSET:
         array_view->buffer_views[i].size_bytes = element_size_bytes * length;
         continue;
+      case NANOARROW_BUFFER_TYPE_VARIADIC_DATA:
+      case NANOARROW_BUFFER_TYPE_VARIADIC_SIZE:
       case NANOARROW_BUFFER_TYPE_NONE:
         array_view->buffer_views[i].size_bytes = 0;
         continue;
@@ -863,9 +864,10 @@ static int ArrowArrayViewValidateMinimal(struct ArrowArrayView* array_view,
         break;
       case NANOARROW_BUFFER_TYPE_TYPE_ID:
       case NANOARROW_BUFFER_TYPE_UNION_OFFSET:
-      case NANOARROW_BUFFER_TYPE_DATA_VIEW:
         min_buffer_size_bytes = element_size_bytes * offset_plus_length;
         break;
+      case NANOARROW_BUFFER_TYPE_VARIADIC_DATA:
+      case NANOARROW_BUFFER_TYPE_VARIADIC_SIZE:
       case NANOARROW_BUFFER_TYPE_NONE:
         continue;
     }

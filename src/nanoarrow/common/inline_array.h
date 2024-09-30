@@ -286,6 +286,8 @@ static inline ArrowErrorCode _ArrowArrayAppendEmptyInternal(struct ArrowArray* a
 
     switch (private_data->layout.buffer_type[i]) {
       case NANOARROW_BUFFER_TYPE_NONE:
+      case NANOARROW_BUFFER_TYPE_VARIADIC_DATA:
+      case NANOARROW_BUFFER_TYPE_VARIADIC_SIZE:
       case NANOARROW_BUFFER_TYPE_VALIDITY:
         continue;
       case NANOARROW_BUFFER_TYPE_DATA_OFFSET:
@@ -301,7 +303,6 @@ static inline ArrowErrorCode _ArrowArrayAppendEmptyInternal(struct ArrowArray* a
         i++;
         continue;
       case NANOARROW_BUFFER_TYPE_DATA:
-      case NANOARROW_BUFFER_TYPE_DATA_VIEW:
         // Zero out the next bit of memory
         if (private_data->layout.element_size_bits[i] % 8 == 0) {
           NANOARROW_RETURN_NOT_OK(ArrowBufferAppendFill(buffer, 0, size_bytes * n));
