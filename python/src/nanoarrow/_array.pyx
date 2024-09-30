@@ -46,8 +46,13 @@ from nanoarrow_c cimport (
     ArrowArrayViewComputeNullCount,
     ArrowArrayViewInitFromSchema,
     ArrowArrayViewIsNull,
-    ArrowArrayViewGetStringUnsafe,
     ArrowArrayViewGetBytesUnsafe,
+    ArrowArrayViewGetBufferDataType,
+    ArrowArrayViewGetBufferElementSizeBits,
+    ArrowArrayViewGetBufferType,
+    ArrowArrayViewGetBufferView,
+    ArrowArrayViewGetNumBuffers,
+    ArrowArrayViewGetStringUnsafe,
     ArrowArrayViewSetArray,
     ArrowArrayViewSetArrayMinimal,
     ArrowBitCountSet,
@@ -62,7 +67,8 @@ from nanoarrow_c cimport (
     ArrowValidationLevel,
     NANOARROW_BUFFER_TYPE_DATA,
     NANOARROW_BUFFER_TYPE_DATA_OFFSET,
-    NANOARROW_BUFFER_TYPE_DATA_VIEW,
+    NANOARROW_BUFFER_TYPE_VARIADIC_DATA,
+    NANOARROW_BUFFER_TYPE_VARIADIC_SIZE,
     NANOARROW_BUFFER_TYPE_TYPE_ID,
     NANOARROW_BUFFER_TYPE_UNION_OFFSET,
     NANOARROW_BUFFER_TYPE_VALIDITY,
@@ -84,7 +90,6 @@ from nanoarrow._device cimport Device, CSharedSyncEvent
 
 from nanoarrow._buffer cimport CBuffer, CBufferView
 from nanoarrow._schema cimport CSchema, CLayout
-from nanoarrow cimport _types
 from nanoarrow._utils cimport (
     alloc_c_array,
     alloc_c_device_array,
@@ -196,44 +201,20 @@ cdef class CArrayView:
 
     @property
     def n_buffers(self):
-        if _types.is_data_view(self._ptr.storage_type):
-            return 2 + self._ptr.n_variadic_buffers + 1
-
-        return self.layout.n_buffers
+        return ArrowArrayViewGetNumBuffers(self._ptr)
 
     def _buffer_info(self, int64_t i):
         if i < 0 or i >= self.n_buffers:
             raise IndexError(f"{i} out of range [0, {self.n_buffers}]")
 
-        if (
-            _types.is_data_view(self._ptr.storage_type)
-            and i == (2 + self._ptr.n_variadic_buffers)
-        ):
-            return (
-                NANOARROW_BUFFER_TYPE_DATA,
-                _types.INT64,
-                64,
-                <uintptr_t>self._ptr.array.buffers[i],
-                (self._ptr.n_variadic_buffers) * 8
-            )
-        elif (
-            _types.is_data_view(self._ptr.storage_type)
-            and i >= 2
-        ):
-            return (
-                NANOARROW_BUFFER_TYPE_DATA,
-                _types.STRING if int(self._ptr.storage_type) == _types.STRING_VIEW else _types.BINARY,
-                0,
-                <uintptr_t>self._ptr.array.buffers[i],
-                (<int64_t*>self._ptr.array.buffers[2 + self._ptr.n_variadic_buffers])[i - 2]
-            )
+        cdef ArrowBufferView view = ArrowArrayViewGetBufferView(self._ptr, i)
 
         return (
-            self._ptr.layout.buffer_type[i],
-            self._ptr.layout.buffer_data_type[i],
-            self._ptr.layout.element_size_bits[i],
-            <uintptr_t>self._ptr.buffer_views[i].data.data,
-            self._ptr.buffer_views[i].size_bytes
+            ArrowArrayViewGetBufferType(self._ptr, i),
+            ArrowArrayViewGetBufferDataType(self._ptr, i),
+            ArrowArrayViewGetBufferElementSizeBits(self._ptr, i),
+            <uintptr_t>view.data.data,
+            view.size_bytes
         )
 
     def buffer_type(self, int64_t i):
@@ -248,8 +229,10 @@ cdef class CArrayView:
             return "data_offset"
         elif buffer_type == NANOARROW_BUFFER_TYPE_DATA:
             return "data"
-        elif buffer_type == NANOARROW_BUFFER_TYPE_DATA_VIEW:
-            return "data_view"
+        elif buffer_type == NANOARROW_BUFFER_TYPE_VARIADIC_DATA:
+            return "variadic_data"
+        elif buffer_type == NANOARROW_BUFFER_TYPE_VARIADIC_SIZE:
+            return "variadic_size"
         else:
             return "none"
 

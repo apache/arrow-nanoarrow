@@ -828,15 +828,24 @@ static inline void ArrowArrayViewMove(struct ArrowArrayView* src,
 }
 
 static inline int64_t ArrowArrayViewGetNumBuffers(struct ArrowArrayView* array_view) {
+  switch (array_view->storage_type) {
+    case NANOARROW_TYPE_BINARY_VIEW:
+    case NANOARROW_TYPE_STRING_VIEW:
+      return NANOARROW_BINARY_VIEW_FIXED_BUFFERS + array_view->n_variadic_buffers + 1;
+    default:
+      break;
+  }
+
   int64_t n_buffers = 0;
   for (int i = 0; i < NANOARROW_MAX_FIXED_BUFFERS; i++) {
-    n_buffers++;
     if (array_view->layout.buffer_type[i] == NANOARROW_BUFFER_TYPE_NONE) {
       break;
     }
+
+    n_buffers++;
   }
 
-  return n_buffers + array_view->n_variadic_buffers + 1;
+  return n_buffers;
 }
 
 static inline struct ArrowBufferView ArrowArrayViewGetBufferView(
