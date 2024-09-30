@@ -303,7 +303,7 @@ cdef class CArrayView:
                 item_view = ArrowArrayViewGetBytesUnsafe(self._ptr, i)
                 yield PyBytes_FromStringAndSize(item_view.data.as_char, item_view.size_bytes)
 
-    def _iter_str(self, int64_t offset, int64_t length):
+    def _iter_str(self, int64_t offset, int64_t length) -> str | None:
         cdef ArrowStringView item_view
         for i in range(offset, length):
             if ArrowArrayViewIsNull(self._ptr, i):
