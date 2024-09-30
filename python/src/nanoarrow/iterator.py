@@ -322,6 +322,12 @@ class PyIterator(ArrayViewBaseIterator):
             for start, end in zip(starts, ends):
                 yield bytes(data[start:end])
 
+    def _binary_view_iter(self, offset, length):
+        return self._array_view._iter_bytes(offset, length)
+
+    def _string_view_iter(self, offset, length):
+        return self._array_view._iter_str(offset, length)
+
     def _decimal_iter(self, offset, length):
         from decimal import Context, Decimal
         from sys import byteorder
@@ -564,6 +570,8 @@ _ITEMS_ITER_LOOKUP = {
     _types.DURATION: "_duration_iter",
     _types.DECIMAL128: "_decimal_iter",
     _types.DECIMAL256: "_decimal_iter",
+    _types.STRING_VIEW: "_string_view_iter",
+    _types.BINARY_VIEW: "_binary_view_iter",
 }
 
 _PRIMITIVE_TYPE_NAMES = [

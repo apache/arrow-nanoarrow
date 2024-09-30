@@ -68,8 +68,11 @@ def test_iterator_nullable_primitive():
     assert list(iter_py(sliced)) == [2, 3, None]
 
 
-def test_iterator_string():
-    array = na.c_array(["ab", "cde"], na.string())
+@pytest.mark.parametrize(
+    "arrow_type", [na.string(), na.large_string(), na.string_view()]
+)
+def test_iterator_string(arrow_type):
+    array = na.c_array(["ab", "cde"], arrow_type)
 
     assert list(iter_py(array)) == ["ab", "cde"]
 
@@ -77,8 +80,11 @@ def test_iterator_string():
     assert list(iter_py(sliced)) == ["cde"]
 
 
-def test_iterator_nullable_string():
-    array = na.c_array(["ab", "cde", None], na.string())
+@pytest.mark.parametrize(
+    "arrow_type", [na.string(), na.large_string(), na.string_view()]
+)
+def test_iterator_nullable_string(arrow_type):
+    array = na.c_array(["ab", "cde", None], arrow_type)
 
     assert list(iter_py(array)) == ["ab", "cde", None]
 
@@ -86,8 +92,11 @@ def test_iterator_nullable_string():
     assert list(iter_py(sliced)) == ["cde", None]
 
 
-def test_iterator_binary():
-    array = na.c_array([b"ab", b"cde"], na.binary())
+@pytest.mark.parametrize(
+    "arrow_type", [na.binary(), na.large_binary(), na.binary_view()]
+)
+def test_iterator_binary(arrow_type):
+    array = na.c_array([b"ab", b"cde"], arrow_type)
 
     assert list(iter_py(array)) == [b"ab", b"cde"]
 
@@ -95,8 +104,11 @@ def test_iterator_binary():
     assert list(iter_py(sliced)) == [b"cde"]
 
 
-def test_iterator_nullable_binary():
-    array = na.c_array([b"ab", b"cde", None], na.binary())
+@pytest.mark.parametrize(
+    "arrow_type", [na.binary(), na.large_binary(), na.binary_view()]
+)
+def test_iterator_nullable_binary(arrow_type):
+    array = na.c_array([b"ab", b"cde", None], arrow_type)
 
     assert list(iter_py(array)) == [b"ab", b"cde", None]
 

@@ -288,6 +288,32 @@ def test_c_array_from_iterable_string():
         na.c_array([b"1234"], na.string())
 
 
+def test_c_array_from_iterable_string_view():
+    string = na.c_array(
+        ["abc", None, "a string longer than 12 bytes"], na.string_view()
+    )
+    assert string.length == 3
+    assert string.null_count == 1
+    assert string.n_buffers == 4
+
+    array_view = string.view()
+    assert len(array_view.buffer(0)) == 1
+    assert bytes(array_view.buffer(2)) == b"a string longer than 12 bytes"
+    assert list(array_view.buffer(3)) == [len("a string longer than 12 bytes")]
+
+    # Make sure this also works when all strings are inlined (i.e., no variadic buffers)
+    string = na.c_array(["abc", None, "short string"], na.string_view())
+    assert string.length == 3
+    assert string.null_count == 1
+    assert string.n_buffers == 3
+
+    array_view = string.view()
+    assert len(array_view.buffer(0)) == 1
+    assert len(array_view.buffer(1)) == 3
+    assert len(bytes(array_view.buffer(1))) == 3 * 16
+    assert list(array_view.buffer(2)) == []
+
+
 def test_c_array_from_iterable_bytes():
     string = na.c_array([b"abc", None, b"defg"], na.binary())
     assert string.length == 3
@@ -309,6 +335,20 @@ def test_c_array_from_iterable_bytes():
     buf_2d = np.ones((2, 2))
     with pytest.raises(ValueError, match="Can't append buffer with dimensions != 1"):
         na.c_array([buf_2d], na.binary())
+
+
+def test_c_array_from_iterable__view():
+    string = na.c_array(
+        [b"abc", None, b"a string longer than 12 bytes"], na.binary_view()
+    )
+    assert string.length == 3
+    assert string.null_count == 1
+    assert string.n_buffers == 4
+
+    array_view = string.view()
+    assert len(array_view.buffer(0)) == 1
+    assert bytes(array_view.buffer(2)) == b"a string longer than 12 bytes"
+    assert list(array_view.buffer(3)) == [len("a string longer than 12 bytes")]
 
 
 def test_c_array_from_iterable_non_empty_nullable_without_nulls():
