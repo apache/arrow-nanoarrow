@@ -66,7 +66,6 @@ test_that("buffers whose pointer is NULL print as such", {
   expect_match(format(empty_buffer), "data<int32>[null]", fixed = TRUE)
 })
 
-
 test_that("as_nanoarrow_buffer() errors for unsupported types", {
   expect_error(
     as_nanoarrow_buffer(NA_character_),
