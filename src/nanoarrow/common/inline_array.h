@@ -854,7 +854,7 @@ static inline struct ArrowBufferView ArrowArrayViewGetBufferView(
     case NANOARROW_TYPE_BINARY_VIEW:
     case NANOARROW_TYPE_STRING_VIEW:
       if (i < NANOARROW_BINARY_VIEW_FIXED_BUFFERS) {
-        break;
+        return array_view->buffer_views[i];
       } else if (i >=
                  (array_view->n_variadic_buffers + NANOARROW_BINARY_VIEW_FIXED_BUFFERS)) {
         struct ArrowBufferView view;
@@ -870,10 +870,8 @@ static inline struct ArrowBufferView ArrowArrayViewGetBufferView(
         return view;
       }
     default:
-      break;
+      return array_view->buffer_views[i];
   }
-
-  return array_view->buffer_views[i];
 }
 
 enum ArrowBufferType ArrowArrayViewGetBufferType(struct ArrowArrayView* array_view,
@@ -882,7 +880,7 @@ enum ArrowBufferType ArrowArrayViewGetBufferType(struct ArrowArrayView* array_vi
     case NANOARROW_TYPE_BINARY_VIEW:
     case NANOARROW_TYPE_STRING_VIEW:
       if (i < NANOARROW_BINARY_VIEW_FIXED_BUFFERS) {
-        break;
+        return array_view->layout.buffer_type[i];
       } else if (i ==
                  (array_view->n_variadic_buffers + NANOARROW_BINARY_VIEW_FIXED_BUFFERS)) {
         return NANOARROW_BUFFER_TYPE_VARIADIC_SIZE;
@@ -890,10 +888,8 @@ enum ArrowBufferType ArrowArrayViewGetBufferType(struct ArrowArrayView* array_vi
         return NANOARROW_BUFFER_TYPE_VARIADIC_DATA;
       }
     default:
-      break;
+      return array_view->layout.buffer_type[i];
   }
-
-  return array_view->layout.buffer_type[i];
 }
 
 static inline enum ArrowType ArrowArrayViewGetBufferDataType(
@@ -902,7 +898,7 @@ static inline enum ArrowType ArrowArrayViewGetBufferDataType(
     case NANOARROW_TYPE_BINARY_VIEW:
     case NANOARROW_TYPE_STRING_VIEW:
       if (i < NANOARROW_BINARY_VIEW_FIXED_BUFFERS) {
-        break;
+        return array_view->layout.buffer_data_type[i];
       } else if (i >=
                  (array_view->n_variadic_buffers + NANOARROW_BINARY_VIEW_FIXED_BUFFERS)) {
         return NANOARROW_TYPE_INT64;
@@ -912,10 +908,8 @@ static inline enum ArrowType ArrowArrayViewGetBufferDataType(
         return NANOARROW_TYPE_STRING;
       }
     default:
-      break;
+      return array_view->layout.buffer_data_type[i];
   }
-
-  return array_view->layout.buffer_data_type[i];
 }
 
 static inline int64_t ArrowArrayViewGetBufferElementSizeBits(
@@ -924,7 +918,7 @@ static inline int64_t ArrowArrayViewGetBufferElementSizeBits(
     case NANOARROW_TYPE_BINARY_VIEW:
     case NANOARROW_TYPE_STRING_VIEW:
       if (i < NANOARROW_BINARY_VIEW_FIXED_BUFFERS) {
-        break;
+        return array_view->layout.element_size_bits[i];
       } else if (i >=
                  (array_view->n_variadic_buffers + NANOARROW_BINARY_VIEW_FIXED_BUFFERS)) {
         return sizeof(int64_t) * 8;
@@ -932,10 +926,8 @@ static inline int64_t ArrowArrayViewGetBufferElementSizeBits(
         return 0;
       }
     default:
-      break;
+      return array_view->layout.element_size_bits[i];
   }
-
-  return array_view->layout.element_size_bits[i];
 }
 
 static inline int8_t ArrowArrayViewIsNull(const struct ArrowArrayView* array_view,
