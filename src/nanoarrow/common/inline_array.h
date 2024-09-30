@@ -922,8 +922,7 @@ static struct ArrowBufferView ArrowArrayViewGetBytesFromViewArrayUnsafe(
     return out;
   }
 
-  const int32_t buf_index = bv->ref.buffer_index + NANOARROW_BINARY_VIEW_FIXED_BUFFERS;
-  out.data.data = array_view->array->buffers[buf_index];
+  out.data.data = array_view->variadic_buffers[bv->ref.buffer_index];
   out.data.as_uint8 += bv->ref.offset;
   return out;
 }
