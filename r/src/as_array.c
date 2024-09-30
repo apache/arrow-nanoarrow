@@ -435,7 +435,7 @@ static void as_array_list(SEXP x_sexp, struct ArrowArray* array, SEXP schema_xpt
     if (item == R_NilValue) {
       result = ArrowArrayAppendNull(array, 1);
       if (result != NANOARROW_OK) {
-        Rf_error("ArrowArrayAppendString() failed");
+        Rf_error("ArrowArrayAppendNull() failed");
       }
     } else if (TYPEOF(item) == RAWSXP) {
       item_view.data.data = RAW(item);
