@@ -64,7 +64,7 @@ as_nanoarrow_buffer.default <- function(x, ...) {
 
 #' @importFrom utils str
 #' @export
-str.nanoarrow_buffer <- function(object, ..., db = F, indent.str = "",
+str.nanoarrow_buffer <- function(object, ..., indent.str = "",
                                  width = getOption("width")) {
   formatted <- format(object)
   cat(formatted)
@@ -117,8 +117,10 @@ print.nanoarrow_buffer <- function(x, ...) {
 }
 
 #' @export
+
 format.nanoarrow_buffer <- function(x, ...) {
   info <- nanoarrow_buffer_info(x)
+  is_null <- identical(nanoarrow_pointer_addr_chr(info$data), "0")
   if (info$data_type == "unknown") {
     len <- ""
   } else if (info$element_size_bits == 0 || info$data_type %in% c("binary", "string")) {
@@ -128,14 +130,17 @@ format.nanoarrow_buffer <- function(x, ...) {
     len <- sprintf("[%s][%s b]", logical_length, info$size_bytes)
   }
 
-
-  sprintf(
-    "<%s %s<%s>%s>",
-    class(x)[1],
-    info$type,
-    info$data_type,
-    len
-  )
+  if (is_null) {
+    sprintf("<%s %s<%s>[null]", class(x)[1], info$type, info$data_type)
+  } else {
+    sprintf(
+      "<%s %s<%s>%s>",
+      class(x)[1],
+      info$type,
+      info$data_type,
+      len
+    )
+  }
 }
 
 #' Create and modify nanoarrow buffers
