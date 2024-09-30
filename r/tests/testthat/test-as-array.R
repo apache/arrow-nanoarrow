@@ -342,6 +342,13 @@ test_that("as_nanoarrow_array() works for character() -> na_string_view()", {
   # All these strings are shorter than four characters and thus are all inlined
   expect_identical(length(array$buffers), 3L)
   expect_identical(as.vector(array$buffers[[3]]), double())
+
+  # With non-inlinable strings
+  item <- "this string is longer than 12 bytes"
+  array <- as_nanoarrow_array(item, schema = na_string_view())
+  expect_identical(length(array$buffers), 4L)
+  expect_identical(as.raw(array$buffers[[3]]), charToRaw(item))
+  expect_identical(as.vector(array$buffers[[4]]), as.double(nchar(item)))
 })
 
 test_that("as_nanoarrow_array() works for factor() -> na_dictionary()", {
@@ -609,6 +616,13 @@ test_that("as_nanoarrow_array() works for blob::blob() -> na_binary_view()", {
   # All these strings are shorter than four characters and thus are all inlined
   expect_identical(length(array$buffers), 3L)
   expect_identical(as.vector(array$buffers[[3]]), double())
+
+  # With non-inlinable strings
+  item <- list(charToRaw("this string is longer than 12 bytes"))
+  array <- as_nanoarrow_array(item, schema = na_binary_view())
+  expect_identical(length(array$buffers), 4L)
+  expect_identical(as.raw(array$buffers[[3]]), item[[1]])
+  expect_identical(as.vector(array$buffers[[4]]), as.double(length(item[[1]])))
 })
 
 test_that("as_nanoarrow_array() works for list(raw()) -> na_binary()", {
