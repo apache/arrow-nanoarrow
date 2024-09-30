@@ -1346,7 +1346,7 @@ static inline void ArrowToStringLogChars(char** out, int64_t n_chars_last,
   // In the unlikely snprintf() returning a negative value (encoding error),
   // ensure the result won't cause an out-of-bounds access.
   if (n_chars_last < 0) {
-    n_chars = 0;
+    n_chars_last = 0;
   }
 
   *n_chars += n_chars_last;
