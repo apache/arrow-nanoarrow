@@ -370,38 +370,10 @@ static SEXP borrow_buffer(struct ArrowArrayView* array_view, int64_t i, SEXP she
   SEXP buffer_class = PROTECT(Rf_allocVector(STRSXP, 2));
   SET_STRING_ELT(buffer_class, 1, Rf_mkChar("nanoarrow_buffer"));
 
-  struct ArrowBufferView view;
-  enum ArrowBufferType buffer_type;
-  enum ArrowType data_type;
-  int64_t element_size_bits;
-  if ((array_view->storage_type == NANOARROW_TYPE_STRING_VIEW ||
-       array_view->storage_type == NANOARROW_TYPE_BINARY_VIEW) &&
-      i >= NANOARROW_BINARY_VIEW_FIXED_BUFFERS) {
-    view.data.data = array_view->array->buffers[i];
-
-    if (i == (array_view->n_variadic_buffers + NANOARROW_BINARY_VIEW_FIXED_BUFFERS)) {
-      view.size_bytes = array_view->n_variadic_buffers * sizeof(int64_t);
-      buffer_type = NANOARROW_BUFFER_TYPE_DATA;
-      data_type = NANOARROW_TYPE_INT64;
-      element_size_bits = 64;
-    } else {
-      view.size_bytes =
-          array_view->variadic_buffer_sizes[i - NANOARROW_BINARY_VIEW_FIXED_BUFFERS];
-      buffer_type = NANOARROW_BUFFER_TYPE_DATA;
-
-      if (array_view->storage_type == NANOARROW_TYPE_STRING_VIEW) {
-        data_type = NANOARROW_TYPE_STRING;
-      } else {
-        data_type = NANOARROW_TYPE_BINARY;
-      }
-      element_size_bits = 0;
-    }
-  } else {
-    view = array_view->buffer_views[i];
-    buffer_type = array_view->layout.buffer_type[i];
-    data_type = array_view->layout.buffer_data_type[i];
-    element_size_bits = array_view->layout.element_size_bits[i];
-  }
+  struct ArrowBufferView view = ArrowArrayViewGetBufferView(array_view, i);
+  enum ArrowBufferType buffer_type = ArrowArrayViewGetBufferType(array_view, i);
+  enum ArrowType data_type = ArrowArrayViewGetBufferDataType(array_view, i);
+  int64_t element_size_bits = ArrowArrayViewGetBufferElementSizeBits(array_view, i);
 
   SEXP buffer_xptr =
       PROTECT(buffer_borrowed_xptr(view.data.data, view.size_bytes, shelter));

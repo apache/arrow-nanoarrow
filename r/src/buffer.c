@@ -163,8 +163,11 @@ SEXP nanoarrow_c_buffer_info(SEXP buffer_xptr) {
       case NANOARROW_BUFFER_TYPE_UNION_OFFSET:
         buffer_type_string = "union_offset";
         break;
-      case NANOARROW_BUFFER_TYPE_DATA_VIEW:
-        buffer_type_string = "data_view";
+      case NANOARROW_BUFFER_TYPE_VARIADIC_DATA:
+        buffer_type_string = "variadic_data";
+        break;
+      case NANOARROW_BUFFER_TYPE_VARIADIC_SIZE:
+        buffer_type_string = "variadic_size";
         break;
       default:
         buffer_type_string = "unknown";
