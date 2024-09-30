@@ -870,7 +870,15 @@ static inline struct ArrowBufferView ArrowArrayViewGetBufferView(
         return view;
       }
     default:
-      return array_view->buffer_views[i];
+      // We need this check to avoid -Warray-bounds from complaining
+      if (i >= NANOARROW_MAX_FIXED_BUFFERS) {
+        struct ArrowBufferView view;
+        view.data.data = NULL;
+        view.size_bytes = 0;
+        return view;
+      } else {
+        return array_view->buffer_views[i];
+      }
   }
 }
 
@@ -888,7 +896,12 @@ enum ArrowBufferType ArrowArrayViewGetBufferType(struct ArrowArrayView* array_vi
         return NANOARROW_BUFFER_TYPE_VARIADIC_DATA;
       }
     default:
-      return array_view->layout.buffer_type[i];
+      // We need this check to avoid -Warray-bounds from complaining
+      if (i >= NANOARROW_MAX_FIXED_BUFFERS) {
+        return NANOARROW_BUFFER_TYPE_NONE;
+      } else {
+        return array_view->layout.buffer_type[i];
+      }
   }
 }
 
@@ -908,7 +921,12 @@ static inline enum ArrowType ArrowArrayViewGetBufferDataType(
         return NANOARROW_TYPE_STRING;
       }
     default:
-      return array_view->layout.buffer_data_type[i];
+      // We need this check to avoid -Warray-bounds from complaining
+      if (i >= NANOARROW_MAX_FIXED_BUFFERS) {
+        return NANOARROW_TYPE_UNINITIALIZED;
+      } else {
+        return array_view->layout.buffer_data_type[i];
+      }
   }
 }
 
@@ -926,7 +944,12 @@ static inline int64_t ArrowArrayViewGetBufferElementSizeBits(
         return 0;
       }
     default:
-      return array_view->layout.element_size_bits[i];
+      // We need this check to avoid -Warray-bounds from complaining
+      if (i >= NANOARROW_MAX_FIXED_BUFFERS) {
+        return 0;
+      } else {
+        return array_view->layout.element_size_bits[i];
+      }
   }
 }
 
