@@ -2529,7 +2529,7 @@ void TestArrowArrayViewBinaryView(enum ArrowType type, enum ArrowType buffer_dat
   ASSERT_EQ(ArrowArrayStartAppending(&array), NANOARROW_OK);
   ASSERT_EQ(ArrowArrayAppendString(&array, "longer than 12 bytes"_asv), NANOARROW_OK);
   ASSERT_EQ(ArrowArrayFinishBuildingDefault(&array, &error), NANOARROW_OK);
-  ASSERT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error) , NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), NANOARROW_OK);
 
   // Check buffer properties
   EXPECT_EQ(ArrowArrayViewGetNumBuffers(&array_view), 4);
