@@ -295,8 +295,6 @@ test_that("as_nanoarrow_array() works for character() -> na_string()", {
 })
 
 test_that("as_nanoarrow_array() works for character() -> na_large_string()", {
-  skip_if_not_installed("arrow")
-
   # Without nulls
   array <- as_nanoarrow_array(letters, schema = na_large_string())
   expect_identical(infer_nanoarrow_schema(array)$format, "U")
@@ -320,6 +318,37 @@ test_that("as_nanoarrow_array() works for character() -> na_large_string()", {
     as.raw(array$buffers[[3]]),
     as.raw(as_nanoarrow_buffer(paste(letters, collapse = "")))
   )
+})
+
+test_that("as_nanoarrow_array() works for character() -> na_string_view()", {
+  # Without nulls
+  array <- as_nanoarrow_array(letters, schema = na_string_view())
+  expect_identical(infer_nanoarrow_schema(array)$format, "vu")
+  expect_identical(as.raw(array$buffers[[1]]), raw())
+  expect_identical(array$offset, 0L)
+  expect_identical(array$null_count, 0L)
+  # All these strings are shorter than four characters and thus are all inlined
+  expect_identical(length(array$buffers), 3L)
+  expect_identical(as.vector(array$buffers[[3]]), double())
+
+  # With nulls
+  array <- as_nanoarrow_array(c(letters, NA), schema = na_string_view())
+  expect_identical(infer_nanoarrow_schema(array)$format, "vu")
+  expect_identical(array$null_count, 1L)
+  expect_identical(
+    as.raw(array$buffers[[1]]),
+    packBits(c(rep(TRUE, 26), FALSE, rep(FALSE, 5)))
+  )
+  # All these strings are shorter than four characters and thus are all inlined
+  expect_identical(length(array$buffers), 3L)
+  expect_identical(as.vector(array$buffers[[3]]), double())
+
+  # With non-inlinable strings
+  item <- "this string is longer than 12 bytes"
+  array <- as_nanoarrow_array(item, schema = na_string_view())
+  expect_identical(length(array$buffers), 4L)
+  expect_identical(as.raw(array$buffers[[3]]), charToRaw(item))
+  expect_identical(as.vector(array$buffers[[4]]), as.double(nchar(item)))
 })
 
 test_that("as_nanoarrow_array() works for factor() -> na_dictionary()", {
@@ -504,9 +533,36 @@ test_that("as_nanoarrow_array() works for blob::blob() -> na_binary()", {
   )
 })
 
-test_that("as_nanoarrow_array() works for blob::blob() -> na_large_binary()", {
-  skip_if_not_installed("arrow")
+test_that("as_nanoarrow_array() works for blob::blob() -> na_fixed_size_binary()", {
+  # Without nulls
+  array <- as_nanoarrow_array(blob::as_blob(letters), schema = na_fixed_size_binary(1))
+  expect_identical(infer_nanoarrow_schema(array)$format, "w:1")
+  expect_identical(as.raw(array$buffers[[1]]), raw())
+  expect_identical(array$offset, 0L)
+  expect_identical(array$null_count, 0L)
+  expect_identical(
+    as.raw(array$buffers[[2]]),
+    as.raw(as_nanoarrow_buffer(paste(letters, collapse = "")))
+  )
 
+  # With nulls
+  array <- as_nanoarrow_array(
+    blob::as_blob(c(letters, NA)),
+    schema = na_fixed_size_binary(1)
+  )
+  expect_identical(infer_nanoarrow_schema(array)$format, "w:1")
+  expect_identical(array$null_count, 1L)
+  expect_identical(
+    as.raw(array$buffers[[1]]),
+    packBits(c(rep(TRUE, 26), FALSE, rep(FALSE, 5)))
+  )
+  expect_identical(
+    as.raw(array$buffers[[2]]),
+    c(as.raw(as_nanoarrow_buffer(paste(letters, collapse = ""))), as.raw(0x00))
+  )
+})
+
+test_that("as_nanoarrow_array() works for blob::blob() -> na_large_binary()", {
   # Without nulls
   array <- as_nanoarrow_array(blob::as_blob(letters), schema = na_large_binary())
   expect_identical(infer_nanoarrow_schema(array)$format, "Z")
@@ -535,6 +591,39 @@ test_that("as_nanoarrow_array() works for blob::blob() -> na_large_binary()", {
   )
 })
 
+test_that("as_nanoarrow_array() works for blob::blob() -> na_binary_view()", {
+  # Without nulls
+  array <- as_nanoarrow_array(blob::as_blob(letters), schema = na_binary_view())
+  expect_identical(infer_nanoarrow_schema(array)$format, "vz")
+  expect_identical(as.raw(array$buffers[[1]]), raw())
+  expect_identical(array$offset, 0L)
+  expect_identical(array$null_count, 0L)
+  # All these strings are shorter than four characters and thus are all inlined
+  expect_identical(length(array$buffers), 3L)
+  expect_identical(as.vector(array$buffers[[3]]), double())
+
+  # With nulls
+  array <- as_nanoarrow_array(
+    blob::as_blob(c(letters, NA)),
+    schema = na_binary_view()
+  )
+  expect_identical(infer_nanoarrow_schema(array)$format, "vz")
+  expect_identical(array$null_count, 1L)
+  expect_identical(
+    as.raw(array$buffers[[1]]),
+    packBits(c(rep(TRUE, 26), FALSE, rep(FALSE, 5)))
+  )
+  # All these strings are shorter than four characters and thus are all inlined
+  expect_identical(length(array$buffers), 3L)
+  expect_identical(as.vector(array$buffers[[3]]), double())
+
+  # With non-inlinable strings
+  item <- list(charToRaw("this string is longer than 12 bytes"))
+  array <- as_nanoarrow_array(item, schema = na_binary_view())
+  expect_identical(length(array$buffers), 4L)
+  expect_identical(as.raw(array$buffers[[3]]), item[[1]])
+  expect_identical(as.vector(array$buffers[[4]]), as.double(length(item[[1]])))
+})
 
 test_that("as_nanoarrow_array() works for list(raw()) -> na_binary()", {
   # Without nulls

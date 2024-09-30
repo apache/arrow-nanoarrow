@@ -37,6 +37,17 @@ test_that("schemaless nanoarrow_array format, print, and str methods work", {
   expect_output(expect_identical(print(array), array), "nanoarrow_array")
 })
 
+test_that("string/binary view nanoarrow_array buffers print correctly", {
+  view_array_all_inlined <- as_nanoarrow_array(letters, schema = na_string_view())
+  expect_snapshot(print(view_array_all_inlined))
+
+  view_array_not_all_inlined <- as_nanoarrow_array(
+    "this string is longer than 12 bytes",
+    schema = na_string_view()
+  )
+  expect_snapshot(print(view_array_not_all_inlined))
+})
+
 test_that("as_nanoarrow_array() / convert_array() default method works", {
   array <- as_nanoarrow_array(1:10)
   expect_identical(convert_array(array), 1:10)

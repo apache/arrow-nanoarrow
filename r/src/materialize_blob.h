@@ -33,6 +33,8 @@ static inline int nanoarrow_materialize_blob(struct ArrayViewSlice* src,
     case NANOARROW_TYPE_LARGE_STRING:
     case NANOARROW_TYPE_BINARY:
     case NANOARROW_TYPE_LARGE_BINARY:
+    case NANOARROW_TYPE_STRING_VIEW:
+    case NANOARROW_TYPE_BINARY_VIEW:
       break;
     default:
       return ENOTSUP;
