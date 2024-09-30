@@ -855,7 +855,7 @@ static inline struct ArrowBufferView ArrowArrayViewGetBufferView(
     case NANOARROW_TYPE_STRING_VIEW:
       if (i < NANOARROW_BINARY_VIEW_FIXED_BUFFERS) {
         break;
-      } else if (i ==
+      } else if (i >=
                  (array_view->n_variadic_buffers + NANOARROW_BINARY_VIEW_FIXED_BUFFERS)) {
         struct ArrowBufferView view;
         view.data.as_int64 = array_view->variadic_buffer_sizes;
@@ -903,7 +903,7 @@ static inline enum ArrowType ArrowArrayViewGetBufferDataType(
     case NANOARROW_TYPE_STRING_VIEW:
       if (i < NANOARROW_BINARY_VIEW_FIXED_BUFFERS) {
         break;
-      } else if (i ==
+      } else if (i >=
                  (array_view->n_variadic_buffers + NANOARROW_BINARY_VIEW_FIXED_BUFFERS)) {
         return NANOARROW_TYPE_INT64;
       } else if (array_view->storage_type == NANOARROW_TYPE_BINARY_VIEW) {
@@ -925,7 +925,7 @@ static inline int64_t ArrowArrayViewGetBufferElementSizeBits(
     case NANOARROW_TYPE_STRING_VIEW:
       if (i < NANOARROW_BINARY_VIEW_FIXED_BUFFERS) {
         break;
-      } else if (i ==
+      } else if (i >=
                  (array_view->n_variadic_buffers + NANOARROW_BINARY_VIEW_FIXED_BUFFERS)) {
         return sizeof(int64_t) * 8;
       } else {
