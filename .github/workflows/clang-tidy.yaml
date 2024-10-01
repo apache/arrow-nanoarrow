@@ -39,21 +39,8 @@ jobs:
 
     name: ${{ matrix.config.label }}
 
-    strategy:
-      fail-fast: false
-      matrix:
-        config:
-          - {label: common}
-          - {label: device, cmake_args: "-DNANOARROW_DEVICE=ON"}
-          - {label: ipc, cmake_args: "-DNANOARROW_IPC=ON"}
-
     steps:
       - uses: actions/checkout@v4
-
-      - name: Install clang-tidy
-        if: matrix.config.label == 'default-build'
-        run: |
-          sudo apt-get update && sudo apt-get install -y clang-tidy
 
       - name: Cache Arrow C++ Build
         id: cache-arrow-build
@@ -78,9 +65,10 @@ jobs:
           mkdir build
           cd build
 
-          cmake .. -DNANOARROW_BUILD_TESTS=ON -DCMAKE_POSITION_INDEPENDENT_CODE=ON \
+          cmake .. -DNANOARROW_DEVICE=ON -DNANOARROW_IPC=ON \
+            -DNANOARROW_BUILD_TESTS=ON -DCMAKE_POSITION_INDEPENDENT_CODE=ON \
             -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
-            -DCMAKE_PREFIX_PATH="${ARROW_PATH}" ${{ matrix.config.cmake_args }}
+            -DCMAKE_PREFIX_PATH="${ARROW_PATH}"
 
           cmake --build .
 

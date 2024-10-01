@@ -28,7 +28,9 @@ main() {
     local -r source_dir="${1}"
     local -r build_dir="${2}"
 
-    run-clang-tidy -p "${build_dir}" -j$(nproc) -extra-arg=-Wno-unknown-warning-option
+    run-clang-tidy -p "${build_dir}" -j$(nproc) \
+        -extra-arg=-Wno-unknown-warning-option \
+        --warnings-as-errors
 }
 
 main "$@"
