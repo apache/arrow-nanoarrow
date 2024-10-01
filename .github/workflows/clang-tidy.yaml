@@ -33,7 +33,7 @@ permissions:
   contents: read
 
 jobs:
-  test-c:
+  clang-tidy:
 
     runs-on: ubuntu-latest
 
