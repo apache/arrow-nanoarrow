@@ -21,4 +21,3 @@
 # we also support C99, we can't blindly replace those calls.
 Checks: '-clang-analyzer-valist.Uninitialized,-clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling'
 FormatStyle: google
-UseColor: true
