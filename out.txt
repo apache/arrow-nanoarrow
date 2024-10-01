@@ -1,0 +1,171 @@
+Enabled checks:
+    clang-analyzer-apiModeling.StdCLibraryFunctions
+    clang-analyzer-apiModeling.TrustNonnull
+    clang-analyzer-apiModeling.google.GTest
+    clang-analyzer-apiModeling.llvm.CastValue
+    clang-analyzer-apiModeling.llvm.ReturnValue
+    clang-analyzer-core.CallAndMessage
+    clang-analyzer-core.CallAndMessageModeling
+    clang-analyzer-core.DivideZero
+    clang-analyzer-core.DynamicTypePropagation
+    clang-analyzer-core.NonNullParamChecker
+    clang-analyzer-core.NonnilStringConstants
+    clang-analyzer-core.NullDereference
+    clang-analyzer-core.StackAddrEscapeBase
+    clang-analyzer-core.StackAddressEscape
+    clang-analyzer-core.UndefinedBinaryOperatorResult
+    clang-analyzer-core.VLASize
+    clang-analyzer-core.builtin.BuiltinFunctions
+    clang-analyzer-core.builtin.NoReturnFunctions
+    clang-analyzer-core.uninitialized.ArraySubscript
+    clang-analyzer-core.uninitialized.Assign
+    clang-analyzer-core.uninitialized.Branch
+    clang-analyzer-core.uninitialized.CapturedBlockVariable
+    clang-analyzer-core.uninitialized.UndefReturn
+    clang-analyzer-cplusplus.InnerPointer
+    clang-analyzer-cplusplus.Move
+    clang-analyzer-cplusplus.NewDelete
+    clang-analyzer-cplusplus.NewDeleteLeaks
+    clang-analyzer-cplusplus.PlacementNew
+    clang-analyzer-cplusplus.PureVirtualCall
+    clang-analyzer-cplusplus.SelfAssignment
+    clang-analyzer-cplusplus.SmartPtrModeling
+    clang-analyzer-cplusplus.StringChecker
+    clang-analyzer-cplusplus.VirtualCallModeling
+    clang-analyzer-deadcode.DeadStores
+    clang-analyzer-fuchsia.HandleChecker
+    clang-analyzer-nullability.NullPassedToNonnull
+    clang-analyzer-nullability.NullReturnedFromNonnull
+    clang-analyzer-nullability.NullabilityBase
+    clang-analyzer-nullability.NullableDereferenced
+    clang-analyzer-nullability.NullablePassedToNonnull
+    clang-analyzer-nullability.NullableReturnedFromNonnull
+    clang-analyzer-optin.cplusplus.UninitializedObject
+    clang-analyzer-optin.cplusplus.VirtualCall
+    clang-analyzer-optin.mpi.MPI-Checker
+    clang-analyzer-optin.osx.OSObjectCStyleCast
+    clang-analyzer-optin.osx.cocoa.localizability.EmptyLocalizationContextChecker
+    clang-analyzer-optin.osx.cocoa.localizability.NonLocalizedStringChecker
+    clang-analyzer-optin.performance.GCDAntipattern
+    clang-analyzer-optin.performance.Padding
+    clang-analyzer-optin.portability.UnixAPI
+    clang-analyzer-osx.API
+    clang-analyzer-osx.MIG
+    clang-analyzer-osx.NSOrCFErrorDerefChecker
+    clang-analyzer-osx.NumberObjectConversion
+    clang-analyzer-osx.OSObjectRetainCount
+    clang-analyzer-osx.ObjCProperty
+    clang-analyzer-osx.SecKeychainAPI
+    clang-analyzer-osx.cocoa.AtSync
+    clang-analyzer-osx.cocoa.AutoreleaseWrite
+    clang-analyzer-osx.cocoa.ClassRelease
+    clang-analyzer-osx.cocoa.Dealloc
+    clang-analyzer-osx.cocoa.IncompatibleMethodTypes
+    clang-analyzer-osx.cocoa.Loops
+    clang-analyzer-osx.cocoa.MissingSuperCall
+    clang-analyzer-osx.cocoa.NSAutoreleasePool
+    clang-analyzer-osx.cocoa.NSError
+    clang-analyzer-osx.cocoa.NilArg
+    clang-analyzer-osx.cocoa.NonNilReturnValue
+    clang-analyzer-osx.cocoa.ObjCGenerics
+    clang-analyzer-osx.cocoa.RetainCount
+    clang-analyzer-osx.cocoa.RetainCountBase
+    clang-analyzer-osx.cocoa.RunLoopAutoreleaseLeak
+    clang-analyzer-osx.cocoa.SelfInit
+    clang-analyzer-osx.cocoa.SuperDealloc
+    clang-analyzer-osx.cocoa.UnusedIvars
+    clang-analyzer-osx.cocoa.VariadicMethodTypes
+    clang-analyzer-osx.coreFoundation.CFError
+    clang-analyzer-osx.coreFoundation.CFNumber
+    clang-analyzer-osx.coreFoundation.CFRetainRelease
+    clang-analyzer-osx.coreFoundation.containers.OutOfBounds
+    clang-analyzer-osx.coreFoundation.containers.PointerSizedValues
+    clang-analyzer-security.FloatLoopCounter
+    clang-analyzer-security.insecureAPI.SecuritySyntaxChecker
+    clang-analyzer-security.insecureAPI.UncheckedReturn
+    clang-analyzer-security.insecureAPI.bcmp
+    clang-analyzer-security.insecureAPI.bcopy
+    clang-analyzer-security.insecureAPI.bzero
+    clang-analyzer-security.insecureAPI.decodeValueOfObjCType
+    clang-analyzer-security.insecureAPI.getpw
+    clang-analyzer-security.insecureAPI.gets
+    clang-analyzer-security.insecureAPI.mkstemp
+    clang-analyzer-security.insecureAPI.mktemp
+    clang-analyzer-security.insecureAPI.rand
+    clang-analyzer-security.insecureAPI.strcpy
+    clang-analyzer-security.insecureAPI.vfork
+    clang-analyzer-unix.API
+    clang-analyzer-unix.DynamicMemoryModeling
+    clang-analyzer-unix.Malloc
+    clang-analyzer-unix.MallocSizeof
+    clang-analyzer-unix.MismatchedDeallocator
+    clang-analyzer-unix.Vfork
+    clang-analyzer-unix.cstring.BadSizeArg
+    clang-analyzer-unix.cstring.CStringModeling
+    clang-analyzer-unix.cstring.NullArg
+    clang-analyzer-valist.CopyToSelf
+    clang-analyzer-valist.Unterminated
+    clang-analyzer-valist.ValistBase
+    clang-analyzer-webkit.NoUncountedMemberChecker
+    clang-analyzer-webkit.RefCntblBaseVirtualDtor
+    clang-analyzer-webkit.UncountedLambdaCapturesChecker
+
+clang-tidy-14 --use-color -extra-arg=-Wno-unknown-warning-option -p=build/ /home/dewey/gh/arrow-nanoarrow/src/nanoarrow/common/array_stream.c
+clang-tidy-14 --use-color -extra-arg=-Wno-unknown-warning-option -p=build/ /home/dewey/gh/arrow-nanoarrow/src/nanoarrow/ipc/reader.c
+clang-tidy-14 --use-color -extra-arg=-Wno-unknown-warning-option -p=build/ /home/dewey/gh/arrow-nanoarrow/src/nanoarrow/common/utils.c
+clang-tidy-14 --use-color -extra-arg=-Wno-unknown-warning-option -p=build/ /home/dewey/gh/arrow-nanoarrow/thirdparty/flatcc/src/runtime/refmap.c
+clang-tidy-14 --use-color -extra-arg=-Wno-unknown-warning-option -p=build/ /home/dewey/gh/arrow-nanoarrow/thirdparty/flatcc/src/runtime/verifier.c
+[1m/home/dewey/gh/arrow-nanoarrow/thirdparty/flatcc/src/runtime/verifier.c:662:15: [0m[0;1;35mwarning: [0m[1mAlthough the value stored to 'vte_type' is used in the enclosing expression, the value is never actually read from 'vte_type' [clang-analyzer-deadcode.DeadStores][0m
+    if (0 == (vte_type = read_vt_entry(td, id - 1))) {
+[0;1;32m              ^          ~~~~~~~~~~~~~~~~~~~~~~~~~
+[0m[1m/home/dewey/gh/arrow-nanoarrow/thirdparty/flatcc/src/runtime/verifier.c:662:15: [0m[0;1;30mnote: [0mAlthough the value stored to 'vte_type' is used in the enclosing expression, the value is never actually read from 'vte_type'[0m
+    if (0 == (vte_type = read_vt_entry(td, id - 1))) {
+[0;1;32m              ^          ~~~~~~~~~~~~~~~~~~~~~~~~~
+[0m[1m/home/dewey/gh/arrow-nanoarrow/thirdparty/flatcc/src/runtime/verifier.c:663:19: [0m[0;1;35mwarning: [0m[1mAlthough the value stored to 'vte_table' is used in the enclosing expression, the value is never actually read from 'vte_table' [clang-analyzer-deadcode.DeadStores][0m
+        if (0 == (vte_table = read_vt_entry(td, id))) {
+[0;1;32m                  ^           ~~~~~~~~~~~~~~~~~~~~~
+[0m[1m/home/dewey/gh/arrow-nanoarrow/thirdparty/flatcc/src/runtime/verifier.c:663:19: [0m[0;1;30mnote: [0mAlthough the value stored to 'vte_table' is used in the enclosing expression, the value is never actually read from 'vte_table'[0m
+        if (0 == (vte_table = read_vt_entry(td, id))) {
+[0;1;32m                  ^           ~~~~~~~~~~~~~~~~~~~~~
+[0m2 warnings generated.
+clang-tidy-14 --use-color -extra-arg=-Wno-unknown-warning-option -p=build/ /home/dewey/gh/arrow-nanoarrow/build/_deps/googletest-src/googletest/src/gtest_main.cc
+clang-tidy-14 --use-color -extra-arg=-Wno-unknown-warning-option -p=build/ /home/dewey/gh/arrow-nanoarrow/thirdparty/flatcc/src/runtime/emitter.c
+[1m/home/dewey/gh/arrow-nanoarrow/thirdparty/flatcc/src/runtime/emitter.c:154:28: [0m[0;1;35mwarning: [0m[1mValue stored to 'p' during its initialization is never read [clang-analyzer-deadcode.DeadStores][0m
+    flatcc_emitter_page_t *p = E->front;
+[0;1;32m                           ^   ~~~~~~~~
+[0m[1m/home/dewey/gh/arrow-nanoarrow/thirdparty/flatcc/src/runtime/emitter.c:154:28: [0m[0;1;30mnote: [0mValue stored to 'p' during its initialization is never read[0m
+    flatcc_emitter_page_t *p = E->front;
+[0;1;32m                           ^   ~~~~~~~~
+[0m1 warning generated.
+clang-tidy-14 --use-color -extra-arg=-Wno-unknown-warning-option -p=build/ /home/dewey/gh/arrow-nanoarrow/src/nanoarrow/ipc/writer.c
+clang-tidy-14 --use-color -extra-arg=-Wno-unknown-warning-option -p=build/ /home/dewey/gh/arrow-nanoarrow/build/_deps/googletest-src/googlemock/src/gmock-all.cc
+clang-tidy-14 --use-color -extra-arg=-Wno-unknown-warning-option -p=build/ /home/dewey/gh/arrow-nanoarrow/build/_deps/googletest-src/googlemock/src/gmock_main.cc
+clang-tidy-14 --use-color -extra-arg=-Wno-unknown-warning-option -p=build/ /home/dewey/gh/arrow-nanoarrow/build/_deps/googletest-src/googletest/src/gtest-all.cc
+1 warning generated.
+Suppressed 1 warnings (1 in non-user code).
+Use -header-filter=.* to display errors from all non-system headers. Use -system-headers to display errors from system headers as well.
+clang-tidy-14 --use-color -extra-arg=-Wno-unknown-warning-option -p=build/ /home/dewey/gh/arrow-nanoarrow/src/nanoarrow/integration/ipc_integration.cc
+clang-tidy-14 --use-color -extra-arg=-Wno-unknown-warning-option -p=build/ /home/dewey/gh/arrow-nanoarrow/src/nanoarrow/ipc/encoder.c
+clang-tidy-14 --use-color -extra-arg=-Wno-unknown-warning-option -p=build/ /home/dewey/gh/arrow-nanoarrow/src/nanoarrow/integration/c_data_integration.cc
+clang-tidy-14 --use-color -extra-arg=-Wno-unknown-warning-option -p=build/ /home/dewey/gh/arrow-nanoarrow/src/nanoarrow/integration/c_data_integration_test.cc
+clang-tidy-14 --use-color -extra-arg=-Wno-unknown-warning-option -p=build/ /home/dewey/gh/arrow-nanoarrow/src/nanoarrow/ipc/encoder_test.cc
+clang-tidy-14 --use-color -extra-arg=-Wno-unknown-warning-option -p=build/ /home/dewey/gh/arrow-nanoarrow/src/nanoarrow/common/array_stream_test.cc
+clang-tidy-14 --use-color -extra-arg=-Wno-unknown-warning-option -p=build/ /home/dewey/gh/arrow-nanoarrow/src/nanoarrow/common/schema.c
+clang-tidy-14 --use-color -extra-arg=-Wno-unknown-warning-option -p=build/ /home/dewey/gh/arrow-nanoarrow/src/nanoarrow/ipc/ipc_hpp_test.cc
+Suppressed 4 warnings (4 NOLINT).
+clang-tidy-14 --use-color -extra-arg=-Wno-unknown-warning-option -p=build/ /home/dewey/gh/arrow-nanoarrow/thirdparty/flatcc/src/runtime/builder.c
+clang-tidy-14 --use-color -extra-arg=-Wno-unknown-warning-option -p=build/ /home/dewey/gh/arrow-nanoarrow/src/nanoarrow/ipc/files_test.cc
+clang-tidy-14 --use-color -extra-arg=-Wno-unknown-warning-option -p=build/ /home/dewey/gh/arrow-nanoarrow/src/nanoarrow/ipc/writer_test.cc
+clang-tidy-14 --use-color -extra-arg=-Wno-unknown-warning-option -p=build/ /home/dewey/gh/arrow-nanoarrow/src/nanoarrow/ipc/decoder.c
+clang-tidy-14 --use-color -extra-arg=-Wno-unknown-warning-option -p=build/ /home/dewey/gh/arrow-nanoarrow/src/nanoarrow/common/array.c
+Suppressed 1 warnings (1 NOLINT).
+clang-tidy-14 --use-color -extra-arg=-Wno-unknown-warning-option -p=build/ /home/dewey/gh/arrow-nanoarrow/src/nanoarrow/testing/testing.cc
+clang-tidy-14 --use-color -extra-arg=-Wno-unknown-warning-option -p=build/ /home/dewey/gh/arrow-nanoarrow/src/nanoarrow/ipc/reader_test.cc
+clang-tidy-14 --use-color -extra-arg=-Wno-unknown-warning-option -p=build/ /home/dewey/gh/arrow-nanoarrow/src/nanoarrow/common/utils_test.cc
+clang-tidy-14 --use-color -extra-arg=-Wno-unknown-warning-option -p=build/ /home/dewey/gh/arrow-nanoarrow/src/nanoarrow/common/nanoarrow_hpp_test.cc
+Suppressed 6 warnings (6 NOLINT).
+clang-tidy-14 --use-color -extra-arg=-Wno-unknown-warning-option -p=build/ /home/dewey/gh/arrow-nanoarrow/src/nanoarrow/ipc/decoder_test.cc
+clang-tidy-14 --use-color -extra-arg=-Wno-unknown-warning-option -p=build/ /home/dewey/gh/arrow-nanoarrow/src/nanoarrow/common/buffer_test.cc
+clang-tidy-14 --use-color -extra-arg=-Wno-unknown-warning-option -p=build/ /home/dewey/gh/arrow-nanoarrow/src/nanoarrow/testing/testing_test.cc
+clang-tidy-14 --use-color -extra-arg=-Wno-unknown-warning-option -p=build/ /home/dewey/gh/arrow-nanoarrow/src/nanoarrow/common/schema_test.cc
+clang-tidy-14 --use-color -extra-arg=-Wno-unknown-warning-option -p=build/ /home/dewey/gh/arrow-nanoarrow/src/nanoarrow/common/array_test.cc
