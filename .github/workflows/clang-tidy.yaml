@@ -79,7 +79,7 @@ jobs:
           cd build
 
           cmake .. -DNANOARROW_BUILD_TESTS=ON -DCMAKE_POSITION_INDEPENDENT_CODE=ON \
-            -DCMAKE_BUILD_TYPE=Debug \ -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+            -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
             -DCMAKE_PREFIX_PATH="${ARROW_PATH}" ${{ matrix.config.cmake_args }}
 
           cmake --build .
