@@ -214,6 +214,7 @@ static inline ArrowErrorCode ArrowBufferReserve(struct ArrowBuffer* buffer,
 static inline void ArrowBufferAppendUnsafe(struct ArrowBuffer* buffer, const void* data,
                                            int64_t size_bytes) {
   if (size_bytes > 0) {
+    NANOARROW_DCHECK(buffer->data != NULL);
     memcpy(buffer->data + buffer->size_bytes, data, size_bytes);
     buffer->size_bytes += size_bytes;
   }
@@ -295,8 +296,10 @@ static inline ArrowErrorCode ArrowBufferAppendFill(struct ArrowBuffer* buffer,
 
   NANOARROW_RETURN_NOT_OK(ArrowBufferReserve(buffer, size_bytes));
 
+  NANOARROW_DCHECK(buffer->data != NULL); // To help clang-tidy
   memset(buffer->data + buffer->size_bytes, value, size_bytes);
   buffer->size_bytes += size_bytes;
+
   return NANOARROW_OK;
 }
 
@@ -413,6 +416,8 @@ static inline void ArrowBitsUnpackInt32(const uint8_t* bits, int64_t start_offse
     return;
   }
 
+  NANOARROW_DCHECK(bits != NULL && out != NULL);
+
   const int64_t i_begin = start_offset;
   const int64_t i_end = start_offset + length;
   const int64_t i_last_valid = i_end - 1;
@@ -461,6 +466,12 @@ static inline void ArrowBitSetTo(uint8_t* bits, int64_t i, uint8_t bit_is_set) {
 
 static inline void ArrowBitsSetTo(uint8_t* bits, int64_t start_offset, int64_t length,
                                   uint8_t bits_are_set) {
+  if (length == 0) {
+    return;
+  }
+
+  NANOARROW_DCHECK(bits != NULL);
+
   const int64_t i_begin = start_offset;
   const int64_t i_end = start_offset + length;
   const uint8_t fill_byte = (uint8_t)(-bits_are_set);
@@ -503,6 +514,8 @@ static inline int64_t ArrowBitCountSet(const uint8_t* bits, int64_t start_offset
   if (length == 0) {
     return 0;
   }
+
+  NANOARROW_DCHECK(bits != NULL);
 
   const int64_t i_begin = start_offset;
   const int64_t i_end = start_offset + length;
