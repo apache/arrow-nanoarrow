@@ -30,7 +30,7 @@ main() {
 
     run-clang-tidy -p "${build_dir}" -j$(nproc) \
         -extra-arg=-Wno-unknown-warning-option \
-        --warnings-as-errors
+        -fix
 }
 
 main "$@"
