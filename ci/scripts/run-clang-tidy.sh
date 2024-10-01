@@ -26,8 +26,15 @@ main() {
     set -x
 
     run-clang-tidy -p "${build_dir}" -j$(nproc) \
-        -extra-arg=-Wno-unknown-warning-option \
-        -fix
+        -extra-arg=-Wno-unknown-warning-option | \
+        tee "${build_dir}/clang-tidy-output.txt"
+
+    if grep -e "warning:" -e "error:" clang-tidy-output.txt; then
+      echo "Warnings or errors found!"
+      exit 1
+    else
+      echo "No warnings or errors found!"
+    fi
 
     set +x
 }
