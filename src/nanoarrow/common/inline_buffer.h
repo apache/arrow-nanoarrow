@@ -296,7 +296,7 @@ static inline ArrowErrorCode ArrowBufferAppendFill(struct ArrowBuffer* buffer,
 
   NANOARROW_RETURN_NOT_OK(ArrowBufferReserve(buffer, size_bytes));
 
-  NANOARROW_DCHECK(buffer->data != NULL); // To help clang-tidy
+  NANOARROW_DCHECK(buffer->data != NULL);  // To help clang-tidy
   memset(buffer->data + buffer->size_bytes, value, size_bytes);
   buffer->size_bytes += size_bytes;
 
