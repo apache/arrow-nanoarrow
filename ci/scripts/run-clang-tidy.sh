@@ -18,19 +18,18 @@
 # under the License.
 
 set -e
-set -o pipefail
-
-if [ ${VERBOSE:-0} -gt 0 ]; then
-  set -x
-fi
 
 main() {
     local -r source_dir="${1}"
     local -r build_dir="${2}"
 
+    set -x
+
     run-clang-tidy -p "${build_dir}" -j$(nproc) \
         -extra-arg=-Wno-unknown-warning-option \
         -fix
+
+    set +x
 }
 
 main "$@"
