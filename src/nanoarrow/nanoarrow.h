@@ -1053,6 +1053,48 @@ ArrowErrorCode ArrowArrayViewSetArrayMinimal(struct ArrowArrayView* array_view,
                                              const struct ArrowArray* array,
                                              struct ArrowError* error);
 
+/// \brief Get the number of buffers
+///
+/// The number of buffers referred to by this ArrowArrayView.  In may cases this can also
+/// be calculated from the ArrowLayout member of the ArrowArrayView or ArrowSchemaView;
+/// however, for binary view and string view types, the number of total buffers depends on
+/// the number of variadic buffers.
+static inline int64_t ArrowArrayViewGetNumBuffers(struct ArrowArrayView* array_view);
+
+/// \brief Get a view of a specific buffer from an ArrowArrayView
+///
+/// This is the ArrowArrayView equivalent of ArrowArray::buffers[i] that includes
+/// size information (if known).
+static inline struct ArrowBufferView ArrowArrayViewGetBufferView(
+    struct ArrowArrayView* array_view, int64_t i);
+
+/// \brief Get the function of a specific buffer in an ArrowArrayView
+///
+/// In may cases this can also be obtained from the ArrowLayout member of the
+/// ArrowArrayView or ArrowSchemaView; however, for binary view and string view types,
+/// the function of each buffer may be different between two arrays of the same type
+/// depending on the number of variadic buffers.
+static inline enum ArrowBufferType ArrowArrayViewGetBufferType(
+    struct ArrowArrayView* array_view, int64_t i);
+
+/// \brief Get the data type of a specific buffer in an ArrowArrayView
+///
+/// In may cases this can also be obtained from the ArrowLayout member of the
+/// ArrowArrayView or ArrowSchemaView; however, for binary view and string view types,
+/// the data type of each buffer may be different between two arrays of the same type
+/// depending on the number of variadic buffers.
+static inline enum ArrowType ArrowArrayViewGetBufferDataType(
+    struct ArrowArrayView* array_view, int64_t i);
+
+/// \brief Get the element size (in bits) of a specific buffer in an ArrowArrayView
+///
+/// In may cases this can also be obtained from the ArrowLayout member of the
+/// ArrowArrayView or ArrowSchemaView; however, for binary view and string view types,
+/// the element width of each buffer may be different between two arrays of the same type
+/// depending on the number of variadic buffers.
+static inline int64_t ArrowArrayViewGetBufferElementSizeBits(
+    struct ArrowArrayView* array_view, int64_t i);
+
 /// \brief Performs checks on the content of an ArrowArrayView
 ///
 /// If using ArrowArrayViewSetArray() to back array_view with an ArrowArray,

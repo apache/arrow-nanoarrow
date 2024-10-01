@@ -9,8 +9,8 @@
        $ offset    : int 0
        $ buffers   :List of 3
         ..$ :<nanoarrow_buffer validity<bool>[null] ``
-        ..$ :<nanoarrow_buffer data_view<string_view>[26][416 b]>`
-        ..$ :<nanoarrow_buffer data<int64>[null] ``
+        ..$ :<nanoarrow_buffer data<string_view>[26][416 b]>`
+        ..$ :<nanoarrow_buffer variadic_size<int64>[null] ``
        $ dictionary: NULL
        $ children  : list()
 
@@ -25,9 +25,9 @@
        $ offset    : int 0
        $ buffers   :List of 4
         ..$ :<nanoarrow_buffer validity<bool>[null] ``
-        ..$ :<nanoarrow_buffer data_view<string_view>[1][16 b]>`
-        ..$ :<nanoarrow_buffer data<string>[35 b]> `this string is longer than 12 ...`
-        ..$ :<nanoarrow_buffer data<int64>[1][8 b]> `35`
+        ..$ :<nanoarrow_buffer data<string_view>[1][16 b]>`
+        ..$ :<nanoarrow_buffer variadic_data<string>[35 b]> `this string is longer...`
+        ..$ :<nanoarrow_buffer variadic_size<int64>[1][8 b]> `35`
        $ dictionary: NULL
        $ children  : list()
 

@@ -696,11 +696,12 @@ void ArrowArrayViewSetLength(struct ArrowArrayView* array_view, int64_t length) 
             _ArrowRoundUpToMultipleOf8(array_view->layout.element_size_bits[i] * length) /
             8;
         continue;
-      case NANOARROW_BUFFER_TYPE_DATA_VIEW:
       case NANOARROW_BUFFER_TYPE_TYPE_ID:
       case NANOARROW_BUFFER_TYPE_UNION_OFFSET:
         array_view->buffer_views[i].size_bytes = element_size_bytes * length;
         continue;
+      case NANOARROW_BUFFER_TYPE_VARIADIC_DATA:
+      case NANOARROW_BUFFER_TYPE_VARIADIC_SIZE:
       case NANOARROW_BUFFER_TYPE_NONE:
         array_view->buffer_views[i].size_bytes = 0;
         continue;
@@ -734,6 +735,7 @@ static int ArrowArrayViewSetArrayInternal(struct ArrowArrayView* array_view,
   array_view->length = array->length;
   array_view->null_count = array->null_count;
   array_view->variadic_buffer_sizes = NULL;
+  array_view->variadic_buffers = NULL;
   array_view->n_variadic_buffers = 0;
 
   int64_t buffers_required = 0;
@@ -767,6 +769,7 @@ static int ArrowArrayViewSetArrayInternal(struct ArrowArrayView* array_view,
     const int32_t nvariadic_buf = (int32_t)(n_buffers - nfixed_buf - 1);
     array_view->n_variadic_buffers = nvariadic_buf;
     buffers_required += nvariadic_buf + 1;
+    array_view->variadic_buffers = array->buffers + NANOARROW_BINARY_VIEW_FIXED_BUFFERS;
     array_view->variadic_buffer_sizes = (int64_t*)array->buffers[n_buffers - 1];
   }
 
@@ -863,9 +866,10 @@ static int ArrowArrayViewValidateMinimal(struct ArrowArrayView* array_view,
         break;
       case NANOARROW_BUFFER_TYPE_TYPE_ID:
       case NANOARROW_BUFFER_TYPE_UNION_OFFSET:
-      case NANOARROW_BUFFER_TYPE_DATA_VIEW:
         min_buffer_size_bytes = element_size_bytes * offset_plus_length;
         break;
+      case NANOARROW_BUFFER_TYPE_VARIADIC_DATA:
+      case NANOARROW_BUFFER_TYPE_VARIADIC_SIZE:
       case NANOARROW_BUFFER_TYPE_NONE:
         continue;
     }

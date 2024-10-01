@@ -1932,7 +1932,8 @@ ArrowErrorCode SetArrayColumnBuffers(const json& value, ArrowArrayView* array_vi
       }
       break;
     }
-    case NANOARROW_BUFFER_TYPE_DATA_VIEW:
+    case NANOARROW_BUFFER_TYPE_VARIADIC_DATA:
+    case NANOARROW_BUFFER_TYPE_VARIADIC_SIZE:
       return ENOTSUP;
     case NANOARROW_BUFFER_TYPE_NONE:
       break;

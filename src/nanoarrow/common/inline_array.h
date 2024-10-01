@@ -286,6 +286,8 @@ static inline ArrowErrorCode _ArrowArrayAppendEmptyInternal(struct ArrowArray* a
 
     switch (private_data->layout.buffer_type[i]) {
       case NANOARROW_BUFFER_TYPE_NONE:
+      case NANOARROW_BUFFER_TYPE_VARIADIC_DATA:
+      case NANOARROW_BUFFER_TYPE_VARIADIC_SIZE:
       case NANOARROW_BUFFER_TYPE_VALIDITY:
         continue;
       case NANOARROW_BUFFER_TYPE_DATA_OFFSET:
@@ -301,7 +303,6 @@ static inline ArrowErrorCode _ArrowArrayAppendEmptyInternal(struct ArrowArray* a
         i++;
         continue;
       case NANOARROW_BUFFER_TYPE_DATA:
-      case NANOARROW_BUFFER_TYPE_DATA_VIEW:
         // Zero out the next bit of memory
         if (private_data->layout.element_size_bits[i] % 8 == 0) {
           NANOARROW_RETURN_NOT_OK(ArrowBufferAppendFill(buffer, 0, size_bytes * n));
@@ -826,6 +827,132 @@ static inline void ArrowArrayViewMove(struct ArrowArrayView* src,
   ArrowArrayViewInitFromType(src, NANOARROW_TYPE_UNINITIALIZED);
 }
 
+static inline int64_t ArrowArrayViewGetNumBuffers(struct ArrowArrayView* array_view) {
+  switch (array_view->storage_type) {
+    case NANOARROW_TYPE_BINARY_VIEW:
+    case NANOARROW_TYPE_STRING_VIEW:
+      return NANOARROW_BINARY_VIEW_FIXED_BUFFERS + array_view->n_variadic_buffers + 1;
+    default:
+      break;
+  }
+
+  int64_t n_buffers = 0;
+  for (int i = 0; i < NANOARROW_MAX_FIXED_BUFFERS; i++) {
+    if (array_view->layout.buffer_type[i] == NANOARROW_BUFFER_TYPE_NONE) {
+      break;
+    }
+
+    n_buffers++;
+  }
+
+  return n_buffers;
+}
+
+static inline struct ArrowBufferView ArrowArrayViewGetBufferView(
+    struct ArrowArrayView* array_view, int64_t i) {
+  switch (array_view->storage_type) {
+    case NANOARROW_TYPE_BINARY_VIEW:
+    case NANOARROW_TYPE_STRING_VIEW:
+      if (i < NANOARROW_BINARY_VIEW_FIXED_BUFFERS) {
+        return array_view->buffer_views[i];
+      } else if (i >=
+                 (array_view->n_variadic_buffers + NANOARROW_BINARY_VIEW_FIXED_BUFFERS)) {
+        struct ArrowBufferView view;
+        view.data.as_int64 = array_view->variadic_buffer_sizes;
+        view.size_bytes = array_view->n_variadic_buffers * sizeof(double);
+        return view;
+      } else {
+        struct ArrowBufferView view;
+        view.data.data =
+            array_view->variadic_buffers[i - NANOARROW_BINARY_VIEW_FIXED_BUFFERS];
+        view.size_bytes =
+            array_view->variadic_buffer_sizes[i - NANOARROW_BINARY_VIEW_FIXED_BUFFERS];
+        return view;
+      }
+    default:
+      // We need this check to avoid -Warray-bounds from complaining
+      if (i >= NANOARROW_MAX_FIXED_BUFFERS) {
+        struct ArrowBufferView view;
+        view.data.data = NULL;
+        view.size_bytes = 0;
+        return view;
+      } else {
+        return array_view->buffer_views[i];
+      }
+  }
+}
+
+enum ArrowBufferType ArrowArrayViewGetBufferType(struct ArrowArrayView* array_view,
+                                                 int64_t i) {
+  switch (array_view->storage_type) {
+    case NANOARROW_TYPE_BINARY_VIEW:
+    case NANOARROW_TYPE_STRING_VIEW:
+      if (i < NANOARROW_BINARY_VIEW_FIXED_BUFFERS) {
+        return array_view->layout.buffer_type[i];
+      } else if (i ==
+                 (array_view->n_variadic_buffers + NANOARROW_BINARY_VIEW_FIXED_BUFFERS)) {
+        return NANOARROW_BUFFER_TYPE_VARIADIC_SIZE;
+      } else {
+        return NANOARROW_BUFFER_TYPE_VARIADIC_DATA;
+      }
+    default:
+      // We need this check to avoid -Warray-bounds from complaining
+      if (i >= NANOARROW_MAX_FIXED_BUFFERS) {
+        return NANOARROW_BUFFER_TYPE_NONE;
+      } else {
+        return array_view->layout.buffer_type[i];
+      }
+  }
+}
+
+static inline enum ArrowType ArrowArrayViewGetBufferDataType(
+    struct ArrowArrayView* array_view, int64_t i) {
+  switch (array_view->storage_type) {
+    case NANOARROW_TYPE_BINARY_VIEW:
+    case NANOARROW_TYPE_STRING_VIEW:
+      if (i < NANOARROW_BINARY_VIEW_FIXED_BUFFERS) {
+        return array_view->layout.buffer_data_type[i];
+      } else if (i >=
+                 (array_view->n_variadic_buffers + NANOARROW_BINARY_VIEW_FIXED_BUFFERS)) {
+        return NANOARROW_TYPE_INT64;
+      } else if (array_view->storage_type == NANOARROW_TYPE_BINARY_VIEW) {
+        return NANOARROW_TYPE_BINARY;
+      } else {
+        return NANOARROW_TYPE_STRING;
+      }
+    default:
+      // We need this check to avoid -Warray-bounds from complaining
+      if (i >= NANOARROW_MAX_FIXED_BUFFERS) {
+        return NANOARROW_TYPE_UNINITIALIZED;
+      } else {
+        return array_view->layout.buffer_data_type[i];
+      }
+  }
+}
+
+static inline int64_t ArrowArrayViewGetBufferElementSizeBits(
+    struct ArrowArrayView* array_view, int64_t i) {
+  switch (array_view->storage_type) {
+    case NANOARROW_TYPE_BINARY_VIEW:
+    case NANOARROW_TYPE_STRING_VIEW:
+      if (i < NANOARROW_BINARY_VIEW_FIXED_BUFFERS) {
+        return array_view->layout.element_size_bits[i];
+      } else if (i >=
+                 (array_view->n_variadic_buffers + NANOARROW_BINARY_VIEW_FIXED_BUFFERS)) {
+        return sizeof(int64_t) * 8;
+      } else {
+        return 0;
+      }
+    default:
+      // We need this check to avoid -Warray-bounds from complaining
+      if (i >= NANOARROW_MAX_FIXED_BUFFERS) {
+        return 0;
+      } else {
+        return array_view->layout.element_size_bits[i];
+      }
+  }
+}
+
 static inline int8_t ArrowArrayViewIsNull(const struct ArrowArrayView* array_view,
                                           int64_t i) {
   const uint8_t* validity_buffer = array_view->buffer_views[0].data.as_uint8;
@@ -921,8 +1048,7 @@ static struct ArrowBufferView ArrowArrayViewGetBytesFromViewArrayUnsafe(
     return out;
   }
 
-  const int32_t buf_index = bv->ref.buffer_index + NANOARROW_BINARY_VIEW_FIXED_BUFFERS;
-  out.data.data = array_view->array->buffers[buf_index];
+  out.data.data = array_view->variadic_buffers[bv->ref.buffer_index];
   out.data.as_uint8 += bv->ref.offset;
   return out;
 }

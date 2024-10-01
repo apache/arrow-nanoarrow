@@ -623,7 +623,8 @@ enum ArrowBufferType {
   NANOARROW_BUFFER_TYPE_UNION_OFFSET,
   NANOARROW_BUFFER_TYPE_DATA_OFFSET,
   NANOARROW_BUFFER_TYPE_DATA,
-  NANOARROW_BUFFER_TYPE_DATA_VIEW
+  NANOARROW_BUFFER_TYPE_VARIADIC_DATA,
+  NANOARROW_BUFFER_TYPE_VARIADIC_SIZE
 };
 
 /// \brief The maximum number of fixed buffers in an ArrowArrayView or ArrowLayout
@@ -815,6 +816,9 @@ struct ArrowArrayView {
 
   /// \brief Number of variadic buffers
   int32_t n_variadic_buffers;
+
+  /// \brief Pointers to variadic buffers of binary/string_view arrays
+  const void** variadic_buffers;
 
   /// \brief Size of each variadic buffer
   int64_t* variadic_buffer_sizes;

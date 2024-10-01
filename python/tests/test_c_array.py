@@ -337,7 +337,7 @@ def test_c_array_from_iterable_bytes():
         na.c_array([buf_2d], na.binary())
 
 
-def test_c_array_from_iterable__view():
+def test_c_array_from_iterable_view():
     string = na.c_array(
         [b"abc", None, b"a string longer than 12 bytes"], na.binary_view()
     )
