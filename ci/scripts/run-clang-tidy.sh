@@ -29,7 +29,7 @@ main() {
         -extra-arg=-Wno-unknown-warning-option | \
         tee "${build_dir}/clang-tidy-output.txt"
 
-    if grep -e "warning:" -e "error:" clang-tidy-output.txt; then
+    if grep -e "warning:" -e "error:" "${build_dir}/clang-tidy-output.txt"; then
       echo "Warnings or errors found!"
       exit 1
     else
