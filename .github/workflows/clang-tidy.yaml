@@ -86,4 +86,4 @@ jobs:
 
       - name: Run clang-tidy
         run: |
-          ci/scripts/run-clang-tidy . build/
+          ci/scripts/run-clang-tidy.sh . build/
