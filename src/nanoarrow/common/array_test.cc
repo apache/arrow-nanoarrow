@@ -1002,24 +1002,23 @@ void TestAppendToDataViewArray(
 
 TEST(ArrayTest, ArrayTestAppendToBinaryViewArray) {
   TestAppendToInlinedDataViewArray(
-      NANOARROW_TYPE_STRING_VIEW, [&](struct ArrowArray* array, const char* value) {
+      NANOARROW_TYPE_STRING_VIEW, [&](ArrowArray* array, const char* value) {
         return ArrowArrayAppendString(array, ArrowCharView(value));
       });
 
   TestAppendToDataViewArray(NANOARROW_TYPE_STRING_VIEW,
-                            [&](struct ArrowArray* array, const char* value) {
+                            [&](ArrowArray* array, const char* value) {
                               return ArrowArrayAppendString(array, ArrowCharView(value));
                             });
 };
 
 TEST(ArrayTest, ArrayTestAppendToStringViewArray) {
-  TestAppendToInlinedDataViewArray(
-      NANOARROW_TYPE_BINARY_VIEW, [&](struct ArrowArray* array, const char* value) {
-        return ArrowArrayAppendBytes(array,
-                                     {{value}, static_cast<int64_t>(strlen(value))});
-      });
+  TestAppendToInlinedDataViewArray(NANOARROW_TYPE_BINARY_VIEW, [&](ArrowArray* array,
+                                                                   const char* value) {
+    return ArrowArrayAppendBytes(array, {{value}, static_cast<int64_t>(strlen(value))});
+  });
 
-  TestAppendToDataViewArray(NANOARROW_TYPE_BINARY_VIEW, [&](struct ArrowArray* array,
+  TestAppendToDataViewArray(NANOARROW_TYPE_BINARY_VIEW, [&](ArrowArray* array,
                                                             const char* value) {
     return ArrowArrayAppendBytes(array, {{value}, static_cast<int64_t>(strlen(value))});
   });
