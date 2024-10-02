@@ -492,7 +492,7 @@ static ArrowErrorCode ArrowDeviceArrayViewEnsureBufferSizesAsync(
   NANOARROW_DCHECK(cursor == (buffer.data + buffer.size_bytes));
   ArrowBufferReset(&buffer);
 
-  return NANOARROW_OK;
+  return result;
 }
 
 ArrowErrorCode ArrowDeviceArrayViewSetArrayAsync(

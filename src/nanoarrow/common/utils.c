@@ -356,6 +356,7 @@ ArrowErrorCode ArrowDecimalSetDigits(struct ArrowDecimal* decimal,
 // https://github.com/apache/arrow/blob/cd3321b28b0c9703e5d7105d6146c1270bbadd7f/cpp/src/arrow/util/decimal.cc#L365
 ArrowErrorCode ArrowDecimalAppendDigitsToBuffer(const struct ArrowDecimal* decimal,
                                                 struct ArrowBuffer* buffer) {
+  NANOARROW_DCHECK(decimal->n_words == 2 || decimal->n_words == 4);
   int is_negative = ArrowDecimalSign(decimal) < 0;
 
   uint64_t words_little_endian[4];

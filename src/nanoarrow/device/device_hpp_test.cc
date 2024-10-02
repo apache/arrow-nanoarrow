@@ -27,7 +27,7 @@ TEST(NanoarrowDeviceHpp, UniqueDeviceArray) {
   ASSERT_NE(array->array.release, nullptr);
 
   nanoarrow::device::UniqueDeviceArray array2 = std::move(array);
-  ASSERT_EQ(array->array.release, nullptr);
+  ASSERT_EQ(array->array.release, nullptr);  // NOLINT(clang-analyzer-cplusplus.Move)
   ASSERT_NE(array2->array.release, nullptr);
 }
 
@@ -46,7 +46,7 @@ TEST(NanoarrowDeviceHpp, UniqueDeviceArrayStream) {
   ASSERT_NE(stream->release, nullptr);
 
   nanoarrow::device::UniqueDeviceArrayStream stream2 = std::move(stream);
-  ASSERT_EQ(stream->release, nullptr);
+  ASSERT_EQ(stream->release, nullptr);  // NOLINT(clang-analyzer-cplusplus.Move)
   ASSERT_NE(stream2->release, nullptr);
 }
 
@@ -57,7 +57,7 @@ TEST(NanoarrowDeviceHpp, UniqueDevice) {
   ArrowDeviceInitCpu(device.get());
 
   nanoarrow::device::UniqueDevice device2 = std::move(device);
-  ASSERT_EQ(device->release, nullptr);
+  ASSERT_EQ(device->release, nullptr);  // NOLINT(clang-analyzer-cplusplus.Move)
   ASSERT_NE(device2->release, nullptr);
 }
 
@@ -71,5 +71,6 @@ TEST(NanoarrowDeviceHpp, UniqueDeviceArrayView) {
 
   nanoarrow::device::UniqueDeviceArrayView array_view2 = std::move(array_view);
   ASSERT_EQ(array_view2->array_view.storage_type, NANOARROW_TYPE_INT32);
-  ASSERT_EQ(array_view->array_view.storage_type, NANOARROW_TYPE_UNINITIALIZED);
+  ASSERT_EQ(array_view->array_view.storage_type,  // NOLINT(clang-analyzer-cplusplus.Move)
+            NANOARROW_TYPE_UNINITIALIZED);
 }

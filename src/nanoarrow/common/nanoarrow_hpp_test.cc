@@ -50,7 +50,7 @@ TEST(NanoarrowHppTest, NanoarrowHppUniqueArrayTest) {
 
   // move constructor
   nanoarrow::UniqueArray array2 = std::move(array);
-  EXPECT_EQ(array->release, nullptr);
+  EXPECT_EQ(array->release, nullptr);  // NOLINT(clang-analyzer-cplusplus.Move)
   EXPECT_NE(array2->release, nullptr);
   EXPECT_EQ(array2->length, 1);
 
@@ -71,7 +71,7 @@ TEST(NanoarrowHppTest, NanoarrowHppUniqueSchemaTest) {
 
   // move constructor
   nanoarrow::UniqueSchema schema2 = std::move(schema);
-  EXPECT_EQ(schema->release, nullptr);
+  EXPECT_EQ(schema->release, nullptr);  // NOLINT(clang-analyzer-cplusplus.Move)
   EXPECT_NE(schema2->release, nullptr);
   EXPECT_STREQ(schema2->format, "i");
 
@@ -101,7 +101,7 @@ TEST(NanoarrowHppTest, NanoarrowHppUniqueArrayStreamTest) {
 
   // move constructor
   nanoarrow::UniqueArrayStream array_stream2 = std::move(array_stream);
-  EXPECT_EQ(array_stream->release, nullptr);
+  EXPECT_EQ(array_stream->release, nullptr);  // NOLINT(clang-analyzer-cplusplus.Move)
   EXPECT_NE(array_stream2->release, nullptr);
   EXPECT_EQ(ArrowArrayStreamGetSchema(array_stream2.get(), schema.get(), nullptr),
             NANOARROW_OK);
@@ -137,8 +137,8 @@ TEST(NanoarrowHppTest, NanoarrowHppUniqueBufferTest) {
 
   // move constructor
   nanoarrow::UniqueBuffer buffer2 = std::move(buffer);
-  EXPECT_EQ(buffer->data, nullptr);
-  EXPECT_EQ(buffer->size_bytes, 0);
+  EXPECT_EQ(buffer->data, nullptr);  // NOLINT(clang-analyzer-cplusplus.Move)
+  EXPECT_EQ(buffer->size_bytes, 0);  // NOLINT(clang-analyzer-cplusplus.Move)
   EXPECT_NE(buffer2->data, nullptr);
   EXPECT_EQ(buffer2->size_bytes, 123);
 
@@ -161,8 +161,8 @@ TEST(NanoarrowHppTest, NanoarrowHppUniqueBitmapTest) {
 
   // move constructor
   nanoarrow::UniqueBitmap bitmap2 = std::move(bitmap);
-  EXPECT_EQ(bitmap->buffer.data, nullptr);
-  EXPECT_EQ(bitmap->size_bits, 0);
+  EXPECT_EQ(bitmap->buffer.data, nullptr);  // NOLINT(clang-analyzer-cplusplus.Move)
+  EXPECT_EQ(bitmap->size_bits, 0);          // NOLINT(clang-analyzer-cplusplus.Move)
   EXPECT_NE(bitmap2->buffer.data, nullptr);
   EXPECT_EQ(bitmap2->size_bits, 123);
 
@@ -250,7 +250,8 @@ TEST(NanoarrowHppTest, NanoarrowHppUniqueArrayViewTest) {
 
   // move constructor
   nanoarrow::UniqueArrayView array_view2 = std::move(array_view);
-  EXPECT_EQ(array_view->storage_type, NANOARROW_TYPE_UNINITIALIZED);
+  EXPECT_EQ(array_view->storage_type,  // NOLINT(clang-analyzer-cplusplus.Move)
+            NANOARROW_TYPE_UNINITIALIZED);
   EXPECT_EQ(array_view2->storage_type, NANOARROW_TYPE_STRUCT);
 
   // pointer constructor

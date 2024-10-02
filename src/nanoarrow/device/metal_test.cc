@@ -75,7 +75,6 @@ TEST(NanoarrowDeviceMetal, DeviceGpuBufferMove) {
   struct ArrowBufferView view = {data, sizeof(data)};
 
   ASSERT_EQ(ArrowDeviceBufferInit(cpu, view, gpu, &buffer), NANOARROW_OK);
-  auto mtl_buffer = reinterpret_cast<MTL::Buffer*>(buffer.data);
 
   // GPU -> GPU: just a move
   uint8_t* old_ptr = buffer.data;

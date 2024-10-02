@@ -28,7 +28,7 @@ TEST(NanoarrowIpcHppTest, NanoarrowIpcHppTestUniqueDecoder) {
 
   nanoarrow::ipc::UniqueDecoder decoder2 = std::move(decoder);
   EXPECT_NE(decoder2->private_data, nullptr);
-  EXPECT_EQ(decoder->private_data, nullptr);
+  EXPECT_EQ(decoder->private_data, nullptr);  // NOLINT(clang-analyzer-cplusplus.Move)
 }
 
 TEST(NanoarrowIpcHppTest, NanoarrowIpcHppTestUniqueEncoder) {
@@ -40,7 +40,7 @@ TEST(NanoarrowIpcHppTest, NanoarrowIpcHppTestUniqueEncoder) {
 
   nanoarrow::ipc::UniqueEncoder encoder2 = std::move(encoder);
   EXPECT_NE(encoder2->private_data, nullptr);
-  EXPECT_EQ(encoder->private_data, nullptr);
+  EXPECT_EQ(encoder->private_data, nullptr);  // NOLINT(clang-analyzer-cplusplus.Move)
 }
 
 TEST(NanoarrowIpcHppTest, NanoarrowIpcHppTestUniqueInputStream) {
@@ -54,7 +54,7 @@ TEST(NanoarrowIpcHppTest, NanoarrowIpcHppTestUniqueInputStream) {
 
   nanoarrow::ipc::UniqueInputStream input2 = std::move(input);
   EXPECT_NE(input2->release, nullptr);
-  EXPECT_EQ(input->release, nullptr);
+  EXPECT_EQ(input->release, nullptr);  // NOLINT(clang-analyzer-cplusplus.Move)
 }
 
 TEST(NanoarrowIpcHppTest, NanoarrowIpcHppTestUniqueOutputStream) {
@@ -68,5 +68,5 @@ TEST(NanoarrowIpcHppTest, NanoarrowIpcHppTestUniqueOutputStream) {
 
   nanoarrow::ipc::UniqueOutputStream output2 = std::move(output);
   EXPECT_NE(output2->release, nullptr);
-  EXPECT_EQ(output->release, nullptr);
+  EXPECT_EQ(output->release, nullptr);  // NOLINT(clang-analyzer-cplusplus.Move)
 }
