@@ -132,14 +132,30 @@ TEST(NanoarrowIpcTest, NanoarrowIpcCheckHeader) {
   uint32_t eight_bad_bytes[] = {negative_one_le * 256, 999};
   data.data.as_uint32 = eight_bad_bytes;
   data.size_bytes = sizeof(eight_bad_bytes);
+
+#if defined(__BIG_ENDIAN__)
+  EXPECT_EQ(ArrowIpcDecoderVerifyHeader(&decoder, data, &error), ESPIPE);
+  EXPECT_STREQ(
+      error.message,
+      "Expected >= 16777219 bytes of remaining data but found 8 bytes in buffer");
+#else
   EXPECT_EQ(ArrowIpcDecoderVerifyHeader(&decoder, data, &error), EINVAL);
   EXPECT_STREQ(error.message,
                "Expected 0xFFFFFFFF at start of message but found 0xFFFFFF00");
+#endif
 
   ArrowErrorInit(&error);
+
+#if defined(__BIG_ENDIAN__)
+  EXPECT_EQ(ArrowIpcDecoderDecodeHeader(&decoder, data, &error), ESPIPE);
+  EXPECT_STREQ(
+      error.message,
+      "Expected >= 16777219 bytes of remaining data but found 8 bytes in buffer");
+#else
   EXPECT_EQ(ArrowIpcDecoderDecodeHeader(&decoder, data, &error), EINVAL);
   EXPECT_STREQ(error.message,
                "Expected 0xFFFFFFFF at start of message but found 0xFFFFFF00");
+#endif
 
   eight_bad_bytes[0] = 0xFFFFFFFF;
   eight_bad_bytes[1] = negative_one_le;
