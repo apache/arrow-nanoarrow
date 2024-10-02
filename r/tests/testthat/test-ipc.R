@@ -103,7 +103,7 @@ test_that("write_nanoarrow() works for file paths", {
   tf <- tempfile()
   on.exit(unlink(tf))
 
-  df <- data.frame(letters = letters)
+  df <- data.frame(letters = letters, stringsAsFactors = FALSE)
   expect_identical(write_nanoarrow(df, tf), df)
   expect_identical(as.data.frame(read_nanoarrow(tf)), df)
 })
@@ -127,7 +127,7 @@ test_that("write_nanoarrow() works for URLs", {
   tf <- tempfile()
   on.exit(unlink(tf))
 
-  df <- data.frame(letters = letters)
+  df <- data.frame(letters = letters, stringsAsFactors = FALSE)
   expect_identical(write_nanoarrow(df, paste0("file://", tf)), df)
   expect_identical(as.data.frame(read_nanoarrow(tf)), df)
 })
@@ -151,7 +151,7 @@ test_that("write_nanoarrow() works for compressed .gz file paths", {
   tf <- tempfile(fileext = ".gz")
   on.exit(unlink(tf))
 
-  df <- data.frame(letters = letters)
+  df <- data.frame(letters = letters, stringsAsFactors = FALSE)
   expect_identical(write_nanoarrow(df, tf), df)
   expect_identical(as.data.frame(read_nanoarrow(tf)), df)
 })
@@ -175,7 +175,7 @@ test_that("write_nanoarrow() works for compressed .bz2 file paths", {
   tf <- tempfile(fileext = ".bz2")
   on.exit(unlink(tf))
 
-  df <- data.frame(letters = letters)
+  df <- data.frame(letters = letters, stringsAsFactors = FALSE)
   expect_identical(write_nanoarrow(df, tf), df)
   expect_identical(as.data.frame(read_nanoarrow(tf)), df)
 })
@@ -212,7 +212,7 @@ test_that("write_nanoarrow() errors for compressed .zip file paths", {
   tf <- tempfile(fileext = ".zip")
   on.exit(unlink(tf))
 
-  df <- data.frame(letters = letters)
+  df <- data.frame(letters = letters, stringsAsFactors = FALSE)
   expect_error(
     write_nanoarrow(df, tf),
     "zip compression not supported"
