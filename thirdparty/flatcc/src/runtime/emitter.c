@@ -151,7 +151,7 @@ int flatcc_emitter_recycle_page(flatcc_emitter_t *E, flatcc_emitter_page_t *p)
 
 void flatcc_emitter_reset(flatcc_emitter_t *E)
 {
-    flatcc_emitter_page_t *p = E->front;
+    flatcc_emitter_page_t *p = E->front;  // NOLINT(clang-analyzer-deadcode.DeadStores)
 
     if (!E->front) {
         return;

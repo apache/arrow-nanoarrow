@@ -659,8 +659,8 @@ int flatcc_verify_union_vector_field(flatcc_table_verifier_descriptor_t *td,
     const utype_t *types;
     uoffset_t count, base;
 
-    if (0 == (vte_type = read_vt_entry(td, id - 1))) {
-        if (0 == (vte_table = read_vt_entry(td, id))) {
+    if (0 == (vte_type = read_vt_entry(td, id - 1))) {  // NOLINT(clang-analyzer-deadcode.DeadStores)
+        if (0 == (vte_table = read_vt_entry(td, id))) {  // NOLINT(clang-analyzer-deadcode.DeadStores)
             verify(!required, flatcc_verify_error_type_field_absent_from_required_union_vector_field);
         }
     }
