@@ -912,7 +912,13 @@ TEST(SchemaViewTest, SchemaViewInitBinaryAndString) {
   EXPECT_EQ(schema_view.layout.element_size_bits[2], 0);
   EXPECT_EQ(ArrowSchemaToStdString(&schema), "large_string");
   ArrowSchemaRelease(&schema);
+}
 
+TEST(SchemaViewTest, SchemaViewInitBinaryAndStringView) {
+#if defined(ARROW_VERSION_MAJOR) && ARROW_VERSION_MAJOR >= 15
+  struct ArrowSchema schema;
+  struct ArrowSchemaView schema_view;
+  struct ArrowError error;
   ARROW_EXPECT_OK(ExportType(*utf8_view(), &schema));
   EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), NANOARROW_OK);
   EXPECT_EQ(schema_view.type, NANOARROW_TYPE_STRING_VIEW);
@@ -938,6 +944,9 @@ TEST(SchemaViewTest, SchemaViewInitBinaryAndString) {
   EXPECT_EQ(schema_view.layout.element_size_bits[1], 128);
   EXPECT_EQ(ArrowSchemaToStdString(&schema), "binary_view");
   ArrowSchemaRelease(&schema);
+#else
+  GTEST_SKIP() << "Arrow C++ StringView compatibility test needs Arrow C++ >= 15";
+#endif
 }
 
 TEST(SchemaViewTest, SchemaViewInitBinaryAndStringErrors) {

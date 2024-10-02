@@ -895,12 +895,12 @@ TEST(ArrayTest, ArrayTestAppendToLargeStringArray) {
   ArrowArrayRelease(&array);
 }
 
-template <enum ArrowType ArrowT, typename ValueT>
 void TestAppendToInlinedDataViewArray(
-    std::function<ArrowErrorCode(struct ArrowArray*, ValueT)> AppendFunc) {
+    enum ArrowType arrow_type,
+    std::function<ArrowErrorCode(struct ArrowArray*, const char*)> AppendFunc) {
   struct ArrowArray array;
 
-  ASSERT_EQ(ArrowArrayInitFromType(&array, ArrowT), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayInitFromType(&array, arrow_type), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayStartAppending(&array), NANOARROW_OK);
 
   // Check that we can reserve
@@ -908,7 +908,7 @@ void TestAppendToInlinedDataViewArray(
   EXPECT_EQ(ArrowArrayBuffer(&array, 1)->capacity_bytes,
             5 * sizeof(union ArrowBinaryView));
 
-  EXPECT_EQ(AppendFunc(&array, ValueT{{"inlinestring"}, 12}), NANOARROW_OK);
+  EXPECT_EQ(AppendFunc(&array, "inlinestring"), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayAppendNull(&array, 2), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayAppendEmpty(&array, 1), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayFinishBuildingDefault(&array, nullptr), NANOARROW_OK);
@@ -934,12 +934,12 @@ void TestAppendToInlinedDataViewArray(
   ArrowArrayRelease(&array);
 };
 
-template <enum ArrowType ArrowT, typename ValueT>
 void TestAppendToDataViewArray(
-    std::function<ArrowErrorCode(struct ArrowArray*, ValueT)> AppendFunc) {
+    enum ArrowType arrow_type,
+    std::function<ArrowErrorCode(struct ArrowArray*, const char*)> AppendFunc) {
   struct ArrowArray array;
 
-  ASSERT_EQ(ArrowArrayInitFromType(&array, ArrowT), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayInitFromType(&array, arrow_type), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayStartAppending(&array), NANOARROW_OK);
 
   // Check that we can reserve
@@ -951,15 +951,12 @@ void TestAppendToDataViewArray(
   std::string filler(NANOARROW_BINARY_VIEW_BLOCK_SIZE - 34, 'x');
   std::string str2{"goes_into_second_variadic_buffer"};
 
-  EXPECT_EQ(AppendFunc(&array, ValueT{{"1234"}, 4}), NANOARROW_OK);
+  EXPECT_EQ(AppendFunc(&array, "1234"), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayAppendNull(&array, 2), NANOARROW_OK);
-  EXPECT_EQ(AppendFunc(&array, {{str1.c_str()}, static_cast<int64_t>(str1.size())}),
-            NANOARROW_OK);
+  EXPECT_EQ(AppendFunc(&array, str1.c_str()), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayAppendEmpty(&array, 1), NANOARROW_OK);
-  EXPECT_EQ(AppendFunc(&array, {{filler.c_str()}, static_cast<int64_t>(filler.size())}),
-            NANOARROW_OK);
-  EXPECT_EQ(AppendFunc(&array, {{str2.c_str()}, static_cast<int64_t>(str2.size())}),
-            NANOARROW_OK);
+  EXPECT_EQ(AppendFunc(&array, filler.c_str()), NANOARROW_OK);
+  EXPECT_EQ(AppendFunc(&array, str2.c_str()), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayFinishBuildingDefault(&array, nullptr), NANOARROW_OK);
 
   EXPECT_EQ(array.length, 7);
@@ -1004,17 +1001,28 @@ void TestAppendToDataViewArray(
 };
 
 TEST(ArrayTest, ArrayTestAppendToBinaryViewArray) {
-  TestAppendToInlinedDataViewArray<NANOARROW_TYPE_STRING_VIEW, struct ArrowStringView>(
-      ArrowArrayAppendString);
-  TestAppendToDataViewArray<NANOARROW_TYPE_STRING_VIEW, struct ArrowStringView>(
-      ArrowArrayAppendString);
+  TestAppendToInlinedDataViewArray(
+      NANOARROW_TYPE_STRING_VIEW, [&](struct ArrowArray* array, const char* value) {
+        return ArrowArrayAppendString(array, ArrowCharView(value));
+      });
+
+  TestAppendToDataViewArray(NANOARROW_TYPE_STRING_VIEW,
+                            [&](struct ArrowArray* array, const char* value) {
+                              return ArrowArrayAppendString(array, ArrowCharView(value));
+                            });
 };
 
 TEST(ArrayTest, ArrayTestAppendToStringViewArray) {
-  TestAppendToInlinedDataViewArray<NANOARROW_TYPE_BINARY_VIEW, struct ArrowBufferView>(
-      ArrowArrayAppendBytes);
-  TestAppendToDataViewArray<NANOARROW_TYPE_BINARY_VIEW, struct ArrowBufferView>(
-      ArrowArrayAppendBytes);
+  TestAppendToInlinedDataViewArray(
+      NANOARROW_TYPE_BINARY_VIEW, [&](struct ArrowArray* array, const char* value) {
+        return ArrowArrayAppendBytes(array,
+                                     {{value}, static_cast<int64_t>(strlen(value))});
+      });
+
+  TestAppendToDataViewArray(NANOARROW_TYPE_BINARY_VIEW, [&](struct ArrowArray* array,
+                                                            const char* value) {
+    return ArrowArrayAppendBytes(array, {{value}, static_cast<int64_t>(strlen(value))});
+  });
 };
 
 TEST(ArrayTest, ArrayTestAppendToFixedSizeBinaryArray) {
@@ -3562,15 +3570,20 @@ void TestGetFromBinaryView(
 }
 
 TEST(ArrayViewTest, ArrayViewTestGetStringView) {
+#if defined(ARROW_VERSION_MAJOR) && ARROW_VERSION_MAJOR >= 15
   auto string_view_builder = StringViewBuilder();
   const auto get_string_view = [](const struct ArrowStringView* sv) { return sv->data; };
   TestGetFromInlinedBinaryView<StringViewBuilder, struct ArrowStringView>(
       string_view_builder, ArrowArrayViewGetStringUnsafe, get_string_view);
   TestGetFromBinaryView<StringViewBuilder, struct ArrowStringView>(
       string_view_builder, ArrowArrayViewGetStringUnsafe, get_string_view);
+#else
+  GTEST_SKIP() << "Arrow C++ StringView compatibility test needs Arrow C++ >= 15";
+#endif
 }
 
 TEST(ArrayViewTest, ArrayViewTestGetBinaryView) {
+#if defined(ARROW_VERSION_MAJOR) && ARROW_VERSION_MAJOR >= 15
   auto binary_view_builder = BinaryViewBuilder();
   const auto get_buffer_view = [](const struct ArrowBufferView* bv) {
     return bv->data.data;
@@ -3579,6 +3592,9 @@ TEST(ArrayViewTest, ArrayViewTestGetBinaryView) {
       binary_view_builder, ArrowArrayViewGetBytesUnsafe, get_buffer_view);
   TestGetFromBinaryView<BinaryViewBuilder, struct ArrowBufferView>(
       binary_view_builder, ArrowArrayViewGetBytesUnsafe, get_buffer_view);
+#else
+  GTEST_SKIP() << "Arrow C++ StringView compatibility test needs Arrow C++ >= 15";
+#endif
 }
 
 TEST(ArrayViewTest, ArrayViewTestGetIntervalYearMonth) {
