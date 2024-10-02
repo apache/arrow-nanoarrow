@@ -223,7 +223,10 @@ class Unique {
   }
 
   /// \brief Move and take ownership of data
-  Unique(T* data) { move_pointer(data, &data_); }
+  Unique(T* data) {
+    std::memset(&data_, 0, sizeof(data_));
+    move_pointer(data, &data_);
+  }
 
   /// \brief Move and take ownership of data wrapped by rhs
   Unique(Unique&& rhs) : Unique(rhs.get()) {}
