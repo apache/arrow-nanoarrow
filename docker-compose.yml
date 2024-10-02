@@ -55,6 +55,9 @@ services:
       - ${NANOARROW_DOCKER_SOURCE_DIR}:/arrow-integration/nanoarrow
     environment:
       ARCHERY_INTEGRATION_TARGET_IMPLEMENTATIONS: "nanoarrow"
+      # Rust writes invalid flatbuffers:
+      # https://github.com/apache/arrow-rs/issues/5052
+      ARCHERY_INTEGRATION_WITH_NANOARROW: "0"
     command:
       ["echo '::group::Build nanoarrow' &&
         conda run --no-capture-output /arrow-integration/ci/scripts/nanoarrow_build.sh /arrow-integration /build &&
