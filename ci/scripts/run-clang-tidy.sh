@@ -23,9 +23,15 @@ main() {
     local -r source_dir="${1}"
     local -r build_dir="${2}"
 
+    if [ $(uname) = "Darwin" ]; then
+      local -r jobs=$(sysctl -n hw.ncpu)
+    else
+      local -r jobs=$(nproc)
+    fi
+
     set -x
 
-    run-clang-tidy -p "${build_dir}" -j$(nproc) \
+    run-clang-tidy -p "${build_dir}" -j$jobs \
         -extra-arg=-Wno-unknown-warning-option | \
         tee "${build_dir}/clang-tidy-output.txt"
 
