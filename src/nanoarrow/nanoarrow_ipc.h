@@ -251,8 +251,13 @@ void ArrowIpcDecoderReset(struct ArrowIpcDecoder* decoder);
 /// these bytes and returns ESPIPE if there are not enough remaining bytes in data to read
 /// the entire header message, EINVAL if the first 8 bytes are not valid, ENODATA if the
 /// Arrow end-of-stream indicator has been reached, or NANOARROW_OK otherwise.
+///
+/// Pre-1.0 messages were not prefixed with 0xFFFFFFFF. For these messages, a value
+/// of 4 will be placed into prefix_size_bytes; otherwise a value of 8 will be placed
+/// into prefix_size_bytes.
 ArrowErrorCode ArrowIpcDecoderPeekHeader(struct ArrowIpcDecoder* decoder,
                                          struct ArrowBufferView data,
+                                         int32_t* prefix_size_bytes,
                                          struct ArrowError* error);
 
 /// \brief Verify a message header

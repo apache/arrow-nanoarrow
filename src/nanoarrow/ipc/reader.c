@@ -230,6 +230,20 @@ static int ArrowIpcArrayStreamReaderNextHeader(
     // propagated higher (e.g., if the stream is empty and there's no schema message)
     ArrowErrorSet(&private_data->error, "No data available on stream");
     return ENODATA;
+  } else if (bytes_read == 4) {
+    // Special case very, very old IPC streams that used 0x00000000 as the
+    // end-of-stream indicator.
+    uint32_t last_four_bytes = 0;
+    memcpy(&last_four_bytes, private_data->header.data, sizeof(uint32_t));
+    if (last_four_bytes == 0) {
+      ArrowErrorSet(&private_data->error, "No data available on stream");
+      return ENODATA;
+    } else {
+      ArrowErrorSet(&private_data->error,
+                    "Expected 0x00000000 if exactly four bytes are available at the end "
+                    "of a stream");
+      return EINVAL;
+    }
   } else if (bytes_read != 8) {
     ArrowErrorSet(&private_data->error,
                   "Expected at least 8 bytes in remainder of stream");
@@ -241,17 +255,43 @@ static int ArrowIpcArrayStreamReaderNextHeader(
   input_view.size_bytes = private_data->header.size_bytes;
 
   // Use PeekHeader to fill in decoder.header_size_bytes
-  NANOARROW_RETURN_NOT_OK(ArrowIpcDecoderPeekHeader(&private_data->decoder, input_view,
-                                                    &private_data->error));
+  int32_t prefix_size_bytes = 0;
+  NANOARROW_RETURN_NOT_OK(ArrowIpcDecoderPeekHeader(
+      &private_data->decoder, input_view, &prefix_size_bytes, &private_data->error));
+
+  // Legacy streams are missing the 0xFFFFFFFF at the start of the message. The
+  // decoder can handle this; however, verification will fail because flatbuffers
+  // must be 8-byte aligned. To handle this case, we prepend the continuation
+  // token to the start of the stream and ensure that we read four fewer bytes
+  // the next time we issue a read.
+  int64_t extra_bytes_already_read = 0;
+  if (prefix_size_bytes == 4) {
+    NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowBufferReserve(&private_data->header, 4),
+                                       &private_data->error);
+    memmove(private_data->header.data + 4, private_data->header.data,
+            private_data->header.size_bytes);
+    uint32_t continuation = 0xFFFFFFFFU;
+    memcpy(private_data->header.data, &continuation, sizeof(uint32_t));
+    private_data->header.size_bytes += 4;
+    extra_bytes_already_read = 4;
+
+    input_view.data.data = private_data->header.data;
+    input_view.size_bytes = private_data->header.size_bytes;
+
+    NANOARROW_RETURN_NOT_OK(ArrowIpcDecoderPeekHeader(
+        &private_data->decoder, input_view, &prefix_size_bytes, &private_data->error));
+  }
 
   // Read the header bytes
   int64_t expected_header_bytes = private_data->decoder.header_size_bytes - 8;
   NANOARROW_RETURN_NOT_OK_WITH_ERROR(
-      ArrowBufferReserve(&private_data->header, expected_header_bytes),
+      ArrowBufferReserve(&private_data->header,
+                         expected_header_bytes - extra_bytes_already_read),
       &private_data->error);
-  NANOARROW_RETURN_NOT_OK(
-      private_data->input.read(&private_data->input, private_data->header.data + 8,
-                               expected_header_bytes, &bytes_read, &private_data->error));
+  NANOARROW_RETURN_NOT_OK(private_data->input.read(
+      &private_data->input, private_data->header.data + private_data->header.size_bytes,
+      expected_header_bytes - extra_bytes_already_read, &bytes_read,
+      &private_data->error));
   private_data->header.size_bytes += bytes_read;
 
   // Verify + decode the header
