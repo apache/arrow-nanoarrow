@@ -1282,6 +1282,9 @@ ArrowErrorCode ArrowIpcDecoderDecodeFooter(struct ArrowIpcDecoder* decoder,
       data.data.as_uint8 + data.size_bytes - footer_and_size_and_magic_size;
   ns(Footer_table_t) footer = ns(Footer_as_root(footer_data));
 
+  NANOARROW_RETURN_NOT_OK(
+      ArrowIpcDecoderDecodeSchemaHeader(decoder, ns(Footer_schema(footer)), error));
+
   NANOARROW_RETURN_NOT_OK(ArrowIpcDecoderDecodeSchemaImpl(
       ns(Footer_schema(footer)), &private_data->footer.schema, error));
 
