@@ -1186,12 +1186,15 @@ ArrowErrorCode ArrowIpcDecoderDecodeHeader(struct ArrowIpcDecoder* decoder,
   decoder->body_size_bytes = ns(Message_bodyLength(message));
 
   switch (decoder->metadata_version) {
-    case ns(MetadataVersion_V1):
-    case ns(MetadataVersion_V2):
-    case ns(MetadataVersion_V3):
     case ns(MetadataVersion_V4):
     case ns(MetadataVersion_V5):
       break;
+      ArrowErrorSet(error, "Expected metadata version V4 or V5 but found %s",
+                    ns(MetadataVersion_name(ns(Message_version(message)))));
+      return EINVAL;
+    case ns(MetadataVersion_V1):
+    case ns(MetadataVersion_V2):
+    case ns(MetadataVersion_V3):
     default:
       ArrowErrorSet(error, "Unexpected value for Message metadata version (%d)",
                     decoder->metadata_version);
