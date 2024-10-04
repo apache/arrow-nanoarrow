@@ -264,6 +264,8 @@ static int ArrowIpcArrayStreamReaderNextHeader(
   NANOARROW_RETURN_NOT_OK(ArrowIpcDecoderPeekHeader(
       &private_data->decoder, input_view, &prefix_size_bytes, &private_data->error));
 
+  printf("expected: %d; got: %d\n", (int)private_data->expected_header_prefix_size,
+         (int)prefix_size_bytes);
   if (private_data->expected_header_prefix_size != kExpectedHeaderPrefixSizeNotSet &&
       prefix_size_bytes != private_data->expected_header_prefix_size) {
     ArrowErrorSet(&private_data->error,
@@ -315,7 +317,7 @@ static int ArrowIpcArrayStreamReaderNextHeader(
 
   // Set the expected number of prefix bytes for reading the next message
   // if we haven't encountered a message yet.
-  if (private_data->expected_header_prefix_size != kExpectedHeaderPrefixSizeNotSet) {
+  if (private_data->expected_header_prefix_size == kExpectedHeaderPrefixSizeNotSet) {
     switch (private_data->decoder.metadata_version) {
       // Earlier versions raise an in header verification
       case NANOARROW_IPC_METADATA_VERSION_V4:
