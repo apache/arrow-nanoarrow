@@ -235,7 +235,7 @@ static int ArrowIpcArrayStreamReaderNextHeader(
     // propagated higher (e.g., if the stream is empty and there's no schema message)
     ArrowErrorSet(&private_data->error, "No data available on stream");
     return ENODATA;
-  } else if (private_data->expected_header_prefix_size == 4) {
+  } else if (bytes_read == 4 && private_data->expected_header_prefix_size == 4) {
     // Special case very, very old IPC streams that used 0x00000000 as the
     // end-of-stream indicator.
     uint32_t last_four_bytes = 0;
