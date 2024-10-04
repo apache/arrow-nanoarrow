@@ -120,3 +120,8 @@ jobs:
           meson compile -C builddir
 
           ./builddir/example_meson_minimal_app
+
+      - name: Python example
+        run: |
+          python3 -m pip install examples/python-package
+          python3 -c "import schema_printer"
