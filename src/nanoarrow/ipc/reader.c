@@ -237,7 +237,8 @@ static int ArrowIpcArrayStreamReaderNextHeader(
     return ENODATA;
   } else if (bytes_read == 4 && private_data->expected_header_prefix_size == 4) {
     // Special case very, very old IPC streams that used 0x00000000 as the
-    // end-of-stream indicator.
+    // end-of-stream indicator. We may want to remove this case at some point:
+    // https://github.com/apache/arrow-nanoarrow/issues/648
     uint32_t last_four_bytes = 0;
     memcpy(&last_four_bytes, private_data->header.data, sizeof(uint32_t));
     if (last_four_bytes == 0) {
@@ -264,6 +265,7 @@ static int ArrowIpcArrayStreamReaderNextHeader(
   NANOARROW_RETURN_NOT_OK(ArrowIpcDecoderPeekHeader(
       &private_data->decoder, input_view, &prefix_size_bytes, &private_data->error));
 
+  // Check for a consistent header prefix size
   if (private_data->expected_header_prefix_size != kExpectedHeaderPrefixSizeNotSet &&
       prefix_size_bytes != private_data->expected_header_prefix_size) {
     ArrowErrorSet(&private_data->error,
@@ -293,8 +295,11 @@ static int ArrowIpcArrayStreamReaderNextHeader(
     input_view.data.data = private_data->header.data;
     input_view.size_bytes = private_data->header.size_bytes;
 
-    NANOARROW_RETURN_NOT_OK(ArrowIpcDecoderPeekHeader(
-        &private_data->decoder, input_view, &prefix_size_bytes, &private_data->error));
+    int32_t new_prefix_size_bytes;
+    NANOARROW_RETURN_NOT_OK(ArrowIpcDecoderPeekHeader(&private_data->decoder, input_view,
+                                                      &new_prefix_size_bytes,
+                                                      &private_data->error));
+    NANOARROW_DCHECK(new_prefix_size_bytes == 8);
   }
 
   // Read the header bytes
@@ -314,6 +319,15 @@ static int ArrowIpcArrayStreamReaderNextHeader(
   input_view.size_bytes = private_data->header.size_bytes;
   NANOARROW_RETURN_NOT_OK(ArrowIpcDecoderVerifyHeader(&private_data->decoder, input_view,
                                                       &private_data->error));
+
+  // If we have a 4-byte header prefix, make sure the metadata version is V4
+  // (Note that some V4 IPC files have an 8 byte header prefix).
+  if (prefix_size_bytes == 4 &&
+      private_data->decoder.metadata_version != NANOARROW_IPC_METADATA_VERSION_V4) {
+    ArrowErrorSet(&private_data->error,
+                  "Header prefix size of four bytes is only allowed for V4 metadata");
+    return EINVAL;
+  }
 
   // Don't decode the message if it's of the wrong type (because the error message
   // is better communicated by the caller)
