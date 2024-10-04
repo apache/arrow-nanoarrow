@@ -280,7 +280,8 @@ static int ArrowIpcArrayStreamReaderNextHeader(
   // decoder can handle this; however, verification will fail because flatbuffers
   // must be 8-byte aligned. To handle this case, we prepend the continuation
   // token to the start of the stream and ensure that we read four fewer bytes
-  // the next time we issue a read.
+  // the next time we issue a read. We may be able to remove this case in the future:
+  // https://github.com/apache/arrow-nanoarrow/issues/648
   int64_t extra_bytes_already_read = 0;
   if (prefix_size_bytes == 4) {
     NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowBufferReserve(&private_data->header, 4),
