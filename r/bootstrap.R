@@ -18,6 +18,21 @@
 # Use ci/scripts/bundle.py to generate source files/headers that are
 # easier to use with the default R package build system
 
+python <- function() {
+  from_env <- Sys.getenv("PYTHON_BIN", "python3")
+  has_from_env <- system(
+    paste(from_env, "--version"),
+    ignore.stdout = TRUE,
+    ignore.stderr = TRUE
+  )
+
+  if (has_from_env == 0) {
+    from_env
+  } else {
+    "python"
+  }
+}
+
 run_bundler <- function() {
   args <- c(
     "--symbol-namespace=RPkg",
