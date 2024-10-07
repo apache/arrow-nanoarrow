@@ -197,6 +197,46 @@ test_that("as_nanoarrow_array() works for double() -> na_int64()", {
   expect_identical(convert_array(array), as.double(c(1:10, NA_real_)))
 })
 
+test_that("as_nanoarrow_array() works for double() -> na_float()", {
+  # Without nulls
+  array <- as_nanoarrow_array(as.double(1:10), schema = na_float())
+  expect_identical(infer_nanoarrow_schema(array)$format, "f")
+  expect_identical(as.raw(array$buffers[[1]]), raw())
+  expect_identical(array$offset, 0L)
+  expect_identical(array$null_count, 0L)
+  expect_identical(convert_array(array), as.double(1:10))
+
+  # With nulls
+  array <- as_nanoarrow_array(c(1:10, NA_real_), schema = na_float())
+  expect_identical(infer_nanoarrow_schema(array)$format, "f")
+  expect_identical(array$null_count, 1L)
+  expect_identical(
+    as.raw(array$buffers[[1]]),
+    packBits(c(rep(TRUE, 10), FALSE, rep(FALSE, 5)))
+  )
+  expect_identical(convert_array(array), c(1:10, NA_real_))
+})
+
+test_that("as_nanoarrow_array() works for double() -> na_half_float()", {
+  # Without nulls
+  array <- as_nanoarrow_array(as.double(1:10), schema = na_half_float())
+  expect_identical(infer_nanoarrow_schema(array)$format, "e")
+  expect_identical(as.raw(array$buffers[[1]]), raw())
+  expect_identical(array$offset, 0L)
+  expect_identical(array$null_count, 0L)
+  expect_identical(convert_array(array), as.double(1:10))
+
+  # With nulls
+  array <- as_nanoarrow_array(c(1:10, NA_real_), schema = na_half_float())
+  expect_identical(infer_nanoarrow_schema(array)$format, "e")
+  expect_identical(array$null_count, 1L)
+  expect_identical(
+    as.raw(array$buffers[[1]]),
+    packBits(c(rep(TRUE, 10), FALSE, rep(FALSE, 5)))
+  )
+  expect_identical(convert_array(array), c(1:10, NA_real_))
+})
+
 test_that("as_nanoarrow_array() works for integer64() -> na_int32()", {
   skip_if_not_installed("bit64")
 

@@ -560,6 +560,7 @@ test_that("convert to vector works for valid double()", {
     uint32 = arrow::uint32(),
     int64 = arrow::int64(),
     uint64 = arrow::uint64(),
+    float16 = arrow::float16(),
     float32 = arrow::float32(),
     float64 = arrow::float64()
   )
