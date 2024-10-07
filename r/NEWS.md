@@ -17,6 +17,15 @@
   under the License.
 -->
 
+# nanoarrow 0.6.0
+
+- Add float16 support for R bindings (#650)
+- Implement string view support in R bindings (#636)
+- Allow opt-out of warning for unregistered extension types (#632)
+- Add bindings to IPC writer (#608)
+- Avoid flatcc aligned_alloc() call when compiling R package (#494)
+- Use JSON in experimental R vctrs extension type (#533)
+
 # nanoarrow 0.5.0
 
 - Add experimental `nanoarrow_vctr` to wrap a list of arrays (#461)
