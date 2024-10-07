@@ -120,7 +120,7 @@ conda create --name nanoarrow-verify-rc
 conda activate nanoarrow-verify-rc
 conda config --set channel_priority strict
 
-conda install -c conda-forge compilers git cmake arrow-cpp
+conda install -c conda-forge compilers git cmake libarrow
 # For R (see below about potential interactions with system R
 # before installing via conda on MacOS)
 conda install -c conda-forge r-testthat r-hms r-blob r-pkgbuild r-bit64
@@ -148,17 +148,17 @@ the verification script.
 
 ```bash
 # Build Arrow C++ from source
-curl https://github.com/apache/arrow/archive/refs/tags/apache-arrow-14.0.2.tar.gz | \
+curl -L https://github.com/apache/arrow/archive/refs/tags/apache-arrow-17.0.0.tar.gz | \
   tar -zxf -
 mkdir arrow-build && cd arrow-build
-cmake ../apache-arrow-14.0.2/cpp -DCMAKE_INSTALL_PREFIX=../arrow
+cmake ../apache-arrow-17.0.0/cpp -DCMAKE_INSTALL_PREFIX=../arrow-minimal
 cmake --build .
-cmake --install . --prefix=../arrow --config=Debug
+cmake --install . --prefix=../arrow-minimal --config=Debug
 cd ..
 
 # Pass location of Arrow and R to the verification script
-export NANOARROW_CMAKE_OPTIONS="-DArrow_DIR=$(pwd -W)/arrow/lib/cmake/Arrow -Dgtest_force_shared_crt=ON -DNANOARROW_ARROW_STATIC=ON"
-export R_HOME="/c/Program Files/R/R-4.2.2"
+export NANOARROW_CMAKE_OPTIONS="-DCMAKE_PREFIX_PATH=$(pwd -W)/arrow-minimal -Dgtest_force_shared_crt=ON -DNANOARROW_ARROW_STATIC=ON"
+export R_HOME="/c/Program Files/R/R-4.4.1"
 ```
 
 ### Debian/Ubuntu
@@ -196,7 +196,7 @@ On Arch Linux (e.g., `docker run --rm -it archlinux:latest`, you can install all
 using `pacman`):
 
 ```bash
-pacman -S git gcc make cmake r-base gnupg curl arrow
+pacman -Sy git gcc make cmake r-base gnupg curl arrow python
 ```
 
 ### Alpine Linux
@@ -218,47 +218,6 @@ apk update
 
 apk add bash linux-headers git cmake R R-dev g++ gnupg curl apache-arrow-dev \
   python3-dev
-```
-
-### Centos7
-
-On Centos7 (e.g., `docker run --rm -it centos:7`), most prerequisites are
-available via `yum install` except Arrow C++, which must be built from
-source. Arrow C++ 9.0.0 was the last version to support the default system
-compiler (gcc 4.8).
-
-```bash
-yum install epel-release # needed to install R
-yum install git gnupg curl R gcc-c++ cmake3
-
-# Needed to get a warning-free R CMD check if the en_US.UTF-8 locale is not defined
-# (e.g., in the centos:7 docker image)
-# localedef -c -f UTF-8 -i en_US en_US.UTF-8
-# export LC_ALL=en_US.UTF-8
-
-# Build Arrow C++ 9.0.0 from source
-curl -L https://github.com/apache/arrow/archive/refs/tags/apache-arrow-9.0.0.tar.gz | tar -zxf - && \
-    mkdir /arrow-build && \
-    cd /arrow-build && \
-    cmake3 ../arrow-apache-arrow-9.0.0/cpp \
-        -DARROW_JEMALLOC=OFF \
-        -DARROW_SIMD_LEVEL=NONE \
-        -DCMAKE_INSTALL_PREFIX=../arrow && \
-    cmake3 --build . && \
-    make install
-
-# Pass location of Arrow, cmake, and ctest to the verification script
-export NANOARROW_CMAKE_OPTIONS="-DArrow_DIR=$(pwd)/arrow/lib64/cmake/arrow"
-export CMAKE_BIN=cmake3
-export CTEST_BIN=ctest3
-
-# gpg on centos7 errors for some keys in the Arrow KEYS file. This does
-# not skip verifying signatures, just allows errors for unsupported entries in
-# the global Arrow KEYS file.
-export NANOARROW_ACCEPT_IMPORT_GPG_KEYS_ERROR=1
-
-# System Python on centos7 is not new enough to support the Python package
-export TEST_PYTHON=0
 ```
 
 ### Big endian
