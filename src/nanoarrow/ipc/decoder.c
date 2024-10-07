@@ -1024,12 +1024,11 @@ static inline int ArrowIpcDecoderReadHeaderPrefix(struct ArrowIpcDecoder* decode
 
 ArrowErrorCode ArrowIpcDecoderPeekHeader(struct ArrowIpcDecoder* decoder,
                                          struct ArrowBufferView data,
+                                         int32_t* prefix_size_bytes,
                                          struct ArrowError* error) {
   ArrowIpcDecoderResetHeaderInfo(decoder);
-  int32_t prefix_size_bytes;
   NANOARROW_RETURN_NOT_OK(
-      ArrowIpcDecoderReadHeaderPrefix(decoder, &data, &prefix_size_bytes, error));
-  NANOARROW_UNUSED(prefix_size_bytes);
+      ArrowIpcDecoderReadHeaderPrefix(decoder, &data, prefix_size_bytes, error));
   return NANOARROW_OK;
 }
 
@@ -1187,15 +1186,15 @@ ArrowErrorCode ArrowIpcDecoderDecodeHeader(struct ArrowIpcDecoder* decoder,
   decoder->body_size_bytes = ns(Message_bodyLength(message));
 
   switch (decoder->metadata_version) {
-    case ns(MetadataVersion_V5):
     case ns(MetadataVersion_V4):
+    case ns(MetadataVersion_V5):
       break;
-    case ns(MetadataVersion_V1):
-    case ns(MetadataVersion_V2):
-    case ns(MetadataVersion_V3):
       ArrowErrorSet(error, "Expected metadata version V4 or V5 but found %s",
                     ns(MetadataVersion_name(ns(Message_version(message)))));
       return EINVAL;
+    case ns(MetadataVersion_V1):
+    case ns(MetadataVersion_V2):
+    case ns(MetadataVersion_V3):
     default:
       ArrowErrorSet(error, "Unexpected value for Message metadata version (%d)",
                     decoder->metadata_version);
@@ -1285,6 +1284,9 @@ ArrowErrorCode ArrowIpcDecoderDecodeFooter(struct ArrowIpcDecoder* decoder,
   const uint8_t* footer_data =
       data.data.as_uint8 + data.size_bytes - footer_and_size_and_magic_size;
   ns(Footer_table_t) footer = ns(Footer_as_root(footer_data));
+
+  NANOARROW_RETURN_NOT_OK(
+      ArrowIpcDecoderDecodeSchemaHeader(decoder, ns(Footer_schema(footer)), error));
 
   NANOARROW_RETURN_NOT_OK(ArrowIpcDecoderDecodeSchemaImpl(
       ns(Footer_schema(footer)), &private_data->footer.schema, error));

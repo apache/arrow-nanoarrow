@@ -28,6 +28,10 @@
 #define ENODATA 120
 #endif
 
+// Sentinel value to indicate that we haven't read a message yet
+// and don't know the number of header prefix bytes to expect.
+static const int32_t kExpectedHeaderPrefixSizeNotSet = -1;
+
 void ArrowIpcInputStreamMove(struct ArrowIpcInputStream* src,
                              struct ArrowIpcInputStream* dst) {
   memcpy(dst, src, sizeof(struct ArrowIpcInputStream));
@@ -186,6 +190,7 @@ struct ArrowIpcArrayStreamReaderPrivate {
   int64_t field_index;
   struct ArrowBuffer header;
   struct ArrowBuffer body;
+  int32_t expected_header_prefix_size;
   struct ArrowError error;
 };
 
@@ -230,6 +235,21 @@ static int ArrowIpcArrayStreamReaderNextHeader(
     // propagated higher (e.g., if the stream is empty and there's no schema message)
     ArrowErrorSet(&private_data->error, "No data available on stream");
     return ENODATA;
+  } else if (bytes_read == 4 && private_data->expected_header_prefix_size == 4) {
+    // Special case very, very old IPC streams that used 0x00000000 as the
+    // end-of-stream indicator. We may want to remove this case at some point:
+    // https://github.com/apache/arrow-nanoarrow/issues/648
+    uint32_t last_four_bytes = 0;
+    memcpy(&last_four_bytes, private_data->header.data, sizeof(uint32_t));
+    if (last_four_bytes == 0) {
+      ArrowErrorSet(&private_data->error, "No data available on stream");
+      return ENODATA;
+    } else {
+      ArrowErrorSet(&private_data->error,
+                    "Expected 0x00000000 if exactly four bytes are available at the end "
+                    "of a stream");
+      return EINVAL;
+    }
   } else if (bytes_read != 8) {
     ArrowErrorSet(&private_data->error,
                   "Expected at least 8 bytes in remainder of stream");
@@ -241,17 +261,58 @@ static int ArrowIpcArrayStreamReaderNextHeader(
   input_view.size_bytes = private_data->header.size_bytes;
 
   // Use PeekHeader to fill in decoder.header_size_bytes
-  NANOARROW_RETURN_NOT_OK(ArrowIpcDecoderPeekHeader(&private_data->decoder, input_view,
-                                                    &private_data->error));
+  int32_t prefix_size_bytes = 0;
+  NANOARROW_RETURN_NOT_OK(ArrowIpcDecoderPeekHeader(
+      &private_data->decoder, input_view, &prefix_size_bytes, &private_data->error));
+
+  // Check for a consistent header prefix size
+  if (private_data->expected_header_prefix_size != kExpectedHeaderPrefixSizeNotSet &&
+      prefix_size_bytes != private_data->expected_header_prefix_size) {
+    ArrowErrorSet(&private_data->error,
+                  "Expected prefix %d prefix header bytes but found %d",
+                  (int)private_data->expected_header_prefix_size, (int)prefix_size_bytes);
+    return EINVAL;
+  } else {
+    private_data->expected_header_prefix_size = prefix_size_bytes;
+  }
+
+  // Legacy streams are missing the 0xFFFFFFFF at the start of the message. The
+  // decoder can handle this; however, verification will fail because flatbuffers
+  // must be 8-byte aligned. To handle this case, we prepend the continuation
+  // token to the start of the stream and ensure that we read four fewer bytes
+  // the next time we issue a read. We may be able to remove this case in the future:
+  // https://github.com/apache/arrow-nanoarrow/issues/648
+  int64_t extra_bytes_already_read = 0;
+  if (prefix_size_bytes == 4) {
+    NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowBufferReserve(&private_data->header, 4),
+                                       &private_data->error);
+    memmove(private_data->header.data + 4, private_data->header.data,
+            private_data->header.size_bytes);
+    uint32_t continuation = 0xFFFFFFFFU;
+    memcpy(private_data->header.data, &continuation, sizeof(uint32_t));
+    private_data->header.size_bytes += 4;
+    extra_bytes_already_read = 4;
+
+    input_view.data.data = private_data->header.data;
+    input_view.size_bytes = private_data->header.size_bytes;
+
+    int32_t new_prefix_size_bytes;
+    NANOARROW_RETURN_NOT_OK(ArrowIpcDecoderPeekHeader(&private_data->decoder, input_view,
+                                                      &new_prefix_size_bytes,
+                                                      &private_data->error));
+    NANOARROW_DCHECK(new_prefix_size_bytes == 8);
+  }
 
   // Read the header bytes
   int64_t expected_header_bytes = private_data->decoder.header_size_bytes - 8;
   NANOARROW_RETURN_NOT_OK_WITH_ERROR(
-      ArrowBufferReserve(&private_data->header, expected_header_bytes),
+      ArrowBufferReserve(&private_data->header,
+                         expected_header_bytes - extra_bytes_already_read),
       &private_data->error);
-  NANOARROW_RETURN_NOT_OK(
-      private_data->input.read(&private_data->input, private_data->header.data + 8,
-                               expected_header_bytes, &bytes_read, &private_data->error));
+  NANOARROW_RETURN_NOT_OK(private_data->input.read(
+      &private_data->input, private_data->header.data + private_data->header.size_bytes,
+      expected_header_bytes - extra_bytes_already_read, &bytes_read,
+      &private_data->error));
   private_data->header.size_bytes += bytes_read;
 
   // Verify + decode the header
@@ -259,6 +320,15 @@ static int ArrowIpcArrayStreamReaderNextHeader(
   input_view.size_bytes = private_data->header.size_bytes;
   NANOARROW_RETURN_NOT_OK(ArrowIpcDecoderVerifyHeader(&private_data->decoder, input_view,
                                                       &private_data->error));
+
+  // If we have a 4-byte header prefix, make sure the metadata version is V4
+  // (Note that some V4 IPC files have an 8 byte header prefix).
+  if (prefix_size_bytes == 4 &&
+      private_data->decoder.metadata_version != NANOARROW_IPC_METADATA_VERSION_V4) {
+    ArrowErrorSet(&private_data->error,
+                  "Header prefix size of four bytes is only allowed for V4 metadata");
+    return EINVAL;
+  }
 
   // Don't decode the message if it's of the wrong type (because the error message
   // is better communicated by the caller)
@@ -445,6 +515,7 @@ ArrowErrorCode ArrowIpcArrayStreamReaderInit(
   ArrowBufferInit(&private_data->body);
   private_data->out_schema.release = NULL;
   ArrowIpcInputStreamMove(input_stream, &private_data->input);
+  private_data->expected_header_prefix_size = kExpectedHeaderPrefixSizeNotSet;
 
   if (options != NULL) {
     private_data->field_index = options->field_index;
