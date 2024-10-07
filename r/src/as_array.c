@@ -188,6 +188,8 @@ static void as_array_dbl(SEXP x_sexp, struct ArrowArray* array, SEXP schema_xptr
   // (mostly so that we can support date/time types with various units)
   switch (schema_view->type) {
     case NANOARROW_TYPE_DOUBLE:
+    case NANOARROW_TYPE_FLOAT:
+    case NANOARROW_TYPE_HALF_FLOAT:
     case NANOARROW_TYPE_INT64:
     case NANOARROW_TYPE_INT32:
       break;
@@ -228,7 +230,7 @@ static void as_array_dbl(SEXP x_sexp, struct ArrowArray* array, SEXP schema_xptr
 
     buffer->size_bytes = len * sizeof(int64_t);
 
-  } else {
+  } else if (schema_view->type == NANOARROW_TYPE_INT32) {
     // double -> int32_t
     struct ArrowBuffer* buffer = ArrowArrayBuffer(array, 1);
     result = ArrowBufferReserve(buffer, len * sizeof(int32_t));
@@ -257,6 +259,23 @@ static void as_array_dbl(SEXP x_sexp, struct ArrowArray* array, SEXP schema_xptr
     }
 
     buffer->size_bytes = len * sizeof(int32_t);
+  } else {
+    result = ArrowArrayStartAppending(array);
+    if (result != NANOARROW_OK) {
+      Rf_error("ArrowArrayStartAppending() failed");
+    }
+
+    result = ArrowArrayReserve(array, len);
+    if (result != NANOARROW_OK) {
+      Rf_error("ArrowArrayReserve() failed");
+    }
+
+    for (int64_t i = 0; i < len; i++) {
+      result = ArrowArrayAppendDouble(array, x_data[i]);
+      if (result != NANOARROW_OK) {
+        Rf_error("ArrowArrayAppendDouble() failed");
+      }
+    }
   }
 
   // Set the array fields

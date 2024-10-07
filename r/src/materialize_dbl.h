@@ -69,6 +69,7 @@ static inline int nanoarrow_materialize_dbl(struct RConverter* converter) {
     case NANOARROW_TYPE_UINT16:
     case NANOARROW_TYPE_INT32:
     case NANOARROW_TYPE_UINT32:
+    case NANOARROW_TYPE_HALF_FLOAT:
     case NANOARROW_TYPE_FLOAT:
       // No need to bounds check these types
       for (R_xlen_t i = 0; i < dst->length; i++) {
