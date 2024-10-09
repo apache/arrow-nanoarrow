@@ -80,9 +80,6 @@ main() {
     header "Upload signatures for source"
     upload_asset_signatures "${tag}" $(find "${download_dir}" -type f \( -name 'apache-arrow-nanoarrow-*.tar.gz' \))
 
-    header "Upload signatures for R"
-    upload_asset_signatures "${tag}" $(find "${download_dir}" -type f \( -name 'nanoarrow_*.tar.gz' \))
-
     header "Upload signatures for docs"
     upload_asset_signatures "${tag}" "${download_dir}/docs.tgz"
 
