@@ -47,7 +47,7 @@ repos:
     - id: black
       types_or: [pyi, python]
   - repo: https://github.com/PyCQA/flake8
-    rev: 4.0.1
+    rev: 7.1.1
     hooks:
     - id: flake8
       types_or: [python]
