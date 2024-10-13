@@ -18,9 +18,9 @@
 project(
     'nanoarrow',
     'c', 'cpp',
-    version: '0.7.0-SNAPSHOT'),
+    version: '0.7.0-SNAPSHOT',
     license: 'Apache 2.0',
-    meson_version: '0.7.0-SNAPSHOT'),
+    meson_version: '>=1.3.0',
     default_options: [
         'buildtype=release',
         'c_std=c99',
