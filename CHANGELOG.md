@@ -329,7 +329,7 @@
 - **python**: Separate schema cython classes into their own module (#558)
 - **python**: Split buffer Cython internals into a separate module (#549)
 - **python**: Split device functionality into its own module (#548)
-- **python**: Split type identifier utilities into thier own module (#545)
+- **python**: Split type identifier utilities into their own module (#545)
 - **python**: Extract utility functions into _utils.pyx (#529)
 - **r**: Use JSON in experimental R vctrs extension type (#533)
 
