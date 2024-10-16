@@ -43,7 +43,7 @@ main() {
     # Resolve all hard and symbolic links
     rm -rf "${base_name}.tmp/"
     mv "${base_name}/" "${base_name}.tmp/"
-    cp -R -L "${base_name}.tmp" "${base_name}"
+    cp -R -d "${base_name}.tmp" "${base_name}"
     rm -rf "${base_name}.tmp/"
 
     # Create new tarball
