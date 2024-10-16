@@ -117,7 +117,7 @@ function main() {
 
     show_header "Generate coverage reports"
     ninja coverage
-    lcov --list meson-logs/coverage.info
+    lcov --list meson-logs/coverage.info --ignore-errors mismatch
 
     popd
 
