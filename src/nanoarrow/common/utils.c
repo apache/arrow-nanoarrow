@@ -49,6 +49,48 @@ ArrowErrorCode ArrowErrorSet(struct ArrowError* error, const char* fmt, ...) {
   }
 }
 
+NANOARROW_CHECK_PRINTF_ATTRIBUTE ArrowErrorCode ArrowErrorPrefix(struct ArrowError* error,
+                                                                 const char* fmt, ...) {
+  if (error == NULL) {
+    return NANOARROW_OK;
+  }
+
+  char prefix[sizeof(struct ArrowError)];
+  memset(prefix, 0, sizeof(prefix));
+
+  va_list args;
+  va_start(args, fmt);
+  int prefix_len = vsnprintf(prefix, sizeof(prefix), fmt, args);
+  va_end(args);
+
+  if (prefix_len < 0) {
+    return EINVAL;
+  } else if (prefix_len == 0) {
+    return NANOARROW_OK;
+  } else if (prefix_len >= ((int)sizeof(struct ArrowError) - 1)) {
+    memcpy(error->message, prefix, sizeof(struct ArrowError) - 1);
+    return ERANGE;
+  }
+
+  // Calculate the maximum size of message that we *could* move
+  size_t out_len = strlen(error->message);
+  size_t out_len_to_move = sizeof(struct ArrowError) - prefix_len - 1;
+
+  // ...constrain it to the number of characters that we actually have to move
+  if (out_len_to_move > out_len) {
+    out_len_to_move = out_len;
+  }
+
+  // ...move the existing message forward
+  memmove(error->message + prefix_len, error->message, out_len_to_move);
+
+  // ...copy prefix into the prefix slot
+  memcpy(error->message, prefix, prefix_len);
+  error->message[out_len + prefix_len] = '\0';
+
+  return NANOARROW_OK;
+}
+
 void ArrowLayoutInit(struct ArrowLayout* layout, enum ArrowType storage_type) {
   layout->buffer_type[0] = NANOARROW_BUFFER_TYPE_VALIDITY;
   layout->buffer_data_type[0] = NANOARROW_TYPE_BOOL;
