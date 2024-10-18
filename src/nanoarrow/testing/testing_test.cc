@@ -1908,3 +1908,19 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestArrayStreamComparison) {
 
 )");
 }
+
+TEST(SchemaDsl, Basic) {
+  using namespace nanoarrow::testing::dsl;
+
+  schema{children{
+      {"i", "int32 field name",
+       metadata{
+           "some_key=some_value",
+       }},
+      {"i", dictionary{"u"}, "dictionary field name",
+       metadata{
+           "some_key=some_value",
+       },
+       ARROW_FLAG_NULLABLE},
+  }};
+}
