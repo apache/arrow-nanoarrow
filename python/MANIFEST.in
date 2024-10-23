@@ -20,6 +20,5 @@ recursive-include src/nanoarrow *.pxd
 recursive-include src/nanoarrow *.h
 
 exclude bootstrap.py
-exclude generate_dist.py
 exclude src/nanoarrow/*.c
 recursive-exclude src/nanoarrow *.o *.so

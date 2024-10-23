@@ -33,8 +33,5 @@ __pycache__
 subprojects/*
 !subprojects/packagefiles
 !subprojects/*.wrap
-python/subprojects/*
-!python/subprojects/packagefiles
-!python/subprojects/*.wrap
 
 compile_commands.json

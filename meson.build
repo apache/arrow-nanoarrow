@@ -103,7 +103,7 @@ if get_option('ipc')
     )
     nanoarrow_ipc_dep = declare_dependency(include_directories: [incdir],
                                            link_with: nanoarrow_ipc_lib,
-                                           dependencies: [nanoarrow_dep])
+                                           dependencies: [nanoarrow_dep, flatcc_dep])
 endif
 
 needs_device = get_option('device') or get_option('metal') or get_option('cuda')
@@ -137,10 +137,6 @@ if needs_device
       install: true,
       cpp_args: device_defines,
   )
-
-  nanoarrow_device_dep = declare_dependency(include_directories: [incdir],
-                                            link_with: nanoarrow_device_lib,
-                                            dependencies: device_deps)
 endif
 
 needs_testing = get_option('testing') or get_option('tests')

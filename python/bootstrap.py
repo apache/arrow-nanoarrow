@@ -15,6 +15,7 @@
 # specific language governing permissions and limitations
 # under the License.
 
+import argparse
 import pathlib
 import re
 import subprocess
@@ -58,9 +59,7 @@ class PxdGenerator:
             output.write(header.encode("UTF-8"))
 
             output.write(
-                f'\ncdef extern from "nanoarrow/{file_in_name}" nogil:\n'.encode(
-                    "UTF-8"
-                )
+                f'\ncdef extern from "{file_in_name}" nogil:\n'.encode("UTF-8")
             )
 
             # A few things we add in manually
@@ -228,13 +227,7 @@ class NanoarrowDevicePxdGenerator(PxdGenerator):
 # from ../dist if it does not. Running cmake is safer because it will sync
 # any changes from nanoarrow C library sources in the checkout but is not
 # strictly necessary for things like installing from GitHub.
-def copy_or_generate_nanoarrow_c():
-    this_dir = pathlib.Path(__file__).parent.resolve()
-    subproj_dir = this_dir / "subprojects"
-    source_dir = subproj_dir / "arrow-nanoarrow"
-
-    vendor_dir = this_dir / "vendor"
-
+def copy_or_generate_nanoarrow_c(target_dir: pathlib.Path):
     vendored_files = [
         "nanoarrow.h",
         "nanoarrow.c",
@@ -243,12 +236,20 @@ def copy_or_generate_nanoarrow_c():
         "nanoarrow_device.h",
         "nanoarrow_device.c",
     ]
-    dst = {name: vendor_dir / name for name in vendored_files}
+    dst = {name: target_dir / name for name in vendored_files}
 
-    for f in dst.values():
-        f.unlink(missing_ok=True)
+    this_dir = pathlib.Path(__file__).parent.resolve()
+    source_dir = this_dir.parent
+    is_cmake_dir = (source_dir / "CMakeLists.txt").exists()
+    is_in_nanoarrow_repo = (
+        is_cmake_dir and (source_dir / "src" / "nanoarrow" / "nanoarrow.h").exists()
+    )
 
-    vendor_dir.mkdir(exist_ok=True)
+    if not is_in_nanoarrow_repo:
+        raise ValueError(
+            "Attempt to build source distribution outside the nanoarrow repo"
+        )
+
     subprocess.run(
         [
             sys.executable,
@@ -258,9 +259,9 @@ def copy_or_generate_nanoarrow_c():
             "--header-namespace",
             "",
             "--source-output-dir",
-            vendor_dir,
+            target_dir,
             "--include-output-dir",
-            vendor_dir,
+            target_dir,
             "--with-device",
             "--with-ipc",
             "--with-flatcc",
@@ -272,18 +273,24 @@ def copy_or_generate_nanoarrow_c():
 
 
 # Runs the pxd generator with some information about the file name
-def generate_nanoarrow_pxds():
-    this_dir = pathlib.Path(__file__).parent.resolve()
-
+def generate_nanoarrow_pxds(target_dir: pathlib.Path):
     NanoarrowPxdGenerator().generate_pxd(
-        this_dir / "vendor" / "nanoarrow.h", this_dir / "vendor" / "nanoarrow_c.pxd"
+        target_dir / "nanoarrow.h", target_dir / "nanoarrow_c.pxd"
     )
     NanoarrowDevicePxdGenerator().generate_pxd(
-        this_dir / "vendor" / "nanoarrow_device.h",
-        this_dir / "vendor" / "nanoarrow_device_c.pxd",
+        target_dir / "nanoarrow_device.h",
+        target_dir / "nanoarrow_device_c.pxd",
     )
 
 
 if __name__ == "__main__":
-    copy_or_generate_nanoarrow_c()
-    generate_nanoarrow_pxds()
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--output-dir", help="Target directory where files should be written"
+    )
+
+    args = parser.parse_args()
+    target_dir = pathlib.Path(args.output_dir).resolve()
+
+    copy_or_generate_nanoarrow_c(target_dir)
+    generate_nanoarrow_pxds(target_dir)

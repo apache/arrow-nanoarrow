@@ -17,21 +17,18 @@
 
 project(
     'nanoarrow',
-    'cpp', 'cython',
+    'c', 'cython',
     version: '0.7.0.dev0',
     license: 'Apache-2.0',
     meson_version: '>=1.2.0',
     default_options: [
         'warning_level=2',
-        'cpp_std=c++17',
+        'c_std=c99',
         'default_library=static',
-        # We need to set these options at the project default_option level
-        # due to https://github.com/mesonbuild/meson/issues/6728
-        'arrow-nanoarrow:ipc=true',
-        'arrow-nanoarrow:device=true',
     ],
 )
 
-subdir('src/nanoarrow')
+py = import('python').find_installation(pure: false)
 
-meson.add_dist_script('python', meson.current_source_dir() / 'generate_dist.py')
+subdir('vendor')
+subdir('src/nanoarrow')

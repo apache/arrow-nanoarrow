@@ -15,24 +15,6 @@
 # specific language governing permissions and limitations
 # under the License.
 
-# Try to resolve the symlink to a subproject first and fall back
-# to the wrap entry if that is unsuccessful. Ideally Meson would
-# take care of this for us, but there is a bug upstream
-# https://github.com/mesonbuild/meson/issues/13746#issuecomment-2392510954
-nanoarrow_proj = subproject('arrow-nanoarrow')
-nanoarrow_dep = nanoarrow_proj.get_variable('nanoarrow_dep')
-nanoarrow_ipc_dep = nanoarrow_proj.get_variable('nanoarrow_ipc_dep')
-nanoarrow_device_dep = nanoarrow_proj.get_variable('nanoarrow_device_dep')
-
-py = import('python').find_installation(pure: false)
-
-generated_pyx = custom_target(
-    'generate-pyx',
-    output: 'nanoarrow_c.pxd',
-    command: [py, meson.current_source_dir() + '/../../bootstrap.py'],
-)
-nanoarrow_c_dep = declare_dependency(sources: generated_pyx)
-
 cyfiles = [
     '_array.pyx',
     '_array_stream.pyx',
@@ -48,7 +30,7 @@ cython_args = [
     '--include-dir',
     meson.current_source_dir(),
     '--include-dir',
-    meson.project_source_root() / 'vendor',  # for generated nanoarrow_c file
+    meson.project_build_root() / 'vendor',
 ]
 if get_option('buildtype') == 'debug'
     cython_args += ['--gdb']
@@ -56,11 +38,11 @@ endif
 
 fs = import('fs')
 foreach cyf : cyfiles
-  cyfile_deps = [nanoarrow_c_dep, nanoarrow_dep]
+  cyfile_deps = [nanoarrow_pyx_dep]
 
   stem = fs.stem(cyf)
   if stem in ['_array', '_device']
-    cyfile_deps += [nanoarrow_device_dep]
+    cyfile_deps += [nanoarrow_device_pyx_dep]
   elif stem == '_ipc_lib'
     cyfile_deps += [nanoarrow_ipc_dep]
   endif
