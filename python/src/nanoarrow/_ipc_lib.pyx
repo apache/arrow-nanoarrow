@@ -38,7 +38,7 @@ from nanoarrow._array cimport CArrayView
 from nanoarrow._utils cimport Error
 
 
-cdef extern from "nanoarrow_ipc.h" nogil:
+cdef extern from "nanoarrow/nanoarrow_ipc.h" nogil:
     struct ArrowIpcInputStream:
         ArrowErrorCode (*read)(ArrowIpcInputStream* stream, uint8_t* buf,
                                int64_t buf_size_bytes, int64_t* size_read_out,

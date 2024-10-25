@@ -25,10 +25,14 @@ project(
         'warning_level=2',
         'c_std=c99',
         'default_library=static',
+        # We need to set these options at the project default_option level
+        # due to https://github.com/mesonbuild/meson/issues/6728
+        'arrow-nanoarrow:ipc=true',
+        'arrow-nanoarrow:device=true',
+        'arrow-nanoarrow:namespace=PythonPkg',
     ],
 )
 
-py = import('python').find_installation(pure: false)
-
-subdir('vendor')
 subdir('src/nanoarrow')
+
+meson.add_dist_script('python', meson.current_source_dir() / 'generate_dist.py')

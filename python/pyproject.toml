@@ -40,7 +40,12 @@ Changelog = "https://github.com/apache/arrow-nanoarrow/blob/main/CHANGELOG.md"
 requires = [
     "meson>=1.3.0",
     "meson-python",
-    "cmake>=3.14",
     "Cython"
 ]
 build-backend = "mesonpy"
+
+[tool.meson-python.args]
+install = ['--skip-subprojects']
+
+[tool.pytest.ini_options]
+norecursedirs = "subprojects/arrow-nanoarrow"

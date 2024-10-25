@@ -223,10 +223,6 @@ class NanoarrowDevicePxdGenerator(PxdGenerator):
         output.write(b"\n")
 
 
-# Runs cmake -DNANOARROW_BUNDLE=ON if cmake exists or copies nanoarrow.c/h
-# from ../dist if it does not. Running cmake is safer because it will sync
-# any changes from nanoarrow C library sources in the checkout but is not
-# strictly necessary for things like installing from GitHub.
 def copy_or_generate_nanoarrow_c(target_dir: pathlib.Path):
     vendored_files = [
         "nanoarrow.h",
@@ -239,21 +235,12 @@ def copy_or_generate_nanoarrow_c(target_dir: pathlib.Path):
     dst = {name: target_dir / name for name in vendored_files}
 
     this_dir = pathlib.Path(__file__).parent.resolve()
-    source_dir = this_dir.parent
-    is_cmake_dir = (source_dir / "CMakeLists.txt").exists()
-    is_in_nanoarrow_repo = (
-        is_cmake_dir and (source_dir / "src" / "nanoarrow" / "nanoarrow.h").exists()
-    )
-
-    if not is_in_nanoarrow_repo:
-        raise ValueError(
-            "Attempt to build source distribution outside the nanoarrow repo"
-        )
+    arrow_proj_dir = this_dir / "subprojects" / "arrow-nanoarrow"
 
     subprocess.run(
         [
             sys.executable,
-            source_dir / "ci" / "scripts" / "bundle.py",
+            arrow_proj_dir / "ci" / "scripts" / "bundle.py",
             "--symbol-namespace",
             "PythonPkg",
             "--header-namespace",

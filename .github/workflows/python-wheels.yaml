@@ -24,9 +24,11 @@ on:
       - main
     paths:
       - '.github/workflows/python-wheels.yaml'
-      - 'python/setup.py'
+      - 'python/meson.build'
+      - 'python/src/nanoarrow/meson.build'
       - 'python/pyproject.toml'
       - 'python/bootstrap.py'
+      - 'python/generate_dist.py'
       - 'python/MANIFEST.in'
   push:
     branches:
@@ -107,12 +109,12 @@ jobs:
           fetch-tags: true
 
       - uses: actions/setup-python@v5
-        if: ${{ matrix.config.label != "windows" }}
+        if: ${{ matrix.config.label != 'windows' }}
         with:
           python-version: "3.12"
 
       - uses: actions/setup-python@v5
-        if: ${{ matrix.config.label == "windows" }}
+        if: ${{ matrix.config.label == 'windows' }}
         with:
           python-version: "3.12"
           architecture: x64
