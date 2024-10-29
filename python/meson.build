@@ -15,26 +15,24 @@
 # specific language governing permissions and limitations
 # under the License.
 
-_coverage/
-build/
-scratch/
-out/
-arrow-hpp
-.DS_Store
-CMakeUserPresets.json
-.vscode
-.Rproj.user
-.cache
-*.swp
-__pycache__
+project(
+    'nanoarrow',
+    'c', 'cython',
+    version: run_command(['src/nanoarrow/_version.py', '--print'], check: true).stdout().strip(),
+    license: 'Apache-2.0',
+    meson_version: '>=1.2.0',
+    default_options: [
+        'warning_level=2',
+        'c_std=c99',
+        'default_library=static',
+        # We need to set these options at the project default_option level
+        # due to https://github.com/mesonbuild/meson/issues/6728
+        'arrow-nanoarrow:ipc=true',
+        'arrow-nanoarrow:device=true',
+        'arrow-nanoarrow:namespace=PythonPkg',
+    ],
+)
 
-# meson subprojects - wrap files need to be kept to let meson download
-# dependencies as needed, but dependencies themselves should not be versioned
-subprojects/*
-!subprojects/packagefiles
-!subprojects/*.wrap
-python/subprojects/*
-!python/subprojects/packagefiles
-!python/subprojects/*.wrap
+subdir('src/nanoarrow')
 
-compile_commands.json
+meson.add_dist_script('python', meson.current_source_dir() / 'generate_dist.py')

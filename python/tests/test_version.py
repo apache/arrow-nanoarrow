@@ -15,6 +15,7 @@
 # specific language governing permissions and limitations
 # under the License.
 
+import importlib
 import re
 
 import nanoarrow as na
@@ -28,3 +29,7 @@ def test_version():
 def test_c_version():
     re_version = re.compile(r"^[0-9]+\.[0-9]+\.[0-9]+(-SNAPSHOT)?$")
     assert re_version.match(na.c_version()) is not None
+
+
+def test_metadata_version():
+    assert importlib.metadata.version("nanoarrow") == na.__version__

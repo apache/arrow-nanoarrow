@@ -15,26 +15,26 @@
 # specific language governing permissions and limitations
 # under the License.
 
-_coverage/
-build/
-scratch/
-out/
-arrow-hpp
-.DS_Store
-CMakeUserPresets.json
-.vscode
-.Rproj.user
-.cache
-*.swp
-__pycache__
+project('flatcc',
+  'c',
+  version : '0.6.1',
+  license : 'Apache-2.0',
+)
 
-# meson subprojects - wrap files need to be kept to let meson download
-# dependencies as needed, but dependencies themselves should not be versioned
-subprojects/*
-!subprojects/packagefiles
-!subprojects/*.wrap
-python/subprojects/*
-!python/subprojects/packagefiles
-!python/subprojects/*.wrap
+incdir = include_directories('include')
 
-compile_commands.json
+flatcc_lib = library(
+    'flatcc',
+    sources: [
+        'src/runtime/builder.c',
+        'src/runtime/emitter.c',
+        'src/runtime/verifier.c',
+        'src/runtime/refmap.c',
+    ],
+    include_directories: [incdir],
+)
+
+flatcc_dep = declare_dependency(
+    include_directories: [incdir],
+    link_with: [flatcc_lib],
+)

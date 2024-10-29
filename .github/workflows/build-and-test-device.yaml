@@ -28,7 +28,8 @@ on:
       - 'CMakeLists.txt'
       - '.github/workflows/build-and-test-device.yaml'
       - 'src/nanoarrow/**'
-      - 'python/setup.py'
+      - 'python/meson.build'
+      - 'python/src/nanoarrow/meson.build'
 
 permissions:
   contents: read

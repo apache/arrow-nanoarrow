@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
 # distributed with this work for additional information
@@ -47,4 +49,4 @@ def get_static_version_info(version_file=STATIC_VERSION_FILE):
 __version__ = get_version()
 
 if __name__ == "__main__":
-    print("Version: ", get_version())
+    print(get_version())
