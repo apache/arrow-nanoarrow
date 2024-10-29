@@ -44,16 +44,6 @@ def main():
     target_src_dir = subproj_dir / "src"
     shutil.copytree(src_dir / "src", target_src_dir)
 
-    # CMake isn't actually required for building, but the bundle.py script reads from
-    # its configuration
-    shutil.copy(src_dir / "CMakeLists.txt", subproj_dir / "CMakeLists.txt")
-
-    subproj_ci_scripts_dir = subproj_dir / "ci" / "scripts"
-    subproj_ci_scripts_dir.mkdir(parents=True)
-    shutil.copy(
-        src_dir / "ci" / "scripts" / "bundle.py", subproj_ci_scripts_dir / "bundle.py"
-    )
-
 
 if __name__ == "__main__":
     main()
