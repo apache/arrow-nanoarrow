@@ -95,12 +95,13 @@ jobs:
     strategy:
       matrix:
         config:
-          - {os: "ubuntu-20.04", label: "pyodide", platform: "pyodide"}
-          - {os: "ubuntu-20.04", label: "linux", platform: "auto"}
-          - {os: "windows-2019", label: "windows", platform: "auto"}
-          - {os: "macOS-13", label: "macOS", platform: "auto"}
-          - {os: "macOS-14", label: "macOS-arm64", platform: "auto"}
-          - {os: ["self-hosted", "arm"], label: "linux-arm64", platform: "auto"}
+          - {os: "ubuntu-20.04", label: "pyodide", platform: "pyodide", arch: "auto"}
+          - {os: "ubuntu-20.04", label: "linux", platform: "auto", arch: "auto"}
+          - {os: "windows-2019", label: "windows-x86", platform: "auto", arch: "x86"}
+          - {os: "windows-2019", label: "windows-amd64", platform: "auto", arch: "AMD64"}
+          - {os: "macOS-13", label: "macOS", platform: "auto", arch: "auto"}
+          - {os: "macOS-14", label: "macOS-arm64", platform: "auto", arch: "auto"}
+          - {os: ["self-hosted", "arm"], label: "linux-arm64", platform: "auto", arch: "auto"}
 
     steps:
       - uses: actions/checkout@v4
@@ -109,8 +110,27 @@ jobs:
           fetch-tags: true
 
       - uses: actions/setup-python@v5
+        if: matrix.config.arch != 'x86'
         with:
           python-version: "3.12"
+
+      - name: Setup MSVC (64-bit)
+        if: matrix.config.arch == 'AMD64'
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      - uses: actions/setup-python@v5
+        if: matrix.config.arch == 'x86'
+        with:
+          python-version: "3.12"
+          architecture: x86
+
+      - name: Setup MSVC (32-bit)
+        if: matrix.config.arch == 'x86'
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x86
 
       - name: Install cibuildwheel
         run: python -m pip install cibuildwheel==2.21.1
@@ -127,6 +147,7 @@ jobs:
           CIBW_TEST_REQUIRES: pytest
           CIBW_TEST_COMMAND: pytest {package}/tests -vv
           CIBW_PLATFORM: ${{ matrix.config.platform }}
+          CIBW_ARCHS: ${{ matrix.config.arch }}
 
       - uses: actions/upload-artifact@v4
         with:
