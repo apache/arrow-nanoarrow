@@ -63,6 +63,16 @@ install_headers(
 )
 
 install_headers(
+    'src/nanoarrow/hpp/array_stream.hpp',
+    'src/nanoarrow/hpp/buffer.hpp',
+    'src/nanoarrow/hpp/exception.hpp',
+    'src/nanoarrow/hpp/operators.hpp',
+    'src/nanoarrow/hpp/unique.hpp',
+    'src/nanoarrow/hpp/view.hpp',
+    subdir: 'nanoarrow/hpp',
+)
+
+install_headers(
     'src/nanoarrow/common/inline_array.h',
     'src/nanoarrow/common/inline_buffer.h',
     'src/nanoarrow/common/inline_types.h',
