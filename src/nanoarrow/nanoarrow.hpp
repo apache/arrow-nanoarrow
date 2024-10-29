@@ -15,15 +15,15 @@
 // specific language governing permissions and limitations
 // under the License.
 
+#ifndef NANOARROW_HPP_INCLUDED
+#define NANOARROW_HPP_INCLUDED
+
 #include <cstring>
 #include <exception>
 #include <string>
 #include <vector>
 
 #include "nanoarrow/nanoarrow.h"
-
-#ifndef NANOARROW_HPP_INCLUDED
-#define NANOARROW_HPP_INCLUDED
 
 /// \defgroup nanoarrow_hpp Nanoarrow C++ Helpers
 ///

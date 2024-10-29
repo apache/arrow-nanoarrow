@@ -15,11 +15,11 @@
 // specific language governing permissions and limitations
 // under the License.
 
-#include "nanoarrow/nanoarrow.hpp"
-#include "nanoarrow/nanoarrow_device.h"
-
 #ifndef NANOARROW_DEVICE_HPP_INCLUDED
 #define NANOARROW_DEVICE_HPP_INCLUDED
+
+#include "nanoarrow/nanoarrow.hpp"
+#include "nanoarrow/nanoarrow_device.h"
 
 namespace nanoarrow {
 
