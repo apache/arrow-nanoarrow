@@ -132,6 +132,7 @@ def bundle_nanoarrow(
             src_dir / "hpp" / "exception.hpp",
             src_dir / "hpp" / "operators.hpp",
             src_dir / "hpp" / "unique.hpp",
+            src_dir / "hpp" / "array_stream.hpp",
             src_dir / "hpp" / "buffer.hpp",
             src_dir / "hpp" / "view.hpp",
         ]
