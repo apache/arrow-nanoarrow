@@ -50,6 +50,8 @@ inline ArrowStringView operator""_asv(const char* data, size_t size_bytes) {
 
 }  // namespace literals
 
+NANOARROW_CXX_NAMESPACE_END
+
 /// \brief Equality comparison operator between ArrowStringView
 /// \ingroup nanoarrow_hpp-string_view_helpers
 inline bool operator==(ArrowStringView l, ArrowStringView r) {
@@ -58,5 +60,3 @@ inline bool operator==(ArrowStringView l, ArrowStringView r) {
 }
 
 #endif
-
-NANOARROW_CXX_NAMESPACE_END
