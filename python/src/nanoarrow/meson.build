@@ -93,6 +93,8 @@ endforeach
 
 py_sources = [
     '__init__.py',
+    '_static_version.py',
+    '_version.py',
     'array.py',
     'array_stream.py',
     'c_array.py',

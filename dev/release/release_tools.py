@@ -84,11 +84,11 @@ def set_python_dev_version_command(args):
     _, last_dev_tag = find_last_dev_tag()
     dev_distance = len(find_commits_since(last_dev_tag))
 
-    config_file = src_path("python", "meson.build")
+    version_file = src_path("python", "src", "nanoarrow", "_static_version.py")
     file_regex_replace(
         r'"([0-9]+\.[0-9]+\.[0-9]+)\.dev[0-9]+"',
         f'"\\1.dev{dev_distance}"',
-        config_file,
+        version_file,
     )
 
 

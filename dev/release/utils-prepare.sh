@@ -52,10 +52,10 @@ update_versions() {
   git add DESCRIPTION
   popd
 
-  pushd "${NANOARROW_DIR}/python/"
-  sed -i.bak -E "s/version = '.+'/version = '${python_version}'/" meson.build
-  rm meson.build.bak
-  git add meson.build
+  pushd "${NANOARROW_DIR}/python/src/nanoarrow"
+  sed -i.bak -E "s/version = \".+\"/version = \"${python_version}\"/" _static_version.py
+  rm _static_version.py.bak
+  git add _static_version.py
   popd
 }
 
