@@ -128,7 +128,7 @@ function main() {
     TARGET_NANOARROW_PYTHON_DIR="${TARGET_NANOARROW_DIR}/python"
 
     pushd "${TARGET_NANOARROW_PYTHON_DIR}"
-    NANOARROW_PYTHON_COVERAGE=1 python -m pip install .
+    NANOARROW_PYTHON_COVERAGE=1 python -m pip install -e .
 
     # Run tests + coverage.py (generates .coverage with absolute file paths)
     python -m pytest --cov ./src/nanoarrow
