@@ -15,6 +15,13 @@
 // specific language governing permissions and limitations
 // under the License.
 
+#include <algorithm>
+#include <iostream>
+#include <limits>
+#include <sstream>
+#include <unordered_map>
+#include <vector>
+
 #include "nlohmann/json.hpp"
 
 #include "nanoarrow/nanoarrow_testing.hpp"
