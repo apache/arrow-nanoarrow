@@ -19,6 +19,7 @@
 #define NANOARROW_TESTING_HPP_INCLUDED
 
 #include <iostream>
+#include <memory>
 #include <string>
 
 #include "nanoarrow/nanoarrow.hpp"
