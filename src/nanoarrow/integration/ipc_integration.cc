@@ -16,6 +16,7 @@
 // under the License.
 
 #include <cstdlib>
+#include <sstream>
 
 #include <nanoarrow/nanoarrow_ipc.hpp>
 #include <nanoarrow/nanoarrow_testing.hpp>
