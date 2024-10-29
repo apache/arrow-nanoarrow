@@ -35,95 +35,10 @@ namespace nanoarrow {
 
 namespace testing {
 
+// Forward-declaration of internal types
 namespace internal {
-
-// Internal representation of the various structures needed to import and/or export
-// a dictionary array. We use a serialized version of the dictionary value because
-// nanoarrow doesn't currently have the ability to copy or reference count an Array.
-struct Dictionary {
-  nanoarrow::UniqueSchema schema;
-  int64_t column_length;
-  std::string column_json;
-};
-
-class DictionaryContext {
- public:
-  DictionaryContext() : next_id_(0) {}
-
-  ArrowErrorCode RecordSchema(int32_t dictionary_id, const ArrowSchema* values_schema) {
-    if (!HasDictionaryForId(dictionary_id)) {
-      dictionaries_[dictionary_id] = internal::Dictionary();
-      NANOARROW_RETURN_NOT_OK(
-          ArrowSchemaDeepCopy(values_schema, dictionaries_[dictionary_id].schema.get()));
-    }
-
-    dictionary_ids_[values_schema] = dictionary_id;
-    return NANOARROW_OK;
-  }
-
-  ArrowErrorCode RecordSchema(const ArrowSchema* values_schema, int32_t* dictionary_id) {
-    while (HasDictionaryForId(next_id_)) {
-      next_id_++;
-    }
-
-    NANOARROW_RETURN_NOT_OK(RecordSchema(next_id_, values_schema));
-    *dictionary_id = next_id_++;
-    return NANOARROW_OK;
-  }
-
-  void RecordArray(int32_t dictionary_id, int64_t length, std::string column_json) {
-    dictionaries_[dictionary_id].column_length = length;
-    dictionaries_[dictionary_id].column_json = std::move(column_json);
-  }
-
-  void RecordArray(const ArrowSchema* values_schema, int64_t length,
-                   std::string column_json) {
-    auto ids_it = dictionary_ids_.find(values_schema);
-    RecordArray(ids_it->second, length, column_json);
-  }
-
-  bool empty() { return dictionaries_.empty(); }
-
-  void clear() {
-    dictionaries_.clear();
-    dictionary_ids_.clear();
-    next_id_ = 0;
-  }
-
-  bool HasDictionaryForSchema(const ArrowSchema* values_schema) const {
-    return dictionary_ids_.find(values_schema) != dictionary_ids_.end();
-  }
-
-  bool HasDictionaryForId(int32_t dictionary_id) const {
-    return dictionaries_.find(dictionary_id) != dictionaries_.end();
-  }
-
-  const Dictionary& Get(int32_t dictionary_id) const {
-    auto dict_it = dictionaries_.find(dictionary_id);
-    return dict_it->second;
-  }
-
-  const Dictionary& Get(const ArrowSchema* values_schema) const {
-    auto ids_it = dictionary_ids_.find(values_schema);
-    return Get(ids_it->second);
-  }
-
-  const std::vector<int32_t> GetAllIds() const {
-    std::vector<int32_t> out;
-    out.reserve(dictionaries_.size());
-    for (const auto& value : dictionaries_) {
-      out.push_back(value.first);
-    }
-    return out;
-  }
-
- private:
-  int32_t next_id_;
-  std::unordered_map<int32_t, Dictionary> dictionaries_;
-  std::unordered_map<const ArrowSchema*, int32_t> dictionary_ids_;
-};
-
-}  // namespace internal
+class DictionaryContext;
+}
 
 /// \defgroup nanoarrow_testing-json Integration test helpers
 ///
@@ -136,7 +51,8 @@ class DictionaryContext {
 /// \brief Writer for the Arrow integration testing JSON format
 class TestingJSONWriter {
  public:
-  TestingJSONWriter() : float_precision_(-1), include_metadata_(true) {}
+  TestingJSONWriter();
+  ~TestingJSONWriter();
 
   /// \brief Set the floating point precision of the writer
   ///
@@ -151,7 +67,7 @@ class TestingJSONWriter {
   /// Use false to skip writing schema/field metadata in the output.
   void set_include_metadata(bool value) { include_metadata_ = value; }
 
-  void ResetDictionaries() { dictionaries_.clear(); }
+  void ResetDictionaries();
 
   /// \brief Write an ArrowArrayStream as a data file JSON object to out
   ///
@@ -195,7 +111,7 @@ class TestingJSONWriter {
  private:
   int float_precision_;
   bool include_metadata_;
-  internal::DictionaryContext dictionaries_;
+  std::unique_ptr<internal::DictionaryContext> dictionaries_;
 
   bool ShouldWriteMetadata(const char* metadata) {
     return metadata != nullptr && include_metadata_;
@@ -216,8 +132,9 @@ class TestingJSONWriter {
 /// \brief Reader for the Arrow integration testing JSON format
 class TestingJSONReader {
  public:
-  TestingJSONReader(ArrowBufferAllocator allocator) : allocator_(allocator) {}
-  TestingJSONReader() : TestingJSONReader(ArrowBufferAllocatorDefault()) {}
+  TestingJSONReader(ArrowBufferAllocator allocator);
+  TestingJSONReader();
+  ~TestingJSONReader();
 
   static const int kNumBatchOnlySchema = -2;
   static const int kNumBatchReadAll = -1;
@@ -261,7 +178,7 @@ class TestingJSONReader {
 
  private:
   ArrowBufferAllocator allocator_;
-  internal::DictionaryContext dictionaries_;
+  std::unique_ptr<internal::DictionaryContext> dictionaries_;
 
   void SetArrayAllocatorRecursive(ArrowArray* array);
 };

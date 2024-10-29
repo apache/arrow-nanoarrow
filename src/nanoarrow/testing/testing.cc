@@ -23,6 +23,94 @@ namespace nanoarrow {
 
 namespace testing {
 
+namespace internal {
+// Internal representation of the various structures needed to import and/or export
+// a dictionary array. We use a serialized version of the dictionary value because
+// nanoarrow doesn't currently have the ability to copy or reference count an Array.
+struct Dictionary {
+  nanoarrow::UniqueSchema schema;
+  int64_t column_length;
+  std::string column_json;
+};
+
+class DictionaryContext {
+ public:
+  DictionaryContext() : next_id_(0) {}
+
+  ArrowErrorCode RecordSchema(int32_t dictionary_id, const ArrowSchema* values_schema) {
+    if (!HasDictionaryForId(dictionary_id)) {
+      dictionaries_[dictionary_id] = Dictionary();
+      NANOARROW_RETURN_NOT_OK(
+          ArrowSchemaDeepCopy(values_schema, dictionaries_[dictionary_id].schema.get()));
+    }
+
+    dictionary_ids_[values_schema] = dictionary_id;
+    return NANOARROW_OK;
+  }
+
+  ArrowErrorCode RecordSchema(const ArrowSchema* values_schema, int32_t* dictionary_id) {
+    while (HasDictionaryForId(next_id_)) {
+      next_id_++;
+    }
+
+    NANOARROW_RETURN_NOT_OK(RecordSchema(next_id_, values_schema));
+    *dictionary_id = next_id_++;
+    return NANOARROW_OK;
+  }
+
+  void RecordArray(int32_t dictionary_id, int64_t length, std::string column_json) {
+    dictionaries_[dictionary_id].column_length = length;
+    dictionaries_[dictionary_id].column_json = std::move(column_json);
+  }
+
+  void RecordArray(const ArrowSchema* values_schema, int64_t length,
+                   std::string column_json) {
+    auto ids_it = dictionary_ids_.find(values_schema);
+    RecordArray(ids_it->second, length, column_json);
+  }
+
+  bool empty() { return dictionaries_.empty(); }
+
+  void clear() {
+    dictionaries_.clear();
+    dictionary_ids_.clear();
+    next_id_ = 0;
+  }
+
+  bool HasDictionaryForSchema(const ArrowSchema* values_schema) const {
+    return dictionary_ids_.find(values_schema) != dictionary_ids_.end();
+  }
+
+  bool HasDictionaryForId(int32_t dictionary_id) const {
+    return dictionaries_.find(dictionary_id) != dictionaries_.end();
+  }
+
+  const Dictionary& Get(int32_t dictionary_id) const {
+    auto dict_it = dictionaries_.find(dictionary_id);
+    return dict_it->second;
+  }
+
+  const Dictionary& Get(const ArrowSchema* values_schema) const {
+    auto ids_it = dictionary_ids_.find(values_schema);
+    return Get(ids_it->second);
+  }
+
+  const std::vector<int32_t> GetAllIds() const {
+    std::vector<int32_t> out;
+    out.reserve(dictionaries_.size());
+    for (const auto& value : dictionaries_) {
+      out.push_back(value.first);
+    }
+    return out;
+  }
+
+ private:
+  int32_t next_id_;
+  std::unordered_map<int32_t, Dictionary> dictionaries_;
+  std::unordered_map<const ArrowSchema*, int32_t> dictionary_ids_;
+};
+}  // namespace internal
+
 namespace writer_internal {
 
 namespace {
@@ -511,6 +599,15 @@ ArrowErrorCode WriteMetadataItem(std::ostream& out, ArrowMetadataReader* reader)
 
 }  // namespace writer_internal
 
+TestingJSONWriter::TestingJSONWriter()
+    : float_precision_(-1),
+      include_metadata_(true),
+      dictionaries_(new internal::DictionaryContext()) {}
+
+TestingJSONWriter::~TestingJSONWriter() = default;
+
+void TestingJSONWriter::ResetDictionaries() { dictionaries_->clear(); }
+
 ArrowErrorCode TestingJSONWriter::WriteDataFile(std::ostream& out,
                                                 ArrowArrayStream* stream) {
   if (stream == nullptr || stream->release == nullptr) {
@@ -550,7 +647,7 @@ ArrowErrorCode TestingJSONWriter::WriteDataFile(std::ostream& out,
 
   out << "]";
 
-  if (!dictionaries_.empty()) {
+  if (!dictionaries_->empty()) {
     out << R"(, "dictionaries": )";
     NANOARROW_RETURN_NOT_OK(WriteDictionaryBatches(out));
   }
@@ -627,7 +724,7 @@ ArrowErrorCode TestingJSONWriter::WriteField(std::ostream& out,
 
     int32_t dictionary_id;
     NANOARROW_RETURN_NOT_OK(
-        dictionaries_.RecordSchema(field->dictionary, &dictionary_id));
+        dictionaries_->RecordSchema(field->dictionary, &dictionary_id));
 
     out << R"(, "dictionary": )";
     view.type = view.storage_type;
@@ -804,22 +901,22 @@ ArrowErrorCode TestingJSONWriter::WriteColumn(std::ostream& out, const ArrowSche
 
   // Write the dictionary values to the DictionaryContext for later if applicable
   if (field->dictionary != nullptr) {
-    if (!dictionaries_.HasDictionaryForSchema(field->dictionary)) {
+    if (!dictionaries_->HasDictionaryForSchema(field->dictionary)) {
       return EINVAL;
     }
 
     std::stringstream dictionary_output;
     NANOARROW_RETURN_NOT_OK(
         WriteColumn(dictionary_output, field->dictionary, value->dictionary));
-    dictionaries_.RecordArray(field->dictionary, value->dictionary->length,
-                              dictionary_output.str());
+    dictionaries_->RecordArray(field->dictionary, value->dictionary->length,
+                               dictionary_output.str());
   }
 
   return NANOARROW_OK;
 }
 
 ArrowErrorCode TestingJSONWriter::WriteDictionaryBatches(std::ostream& out) {
-  std::vector<int32_t> ids = dictionaries_.GetAllIds();
+  std::vector<int32_t> ids = dictionaries_->GetAllIds();
   if (ids.empty()) {
     out << "[]";
     return NANOARROW_OK;
@@ -839,7 +936,7 @@ ArrowErrorCode TestingJSONWriter::WriteDictionaryBatches(std::ostream& out) {
 
 ArrowErrorCode TestingJSONWriter::WriteDictionaryBatch(std::ostream& out,
                                                        int32_t dictionary_id) {
-  const internal::Dictionary& dict = dictionaries_.Get(dictionary_id);
+  const internal::Dictionary& dict = dictionaries_->Get(dictionary_id);
   out << R"({"id": )" << dictionary_id << R"(, "data": {"count": )" << dict.column_length
       << R"(, "columns": [)" << dict.column_json << "]}}";
   return NANOARROW_OK;
@@ -2136,10 +2233,18 @@ ArrowErrorCode RecordDictionaryBatches(const json& value,
 
 }  // namespace reader_internal
 
+TestingJSONReader::TestingJSONReader(ArrowBufferAllocator allocator)
+    : allocator_(allocator), dictionaries_(new internal::DictionaryContext()) {}
+
+TestingJSONReader::TestingJSONReader()
+    : TestingJSONReader(ArrowBufferAllocatorDefault()) {}
+
+TestingJSONReader::~TestingJSONReader() = default;
+
 ArrowErrorCode TestingJSONReader::ReadDataFile(const std::string& data_file_json,
                                                ArrowArrayStream* out, int num_batch,
                                                ArrowError* error) {
-  dictionaries_.clear();
+  dictionaries_->clear();
 
   try {
     auto obj = nlohmann::json::parse(data_file_json);
@@ -2151,7 +2256,7 @@ ArrowErrorCode TestingJSONReader::ReadDataFile(const std::string& data_file_json
     // Read Schema
     nanoarrow::UniqueSchema schema;
     NANOARROW_RETURN_NOT_OK(
-        reader_internal::SetSchema(schema.get(), obj["schema"], dictionaries_, error));
+        reader_internal::SetSchema(schema.get(), obj["schema"], *dictionaries_, error));
 
     NANOARROW_RETURN_NOT_OK(reader_internal::Check(obj.contains("batches"), error,
                                                    "data file missing key 'batches'"));
@@ -2167,7 +2272,7 @@ ArrowErrorCode TestingJSONReader::ReadDataFile(const std::string& data_file_json
     // Record any dictionaries that might be present
     if (obj.contains("dictionaries")) {
       NANOARROW_RETURN_NOT_OK(reader_internal::RecordDictionaryBatches(
-          obj["dictionaries"], dictionaries_, error));
+          obj["dictionaries"], *dictionaries_, error));
     }
 
     // Get a vector of batch ids to parse
@@ -2198,7 +2303,7 @@ ArrowErrorCode TestingJSONReader::ReadDataFile(const std::string& data_file_json
       SetArrayAllocatorRecursive(array.get());
       NANOARROW_RETURN_NOT_OK(reader_internal::SetArrayBatch(
           batches[batch_ids[i]], schema.get(), array_view.get(), array.get(),
-          dictionaries_, error));
+          *dictionaries_, error));
       ArrowBasicArrayStreamSetArray(stream.get(), i, array.get());
     }
 
@@ -2209,6 +2314,7 @@ ArrowErrorCode TestingJSONReader::ReadDataFile(const std::string& data_file_json
     return EINVAL;
   }
 }
+
 ArrowErrorCode TestingJSONReader::ReadSchema(const std::string& schema_json,
                                              ArrowSchema* out, ArrowError* error) {
   try {
@@ -2216,7 +2322,7 @@ ArrowErrorCode TestingJSONReader::ReadSchema(const std::string& schema_json,
     nanoarrow::UniqueSchema schema;
 
     NANOARROW_RETURN_NOT_OK(
-        reader_internal::SetSchema(schema.get(), obj, dictionaries_, error));
+        reader_internal::SetSchema(schema.get(), obj, *dictionaries_, error));
     ArrowSchemaMove(schema.get(), out);
     return NANOARROW_OK;
   } catch (nlohmann::json::exception& e) {
@@ -2224,6 +2330,7 @@ ArrowErrorCode TestingJSONReader::ReadSchema(const std::string& schema_json,
     return EINVAL;
   }
 }
+
 ArrowErrorCode TestingJSONReader::ReadField(const std::string& field_json,
                                             ArrowSchema* out, ArrowError* error) {
   try {
@@ -2231,7 +2338,7 @@ ArrowErrorCode TestingJSONReader::ReadField(const std::string& field_json,
     nanoarrow::UniqueSchema schema;
 
     NANOARROW_RETURN_NOT_OK(
-        reader_internal::SetField(schema.get(), obj, dictionaries_, error));
+        reader_internal::SetField(schema.get(), obj, *dictionaries_, error));
     ArrowSchemaMove(schema.get(), out);
     return NANOARROW_OK;
   } catch (nlohmann::json::exception& e) {
@@ -2257,7 +2364,7 @@ ArrowErrorCode TestingJSONReader::ReadBatch(const std::string& batch_json,
     SetArrayAllocatorRecursive(array.get());
 
     NANOARROW_RETURN_NOT_OK(reader_internal::SetArrayBatch(
-        obj, schema, array_view.get(), array.get(), dictionaries_, error));
+        obj, schema, array_view.get(), array.get(), *dictionaries_, error));
     ArrowArrayMove(array.get(), out);
     return NANOARROW_OK;
   } catch (nlohmann::json::exception& e) {
@@ -2265,6 +2372,7 @@ ArrowErrorCode TestingJSONReader::ReadBatch(const std::string& batch_json,
     return EINVAL;
   }
 }
+
 ArrowErrorCode TestingJSONReader::ReadColumn(const std::string& column_json,
                                              const ArrowSchema* schema, ArrowArray* out,
                                              ArrowError* error) {
@@ -2283,7 +2391,7 @@ ArrowErrorCode TestingJSONReader::ReadColumn(const std::string& column_json,
 
     // Parse the JSON into the array
     NANOARROW_RETURN_NOT_OK(reader_internal::SetArrayColumn(
-        obj, schema, array_view.get(), array.get(), dictionaries_, error));
+        obj, schema, array_view.get(), array.get(), *dictionaries_, error));
 
     // Return the result
     ArrowArrayMove(array.get(), out);
