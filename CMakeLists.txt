@@ -223,6 +223,13 @@ if(NANOARROW_IPC)
   install(TARGETS nanoarrow_ipc DESTINATION lib)
   install(FILES src/nanoarrow/nanoarrow_ipc.h src/nanoarrow/nanoarrow_ipc.hpp
                 src/nanoarrow/ipc/flatcc_generated.h DESTINATION include/nanoarrow)
+  install(FILES src/nanoarrow/hpp/array_stream.hpp
+                src/nanoarrow/hpp/buffer.hpp
+                src/nanoarrow/hpp/exception.hpp
+                src/nanoarrow/hpp/operators.hpp
+                src/nanoarrow/hpp/unique.hpp
+                src/nanoarrow/hpp/view.hpp
+          DESTINATION include/nanoarrow/hpp)
 endif()
 
 if(NANOARROW_IPC AND (NANOARROW_BUILD_INTEGRATION_TESTS OR NANOARROW_BUILD_TESTS))
