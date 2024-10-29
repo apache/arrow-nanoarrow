@@ -15,26 +15,12 @@
 # specific language governing permissions and limitations
 # under the License.
 
-_coverage/
-build/
-scratch/
-out/
-arrow-hpp
-.DS_Store
-CMakeUserPresets.json
-.vscode
-.Rproj.user
-.cache
-*.swp
-__pycache__
+[wrap-file]
+directory = flatcc-fd3c4ae5cd39f0651eda6a3a1a374278070135d6
+source_url = https://github.com/dvidelabs/flatcc/archive/fd3c4ae5cd39f0651eda6a3a1a374278070135d6.tar.gz
+source_filename = flatcc-fd3c4ae5cd39f0651eda6a3a1a374278070135d6.tar.gz
+source_hash = 353cb04a619865383b87c8077eb39b63b01a3fc44f7bebd558a88f139c6b6f77
+patch_directory = flatcc
 
-# meson subprojects - wrap files need to be kept to let meson download
-# dependencies as needed, but dependencies themselves should not be versioned
-subprojects/*
-!subprojects/packagefiles
-!subprojects/*.wrap
-python/subprojects/*
-!python/subprojects/packagefiles
-!python/subprojects/*.wrap
-
-compile_commands.json
+[provide]
+flatcc = flatcc_dep

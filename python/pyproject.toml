@@ -46,6 +46,7 @@ build-backend = "mesonpy"
 
 [tool.meson-python.args]
 install = ['--skip-subprojects']
+dist = ['--include-subprojects']
 
 [tool.pytest.ini_options]
 norecursedirs = "subprojects/arrow-nanoarrow"

@@ -251,7 +251,6 @@ def copy_or_generate_nanoarrow_c(target_dir: pathlib.Path):
             target_dir,
             "--with-device",
             "--with-ipc",
-            "--with-flatcc",
         ],
     )
 

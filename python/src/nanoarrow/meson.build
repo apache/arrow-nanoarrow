@@ -15,6 +15,7 @@
 # specific language governing permissions and limitations
 # under the License.
 
+flatcc_dep = dependency('flatcc')
 nanoarrow_proj = subproject('arrow-nanoarrow')
 nanoarrow_dep = nanoarrow_proj.get_variable('nanoarrow_dep')
 nanoarrow_ipc_dep = nanoarrow_proj.get_variable('nanoarrow_ipc_dep')
@@ -25,7 +26,6 @@ py = import('python').find_installation(pure: false)
 vendored_files = custom_target(
     'generate-pyx',
     output: [
-        'flatcc.c',
         'nanoarrow.c',
         'nanoarrow_c.pxd',
         'nanoarrow_device.c',
@@ -46,7 +46,7 @@ vendored_files = custom_target(
 )
 
 nanoarrow_pyx_dep = declare_dependency(
-    sources: vendored_files[2],
+    sources: vendored_files[1],
 )
 
 cyfiles = [
@@ -78,7 +78,7 @@ foreach cyf : cyfiles
   if stem in ['_array', '_device']
     cyfile_deps += [nanoarrow_device_dep]
   elif stem == '_ipc_lib'
-    cyfile_deps += [nanoarrow_ipc_dep]
+    cyfile_deps += [nanoarrow_ipc_dep, flatcc_dep]
   endif
 
   py.extension_module(
