@@ -456,6 +456,13 @@ if(NANOARROW_BUILD_TESTS)
   add_executable(c_data_integration_test
                  src/nanoarrow/integration/c_data_integration_test.cc)
 
+  add_executable(hpp_array_stream src/nanoarrow/hpp/array_stream_test.cc)
+  add_executable(hpp_buffer src/nanoarrow/hpp/buffer_test.cc)
+  add_executable(hpp_exception src/nanoarrow/hpp/exception_test.cc)
+  add_executable(hpp_operators src/nanoarrow/hpp/operators_test.cc)
+  add_executable(hpp_unique src/nanoarrow/hpp/unique_test.cc)
+  add_executable(hpp_view src/nanoarrow/hpp/view_test.cc)
+
   target_link_libraries(utils_test
                         nanoarrow_testing
                         gtest_main
@@ -491,6 +498,36 @@ if(NANOARROW_BUILD_TESTS)
                         nanoarrow_c_data_integration
                         gtest_main
                         nanoarrow_coverage_config)
+  target_link_libraries(hpp_array_stream
+                        nanoarrow
+                        gtest_main
+                        gmock_main
+                        nanoarrow_coverage_config)
+  target_link_libraries(hpp_buffer
+                        nanoarrow
+                        gtest_main
+                        gmock_main
+                        nanoarrow_coverage_config)
+  target_link_libraries(hpp_exception
+                        nanoarrow
+                        gtest_main
+                        gmock_main
+                        nanoarrow_coverage_config)
+  target_link_libraries(hpp_operators
+                        nanoarrow
+                        gtest_main
+                        gmock_main
+                        nanoarrow_coverage_config)
+  target_link_libraries(hpp_unique
+                        nanoarrow
+                        gtest_main
+                        gmock_main
+                        nanoarrow_coverage_config)
+  target_link_libraries(hpp_view
+                        nanoarrow
+                        gtest_main
+                        gmock_main
+                        nanoarrow_coverage_config)
 
   include(GoogleTest)
   # Some users have reported a timeout with the default value of 5
@@ -504,6 +541,12 @@ if(NANOARROW_BUILD_TESTS)
   gtest_discover_tests(nanoarrow_hpp_test DISCOVERY_TIMEOUT 10)
   gtest_discover_tests(nanoarrow_testing_test DISCOVERY_TIMEOUT 10)
   gtest_discover_tests(c_data_integration_test DISCOVERY_TIMEOUT 10)
+  gtest_discover_tests(hpp_array_stream)
+  gtest_discover_tests(hpp_buffer)
+  gtest_discover_tests(hpp_exception)
+  gtest_discover_tests(hpp_operators)
+  gtest_discover_tests(hpp_unique)
+  gtest_discover_tests(hpp_view)
 
   if(NANOARROW_IPC)
 
