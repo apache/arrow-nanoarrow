@@ -220,7 +220,7 @@ if get_option('tests')
       ipc_test_files = {
           'ipc-decoder': {
               'src': 'decoder',
-              'deps': [nanoarrow_ipc_dep, arrow_dep, gtest_dep, gmock_dep],
+              'deps': [nanoarrow_ipc_dep, flatcc_dep, arrow_dep, gtest_dep, gmock_dep],
               'timeout': 30,
           },
           'ipc-reader': {
