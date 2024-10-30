@@ -451,7 +451,6 @@ if(NANOARROW_BUILD_TESTS)
   add_executable(array_test src/nanoarrow/common/array_test.cc)
   add_executable(schema_test src/nanoarrow/common/schema_test.cc)
   add_executable(array_stream_test src/nanoarrow/common/array_stream_test.cc)
-  add_executable(nanoarrow_hpp_test src/nanoarrow/common/nanoarrow_hpp_test.cc)
   add_executable(nanoarrow_testing_test src/nanoarrow/testing/testing_test.cc)
   add_executable(c_data_integration_test
                  src/nanoarrow/integration/c_data_integration_test.cc)
@@ -459,7 +458,6 @@ if(NANOARROW_BUILD_TESTS)
   add_executable(hpp_array_stream src/nanoarrow/hpp/array_stream_test.cc)
   add_executable(hpp_buffer src/nanoarrow/hpp/buffer_test.cc)
   add_executable(hpp_exception src/nanoarrow/hpp/exception_test.cc)
-  add_executable(hpp_operators src/nanoarrow/hpp/operators_test.cc)
   add_executable(hpp_unique src/nanoarrow/hpp/unique_test.cc)
   add_executable(hpp_view src/nanoarrow/hpp/view_test.cc)
 
@@ -486,11 +484,6 @@ if(NANOARROW_BUILD_TESTS)
                         gtest_main
                         gmock_main
                         nanoarrow_coverage_config)
-  target_link_libraries(nanoarrow_hpp_test
-                        nanoarrow
-                        gtest_main
-                        gmock_main
-                        nanoarrow_coverage_config)
   target_link_libraries(nanoarrow_testing_test nanoarrow_testing gtest_main
                         nanoarrow_coverage_config)
   target_link_libraries(c_data_integration_test
@@ -509,11 +502,6 @@ if(NANOARROW_BUILD_TESTS)
                         gmock_main
                         nanoarrow_coverage_config)
   target_link_libraries(hpp_exception
-                        nanoarrow
-                        gtest_main
-                        gmock_main
-                        nanoarrow_coverage_config)
-  target_link_libraries(hpp_operators
                         nanoarrow
                         gtest_main
                         gmock_main
@@ -538,13 +526,11 @@ if(NANOARROW_BUILD_TESTS)
   gtest_discover_tests(array_test DISCOVERY_TIMEOUT 10)
   gtest_discover_tests(schema_test DISCOVERY_TIMEOUT 10)
   gtest_discover_tests(array_stream_test DISCOVERY_TIMEOUT 10)
-  gtest_discover_tests(nanoarrow_hpp_test DISCOVERY_TIMEOUT 10)
   gtest_discover_tests(nanoarrow_testing_test DISCOVERY_TIMEOUT 10)
   gtest_discover_tests(c_data_integration_test DISCOVERY_TIMEOUT 10)
   gtest_discover_tests(hpp_array_stream)
   gtest_discover_tests(hpp_buffer)
   gtest_discover_tests(hpp_exception)
-  gtest_discover_tests(hpp_operators)
   gtest_discover_tests(hpp_unique)
   gtest_discover_tests(hpp_view)
 

@@ -15,14 +15,16 @@
 // specific language governing permissions and limitations
 // under the License.
 
-#include <array>
-#include <cerrno>
-
-#include <gmock/gmock-matchers.h>
 #include <gtest/gtest.h>
 
 #include "nanoarrow/nanoarrow.hpp"
-#include "nanoarrow/nanoarrow_gtest_util.hpp"
-#include "nanoarrow/nanoarrow_testing.hpp"
 
-TEST(HppException, Test) { EXPECT_EQ(1, 1); }
+TEST(HppException, Exception) {
+  ASSERT_THROW(NANOARROW_THROW_NOT_OK(EINVAL), nanoarrow::Exception);
+  ASSERT_NO_THROW(NANOARROW_THROW_NOT_OK(NANOARROW_OK));
+  try {
+    NANOARROW_THROW_NOT_OK(EINVAL);
+  } catch (const nanoarrow::Exception& e) {
+    EXPECT_EQ(std::string(e.what()).substr(0, 24), "EINVAL failed with errno");
+  }
+}
