@@ -248,6 +248,7 @@ if get_option('tests')
               'deps': [
                   nanoarrow_testing_dep,
                   nanoarrow_ipc_dep,
+                  flatcc_dep,
                   zlib_dep,
                   arrow_dep,
                   gtest_dep,
