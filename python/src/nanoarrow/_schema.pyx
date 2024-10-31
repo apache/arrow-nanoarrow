@@ -22,9 +22,6 @@ from cpython.bytes cimport PyBytes_FromStringAndSize, PyBytes_AsString, PyBytes_
 from cpython.pycapsule cimport PyCapsule_GetPointer
 
 from nanoarrow_c cimport (
-    ARROW_FLAG_DICTIONARY_ORDERED,
-    ARROW_FLAG_MAP_KEYS_SORTED,
-    ARROW_FLAG_NULLABLE,
     ArrowFree,
     ArrowLayout,
     ArrowMalloc,
@@ -54,11 +51,17 @@ from nanoarrow_c cimport (
     ArrowType,
     ArrowTypeString,
     NANOARROW_BUFFER_TYPE_NONE,
-    NANOARROW_MAX_FIXED_BUFFERS,
     NANOARROW_TIME_UNIT_SECOND,
     NANOARROW_TIME_UNIT_MILLI,
     NANOARROW_TIME_UNIT_MICRO,
     NANOARROW_TIME_UNIT_NANO,
+)
+
+from nanoarrow_macros cimport (
+    ARROW_FLAG_DICTIONARY_ORDERED,
+    ARROW_FLAG_MAP_KEYS_SORTED,
+    ARROW_FLAG_NULLABLE,
+    NANOARROW_MAX_FIXED_BUFFERS,
 )
 
 from nanoarrow cimport _types

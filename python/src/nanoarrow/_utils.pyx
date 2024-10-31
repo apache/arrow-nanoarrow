@@ -54,9 +54,10 @@ from nanoarrow_c cimport (
     ArrowNanoarrowVersion,
     ArrowSchema,
     ArrowSchemaRelease,
-    NANOARROW_OK,
     NANOARROW_TYPE_UNINITIALIZED
 )
+
+from nanoarrow_macros cimport NANOARROW_OK
 
 from nanoarrow_device_c cimport (
     ArrowDeviceArray

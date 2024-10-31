@@ -20,6 +20,13 @@
 from libc.stdint cimport uintptr_t, int64_t
 
 from nanoarrow_device_c cimport (
+    ArrowDevice,
+    ArrowDeviceCpu,
+    ArrowDeviceResolve
+)
+
+from nanoarrow_macros cimport (
+    NANOARROW_OK,
     ARROW_DEVICE_CPU,
     ARROW_DEVICE_CUDA,
     ARROW_DEVICE_CUDA_HOST,
@@ -34,9 +41,6 @@ from nanoarrow_device_c cimport (
     ARROW_DEVICE_ONEAPI,
     ARROW_DEVICE_WEBGPU,
     ARROW_DEVICE_HEXAGON,
-    ArrowDevice,
-    ArrowDeviceCpu,
-    ArrowDeviceResolve
 )
 
 from nanoarrow._utils cimport Error
