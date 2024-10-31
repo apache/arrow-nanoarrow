@@ -191,7 +191,7 @@ if get_option('tests')
   gtest_dep = dependency('gtest_main')
   gmock_dep = dependency('gmock')
 
-  nanoarrow_tests = ['utils', 'buffer', 'array', 'schema', 'array-stream', 'nanoarrow-hpp']
+  nanoarrow_tests = ['utils', 'buffer', 'array', 'schema', 'array-stream']
 
   foreach name : nanoarrow_tests
     exc = executable(
@@ -199,6 +199,18 @@ if get_option('tests')
         sources: 'src/nanoarrow/common/' + name.replace('-', '_') + '_test.cc',
         include_directories: incdir,
         dependencies: [nanoarrow_testing_dep, arrow_dep, gtest_dep, gmock_dep],
+    )
+    test(name, exc)
+  endforeach
+
+  nanoarrow_hpp_tests = ['array_stream', 'buffer', 'exception', 'unique', 'view']
+
+  foreach name : nanoarrow_hpp_tests
+    exc = executable(
+        'hpp-' + name + '-test',
+        sources: 'src/nanoarrow/hpp/' + name.replace('-', '_') + '_test.cc',
+        include_directories: incdir,
+        dependencies: [nanoarrow_testing_dep, gtest_dep, gmock_dep],
     )
     test(name, exc)
   endforeach
