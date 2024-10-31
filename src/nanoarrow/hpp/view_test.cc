@@ -113,7 +113,7 @@ TEST(NanoarrowHppTest, NanoarrowHppViewArrayAsFixedSizeBytesTest) {
 TEST(NanoarrowHppTest, NanoarrowHppViewArrayStreamTest) {
   static int32_t slot = 1;
 
-  struct ArrowArrayStream stream{};
+  struct ArrowArrayStream stream {};
   stream.get_schema = [](struct ArrowArrayStream*, struct ArrowSchema* out) {
     return ArrowSchemaInitFromType(out, NANOARROW_TYPE_INT32);
   };
