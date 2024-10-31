@@ -32,7 +32,7 @@ TEST(NanoarrowHppTest, NanoarrowHppViewArrayAsTest) {
                                 std::vector<float>{8, 4, 2, 1, .5, .25, .125});
 
   const void* buffers[] = {is_valid->data, floats->data};
-  struct ArrowArray array{};
+  struct ArrowArray array {};
   array.length = 7;
   array.null_count = 2;
   array.n_buffers = 2;
@@ -63,7 +63,7 @@ TEST(NanoarrowHppTest, NanoarrowHppViewArrayAsBytesTest) {
   nanoarrow::BufferInitSequence(data.get(), std::string{"abcdefghi"});
 
   const void* buffers[] = {is_valid->data, offsets->data, data->data};
-  struct ArrowArray array{};
+  struct ArrowArray array {};
   array.length = 7;
   array.null_count = 2;
   array.n_buffers = 2;
@@ -93,7 +93,7 @@ TEST(NanoarrowHppTest, NanoarrowHppViewArrayAsFixedSizeBytesTest) {
       data.get(), std::string{"foo"} + "bar" + "foo" + "bar" + "foo" + "bar" + "foo");
 
   const void* buffers[] = {is_valid->data, data->data};
-  struct ArrowArray array{};
+  struct ArrowArray array {};
   array.length = 7;
   array.null_count = 2;
   array.n_buffers = 2;
