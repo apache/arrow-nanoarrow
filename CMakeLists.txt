@@ -223,6 +223,13 @@ if(NANOARROW_IPC)
   install(TARGETS nanoarrow_ipc DESTINATION lib)
   install(FILES src/nanoarrow/nanoarrow_ipc.h src/nanoarrow/nanoarrow_ipc.hpp
                 src/nanoarrow/ipc/flatcc_generated.h DESTINATION include/nanoarrow)
+  install(FILES src/nanoarrow/hpp/array_stream.hpp
+                src/nanoarrow/hpp/buffer.hpp
+                src/nanoarrow/hpp/exception.hpp
+                src/nanoarrow/hpp/operators.hpp
+                src/nanoarrow/hpp/unique.hpp
+                src/nanoarrow/hpp/view.hpp
+          DESTINATION include/nanoarrow/hpp)
 endif()
 
 if(NANOARROW_IPC AND (NANOARROW_BUILD_INTEGRATION_TESTS OR NANOARROW_BUILD_TESTS))
@@ -444,10 +451,15 @@ if(NANOARROW_BUILD_TESTS)
   add_executable(array_test src/nanoarrow/common/array_test.cc)
   add_executable(schema_test src/nanoarrow/common/schema_test.cc)
   add_executable(array_stream_test src/nanoarrow/common/array_stream_test.cc)
-  add_executable(nanoarrow_hpp_test src/nanoarrow/common/nanoarrow_hpp_test.cc)
   add_executable(nanoarrow_testing_test src/nanoarrow/testing/testing_test.cc)
   add_executable(c_data_integration_test
                  src/nanoarrow/integration/c_data_integration_test.cc)
+
+  add_executable(hpp_array_stream src/nanoarrow/hpp/array_stream_test.cc)
+  add_executable(hpp_buffer src/nanoarrow/hpp/buffer_test.cc)
+  add_executable(hpp_exception src/nanoarrow/hpp/exception_test.cc)
+  add_executable(hpp_unique src/nanoarrow/hpp/unique_test.cc)
+  add_executable(hpp_view src/nanoarrow/hpp/view_test.cc)
 
   target_link_libraries(utils_test
                         nanoarrow_testing
@@ -472,17 +484,37 @@ if(NANOARROW_BUILD_TESTS)
                         gtest_main
                         gmock_main
                         nanoarrow_coverage_config)
-  target_link_libraries(nanoarrow_hpp_test
-                        nanoarrow
-                        gtest_main
-                        gmock_main
-                        nanoarrow_coverage_config)
   target_link_libraries(nanoarrow_testing_test nanoarrow_testing gtest_main
                         nanoarrow_coverage_config)
   target_link_libraries(c_data_integration_test
                         nanoarrow
                         nanoarrow_c_data_integration
                         gtest_main
+                        nanoarrow_coverage_config)
+  target_link_libraries(hpp_array_stream
+                        nanoarrow
+                        gtest_main
+                        gmock_main
+                        nanoarrow_coverage_config)
+  target_link_libraries(hpp_buffer
+                        nanoarrow
+                        gtest_main
+                        gmock_main
+                        nanoarrow_coverage_config)
+  target_link_libraries(hpp_exception
+                        nanoarrow
+                        gtest_main
+                        gmock_main
+                        nanoarrow_coverage_config)
+  target_link_libraries(hpp_unique
+                        nanoarrow
+                        gtest_main
+                        gmock_main
+                        nanoarrow_coverage_config)
+  target_link_libraries(hpp_view
+                        nanoarrow
+                        gtest_main
+                        gmock_main
                         nanoarrow_coverage_config)
 
   include(GoogleTest)
@@ -494,9 +526,13 @@ if(NANOARROW_BUILD_TESTS)
   gtest_discover_tests(array_test DISCOVERY_TIMEOUT 10)
   gtest_discover_tests(schema_test DISCOVERY_TIMEOUT 10)
   gtest_discover_tests(array_stream_test DISCOVERY_TIMEOUT 10)
-  gtest_discover_tests(nanoarrow_hpp_test DISCOVERY_TIMEOUT 10)
   gtest_discover_tests(nanoarrow_testing_test DISCOVERY_TIMEOUT 10)
   gtest_discover_tests(c_data_integration_test DISCOVERY_TIMEOUT 10)
+  gtest_discover_tests(hpp_array_stream)
+  gtest_discover_tests(hpp_buffer)
+  gtest_discover_tests(hpp_exception)
+  gtest_discover_tests(hpp_unique)
+  gtest_discover_tests(hpp_view)
 
   if(NANOARROW_IPC)
 

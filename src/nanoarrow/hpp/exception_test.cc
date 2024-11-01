@@ -15,25 +15,16 @@
 // specific language governing permissions and limitations
 // under the License.
 
-#ifndef NANOARROW_CONFIG_H_INCLUDED
-#define NANOARROW_CONFIG_H_INCLUDED
+#include <gtest/gtest.h>
 
-#define NANOARROW_VERSION_MAJOR @NANOARROW_VERSION_MAJOR@
-#define NANOARROW_VERSION_MINOR @NANOARROW_VERSION_MINOR@
-#define NANOARROW_VERSION_PATCH @NANOARROW_VERSION_PATCH@
-#define NANOARROW_VERSION "@NANOARROW_VERSION@"
+#include "nanoarrow/nanoarrow.hpp"
 
-#define NANOARROW_VERSION_INT                                        \
-  (NANOARROW_VERSION_MAJOR * 10000 + NANOARROW_VERSION_MINOR * 100 + \
-   NANOARROW_VERSION_PATCH)
-
-@NANOARROW_NAMESPACE_DEFINE@
-
-#if !defined(NANOARROW_CXX_NAMESPACE)
-#define NANOARROW_CXX_NAMESPACE nanoarrow
-#endif
-
-#define NANOARROW_CXX_NAMESPACE_BEGIN namespace NANOARROW_CXX_NAMESPACE {
-#define NANOARROW_CXX_NAMESPACE_END }
-
-#endif
+TEST(HppException, Exception) {
+  ASSERT_THROW(NANOARROW_THROW_NOT_OK(EINVAL), nanoarrow::Exception);
+  ASSERT_NO_THROW(NANOARROW_THROW_NOT_OK(NANOARROW_OK));
+  try {
+    NANOARROW_THROW_NOT_OK(EINVAL);
+  } catch (const nanoarrow::Exception& e) {
+    EXPECT_EQ(std::string(e.what()).substr(0, 24), "EINVAL failed with errno");
+  }
+}

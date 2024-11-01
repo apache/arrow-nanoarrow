@@ -125,13 +125,22 @@ def bundle_nanoarrow(
     nanoarrow_h = re.sub(r'#include "(nanoarrow/)?[a-z_./]+"', "", nanoarrow_h)
     yield f"{output_include_dir}/nanoarrow.h", nanoarrow_h
 
-    # Generate files that don't need special handling
-    for filename in [
-        "nanoarrow.hpp",
-    ]:
-        content = read_content(src_dir / filename)
-        content = namespace_nanoarrow_includes(content, header_namespace)
-        yield f"{output_include_dir}/{filename}", content
+    # Generate nanoarrow/nanoarrow.hpp
+    nanoarrow_hpp = concatenate_content(
+        [
+            src_dir / "nanoarrow.hpp",
+            src_dir / "hpp" / "exception.hpp",
+            src_dir / "hpp" / "operators.hpp",
+            src_dir / "hpp" / "unique.hpp",
+            src_dir / "hpp" / "array_stream.hpp",
+            src_dir / "hpp" / "buffer.hpp",
+            src_dir / "hpp" / "view.hpp",
+        ]
+    )
+
+    nanoarrow_hpp = re.sub(r'#include "(nanoarrow/)?hpp/[a-z_./]+"', "", nanoarrow_hpp)
+    nanoarrow_hpp = namespace_nanoarrow_includes(nanoarrow_hpp, header_namespace)
+    yield f"{output_include_dir}/nanoarrow.hpp", nanoarrow_hpp
 
     # Generate nanoarrow/nanoarrow.c
     nanoarrow_c = concatenate_content(

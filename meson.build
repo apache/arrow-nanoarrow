@@ -63,6 +63,16 @@ install_headers(
 )
 
 install_headers(
+    'src/nanoarrow/hpp/array_stream.hpp',
+    'src/nanoarrow/hpp/buffer.hpp',
+    'src/nanoarrow/hpp/exception.hpp',
+    'src/nanoarrow/hpp/operators.hpp',
+    'src/nanoarrow/hpp/unique.hpp',
+    'src/nanoarrow/hpp/view.hpp',
+    subdir: 'nanoarrow/hpp',
+)
+
+install_headers(
     'src/nanoarrow/common/inline_array.h',
     'src/nanoarrow/common/inline_buffer.h',
     'src/nanoarrow/common/inline_types.h',
@@ -181,7 +191,7 @@ if get_option('tests')
   gtest_dep = dependency('gtest_main')
   gmock_dep = dependency('gmock')
 
-  nanoarrow_tests = ['utils', 'buffer', 'array', 'schema', 'array-stream', 'nanoarrow-hpp']
+  nanoarrow_tests = ['utils', 'buffer', 'array', 'schema', 'array-stream']
 
   foreach name : nanoarrow_tests
     exc = executable(
@@ -189,6 +199,18 @@ if get_option('tests')
         sources: 'src/nanoarrow/common/' + name.replace('-', '_') + '_test.cc',
         include_directories: incdir,
         dependencies: [nanoarrow_testing_dep, arrow_dep, gtest_dep, gmock_dep],
+    )
+    test(name, exc)
+  endforeach
+
+  nanoarrow_hpp_tests = ['array_stream', 'buffer', 'exception', 'unique', 'view']
+
+  foreach name : nanoarrow_hpp_tests
+    exc = executable(
+        'hpp-' + name + '-test',
+        sources: 'src/nanoarrow/hpp/' + name.replace('-', '_') + '_test.cc',
+        include_directories: incdir,
+        dependencies: [nanoarrow_testing_dep, gtest_dep, gmock_dep],
     )
     test(name, exc)
   endforeach
@@ -210,7 +232,7 @@ if get_option('tests')
       ipc_test_files = {
           'ipc-decoder': {
               'src': 'decoder',
-              'deps': [nanoarrow_ipc_dep, arrow_dep, gtest_dep, gmock_dep],
+              'deps': [nanoarrow_ipc_dep, flatcc_dep, arrow_dep, gtest_dep, gmock_dep],
               'timeout': 30,
           },
           'ipc-reader': {
@@ -226,6 +248,7 @@ if get_option('tests')
               'deps': [
                   nanoarrow_testing_dep,
                   nanoarrow_ipc_dep,
+                  flatcc_dep,
                   zlib_dep,
                   arrow_dep,
                   gtest_dep,
