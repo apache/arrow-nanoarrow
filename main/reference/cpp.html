@@ -385,232 +385,38 @@
 
 <section id="error-handling">
 <h2>Error handling<a class="headerlink" href="#error-handling" title="Link to this heading">#</a></h2>
-<dl>
-<dt class="sig sig-object cpp">
-<span class="target" id="group__nanoarrow__hpp-errors"></span><em><span class="pre">group</span></em> <span class="sig-name descname"><span class="pre">nanoarrow_hpp-errors</span></span></dt>
-<dd><p>Most functions in the C API return an ArrowErrorCode to communicate possible failure. Except where documented, it is usually not safe to continue after a non-zero value has been returned. While the nanoarrow C++ helpers do not throw any exceptions of their own, these helpers are provided to facilitate using the nanoarrow C++ helpers in frameworks where this is a useful error handling idiom. </p>
-<div class="breathe-sectiondef docutils container">
-<p class="breathe-sectiondef-title rubric" id="breathe-section-title-defines">Defines</p>
-<dl class="cpp macro">
-<dt class="sig sig-object cpp" id="c._NANOARROW_THROW_NOT_OK_IMPL">
-<span class="target" id="group__nanoarrow__hpp-errors_1gaafcc7dac6fcd1f00addabc7e248806c2"></span><span class="sig-name descname"><span class="n"><span class="pre">_NANOARROW_THROW_NOT_OK_IMPL</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">NAME</span></span>, <span class="n"><span class="pre">EXPR</span></span>, <span class="n"><span class="pre">EXPR_STR</span></span><span class="sig-paren">)</span><a class="headerlink" href="#c._NANOARROW_THROW_NOT_OK_IMPL" title="Link to this definition">#</a><br /></dt>
-<dd></dd></dl>
-
-<dl class="cpp macro">
-<dt class="sig sig-object cpp" id="c.NANOARROW_THROW_NOT_OK">
-<span class="target" id="group__nanoarrow__hpp-errors_1ga4b10c1b6dd5ccbe52087f1cf59475203"></span><span class="sig-name descname"><span class="n"><span class="pre">NANOARROW_THROW_NOT_OK</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">EXPR</span></span><span class="sig-paren">)</span><a class="headerlink" href="#c.NANOARROW_THROW_NOT_OK" title="Link to this definition">#</a><br /></dt>
-<dd></dd></dl>
-
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>doxygengroup: Cannot find group “nanoarrow_hpp-errors” in doxygen xml output for project “nanoarrow_c” from directory: ../../src/apidoc/xml</p>
 </div>
-<dl class="cpp class">
-<dt class="sig sig-object cpp" id="_CPPv4N9nanoarrow9ExceptionE">
-<span id="_CPPv3N9nanoarrow9ExceptionE"></span><span id="_CPPv2N9nanoarrow9ExceptionE"></span><span id="nanoarrow::Exception"></span><span class="target" id="classnanoarrow_1_1_exception"></span><span class="k"><span class="pre">class</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">Exception</span></span></span><span class="w"> </span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="k"><span class="pre">public</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">exception</span></span><a class="headerlink" href="#_CPPv4N9nanoarrow9ExceptionE" title="Link to this definition">#</a><br /></dt>
-<dd></dd></dl>
-
-</dd></dl>
-
 </section>
 <section id="owning-object-wrappers">
 <h2>Owning object wrappers<a class="headerlink" href="#owning-object-wrappers" title="Link to this heading">#</a></h2>
-<dl>
-<dt class="sig sig-object cpp">
-<span class="target" id="group__nanoarrow__hpp-unique"></span><em><span class="pre">group</span></em> <span class="sig-name descname"><span class="pre">nanoarrow_hpp-unique</span></span></dt>
-<dd><p>The Arrow C Data interface, the Arrow C Stream interface, and the nanoarrow C library use stack-allocatable objects, some of which require initialization or cleanup. </p>
-<div class="breathe-sectiondef docutils container">
-<p class="breathe-sectiondef-title rubric" id="breathe-section-title-typedefs">Typedefs</p>
-<dl class="cpp type">
-<dt class="sig sig-object cpp" id="_CPPv412UniqueSchema">
-<span id="_CPPv312UniqueSchema"></span><span id="_CPPv212UniqueSchema"></span><span class="target" id="group__nanoarrow__hpp-unique_1ga912b1e6bbdeb87941b95cb4659e6ee6e"></span><span class="k"><span class="pre">using</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">UniqueSchema</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="n"><span class="pre">internal</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">Unique</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><span class="n"><span class="pre">ArrowSchema</span></span><span class="p"><span class="pre">&gt;</span></span><a class="headerlink" href="#_CPPv412UniqueSchema" title="Link to this definition">#</a><br /></dt>
-<dd><p>Class wrapping a unique struct ArrowSchema. </p>
-</dd></dl>
-
-<dl class="cpp type">
-<dt class="sig sig-object cpp" id="_CPPv411UniqueArray">
-<span id="_CPPv311UniqueArray"></span><span id="_CPPv211UniqueArray"></span><span class="target" id="group__nanoarrow__hpp-unique_1ga93f47526e4b64c67ac0c2120cdd5a32a"></span><span class="k"><span class="pre">using</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">UniqueArray</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="n"><span class="pre">internal</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">Unique</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><span class="n"><span class="pre">ArrowArray</span></span><span class="p"><span class="pre">&gt;</span></span><a class="headerlink" href="#_CPPv411UniqueArray" title="Link to this definition">#</a><br /></dt>
-<dd><p>Class wrapping a unique struct ArrowArray. </p>
-</dd></dl>
-
-<dl class="cpp type">
-<dt class="sig sig-object cpp" id="_CPPv417UniqueArrayStream">
-<span id="_CPPv317UniqueArrayStream"></span><span id="_CPPv217UniqueArrayStream"></span><span class="target" id="group__nanoarrow__hpp-unique_1gaf77a45c6e828bc32ad9dda17467e2de6"></span><span class="k"><span class="pre">using</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">UniqueArrayStream</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="n"><span class="pre">internal</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">Unique</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><span class="n"><span class="pre">ArrowArrayStream</span></span><span class="p"><span class="pre">&gt;</span></span><a class="headerlink" href="#_CPPv417UniqueArrayStream" title="Link to this definition">#</a><br /></dt>
-<dd><p>Class wrapping a unique struct ArrowArrayStream. </p>
-</dd></dl>
-
-<dl class="cpp type">
-<dt class="sig sig-object cpp" id="_CPPv412UniqueBuffer">
-<span id="_CPPv312UniqueBuffer"></span><span id="_CPPv212UniqueBuffer"></span><span class="target" id="group__nanoarrow__hpp-unique_1gabc8af265788a5845e13ee5e7f2aaeb6d"></span><span class="k"><span class="pre">using</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">UniqueBuffer</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="n"><span class="pre">internal</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">Unique</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><span class="n"><span class="pre">ArrowBuffer</span></span><span class="p"><span class="pre">&gt;</span></span><a class="headerlink" href="#_CPPv412UniqueBuffer" title="Link to this definition">#</a><br /></dt>
-<dd><p>Class wrapping a unique struct ArrowBuffer. </p>
-</dd></dl>
-
-<dl class="cpp type">
-<dt class="sig sig-object cpp" id="_CPPv412UniqueBitmap">
-<span id="_CPPv312UniqueBitmap"></span><span id="_CPPv212UniqueBitmap"></span><span class="target" id="group__nanoarrow__hpp-unique_1ga363de46854c2455c5849df0495f9a88b"></span><span class="k"><span class="pre">using</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">UniqueBitmap</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="n"><span class="pre">internal</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">Unique</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><span class="n"><span class="pre">ArrowBitmap</span></span><span class="p"><span class="pre">&gt;</span></span><a class="headerlink" href="#_CPPv412UniqueBitmap" title="Link to this definition">#</a><br /></dt>
-<dd><p>Class wrapping a unique struct ArrowBitmap. </p>
-</dd></dl>
-
-<dl class="cpp type">
-<dt class="sig sig-object cpp" id="_CPPv415UniqueArrayView">
-<span id="_CPPv315UniqueArrayView"></span><span id="_CPPv215UniqueArrayView"></span><span class="target" id="group__nanoarrow__hpp-unique_1ga7171390b0258c15dee585010f9358e5b"></span><span class="k"><span class="pre">using</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">UniqueArrayView</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="n"><span class="pre">internal</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">Unique</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><span class="n"><span class="pre">ArrowArrayView</span></span><span class="p"><span class="pre">&gt;</span></span><a class="headerlink" href="#_CPPv415UniqueArrayView" title="Link to this definition">#</a><br /></dt>
-<dd><p>Class wrapping a unique struct ArrowArrayView. </p>
-</dd></dl>
-
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>doxygengroup: Cannot find group “nanoarrow_hpp-unique” in doxygen xml output for project “nanoarrow_c” from directory: ../../src/apidoc/xml</p>
 </div>
-</dd></dl>
-
 </section>
 <section id="array-stream-utilities">
 <h2>Array Stream utilities<a class="headerlink" href="#array-stream-utilities" title="Link to this heading">#</a></h2>
-<dl>
-<dt class="sig sig-object cpp">
-<span class="target" id="group__nanoarrow__hpp-array-stream"></span><em><span class="pre">group</span></em> <span class="sig-name descname"><span class="pre">nanoarrow_hpp-array-stream</span></span></dt>
-<dd><p>These classes provide simple ArrowArrayStream implementations that can be extended to help simplify the process of creating a valid ArrowArrayStream implementation or used as-is for testing. </p>
-<dl class="cpp class">
-<dt class="sig sig-object cpp" id="_CPPv4I0EN9nanoarrow18ArrayStreamFactoryE">
-<span id="_CPPv3I0EN9nanoarrow18ArrayStreamFactoryE"></span><span id="_CPPv2I0EN9nanoarrow18ArrayStreamFactoryE"></span><span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">typename</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">T</span></span></span><span class="p"><span class="pre">&gt;</span></span><br /><span class="target" id="classnanoarrow_1_1_array_stream_factory"></span><span class="k"><span class="pre">class</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">ArrayStreamFactory</span></span></span><a class="headerlink" href="#_CPPv4I0EN9nanoarrow18ArrayStreamFactoryE" title="Link to this definition">#</a><br /></dt>
-<dd><div class="docutils container">
-<em>#include &lt;nanoarrow.hpp&gt;</em></div>
-<p>Export an ArrowArrayStream from a standard C++ class. </p>
-<p>
-This class allows a standard C++ class to be exported to a generic ArrowArrayStream consumer by mapping C callback invocations to method calls on an instance of the object whose lifecycle is owned by the ArrowArrayStream. See <a class="reference internal" href="#classnanoarrow_1_1_vector_array_stream"><span class="std std-ref">VectorArrayStream</span></a> for minimal useful example of this pattern.</p>
-<p>The methods must be accessible to the <a class="reference internal" href="#classnanoarrow_1_1_array_stream_factory"><span class="std std-ref">ArrayStreamFactory</span></a>, either as public methods or by declaring ArrayStreamFactory&lt;ImplClass&gt; a friend. Implementors are encouraged (but not required) to implement a ToArrayStream(ArrowArrayStream*) that creates a new instance owned by the ArrowArrayStream and moves the relevant data to that instance.</p>
-<p>An example implementation might be:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">StreamImpl</span> <span class="p">{</span>
- <span class="n">public</span><span class="p">:</span>
-  <span class="o">//</span> <span class="n">Public</span> <span class="n">methods</span> <span class="p">(</span><span class="n">e</span><span class="o">.</span><span class="n">g</span><span class="o">.</span><span class="p">,</span> <span class="n">constructor</span><span class="p">)</span> <span class="n">used</span> <span class="kn">from</span> <span class="nn">C</span><span class="o">++</span> <span class="n">to</span> <span class="n">initialize</span> <span class="n">relevant</span> <span class="n">data</span>
-
-  <span class="o">//</span> <span class="n">Idiomatic</span> <span class="n">exporter</span> <span class="n">to</span> <span class="n">move</span> <span class="n">data</span> <span class="o">+</span> <span class="n">lifecycle</span> <span class="n">responsibility</span> <span class="n">to</span> <span class="n">an</span> <span class="n">instance</span>
-  <span class="o">//</span> <span class="n">managed</span> <span class="n">by</span> <span class="n">the</span> <span class="n">ArrowArrayStream</span> <span class="n">callbacks</span>
-  <span class="n">void</span> <span class="n">ToArrayStream</span><span class="p">(</span><span class="n">struct</span> <span class="n">ArrowArrayStream</span><span class="o">*</span> <span class="n">out</span><span class="p">)</span> <span class="p">{</span>
-    <span class="n">ArrayStreamFactory</span><span class="o">&lt;</span><span class="n">StreamImpl</span><span class="o">&gt;</span><span class="p">::</span><span class="n">InitArrayStream</span><span class="p">(</span><span class="n">new</span> <span class="n">StreamImpl</span><span class="p">(</span><span class="o">...</span><span class="p">),</span> <span class="n">out</span><span class="p">);</span>
-  <span class="p">}</span>
-
- <span class="n">private</span><span class="p">:</span>
-  <span class="o">//</span> <span class="n">Make</span> <span class="n">relevant</span> <span class="n">methods</span> <span class="n">available</span> <span class="n">to</span> <span class="n">the</span> <span class="n">ArrayStreamFactory</span>
-  <span class="n">friend</span> <span class="k">class</span> <span class="nc">ArrayStreamFactory</span><span class="o">&lt;</span><span class="n">StreamImpl</span><span class="o">&gt;</span><span class="p">;</span>
-
-  <span class="o">//</span> <span class="n">Method</span> <span class="n">implementations</span> <span class="p">(</span><span class="n">called</span> <span class="kn">from</span> <span class="nn">C</span><span class="p">,</span> <span class="ow">not</span> <span class="n">normally</span> <span class="n">interacted</span> <span class="k">with</span> <span class="kn">from</span> <span class="nn">C</span><span class="o">++</span><span class="p">)</span>
-  <span class="nb">int</span> <span class="n">GetSchema</span><span class="p">(</span><span class="n">struct</span> <span class="n">ArrowSchema</span><span class="o">*</span> <span class="n">schema</span><span class="p">)</span> <span class="p">{</span> <span class="k">return</span> <span class="n">ENOTSUP</span><span class="p">;</span> <span class="p">}</span>
-  <span class="nb">int</span> <span class="n">GetNext</span><span class="p">(</span><span class="n">struct</span> <span class="n">ArrowArray</span><span class="o">*</span> <span class="n">array</span><span class="p">)</span> <span class="p">{</span> <span class="k">return</span> <span class="n">ENOTSUP</span><span class="p">;</span> <span class="p">}</span>
-  <span class="n">const</span> <span class="n">char</span><span class="o">*</span> <span class="n">GetLastError</span><span class="p">()</span> <span class="p">{</span> <span class="n">nullptr</span><span class="p">;</span> <span class="p">}</span>
-<span class="p">};</span>
-</pre></div>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>doxygengroup: Cannot find group “nanoarrow_hpp-array-stream” in doxygen xml output for project “nanoarrow_c” from directory: ../../src/apidoc/xml</p>
 </div>
-<p>An example usage might be:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">//</span> <span class="n">Call</span> <span class="n">constructor</span> <span class="ow">and</span><span class="o">/</span><span class="ow">or</span> <span class="n">public</span> <span class="n">methods</span> <span class="n">to</span> <span class="n">initialize</span> <span class="n">relevant</span> <span class="n">data</span>
-<span class="n">StreamImpl</span> <span class="n">impl</span><span class="p">;</span>
-
-<span class="o">//</span> <span class="n">Export</span> <span class="n">to</span> <span class="n">ArrowArrayStream</span> <span class="n">after</span> <span class="n">data</span> <span class="n">are</span> <span class="n">finalized</span>
-<span class="n">UniqueArrayStream</span> <span class="n">stream</span><span class="p">;</span>
-<span class="n">impl</span><span class="o">.</span><span class="n">ToArrayStream</span><span class="p">(</span><span class="n">stream</span><span class="o">.</span><span class="n">get</span><span class="p">());</span>
-</pre></div>
-</div>
-<dl class="field-list simple">
-<dt class="field-odd">Template Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>T</strong> – A class with methods <code class="docutils literal notranslate"><span class="pre">int</span> <span class="pre">GetSchema(ArrowSchema*)</span></code>, <code class="docutils literal notranslate"><span class="pre">int</span> <span class="pre">GetNext(ArrowArray*)</span></code>, and <code class="docutils literal notranslate"><span class="pre">const</span> <span class="pre">char*</span> <span class="pre">GetLastError()</span></code></p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="cpp class">
-<dt class="sig sig-object cpp" id="_CPPv4N9nanoarrow16EmptyArrayStreamE">
-<span id="_CPPv3N9nanoarrow16EmptyArrayStreamE"></span><span id="_CPPv2N9nanoarrow16EmptyArrayStreamE"></span><span id="nanoarrow::EmptyArrayStream"></span><span class="target" id="classnanoarrow_1_1_empty_array_stream"></span><span class="k"><span class="pre">class</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">EmptyArrayStream</span></span></span><a class="headerlink" href="#_CPPv4N9nanoarrow16EmptyArrayStreamE" title="Link to this definition">#</a><br /></dt>
-<dd><div class="docutils container">
-<em>#include &lt;nanoarrow.hpp&gt;</em></div>
-<p>An empty array stream. </p>
-<p>This class can be constructed from an struct ArrowSchema and implements a default get_next() method that always marks the output ArrowArray as released.</p>
-<p>DEPRECATED (0.4.0): Early versions of nanoarrow allowed subclasses to override get_schema(), get_next(), and get_last_error(). This functionality will be removed in a future release: use the pattern documented in <a class="reference internal" href="#classnanoarrow_1_1_array_stream_factory"><span class="std std-ref">ArrayStreamFactory</span></a> to create custom ArrowArrayStream implementations. </p>
-</dd></dl>
-
-<dl class="cpp class">
-<dt class="sig sig-object cpp" id="_CPPv4N9nanoarrow17VectorArrayStreamE">
-<span id="_CPPv3N9nanoarrow17VectorArrayStreamE"></span><span id="_CPPv2N9nanoarrow17VectorArrayStreamE"></span><span id="nanoarrow::VectorArrayStream"></span><span class="target" id="classnanoarrow_1_1_vector_array_stream"></span><span class="k"><span class="pre">class</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">VectorArrayStream</span></span></span><a class="headerlink" href="#_CPPv4N9nanoarrow17VectorArrayStreamE" title="Link to this definition">#</a><br /></dt>
-<dd><div class="docutils container">
-<em>#include &lt;nanoarrow.hpp&gt;</em></div>
-<p>Implementation of an ArrowArrayStream backed by a vector of UniqueArray objects. </p>
-</dd></dl>
-
-</dd></dl>
-
 </section>
 <section id="buffer-utilities">
 <h2>Buffer utilities<a class="headerlink" href="#buffer-utilities" title="Link to this heading">#</a></h2>
-<dl>
-<dt class="sig sig-object cpp">
-<span class="target" id="group__nanoarrow__hpp-buffer"></span><em><span class="pre">group</span></em> <span class="sig-name descname"><span class="pre">nanoarrow_hpp-buffer</span></span></dt>
-<dd><p>Helpers to wrap buffer-like C++ objects as ArrowBuffer objects that can be used to build ArrowArray objects. </p>
-<div class="breathe-sectiondef docutils container">
-<p class="breathe-sectiondef-title rubric" id="breathe-section-title-functions">Functions</p>
-<dl class="cpp function">
-<dt class="sig sig-object cpp" id="_CPPv4I0E17BufferInitWrappedvP11ArrowBuffer1TPK7uint8_t7int64_t">
-<span id="_CPPv3I0E17BufferInitWrappedP11ArrowBuffer1TPK7uint8_t7int64_t"></span><span id="_CPPv2I0E17BufferInitWrappedP11ArrowBuffer1TPK7uint8_t7int64_t"></span><span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">typename</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">T</span></span></span><span class="p"><span class="pre">&gt;</span></span><br /><span class="target" id="group__nanoarrow__hpp-buffer_1ga8e41a8a9dcd38eb26e7e42b92e842121"></span><span class="k"><span class="pre">static</span></span><span class="w"> </span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">BufferInitWrapped</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><span class="n"><span class="pre">ArrowBuffer</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">buffer</span></span>, <a class="reference internal" href="#_CPPv4I0E17BufferInitWrappedvP11ArrowBuffer1TPK7uint8_t7int64_t" title="BufferInitWrapped::T"><span class="n"><span class="pre">T</span></span></a><span class="w"> </span><span class="n sig-param"><span class="pre">obj</span></span>, <span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">uint8_t</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">data</span></span>, <span class="n"><span class="pre">int64_t</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">size_bytes</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4I0E17BufferInitWrappedvP11ArrowBuffer1TPK7uint8_t7int64_t" title="Link to this definition">#</a><br /></dt>
-<dd><p>Initialize a buffer wrapping an arbitrary C++ object. </p>
-<p>Initializes a buffer with a release callback that deletes the moved obj when ArrowBufferReset is called. This version is useful for wrapping an object whose .data() member is missing or unrelated to the buffer value that is destined for a the buffer of an ArrowArray. T must be movable. </p>
-</dd></dl>
-
-<dl class="cpp function">
-<dt class="sig sig-object cpp" id="_CPPv4I0E18BufferInitSequencevP11ArrowBuffer1T">
-<span id="_CPPv3I0E18BufferInitSequenceP11ArrowBuffer1T"></span><span id="_CPPv2I0E18BufferInitSequenceP11ArrowBuffer1T"></span><span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">typename</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">T</span></span></span><span class="p"><span class="pre">&gt;</span></span><br /><span class="target" id="group__nanoarrow__hpp-buffer_1ga29823a8bd120687e3659341b4db1d17f"></span><span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">BufferInitSequence</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><span class="n"><span class="pre">ArrowBuffer</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">buffer</span></span>, <a class="reference internal" href="#_CPPv4I0E18BufferInitSequencevP11ArrowBuffer1T" title="BufferInitSequence::T"><span class="n"><span class="pre">T</span></span></a><span class="w"> </span><span class="n sig-param"><span class="pre">obj</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4I0E18BufferInitSequencevP11ArrowBuffer1T" title="Link to this definition">#</a><br /></dt>
-<dd><p>Initialize a buffer wrapping a C++ sequence. </p>
-<p>Specifically, this uses obj.data() to set the buffer address and obj.size() * sizeof(T::value_type) to set the buffer size. This works for STL containers like std::vector, std::array, and std::string. This function moves obj and ensures it is deleted when ArrowBufferReset is called. </p>
-</dd></dl>
-
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>doxygengroup: Cannot find group “nanoarrow_hpp-buffer” in doxygen xml output for project “nanoarrow_c” from directory: ../../src/apidoc/xml</p>
 </div>
-</dd></dl>
-
 </section>
 <section id="range-for-utilities">
 <h2>Range-for utilities<a class="headerlink" href="#range-for-utilities" title="Link to this heading">#</a></h2>
-<dl>
-<dt class="sig sig-object cpp">
-<span class="target" id="group__nanoarrow__hpp-range__for"></span><em><span class="pre">group</span></em> <span class="sig-name descname"><span class="pre">nanoarrow_hpp-range_for</span></span></dt>
-<dd><p>The Arrow C Data interface and the Arrow C Stream interface represent data which can be iterated through using C++’s range-for statement. </p>
-<div class="breathe-sectiondef docutils container">
-<p class="breathe-sectiondef-title rubric" id="breathe-section-title-variables">Variables</p>
-<dl class="cpp var">
-<dt class="sig sig-object cpp" id="_CPPv42NA">
-<span id="_CPPv32NA"></span><span id="_CPPv22NA"></span><span id="NA__internal::Nothing"></span><span class="target" id="group__nanoarrow__hpp-range__for_1gaa90e4c833a3394d8361baf21b655c649"></span><span class="k"><span class="pre">constexpr</span></span><span class="w"> </span><span class="n"><span class="pre">internal</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">Nothing</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">NA</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="p"><span class="pre">{</span></span><span class="p"><span class="pre">}</span></span><a class="headerlink" href="#_CPPv42NA" title="Link to this definition">#</a><br /></dt>
-<dd><p>An object convertible to any empty optional. </p>
-</dd></dl>
-
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>doxygengroup: Cannot find group “nanoarrow_hpp-range_for” in doxygen xml output for project “nanoarrow_c” from directory: ../../src/apidoc/xml</p>
 </div>
-<dl class="cpp class">
-<dt class="sig sig-object cpp" id="_CPPv4I0EN9nanoarrow11ViewArrayAsE">
-<span id="_CPPv3I0EN9nanoarrow11ViewArrayAsE"></span><span id="_CPPv2I0EN9nanoarrow11ViewArrayAsE"></span><span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">typename</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">T</span></span></span><span class="p"><span class="pre">&gt;</span></span><br /><span class="target" id="classnanoarrow_1_1_view_array_as"></span><span class="k"><span class="pre">class</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">ViewArrayAs</span></span></span><a class="headerlink" href="#_CPPv4I0EN9nanoarrow11ViewArrayAsE" title="Link to this definition">#</a><br /></dt>
-<dd><div class="docutils container">
-<em>#include &lt;nanoarrow.hpp&gt;</em></div>
-<p>A range-for compatible wrapper for ArrowArray of fixed size type. </p>
-<p>Provides a sequence of optional&lt;T&gt; copied from each non-null slot of the wrapped array (null slots result in empty optionals). </p>
-</dd></dl>
-
-<dl class="cpp class">
-<dt class="sig sig-object cpp" id="_CPPv4I_iEN9nanoarrow16ViewArrayAsBytesE">
-<span id="_CPPv3I_iEN9nanoarrow16ViewArrayAsBytesE"></span><span id="_CPPv2I_iEN9nanoarrow16ViewArrayAsBytesE"></span><span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">OffsetSize</span></span></span><span class="p"><span class="pre">&gt;</span></span><br /><span class="target" id="classnanoarrow_1_1_view_array_as_bytes"></span><span class="k"><span class="pre">class</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">ViewArrayAsBytes</span></span></span><a class="headerlink" href="#_CPPv4I_iEN9nanoarrow16ViewArrayAsBytesE" title="Link to this definition">#</a><br /></dt>
-<dd><div class="docutils container">
-<em>#include &lt;nanoarrow.hpp&gt;</em></div>
-<p>A range-for compatible wrapper for ArrowArray of binary or utf8. </p>
-<p>Provides a sequence of optional&lt;ArrowStringView&gt; referencing each non-null slot of the wrapped array (null slots result in empty optionals). Large binary and utf8 arrays can be wrapped by specifying 64 instead of 32 for the template argument. </p>
-</dd></dl>
-
-<dl class="cpp class">
-<dt class="sig sig-object cpp" id="_CPPv4N9nanoarrow25ViewArrayAsFixedSizeBytesE">
-<span id="_CPPv3N9nanoarrow25ViewArrayAsFixedSizeBytesE"></span><span id="_CPPv2N9nanoarrow25ViewArrayAsFixedSizeBytesE"></span><span id="nanoarrow::ViewArrayAsFixedSizeBytes"></span><span class="target" id="classnanoarrow_1_1_view_array_as_fixed_size_bytes"></span><span class="k"><span class="pre">class</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">ViewArrayAsFixedSizeBytes</span></span></span><a class="headerlink" href="#_CPPv4N9nanoarrow25ViewArrayAsFixedSizeBytesE" title="Link to this definition">#</a><br /></dt>
-<dd><div class="docutils container">
-<em>#include &lt;nanoarrow.hpp&gt;</em></div>
-<p>A range-for compatible wrapper for ArrowArray of fixed size binary. </p>
-<p>Provides a sequence of optional&lt;ArrowStringView&gt; referencing each non-null slot of the wrapped array (null slots result in empty optionals). </p>
-</dd></dl>
-
-<dl class="cpp class">
-<dt class="sig sig-object cpp" id="_CPPv4N9nanoarrow15ViewArrayStreamE">
-<span id="_CPPv3N9nanoarrow15ViewArrayStreamE"></span><span id="_CPPv2N9nanoarrow15ViewArrayStreamE"></span><span id="nanoarrow::ViewArrayStream"></span><span class="target" id="classnanoarrow_1_1_view_array_stream"></span><span class="k"><span class="pre">class</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">ViewArrayStream</span></span></span><a class="headerlink" href="#_CPPv4N9nanoarrow15ViewArrayStreamE" title="Link to this definition">#</a><br /></dt>
-<dd><div class="docutils container">
-<em>#include &lt;nanoarrow.hpp&gt;</em></div>
-<p>A range-for compatible wrapper for ArrowArrayStream. </p>
-<p>Provides a sequence of ArrowArray&amp; referencing the most recent array drawn from the wrapped stream. (Each array may be moved from if necessary.) When streams terminate due to an error, the error code and message are available for inspection through the code() and error() member functions respectively. Failure to inspect the error code will result in an assertion failure. The number of arrays drawn from the stream is also available through the count() member function. </p>
-</dd></dl>
-
-</dd></dl>
-
 </section>
 </section>
 
@@ -661,38 +467,11 @@ This class allows a standard C++ class to be exported to a generic ArrowArrayStr
   </div>
   <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="visible nav section-nav flex-column">
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#error-handling">Error handling</a><ul class="visible nav section-nav flex-column">
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N9nanoarrow9ExceptionE"><code class="docutils literal notranslate"><span class="pre">Exception</span></code></a></li>
-</ul>
-</li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#owning-object-wrappers">Owning object wrappers</a><ul class="visible nav section-nav flex-column">
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv412UniqueSchema"><code class="docutils literal notranslate"><span class="pre">UniqueSchema</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv411UniqueArray"><code class="docutils literal notranslate"><span class="pre">UniqueArray</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv417UniqueArrayStream"><code class="docutils literal notranslate"><span class="pre">UniqueArrayStream</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv412UniqueBuffer"><code class="docutils literal notranslate"><span class="pre">UniqueBuffer</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv412UniqueBitmap"><code class="docutils literal notranslate"><span class="pre">UniqueBitmap</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv415UniqueArrayView"><code class="docutils literal notranslate"><span class="pre">UniqueArrayView</span></code></a></li>
-</ul>
-</li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#array-stream-utilities">Array Stream utilities</a><ul class="visible nav section-nav flex-column">
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4I0EN9nanoarrow18ArrayStreamFactoryE"><code class="docutils literal notranslate"><span class="pre">ArrayStreamFactory</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N9nanoarrow16EmptyArrayStreamE"><code class="docutils literal notranslate"><span class="pre">EmptyArrayStream</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N9nanoarrow17VectorArrayStreamE"><code class="docutils literal notranslate"><span class="pre">VectorArrayStream</span></code></a></li>
-</ul>
-</li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#buffer-utilities">Buffer utilities</a><ul class="visible nav section-nav flex-column">
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4I0E17BufferInitWrappedvP11ArrowBuffer1TPK7uint8_t7int64_t"><code class="docutils literal notranslate"><span class="pre">BufferInitWrapped()</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4I0E18BufferInitSequencevP11ArrowBuffer1T"><code class="docutils literal notranslate"><span class="pre">BufferInitSequence()</span></code></a></li>
-</ul>
-</li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#range-for-utilities">Range-for utilities</a><ul class="visible nav section-nav flex-column">
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv42NA"><code class="docutils literal notranslate"><span class="pre">NA</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4I0EN9nanoarrow11ViewArrayAsE"><code class="docutils literal notranslate"><span class="pre">ViewArrayAs</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4I_iEN9nanoarrow16ViewArrayAsBytesE"><code class="docutils literal notranslate"><span class="pre">ViewArrayAsBytes</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N9nanoarrow25ViewArrayAsFixedSizeBytesE"><code class="docutils literal notranslate"><span class="pre">ViewArrayAsFixedSizeBytes</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N9nanoarrow15ViewArrayStreamE"><code class="docutils literal notranslate"><span class="pre">ViewArrayStream</span></code></a></li>
-</ul>
-</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#error-handling">Error handling</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#owning-object-wrappers">Owning object wrappers</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#array-stream-utilities">Array Stream utilities</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#buffer-utilities">Buffer utilities</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#range-for-utilities">Range-for utilities</a></li>
 </ul>
   </nav></div>
 
