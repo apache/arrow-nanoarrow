@@ -30,8 +30,9 @@ from nanoarrow_c cimport (
     ArrowSchema,
     ArrowErrorCode,
     ArrowError,
-    NANOARROW_OK,
 )
+
+from nanoarrow_macros cimport NANOARROW_OK
 
 from nanoarrow._schema cimport CSchema
 from nanoarrow._array cimport CArrayView

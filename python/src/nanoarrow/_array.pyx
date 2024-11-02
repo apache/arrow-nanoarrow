@@ -76,11 +76,14 @@ from nanoarrow_c cimport (
     NANOARROW_VALIDATION_LEVEL_FULL,
     NANOARROW_VALIDATION_LEVEL_MINIMAL,
     NANOARROW_VALIDATION_LEVEL_NONE,
+)
+
+from nanoarrow_macros cimport (
     NANOARROW_OK,
+    ARROW_DEVICE_CPU,
 )
 
 from nanoarrow_device_c cimport (
-    ARROW_DEVICE_CPU,
     ArrowDeviceType,
     ArrowDeviceArray,
     ArrowDeviceArrayInit,

@@ -35,7 +35,6 @@ from cpython cimport (
 from cpython.ref cimport Py_INCREF, Py_DECREF
 
 from nanoarrow_c cimport (
-    NANOARROW_OK,
     ArrowMalloc,
     ArrowFree,
     ArrowType,
@@ -55,11 +54,13 @@ from nanoarrow_c cimport (
     ArrowBufferMove,
 )
 
-from nanoarrow_device_c cimport (
+from nanoarrow_macros cimport (
+    NANOARROW_OK,
     ARROW_DEVICE_CPU,
     ARROW_DEVICE_CUDA,
-    ArrowDevice,
 )
+
+from nanoarrow_device_c cimport ArrowDevice
 
 from nanoarrow_dlpack cimport (
     DLDataType,

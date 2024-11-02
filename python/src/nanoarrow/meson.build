@@ -23,30 +23,41 @@ nanoarrow_device_dep = nanoarrow_proj.get_variable('nanoarrow_device_dep')
 
 py = import('python').find_installation(pure: false)
 
-vendored_files = custom_target(
-    'generate-pyx',
-    output: [
-        'nanoarrow.c',
-        'nanoarrow_c.pxd',
-        'nanoarrow_device.c',
-        'nanoarrow_device_c.pxd',
-        'nanoarrow_device.h',
-        'nanoarrow_device.hpp',
-        'nanoarrow.h',
-        'nanoarrow.hpp',
-        'nanoarrow_ipc.c',
-        'nanoarrow_ipc.h',
-        'nanoarrow_ipc.hpp',
-    ],
+nanoarrow_c = custom_target(
+    'nanoarrow_c',
+    output: 'nanoarrow_c.pxd',
     command: [
-        py,
-        meson.current_source_dir() + '/../../bootstrap.py',
-        '--output-dir', meson.current_build_dir()
+        'autopxd',
+        '-I',
+        meson.project_source_root() / 'subprojects/arrow-nanoarrow/src/',
+        '-I',
+        meson.project_build_root() / 'subprojects/arrow-nanoarrow/src/',
+        # ideally we could use @INPUT@ but that will throw a sandboxing violation
+        meson.project_source_root() /  'subprojects/arrow-nanoarrow/src/nanoarrow/nanoarrow.h',
+        '@OUTPUT@',
+    ],
+)
+nanoarrow_c_dep = declare_dependency(
+    sources: nanoarrow_c,
+)
+
+nanoarrow_device_c = custom_target(
+    'nanoarrow_device_c',
+    output: 'nanoarrow_device_c.pxd',
+    command: [
+        'autopxd',
+        '-I',
+        meson.project_source_root() / 'subprojects/arrow-nanoarrow/src/',
+        '-I',
+        meson.project_build_root() / 'subprojects/arrow-nanoarrow/src/',
+        # ideally we could use @INPUT@ but that will throw a sandboxing violation
+        meson.project_source_root() /  'subprojects/arrow-nanoarrow/src/nanoarrow/nanoarrow_device.h',
+        '@OUTPUT@',
     ],
 )
 
-nanoarrow_pyx_dep = declare_dependency(
-    sources: vendored_files[1],
+nanoarrow_device_c_dep = declare_dependency(
+    sources: nanoarrow_device_c,
 )
 
 cyfiles = [
@@ -72,7 +83,7 @@ endif
 
 fs = import('fs')
 foreach cyf : cyfiles
-  cyfile_deps = [nanoarrow_pyx_dep, nanoarrow_dep]
+  cyfile_deps = [nanoarrow_dep, nanoarrow_c_dep, nanoarrow_device_c_dep]
 
   stem = fs.stem(cyf)
   if stem in ['_array', '_device']
@@ -104,6 +115,7 @@ py_sources = [
     'device.py',
     'ipc.py',
     'iterator.py',
+    'nanoarrow_macros.pxd',
     '_repr_utils.py',
     'schema.py',
     'visitor.py',

@@ -29,7 +29,9 @@ project(
         # due to https://github.com/mesonbuild/meson/issues/6728
         'arrow-nanoarrow:ipc=true',
         'arrow-nanoarrow:device=true',
-        'arrow-nanoarrow:namespace=PythonPkg',
+        # Adding this namespace doesn't work with the autopxd generation
+        # is that a problem?
+        #'arrow-nanoarrow:namespace=PythonPkg',
     ],
 )
 
