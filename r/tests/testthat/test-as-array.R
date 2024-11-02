@@ -464,7 +464,7 @@ test_that("as_nanoarrow_array() works for Date -> na_date32()", {
   expect_identical(as.raw(array$buffers[[1]]), as.raw(0x03))
   expect_identical(
     as.raw(array$buffers[[2]]),
-    as.raw(as_nanoarrow_buffer(c(10957L, 19391L, 0L)))
+    as.raw(as_nanoarrow_buffer(c(10957L, 19391L, NA)))
   )
 
   # Sub-day precision handling

@@ -263,9 +263,9 @@ as_nanoarrow_array.Date <- function(x, ..., schema = NULL) {
     parsed$type,
     date32 = {
       int_vec <- if (is.integer(x)) {
-        x
+        as.integer(x)
       } else {
-        floor(as.numeric(x))
+        as.integer(floor(as.numeric(x)))
       }
 
       storage <- as_nanoarrow_array(
