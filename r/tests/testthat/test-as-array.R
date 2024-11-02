@@ -469,8 +469,8 @@ test_that("as_nanoarrow_array() works for Date -> na_date32()", {
 
   # Sub-day precision handling
   expect_identical(
-    as.vector(as_nanoarrow_array(as.Date(c(-0.5, 0, 0.5)))),
-    as.Date(c(-1, 0, 0))
+    as.vector(as_nanoarrow_array(as.Date(c(-0.5, 0, 0.5), origin = as.Date("1970-01-01")))),
+    as.Date(c(-1, 0, 0), origin = as.Date("1970-01-01"))
   )
 })
 
