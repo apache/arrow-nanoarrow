@@ -856,14 +856,14 @@ TEST_P(ArrowTypeParameterizedTestFixture, NanoarrowIpcNanoarrowArrayRoundtrip) {
     EXPECT_EQ(ArrowIpcDecoderSetSchema(decoder.get(), schema.get(), &error), NANOARROW_OK)
         << error.message;
     EXPECT_EQ(ArrowIpcDecoderDecodeHeader(decoder.get(),
-                                          {buffer->data, buffer->size_bytes}, &error),
+                                          {{buffer->data}, buffer->size_bytes}, &error),
               NANOARROW_OK)
         << error.message;
 
     struct ArrowArrayView* roundtripped;
-    ASSERT_EQ(ArrowIpcDecoderDecodeArrayView(decoder.get(),
-                                             {body_buffer->data, body_buffer->size_bytes},
-                                             -1, &roundtripped, nullptr),
+    ASSERT_EQ(ArrowIpcDecoderDecodeArrayView(
+                  decoder.get(), {{body_buffer->data}, body_buffer->size_bytes}, -1,
+                  &roundtripped, nullptr),
               NANOARROW_OK);
 
     AssertArrayViewIdentical(roundtripped, array_view.get());
@@ -1232,26 +1232,27 @@ TEST(NanoarrowIpcTest, NanoarrowIpcFooterDecodingErrors) {
   ArrowIpcDecoderInit(decoder.get());
 
   // not enough data to get the size+magic
-  EXPECT_EQ(ArrowIpcDecoderPeekFooter(decoder.get(), {nullptr, 3}, &error), ESPIPE)
+  EXPECT_EQ(ArrowIpcDecoderPeekFooter(decoder.get(), {{nullptr}, 3}, &error), ESPIPE)
       << error.message;
 
   // doesn't end with magic
-  EXPECT_EQ(ArrowIpcDecoderPeekFooter(decoder.get(), {"\0\0\0\0blargh", 10}, &error),
+  EXPECT_EQ(ArrowIpcDecoderPeekFooter(decoder.get(), {{"\0\0\0\0blargh"}, 10}, &error),
             EINVAL)
       << error.message;
 
   // negative size
   EXPECT_EQ(ArrowIpcDecoderPeekFooter(decoder.get(),
-                                      {"\xFF\xFF\xFF\xFF"
-                                       "ARROW1",
+                                      {{"\xFF\xFF\xFF\xFF"
+                                        "ARROW1"},
                                        10},
                                       &error),
             EINVAL)
       << error.message;
 
   // PeekFooter doesn't check for available data
-  EXPECT_EQ(ArrowIpcDecoderPeekFooter(decoder.get(), {"\xFF\xFF\0\0ARROW1", 10}, &error),
-            NANOARROW_OK)
+  EXPECT_EQ(
+      ArrowIpcDecoderPeekFooter(decoder.get(), {{"\xFF\xFF\0\0ARROW1"}, 10}, &error),
+      NANOARROW_OK)
       << error.message;
   EXPECT_EQ(decoder->header_size_bytes, 0xFFFF);
 
@@ -1259,7 +1260,7 @@ TEST(NanoarrowIpcTest, NanoarrowIpcFooterDecodingErrors) {
 
   // VerifyFooter *does* check for enough available data
   EXPECT_EQ(
-      ArrowIpcDecoderVerifyFooter(decoder.get(), {"\xFF\xFF\0\0ARROW1", 10}, &error),
+      ArrowIpcDecoderVerifyFooter(decoder.get(), {{"\xFF\xFF\0\0ARROW1"}, 10}, &error),
       ESPIPE)
       << error.message;
   EXPECT_EQ(decoder->header_size_bytes, 0xFFFF);

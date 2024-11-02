@@ -28,6 +28,7 @@ on:
       - 'CMakeLists.txt'
       - '.github/workflows/build-and-test.yaml'
       - 'src/nanoarrow/**'
+      - 'meson.build'
 
 permissions:
   contents: read

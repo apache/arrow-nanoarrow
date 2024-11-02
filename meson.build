@@ -46,6 +46,11 @@ add_project_arguments(
     language : 'cpp'
 )
 
+if get_option('buildtype') in ['debug', 'debugoptimized']
+    add_project_arguments('-DNANOARROW_DEBUG', language: 'c')
+    add_project_arguments('-DNANOARROW_DEBUG', language: 'cpp')
+endif
+
 nanoarrow_dep_args = []
 if host_machine.system() == 'windows' and get_option('default_library') == 'shared'
   add_project_arguments(['-DNANOARROW_BUILD_DLL', '-DNANOARROW_EXPORT_DLL'], language: 'c')
