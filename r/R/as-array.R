@@ -263,7 +263,7 @@ as_nanoarrow_array.Date <- function(x, ..., schema = NULL) {
     parsed$type,
     date32 = {
       int_vec <- if (is.integer(x)) {
-        as.integer(x)
+        unclass(x)
       } else {
         as.integer(floor(as.numeric(x)))
       }
