@@ -262,8 +262,14 @@ as_nanoarrow_array.Date <- function(x, ..., schema = NULL) {
   switch(
     parsed$type,
     date32 = {
+      int_vec <- if (is.integer(x)) {
+        unclass(x)
+      } else {
+        as.integer(floor(as.numeric(x)))
+      }
+
       storage <- as_nanoarrow_array(
-        as.integer(x),
+        int_vec,
         schema = na_type(parsed$storage_type)
       )
       nanoarrow_array_set_schema(storage, schema)

@@ -466,6 +466,17 @@ test_that("as_nanoarrow_array() works for Date -> na_date32()", {
     as.raw(array$buffers[[2]]),
     as.raw(as_nanoarrow_buffer(c(10957L, 19391L, NA)))
   )
+
+  # Sub-day precision handling
+  expect_identical(
+    as.vector(as_nanoarrow_array(as.Date(c(-0.5, 0, 0.5), origin = as.Date("1970-01-01")))),
+    as.Date(c(-1, 0, 0), origin = as.Date("1970-01-01"))
+  )
+  # Integer based Date support
+  expect_identical(
+    as.vector(as_nanoarrow_array(as.Date(c(-1L, 0L, 1L), origin = as.Date("1970-01-01")))),
+    as.Date(c(-1, 0, 1), origin = as.Date("1970-01-01"))
+  )
 })
 
 test_that("as_nanoarrow_array() works for Date -> na_date64()", {
