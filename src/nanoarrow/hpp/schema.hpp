@@ -22,84 +22,119 @@
 
 #include "nanoarrow/hpp/exception.hpp"
 #include "nanoarrow/hpp/unique.hpp"
+#include "nanoarrow/hpp/view.hpp"
 #include "nanoarrow/nanoarrow.h"
 
 NANOARROW_CXX_NAMESPACE_BEGIN
 
-class Schema {
+template <typename StringT>
+class ViewMetadata {
  public:
-  explicit Schema(UniqueSchema schema) : schema_(std::move(schema)) {}
-
-  // Make conversion from a raw pointer explicit, including copies
-  static Schema Copy(const ArrowSchema* schema) {
-    Schema out;
-    NANOARROW_THROW_NOT_OK(ArrowSchemaDeepCopy(schema, out.schema_.get()));
-    return out;
-  }
-
-  static Schema Move(ArrowSchema* schema) {
-    Schema out;
-    out.schema_.reset(schema);
-    return out;
-  }
-
-  // Movable
-  Schema(Schema&& rhs) : Schema(std::move(rhs.schema_)) {}
-  Schema& operator=(Schema&& rhs) {
-    schema_ = std::move(rhs.schema_);
-    return *this;
-  }
-  // Not copyable
-  Schema(const Schema& rhs) = delete;
-
-  // Implicitly convertable to const ArrowSchema
-  const ArrowSchema* data() const { return schema_.get(); }
-  operator const ArrowSchema*() const { return schema_.get(); }
-
-  bool IsValid() const { return schema_->release != nullptr; }
-
-  int64_t NumChildren() const {
-    NANOARROW_DCHECK(IsValid());
-    return schema_->n_children;
-  }
-
-  Schema Child(int64_t i) const {
-    NANOARROW_DCHECK(IsValid() && i < schema_->n_children && i > 0);
-    return Schema::Copy(schema_->children[i]);
-  }
-
-  Schema Dictionary() {
-    NANOARROW_DCHECK(IsValid() && schema_->dictionary != nullptr);
-    return Schema::Copy(schema_->dictionary);
-  }
+  explicit ViewMetadata(const char* metadata) : metadata_(metadata) {}
 
  private:
-  UniqueSchema schema_;
+  const char* metadata_;
 
-  Schema() = default;
+ public:
+  class iterator {
+    const ViewMetadata& outer_;
+    ArrowMetadataReader reader_{};
+    ArrowStringView key_{};
+    ArrowStringView value_{};
+
+   public:
+    explicit iterator(const ViewMetadata& outer, int64_t remaining_keys) : outer_(outer) {
+      if (remaining_keys != 0) {
+        NANOARROW_THROW_NOT_OK(ArrowMetadataReaderInit(&reader_, outer.metadata_));
+      }
+    }
+
+    iterator& operator++() {
+      ArrowMetadataReaderRead(&reader_, &key_, &value_);
+      return *this;
+    }
+
+    iterator operator++(int) {
+      iterator retval = *this;
+      ++(*this);
+      return retval;
+    }
+
+    bool operator==(iterator other) const {
+      return outer_.metadata_ == other.outer_.metadata_ &&
+             reader_.remaining_keys == other.reader_.remaining_keys;
+    }
+
+    bool operator!=(iterator other) const { return !(*this == other); }
+
+    std::pair<StringT, StringT> operator*() const {
+      return {StringT{key_.data, key_.size_bytes},
+              StringT{value_.data, value_.size_bytes}};
+    }
+
+    using iterator_category = std::forward_iterator_tag;
+  };
+
+  iterator begin() const { return iterator(*this); }
+  iterator end() const { return iterator(*this, 0); }
 };
 
-class SchemaBuilder {
+class ViewSchemaChildren;
+
+class ViewSchema {
  public:
-  SchemaBuilder() { ArrowSchemaInit(schema_.get()); }
-  SchemaBuilder(const ArrowSchema* schema) {
-    NANOARROW_THROW_NOT_OK(ArrowSchemaDeepCopy(schema, schema_.get()));
+  ViewSchema(const ArrowSchema* schema) : schema_{schema} {}
+
+  template <typename StringT>
+  ViewMetadata<StringT> Metadata() {
+    return ViewMetadata<StringT>(schema_->metadata);
   }
 
-  SchemaBuilder(const UniqueSchema schema) : SchemaBuilder(schema.get()) {}
-
-  // Movable
-  SchemaBuilder(SchemaBuilder&& rhs) : SchemaBuilder(std::move(rhs.schema_)) {}
-  SchemaBuilder& operator=(SchemaBuilder&& rhs) {
-    schema_ = std::move(rhs.schema_);
-    return *this;
-  }
-  // Not copyable
-  SchemaBuilder(const SchemaBuilder& rhs) = delete;
+  ViewSchemaChildren Children();
 
  private:
-  UniqueSchema schema_;
+  const ArrowSchema* schema_;
 };
+
+class ViewSchemaChildren {
+ public:
+  explicit ViewSchemaChildren(const ArrowSchema* schema) : schema_(schema) {}
+
+ private:
+  const ArrowSchema* schema_{};
+
+ public:
+  class iterator {
+    const ViewSchemaChildren& outer_;
+    int64_t i_ = 0;
+
+   public:
+    explicit iterator(const ViewSchemaChildren& outer, int i = 0)
+        : outer_(outer), i_(i) {}
+    iterator& operator++() {
+      i_++;
+      return *this;
+    }
+    iterator operator++(int) {
+      iterator retval = *this;
+      ++(*this);
+      return retval;
+    }
+    bool operator==(iterator other) const {
+      return outer_.schema_ == other.outer_.schema_ && i_ == other.i_;
+    }
+    bool operator!=(iterator other) const { return !(*this == other); }
+    ViewSchema operator*() const { return ViewSchema(outer_.schema_->children[i_]); }
+    using iterator_category = std::forward_iterator_tag;
+  };
+
+  iterator begin() const { return iterator(*this); }
+  iterator end() const { return iterator(*this, schema_->n_children); }
+};
+
+inline ViewSchemaChildren ViewSchema::Children() { return ViewSchemaChildren(schema_); }
+
+
 
 NANOARROW_CXX_NAMESPACE_END
 
