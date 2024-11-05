@@ -18,6 +18,7 @@
 #ifndef NANOARROW_HPP_SCHEMA_HPP_INCLUDED
 #define NANOARROW_HPP_SCHEMA_HPP_INCLUDED
 
+#include <optional>
 #include <utility>
 
 #include "nanoarrow/hpp/exception.hpp"
@@ -27,10 +28,17 @@
 
 NANOARROW_CXX_NAMESPACE_BEGIN
 
-template <typename StringT>
 class ViewMetadata {
  public:
   explicit ViewMetadata(const char* metadata) : metadata_(metadata) {}
+
+  int64_t size() {
+    if (metadata_ == nullptr) {
+      return 0;
+    }
+
+    return end() - begin();
+  }
 
  private:
   const char* metadata_;
@@ -50,7 +58,7 @@ class ViewMetadata {
     }
 
     iterator& operator++() {
-      ArrowMetadataReaderRead(&reader_, &key_, &value_);
+      NANOARROW_THROW_NOT_OK(ArrowMetadataReaderRead(&reader_, &key_, &value_));
       return *this;
     }
 
@@ -60,6 +68,10 @@ class ViewMetadata {
       return retval;
     }
 
+    int64_t operator-(iterator other) const {
+      return reader_.remaining_keys - other.reader_.remaining_keys;
+    }
+
     bool operator==(iterator other) const {
       return outer_.metadata_ == other.outer_.metadata_ &&
              reader_.remaining_keys == other.reader_.remaining_keys;
@@ -67,15 +79,15 @@ class ViewMetadata {
 
     bool operator!=(iterator other) const { return !(*this == other); }
 
-    std::pair<StringT, StringT> operator*() const {
-      return {StringT{key_.data, key_.size_bytes},
-              StringT{value_.data, value_.size_bytes}};
+    std::pair<std::string_view, std::string_view> operator*() const {
+      return {{key_.data, static_cast<size_t>(key_.size_bytes)},
+              {value_.data, static_cast<size_t>(value_.size_bytes)}};
     }
 
     using iterator_category = std::forward_iterator_tag;
   };
 
-  iterator begin() const { return iterator(*this); }
+  iterator begin() const { return iterator(*this, -1); }
   iterator end() const { return iterator(*this, 0); }
 };
 
@@ -83,22 +95,55 @@ class ViewSchemaChildren;
 
 class ViewSchema {
  public:
-  ViewSchema(const ArrowSchema* schema) : schema_{schema} {}
-
-  template <typename StringT>
-  ViewMetadata<StringT> Metadata() {
-    return ViewMetadata<StringT>(schema_->metadata);
+  ViewSchema(const ArrowSchema* schema) : schema_{schema} {
+    // Probably need to do something better with this error here
+    NANOARROW_THROW_NOT_OK(ArrowSchemaViewInit(&schema_view_, schema_, nullptr));
   }
 
-  ViewSchemaChildren Children();
+  std::string_view format() const {
+    if (schema_->name) {
+      return "";
+    } else {
+      return schema_->name;
+    }
+  }
+
+  std::string_view name() const {
+    if (schema_->name) {
+      return "";
+    } else {
+      return schema_->name;
+    }
+  }
+
+  ViewMetadata metadata() const { return ViewMetadata(schema_->metadata); }
+
+  ViewSchemaChildren children() const;
+
+  std::optional<ViewSchema> dictionary() const {
+    if (schema_->dictionary) {
+      return ViewSchema(schema_->dictionary);
+    } else {
+      return std::nullopt;
+    }
+  }
+
+  bool is_extension() const { return schema_view_.extension_name.size_bytes > 0; }
+
+  ArrowType type() const { return schema_view_.type; }
+
+  ArrowType storage_type() { return schema_view_.storage_type; }
 
  private:
   const ArrowSchema* schema_;
+  ArrowSchemaView schema_view_{};
 };
 
 class ViewSchemaChildren {
  public:
   explicit ViewSchemaChildren(const ArrowSchema* schema) : schema_(schema) {}
+
+  int64_t size() const { return schema_->n_children; }
 
  private:
   const ArrowSchema* schema_{};
@@ -109,7 +154,7 @@ class ViewSchemaChildren {
     int64_t i_ = 0;
 
    public:
-    explicit iterator(const ViewSchemaChildren& outer, int i = 0)
+    explicit iterator(const ViewSchemaChildren& outer, int64_t i = 0)
         : outer_(outer), i_(i) {}
     iterator& operator++() {
       i_++;
@@ -132,9 +177,9 @@ class ViewSchemaChildren {
   iterator end() const { return iterator(*this, schema_->n_children); }
 };
 
-inline ViewSchemaChildren ViewSchema::Children() { return ViewSchemaChildren(schema_); }
-
-
+inline ViewSchemaChildren ViewSchema::children() const {
+  return ViewSchemaChildren(schema_);
+}
 
 NANOARROW_CXX_NAMESPACE_END
 
