@@ -140,10 +140,8 @@ TEST(NanoarrowHppTest, NanoarrowHppViewArrayStreamTest) {
 TEST(SchemaHpp, SchemaHppDump) {
   std::stringstream ss;
 
-  nanoarrow::UniqueSchema schema;
-  ASSERT_EQ(ArrowSchemaInitFromType(schema.get(), NANOARROW_TYPE_INT32), NANOARROW_OK);
-
-  nanoarrow::ViewSchema view(schema.get());
+  auto schema = nanoarrow::schema::struct_({{"foofy", NANOARROW_TYPE_INT32}});
+  nanoarrow::ViewSchema view(schema);
 
   ss << "metadata size: " << view.metadata().size() << std::endl;
 

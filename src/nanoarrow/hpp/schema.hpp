@@ -20,6 +20,7 @@
 
 #include <optional>
 #include <utility>
+#include <vector>
 
 #include "nanoarrow/hpp/exception.hpp"
 #include "nanoarrow/hpp/unique.hpp"
@@ -27,6 +28,140 @@
 #include "nanoarrow/nanoarrow.h"
 
 NANOARROW_CXX_NAMESPACE_BEGIN
+
+class SchemaBuilder {
+ public:
+  // Let some implicit magic construction happen
+  SchemaBuilder() { ArrowSchemaInit(schema_.get()); }
+  SchemaBuilder(const ArrowSchema* schema) {
+    NANOARROW_THROW_NOT_OK(ArrowSchemaDeepCopy(schema, schema_.get()));
+  }
+  SchemaBuilder(ArrowType type) : SchemaBuilder() { set_type(type); }
+  SchemaBuilder(const UniqueSchema schema) : SchemaBuilder(schema.get()) {}
+
+  // Movable
+  SchemaBuilder(SchemaBuilder&& rhs) : SchemaBuilder(std::move(rhs.schema_)) {}
+  SchemaBuilder& operator=(SchemaBuilder&& rhs) {
+    schema_ = std::move(rhs.schema_);
+    return *this;
+  }
+  // Copyable
+  SchemaBuilder(const SchemaBuilder& rhs) : SchemaBuilder(rhs.data()) {}
+
+  SchemaBuilder& operator=(SchemaBuilder& rhs) {
+    NANOARROW_THROW_NOT_OK(ArrowSchemaDeepCopy(rhs.data(), schema_.get()));
+    return *this;
+  }
+
+  // Implicitly convertable to const ArrowSchema
+  operator const ArrowSchema*() const { return schema_.get(); }
+
+  // Get schema pointer
+  const ArrowSchema* data() const { return schema_.get(); }
+  ArrowSchema* data() { return schema_.get(); }
+
+  // Move the schema out
+  void Export(ArrowSchema* out) { ArrowSchemaMove(schema_.get(), out); }
+
+  SchemaBuilder& set_type(ArrowType type) {
+    NANOARROW_THROW_NOT_OK(ArrowSchemaSetType(schema_.get(), type));
+    return *this;
+  }
+
+  SchemaBuilder& set_type_datetime(ArrowType type, ArrowTimeUnit time_unit,
+                                   const char* tz = "") {
+    NANOARROW_THROW_NOT_OK(ArrowSchemaSetTypeDateTime(data(), type, time_unit, tz));
+    return *this;
+  }
+
+  SchemaBuilder& set_type_list(ArrowType type, SchemaBuilder child,
+                               int32_t fixed_size = -1) {
+    if (fixed_size > 0) {
+      NANOARROW_THROW_NOT_OK(
+          ArrowSchemaSetTypeFixedSize(schema_.get(), type, fixed_size));
+    } else {
+      set_type(type);
+    }
+
+    child.set_name(data()->children[0]->name);
+    ArrowSchemaRelease(data()->children[0]);
+    child.Export(data()->children[0]);
+    return *this;
+  }
+
+  SchemaBuilder& set_name(const char* name) {
+    NANOARROW_THROW_NOT_OK(ArrowSchemaSetName(schema_.get(), name));
+    return *this;
+  }
+
+  SchemaBuilder& allocate_children(int64_t n_children) {
+    NANOARROW_THROW_NOT_OK(ArrowSchemaAllocateChildren(schema_.get(), n_children));
+    return *this;
+  }
+
+  SchemaBuilder& set_child(int64_t i, SchemaBuilder child) {
+    if (data()->children[i]->release) {
+      ArrowSchemaRelease(data()->children[i]);
+    }
+
+    child.Export(data()->children[i]);
+    return *this;
+  }
+
+  SchemaBuilder& set_child(int64_t i, SchemaBuilder child, const char* name) {
+    child.set_name(name);
+    if (data()->children[i]->release) {
+      ArrowSchemaRelease(data()->children[i]);
+    }
+
+    child.Export(data()->children[i]);
+    return *this;
+  }
+
+ private:
+  UniqueSchema schema_;
+};
+
+namespace schema {
+
+SchemaBuilder int32() { return NANOARROW_TYPE_INT32; }
+
+SchemaBuilder string() { return NANOARROW_TYPE_STRING; }
+
+SchemaBuilder list(SchemaBuilder child) {
+  SchemaBuilder out;
+  out.set_type_list(NANOARROW_TYPE_LIST, std::move(child));
+  return out;
+}
+
+SchemaBuilder fixed_size_list(SchemaBuilder child) {
+  SchemaBuilder out;
+  out.set_type_list(NANOARROW_TYPE_LIST, std::move(child));
+  return out;
+}
+
+SchemaBuilder struct_(std::vector<SchemaBuilder> children) {
+  SchemaBuilder out(NANOARROW_TYPE_STRUCT);
+  out.allocate_children(static_cast<int64_t>(children.size()));
+  for (int64_t i = 0; i < static_cast<int64_t>(children.size()); i++) {
+    out.set_child(i, std::move(children[i]));
+  }
+
+  return out;
+}
+
+SchemaBuilder struct_(std::vector<std::pair<std::string, SchemaBuilder>> children) {
+  SchemaBuilder out(NANOARROW_TYPE_STRUCT);
+  out.allocate_children(static_cast<int64_t>(children.size()));
+  for (int64_t i = 0; i < static_cast<int64_t>(children.size()); i++) {
+    auto child = std::move(children[i]);
+    out.set_child(i, std::move(child.second), child.first.c_str());
+  }
+
+  return out;
+}
+
+}  // namespace schema
 
 class ViewMetadata {
  public:
