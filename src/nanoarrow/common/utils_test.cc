@@ -18,14 +18,18 @@
 #include <cstring>
 #include <string>
 
+#if defined(NANOARROW_ARROW_FOUND)
 #include <arrow/util/decimal.h>
+#endif
 #include <gmock/gmock-matchers.h>
 #include <gtest/gtest.h>
 
 #include "nanoarrow/nanoarrow.hpp"
 #include "nanoarrow/nanoarrow_testing.hpp"
 
+#if defined(NANOARROW_ARROW_FOUND)
 using namespace arrow;
+#endif
 
 TEST(BuildIdTest, VersionTest) {
   EXPECT_STREQ(ArrowNanoarrowVersion(), NANOARROW_VERSION);
@@ -252,6 +256,7 @@ TEST(AllocatorTest, AllocatorTestMemoryPool) {
 #endif
 }
 
+#if defined(NANOARROW_ARROW_FOUND)
 TEST(DecimalTest, Decimal128Test) {
   struct ArrowDecimal decimal;
   ArrowDecimalInit(&decimal, 128, 10, 3);
@@ -288,6 +293,7 @@ TEST(DecimalTest, Decimal128Test) {
   ArrowDecimalSetBytes(&decimal, bytes_neg);
   EXPECT_EQ(memcmp(decimal.words, bytes_neg, sizeof(bytes_neg)), 0);
 }
+#endif
 
 TEST(DecimalTest, DecimalNegateTest) {
   using namespace nanoarrow::literals;
@@ -346,6 +352,7 @@ TEST(DecimalTest, DecimalNegateTest) {
   ArrowBufferReset(&buffer);
 }
 
+#if defined(NANOARROW_ARROW_FOUND)
 TEST(DecimalTest, Decimal256Test) {
   using namespace nanoarrow::literals;
 
@@ -384,6 +391,7 @@ TEST(DecimalTest, Decimal256Test) {
   ArrowDecimalSetBytes(&decimal, bytes_neg);
   EXPECT_EQ(memcmp(decimal.words, bytes_neg, sizeof(bytes_neg)), 0);
 }
+#endif
 
 TEST(DecimalTest, DecimalStringTestBasic) {
   using namespace nanoarrow::literals;

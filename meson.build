@@ -47,6 +47,13 @@ add_project_arguments(
     language: 'cpp',
 )
 
+# The system include suppresses compilation warnings from Arrow
+arrow_dep = dependency('arrow', include_type: 'system', required: false)
+if arrow_dep.found()
+  add_project_arguments('-DNANOARROW_ARROW_FOUND', language : 'c')
+  add_project_arguments('-DNANOARROW_ARROW_FOUND', language : 'cpp')
+endif
+
 if get_option('buildtype') in ['debug', 'debugoptimized']
     add_project_arguments('-DNANOARROW_DEBUG', language: 'c')
     add_project_arguments('-DNANOARROW_DEBUG', language: 'cpp')
@@ -208,8 +215,6 @@ if get_option('tests')
     # Similarly code coverage has a built in option users should use instead
     # https://mesonbuild.com/Unit-tests.html#coverage
 
-    # The system include suppresses compilation warnings from Arrow
-    arrow_dep = dependency('arrow', include_type: 'system')
     gtest_dep = dependency('gtest_main')
     gmock_dep = dependency('gmock')
 

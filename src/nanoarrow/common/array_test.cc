@@ -20,6 +20,7 @@
 #include <cmath>
 #include <cstdint>
 
+#if defined(NANOARROW_ARROW_FOUND)
 #include <arrow/array.h>
 #include <arrow/array/builder_binary.h>
 #include <arrow/array/builder_decimal.h>
@@ -35,10 +36,13 @@
 #if defined(ARROW_VERSION_MAJOR) && ARROW_VERSION_MAJOR >= 12
 #include <arrow/array/builder_run_end.h>
 #endif
+#endif
 
 #include "nanoarrow/nanoarrow.hpp"
 
+#if defined(NANOARROW_ARROW_FOUND)
 using namespace arrow;
+#endif
 using namespace nanoarrow::literals;
 using nanoarrow::NA;
 using testing::ElementsAre;
@@ -46,6 +50,7 @@ using testing::ElementsAre;
 // Lightweight versions of ArrowTesting's ARROW_EXPECT_OK. This
 // version accomplishes the task of making sure the status message
 // ends up in the ctests log.
+#if defined(NANOARROW_ARROW_FOUND)
 void ARROW_EXPECT_OK(Status status) {
   if (!status.ok()) {
     throw std::runtime_error(status.message());
@@ -57,6 +62,7 @@ void ARROW_EXPECT_OK(Result<std::shared_ptr<Array>> result) {
     throw std::runtime_error(result.status().message());
   }
 }
+#endif
 
 TEST(ArrayTest, ArrayTestInit) {
   struct ArrowArray array;
@@ -380,6 +386,7 @@ INSTANTIATE_TEST_SUITE_P(NanoarrowIpcTest, UnparameterizedTypeTestFixture,
                          ::testing::Values(NANOARROW_TYPE_NA, NANOARROW_TYPE_INT32,
                                            NANOARROW_TYPE_BINARY, NANOARROW_TYPE_STRUCT));
 
+#if defined(NANOARROW_ARROW_FOUND)
 TEST(ArrayTest, ArrayTestAppendToNullArray) {
   struct ArrowArray array;
   ASSERT_EQ(ArrowArrayInitFromType(&array, NANOARROW_TYPE_NA), NANOARROW_OK);
@@ -566,6 +573,7 @@ TEST(ArrayTest, ArrayTestAppendToStringArray) {
 
   EXPECT_TRUE(arrow_array.ValueUnsafe()->Equals(expected_array.ValueUnsafe()));
 }
+#endif
 
 TEST(ArrayTest, ArrayTestAppendEmptyToString) {
   struct ArrowArray array;
@@ -577,6 +585,7 @@ TEST(ArrayTest, ArrayTestAppendEmptyToString) {
   ArrowArrayRelease(&array);
 }
 
+#if defined(NANOARROW_ARROW_FOUND)
 TEST(ArrayTest, ArrayTestAppendToUInt64Array) {
   struct ArrowArray array;
 
@@ -608,6 +617,7 @@ TEST(ArrayTest, ArrayTestAppendToUInt64Array) {
 
   EXPECT_TRUE(arrow_array.ValueUnsafe()->Equals(expected_array.ValueUnsafe()));
 }
+#endif
 
 TEST(ArrayTest, ArrayTestAppendToUInt32Array) {
   struct ArrowArray array;
@@ -629,6 +639,7 @@ TEST(ArrayTest, ArrayTestAppendToUInt32Array) {
   ArrowArrayRelease(&array);
 }
 
+#if defined(NANOARROW_ARROW_FOUND)
 TEST(ArrayTest, ArrayTestAppendToUInt16Array) {
   struct ArrowArray array;
 
@@ -844,6 +855,7 @@ TEST(ArrayTest, ArrayTestAppendToHalfFloatArray) {
   auto arrow_array = ImportArray(&array, float16());
   ARROW_EXPECT_OK(arrow_array);
 }
+#endif
 
 TEST(ArrayTest, ArrayTestAppendToBoolArray) {
   struct ArrowArray array;
@@ -1095,6 +1107,7 @@ TEST(ArrayTest, ArrayTestAppendToIntervalArrayYearMonth) {
   ArrowArrayRelease(&array);
 }
 
+#if defined(NANOARROW_ARROW_FOUND)
 TEST(ArrayTest, ArrayTestAppendToIntervalArrayDayTime) {
   struct ArrowArray array;
 
@@ -1518,6 +1531,7 @@ TEST(ArrayTest, ArrayTestAppendToFixedSizeListArray) {
 
   EXPECT_TRUE(arrow_array.ValueUnsafe()->Equals(expected_array.ValueUnsafe()));
 }
+#endif
 
 TEST(ArrayTest, ArrayTestAppendToListArrayErrors) {
   struct ArrowArray array;
@@ -1535,6 +1549,7 @@ TEST(ArrayTest, ArrayTestAppendToListArrayErrors) {
   ArrowSchemaRelease(&schema);
 }
 
+#if defined(NANOARROW_ARROW_FOUND)
 TEST(ArrayTest, ArrayTestAppendToStructArray) {
   struct ArrowArray array;
   struct ArrowSchema schema;
@@ -1744,6 +1759,7 @@ TEST(ArrayTest, ArrayTestAppendToRunEndEncodedArray) {
                expected_array.ValueUnsafe()->ToString().c_str());
 #endif
 }
+#endif
 
 TEST(ArrayTest, ArrayTestUnionUtils) {
   // Check length calculation with nullptr
@@ -1776,6 +1792,7 @@ TEST(ArrayTest, ArrayTestUnionUtils) {
   EXPECT_FALSE(_ArrowUnionTypeIdsWillEqualChildIndices("0,2", 2));
 }
 
+#if defined(NANOARROW_ARROW_FOUND)
 TEST(ArrayTest, ArrayTestAppendToDenseUnionArray) {
   struct ArrowArray array;
   struct ArrowSchema schema;
@@ -1871,6 +1888,7 @@ TEST(ArrayTest, ArrayTestAppendToSparseUnionArray) {
             expected_array.ValueUnsafe()->ToString());
   EXPECT_TRUE(arrow_array.ValueUnsafe()->Equals(expected_array.ValueUnsafe()));
 }
+#endif
 
 TEST(ArrayTest, ArrayTestAppendToUnionArrayErrors) {
   struct ArrowArray array;
@@ -3250,6 +3268,7 @@ TEST(ArrayTest, ArrayViewTestSparseUnionGet) {
 // the "value type" that would correspond to what ArrowArrayViewGetDoubleUnsafe()
 // or ArrowArrayAppendDouble() do since they operate on the logical/represented
 // value.
+#if defined(NANOARROW_ARROW_FOUND)
 template <typename TypeClass, typename BuilderValueT>
 BuilderValueT logical_value_to_builder_value(int64_t value) {
   return static_cast<BuilderValueT>(value);
@@ -3352,6 +3371,7 @@ TEST(ArrayViewTest, ArrayViewTestGetNumeric) {
   TestGetFromNumericArrayView<FloatType>();
   TestGetFromNumericArrayView<HalfFloatType>();
 }
+#endif
 
 TEST(ArrayViewTest, ArrayViewTestGetFloat16) {
   struct ArrowArray array;
@@ -3419,6 +3439,7 @@ TEST(ArrayViewTest, ArrayViewTestGetFloat16) {
   ArrowSchemaRelease(&schema);
 }
 
+#if defined(NANOARROW_ARROW_FOUND)
 template <typename BuilderClass>
 void TestGetFromBinary(BuilderClass& builder) {
   struct ArrowArray array;
@@ -3595,6 +3616,7 @@ TEST(ArrayViewTest, ArrayViewTestGetBinaryView) {
   GTEST_SKIP() << "Arrow C++ StringView compatibility test needs Arrow C++ >= 15";
 #endif
 }
+#endif
 
 TEST(ArrayViewTest, ArrayViewTestGetIntervalYearMonth) {
   struct ArrowArray array;
@@ -3633,6 +3655,7 @@ TEST(ArrayViewTest, ArrayViewTestGetIntervalYearMonth) {
   ArrowArrayRelease(&array);
 }
 
+#if defined(NANOARROW_ARROW_FOUND)
 TEST(ArrayViewTest, ArrayViewTestGetIntervalDayTime) {
   struct ArrowArray array;
   struct ArrowSchema schema;
@@ -3780,3 +3803,4 @@ TEST(ArrayViewTest, ArrayViewTestGetDecimal256) {
   ArrowSchemaRelease(&schema);
   ArrowArrayRelease(&array);
 }
+#endif

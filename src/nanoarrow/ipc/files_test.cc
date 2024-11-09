@@ -21,6 +21,7 @@
 
 #include <zlib.h>
 
+#if defined(NANOARROW_ARROW_FOUND)
 #include <arrow/buffer.h>
 #include <arrow/c/bridge.h>
 #include <arrow/io/api.h>
@@ -494,3 +495,4 @@ INSTANTIATE_TEST_SUITE_P(
             "Schema message field with DictionaryEncoding not supported")
         // Comment to keep last line from wrapping
         ));
+#endif

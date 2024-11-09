@@ -17,14 +17,18 @@
 
 #include <gtest/gtest.h>
 
+#if defined(NANOARROW_ARROW_FOUND)
 #include <arrow/c/bridge.h>
 #include <arrow/config.h>
 #include <arrow/testing/gtest_util.h>
 #include <arrow/util/key_value_metadata.h>
+#endif
 
 #include "nanoarrow/nanoarrow.hpp"
 
+#if defined(NANOARROW_ARROW_FOUND)
 using namespace arrow;
+#endif
 
 // Helper to avoid the verbosity of ArrowSchemaToStdString
 std::string ArrowSchemaToStdString(struct ArrowSchema* schema, bool recursive = true) {
@@ -76,6 +80,7 @@ TEST(SchemaTest, SchemaInit) {
   ArrowSchemaRelease(&schema);
 }
 
+#if defined(NANOARROW_ARROW_FOUND)
 static void ExpectSchemaInitOk(enum ArrowType type,
                                std::shared_ptr<DataType> expected_arrow_type) {
   struct ArrowSchema schema;
@@ -113,6 +118,7 @@ TEST(SchemaTest, SchemaInitSimple) {
   ExpectSchemaInitOk(NANOARROW_TYPE_BINARY_VIEW, binary_view());
 #endif
 }
+#endif
 
 TEST(SchemaTest, SchemaInitSimpleError) {
   struct ArrowSchema schema;
@@ -120,6 +126,7 @@ TEST(SchemaTest, SchemaInitSimpleError) {
   EXPECT_EQ(schema.release, nullptr);
 }
 
+#if defined(NANOARROW_ARROW_FOUND)
 TEST(SchemaTest, SchemaTestInitNestedList) {
   struct ArrowSchema schema;
 
@@ -225,6 +232,7 @@ TEST(SchemaTest, SchemaInitDecimal) {
   ARROW_EXPECT_OK(arrow_type);
   EXPECT_TRUE(arrow_type.ValueUnsafe()->Equals(decimal256(3, 4)));
 }
+#endif
 
 TEST(SchemaTest, SchemaInitRunEndEncoded) {
   struct ArrowSchema schema;
@@ -271,6 +279,7 @@ TEST(SchemaTest, SchemaInitRunEndEncoded) {
 #endif
 }
 
+#if defined(NANOARROW_ARROW_FOUND)
 TEST(SchemaTest, SchemaInitDateTime) {
   struct ArrowSchema schema;
 
@@ -452,6 +461,7 @@ TEST(SchemaTest, SchemaInitUnion) {
   EXPECT_TRUE(arrow_type.ValueUnsafe()->Equals(
       dense_union({field("u1", int32()), field("u2", utf8())})));
 }
+#endif
 
 TEST(SchemaTest, SchemaSetFormat) {
   struct ArrowSchema schema;
@@ -505,6 +515,7 @@ TEST(SchemaTest, SchemaAllocateDictionary) {
   ArrowSchemaRelease(&schema);
 }
 
+#if defined(NANOARROW_ARROW_FOUND)
 TEST(SchemaTest, SchemaCopySimpleType) {
   struct ArrowSchema schema;
   ARROW_EXPECT_OK(ExportType(*int32(), &schema));
@@ -616,6 +627,7 @@ TEST(SchemaTest, SchemaCopyMetadata) {
 
   ArrowSchemaRelease(&schema);
 }
+#endif
 
 TEST(SchemaViewTest, SchemaViewInitErrors) {
   struct ArrowSchema schema;
@@ -671,6 +683,7 @@ TEST(SchemaViewTest, SchemaViewInitErrors) {
   ArrowSchemaRelease(&schema);
 }
 
+#if defined(NANOARROW_ARROW_FOUND)
 void ExpectSimpleTypeOk(std::shared_ptr<DataType> arrow_t, enum ArrowType nanoarrow_t,
                         int bitwidth, const char* formatted) {
   struct ArrowSchema schema;
@@ -723,6 +736,7 @@ TEST(SchemaViewTest, SchemaViewInitSimple) {
   ExpectSimpleTypeOk(float64(), NANOARROW_TYPE_DOUBLE, 64, "double");
   ExpectSimpleTypeOk(float32(), NANOARROW_TYPE_FLOAT, 32, "float");
 }
+#endif
 
 TEST(SchemaViewTest, SchemaViewInitSimpleErrors) {
   struct ArrowSchema schema;
@@ -738,6 +752,7 @@ TEST(SchemaViewTest, SchemaViewInitSimpleErrors) {
   ArrowSchemaRelease(&schema);
 }
 
+#if defined(NANOARROW_ARROW_FOUND)
 TEST(SchemaViewTest, SchemaViewInitDecimal) {
   struct ArrowSchema schema;
   struct ArrowSchemaView schema_view;
@@ -781,6 +796,7 @@ TEST(SchemaViewTest, SchemaViewInitDecimal) {
   EXPECT_EQ(ArrowSchemaToStdString(&schema), "decimal256(5, 6)");
   ArrowSchemaRelease(&schema);
 }
+#endif
 
 TEST(SchemaViewTest, SchemaViewInitDecimalErrors) {
   struct ArrowSchema schema;
@@ -827,6 +843,7 @@ TEST(SchemaViewTest, SchemaViewInitDecimalErrors) {
   ArrowSchemaRelease(&schema);
 }
 
+#if defined(NANOARROW_ARROW_FOUND)
 TEST(SchemaViewTest, SchemaViewInitBinaryAndString) {
   struct ArrowSchema schema;
   struct ArrowSchemaView schema_view;
@@ -948,6 +965,7 @@ TEST(SchemaViewTest, SchemaViewInitBinaryAndStringView) {
   GTEST_SKIP() << "Arrow C++ StringView compatibility test needs Arrow C++ >= 15";
 #endif
 }
+#endif
 
 TEST(SchemaViewTest, SchemaViewInitBinaryAndStringErrors) {
   struct ArrowSchema schema;
@@ -978,6 +996,7 @@ TEST(SchemaViewTest, SchemaViewInitBinaryAndStringErrors) {
   ArrowSchemaRelease(&schema);
 }
 
+#if defined(NANOARROW_ARROW_FOUND)
 TEST(SchemaViewTest, SchemaViewInitTimeDate) {
   struct ArrowSchema schema;
   struct ArrowSchemaView schema_view;
@@ -1142,6 +1161,7 @@ TEST(SchemaViewTest, SchemaViewInitTimeInterval) {
   EXPECT_EQ(ArrowSchemaToStdString(&schema), "interval_month_day_nano");
   ArrowSchemaRelease(&schema);
 }
+#endif
 
 TEST(SchemaViewTest, SchemaViewInitTimeErrors) {
   struct ArrowSchema schema;
@@ -1193,6 +1213,7 @@ TEST(SchemaViewTest, SchemaViewInitTimeErrors) {
   ArrowSchemaRelease(&schema);
 }
 
+#if defined(NANOARROW_ARROW_FOUND)
 TEST(SchemaViewTest, SchemaViewInitNestedList) {
   struct ArrowSchema schema;
   struct ArrowSchemaView schema_view;
@@ -1248,6 +1269,7 @@ TEST(SchemaViewTest, SchemaViewInitNestedList) {
   EXPECT_EQ(ArrowSchemaToStdString(&schema), "fixed_size_list(123)<item: int32>");
   ArrowSchemaRelease(&schema);
 }
+#endif
 
 TEST(SchemaViewTest, SchemaViewNestedListErrors) {
   struct ArrowSchema schema;
@@ -1273,6 +1295,7 @@ TEST(SchemaViewTest, SchemaViewNestedListErrors) {
   ArrowSchemaRelease(&schema);
 }
 
+#if defined(NANOARROW_ARROW_FOUND)
 TEST(SchemaViewTest, SchemaViewInitNestedStruct) {
   struct ArrowSchema schema;
   struct ArrowSchemaView schema_view;
@@ -1300,6 +1323,7 @@ TEST(SchemaViewTest, SchemaViewInitNestedStruct) {
 
   ArrowSchemaRelease(&schema);
 }
+#endif
 
 TEST(SchemaViewTest, SchemaViewInitNestedStructErrors) {
   struct ArrowSchema schema;
@@ -1328,6 +1352,7 @@ TEST(SchemaViewTest, SchemaViewInitNestedStructErrors) {
   ArrowSchemaRelease(&schema);
 }
 
+#if defined(NANOARROW_ARROW_FOUND)
 TEST(SchemaViewTest, SchemaViewInitNestedMap) {
   struct ArrowSchema schema;
   struct ArrowSchemaView schema_view;
@@ -1348,6 +1373,7 @@ TEST(SchemaViewTest, SchemaViewInitNestedMap) {
             "map<entries: struct<key: int32, value: int32>>");
   ArrowSchemaRelease(&schema);
 }
+#endif
 
 TEST(SchemaViewTest, SchemaViewInitNestedMapErrors) {
   struct ArrowSchema schema;
@@ -1409,6 +1435,7 @@ TEST(SchemaViewTest, SchemaViewInitNestedMapErrors) {
   ArrowSchemaRelease(&schema);
 }
 
+#if defined(NANOARROW_ARROW_FOUND)
 TEST(SchemaViewTest, SchemaViewInitNestedUnion) {
   struct ArrowSchema schema;
   struct ArrowSchemaView schema_view;
@@ -1448,6 +1475,7 @@ TEST(SchemaViewTest, SchemaViewInitNestedUnion) {
   EXPECT_EQ(ArrowSchemaToStdString(&schema), "sparse_union([0])<col: int32>");
   ArrowSchemaRelease(&schema);
 }
+#endif
 
 TEST(SchemaViewTest, SchemaViewInitNestedUnionErrors) {
   struct ArrowSchema schema;
@@ -1500,6 +1528,7 @@ TEST(SchemaViewTest, SchemaViewInitInvalidSpecErrors) {
   ArrowSchemaRelease(&schema);
 }
 
+#if defined(NANOARROW_ARROW_FOUND)
 TEST(SchemaViewTest, SchemaViewInitDictionary) {
   struct ArrowSchema schema;
   struct ArrowSchemaView schema_view;
@@ -1512,6 +1541,7 @@ TEST(SchemaViewTest, SchemaViewInitDictionary) {
   EXPECT_EQ(ArrowSchemaToStdString(&schema), "dictionary(int32)<string>");
   ArrowSchemaRelease(&schema);
 }
+#endif
 
 TEST(SchemaViewTest, SchemaViewInitDictionaryErrors) {
   struct ArrowSchema schema;
@@ -1535,6 +1565,7 @@ TEST(SchemaViewTest, SchemaViewInitDictionaryErrors) {
   ArrowSchemaRelease(&schema);
 }
 
+#if defined(NANOARROW_ARROW_FOUND)
 TEST(SchemaViewTest, SchemaViewInitExtension) {
   using namespace nanoarrow::literals;
 
@@ -1555,7 +1586,9 @@ TEST(SchemaViewTest, SchemaViewInitExtension) {
 
   ArrowSchemaRelease(&schema);
 }
+#endif
 
+#if defined(NANOARROW_ARROW_FOUND)
 TEST(SchemaViewTest, SchemaViewInitExtensionDictionary) {
   using namespace nanoarrow::literals;
 
@@ -1596,6 +1629,7 @@ TEST(SchemaViewTest, SchemaFormatEmptyNested) {
 
   ArrowSchemaRelease(&schema);
 }
+#endif
 
 TEST(SchemaViewTest, SchemaFormatInvalid) {
   EXPECT_EQ(ArrowSchemaToStdString(nullptr), "[invalid: pointer is null]");

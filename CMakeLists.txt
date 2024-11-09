@@ -422,26 +422,31 @@ if(NANOARROW_BUILD_TESTS)
   )
   include(CTest)
 
-  find_package(Arrow REQUIRED)
-  message(STATUS "Arrow version: ${ARROW_VERSION}")
-  message(STATUS "Arrow SO version: ${ARROW_FULL_SO_VERSION}")
+  find_package(Arrow)
+  if(Arrow_FOUND)
+    message(STATUS "Arrow version: ${ARROW_VERSION}")
+    message(STATUS "Arrow SO version: ${ARROW_FULL_SO_VERSION}")
 
-  # Give caller the option to link a static version of Arrow C++
-  if(NANOARROW_ARROW_STATIC)
-    set(NANOARROW_ARROW_TARGET arrow_static)
-  else()
-    set(NANOARROW_ARROW_TARGET arrow_shared)
-  endif()
+    # TODO: does this propoagate to projects using as a subproject?
+    add_compile_definitions("-DNANOARROW_ARROW_FOUND")
 
-  # Arrow >= 10.0.0 requires C++17; GTest requires C++11.
-  # Leave the option open to use an older version of Arrow
-  # to make it easier to test on old Linux (e.g., Centos7)
-  if(${ARROW_VERSION} VERSION_GREATER_EQUAL "10.0.0")
-    set(CMAKE_CXX_STANDARD 17)
-  else()
-    set(CMAKE_CXX_STANDARD 11)
+    # Give caller the option to link a static version of Arrow C++
+    if(NANOARROW_ARROW_STATIC)
+      set(NANOARROW_ARROW_TARGET arrow_static)
+    else()
+      set(NANOARROW_ARROW_TARGET arrow_shared)
+    endif()
+
+    # Arrow >= 10.0.0 requires C++17; GTest requires C++11.
+    # Leave the option open to use an older version of Arrow
+    # to make it easier to test on old Linux (e.g., Centos7)
+    if(${ARROW_VERSION} VERSION_GREATER_EQUAL "10.0.0")
+      set(CMAKE_CXX_STANDARD 17)
+    else()
+      set(CMAKE_CXX_STANDARD 11)
+    endif()
+    set(CMAKE_CXX_STANDARD_REQUIRED ON)
   endif()
-  set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
   add_subdirectory("thirdparty/googletest")
 
