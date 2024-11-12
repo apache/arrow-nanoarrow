@@ -116,7 +116,7 @@ class Array(ArrayViewVisitable):
     the Arrow C Stream interface.
 
     Note that an :class:`Array` is not necessarily contiguous in memory (i.e.,
-    it may consist of zero or more ``ArrowArray``s).
+    it may consist of zero or more ``ArrowArray`` objects).
 
     Parameters
     ----------
