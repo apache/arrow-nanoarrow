@@ -256,7 +256,6 @@ TEST(AllocatorTest, AllocatorTestMemoryPool) {
 #endif
 }
 
-#if defined(NANOARROW_BUILD_TESTS_WITH_ARROW)
 TEST(DecimalTest, Decimal128Test) {
   struct ArrowDecimal decimal;
   ArrowDecimalInit(&decimal, 128, 10, 3);
@@ -271,6 +270,7 @@ TEST(DecimalTest, Decimal128Test) {
     EXPECT_EQ(decimal.low_word_index - decimal.high_word_index + 1, decimal.n_words);
   }
 
+#if defined(NANOARROW_BUILD_TESTS_WITH_ARROW)
   auto dec_pos = *Decimal128::FromString("12.345");
   uint8_t bytes_pos[16];
   dec_pos.ToBytes(bytes_pos);
@@ -292,8 +292,8 @@ TEST(DecimalTest, Decimal128Test) {
   EXPECT_EQ(memcmp(decimal.words, bytes_neg, sizeof(bytes_neg)), 0);
   ArrowDecimalSetBytes(&decimal, bytes_neg);
   EXPECT_EQ(memcmp(decimal.words, bytes_neg, sizeof(bytes_neg)), 0);
-}
 #endif
+}
 
 TEST(DecimalTest, DecimalNegateTest) {
   using namespace nanoarrow::literals;
@@ -352,7 +352,6 @@ TEST(DecimalTest, DecimalNegateTest) {
   ArrowBufferReset(&buffer);
 }
 
-#if defined(NANOARROW_BUILD_TESTS_WITH_ARROW)
 TEST(DecimalTest, Decimal256Test) {
   using namespace nanoarrow::literals;
 
@@ -369,6 +368,7 @@ TEST(DecimalTest, Decimal256Test) {
     EXPECT_EQ(decimal.low_word_index - decimal.high_word_index + 1, decimal.n_words);
   }
 
+#if defined(NANOARROW_BUILD_TESTS_WITH_ARROW)
   auto dec_pos = *Decimal256::FromString("12.345");
   uint8_t bytes_pos[32];
   dec_pos.ToBytes(bytes_pos);
@@ -390,8 +390,8 @@ TEST(DecimalTest, Decimal256Test) {
   EXPECT_EQ(memcmp(decimal.words, bytes_neg, sizeof(bytes_neg)), 0);
   ArrowDecimalSetBytes(&decimal, bytes_neg);
   EXPECT_EQ(memcmp(decimal.words, bytes_neg, sizeof(bytes_neg)), 0);
-}
 #endif
+}
 
 TEST(DecimalTest, DecimalStringTestBasic) {
   using namespace nanoarrow::literals;

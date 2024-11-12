@@ -126,7 +126,6 @@ TEST(SchemaTest, SchemaInitSimpleError) {
   EXPECT_EQ(schema.release, nullptr);
 }
 
-#if defined(NANOARROW_BUILD_TESTS_WITH_ARROW)
 TEST(SchemaTest, SchemaTestInitNestedList) {
   struct ArrowSchema schema;
 
@@ -134,6 +133,7 @@ TEST(SchemaTest, SchemaTestInitNestedList) {
   EXPECT_STREQ(schema.format, "+l");
   ASSERT_EQ(ArrowSchemaSetType(schema.children[0], NANOARROW_TYPE_INT32), NANOARROW_OK);
 
+#if defined(NANOARROW_BUILD_TESTS_WITH_ARROW)
   auto arrow_type = ImportType(&schema);
   ARROW_EXPECT_OK(arrow_type);
   EXPECT_TRUE(arrow_type.ValueUnsafe()->Equals(list(int32())));
@@ -145,6 +145,9 @@ TEST(SchemaTest, SchemaTestInitNestedList) {
   arrow_type = ImportType(&schema);
   ARROW_EXPECT_OK(arrow_type);
   EXPECT_TRUE(arrow_type.ValueUnsafe()->Equals(large_list(int32())));
+#else
+  ArrowSchemaRelease(&schema);
+#endif
 }
 
 TEST(SchemaTest, SchemaTestInitNestedStruct) {
@@ -156,9 +159,13 @@ TEST(SchemaTest, SchemaTestInitNestedStruct) {
   ASSERT_EQ(ArrowSchemaSetType(schema.children[0], NANOARROW_TYPE_INT32), NANOARROW_OK);
   ASSERT_EQ(ArrowSchemaSetName(schema.children[0], "item"), NANOARROW_OK);
 
+#if defined(NANOARROW_BUILD_TESTS_WITH_ARROW)
   auto arrow_type = ImportType(&schema);
   ARROW_EXPECT_OK(arrow_type);
   EXPECT_TRUE(arrow_type.ValueUnsafe()->Equals(struct_({field("item", int32())})));
+#else
+  ArrowSchemaRelease(&schema);
+#endif
 }
 
 TEST(SchemaTest, SchemaTestInitNestedMap) {
@@ -177,9 +184,13 @@ TEST(SchemaTest, SchemaTestInitNestedMap) {
   EXPECT_FALSE(schema.children[0]->flags & ARROW_FLAG_NULLABLE);
   EXPECT_FALSE(schema.children[0]->children[0]->flags & ARROW_FLAG_NULLABLE);
 
+#if defined(NANOARROW_BUILD_TESTS_WITH_ARROW)
   auto arrow_type = ImportType(&schema);
   ARROW_EXPECT_OK(arrow_type);
   EXPECT_TRUE(arrow_type.ValueUnsafe()->Equals(map(int32(), utf8())));
+#else
+  ArrowSchemaRelease(&schema);
+#endif
 }
 
 TEST(SchemaTest, SchemaInitFixedSize) {
@@ -194,6 +205,7 @@ TEST(SchemaTest, SchemaInitFixedSize) {
             NANOARROW_OK);
   EXPECT_STREQ(schema.format, "w:45");
 
+#if defined(NANOARROW_BUILD_TESTS_WITH_ARROW)
   auto arrow_type = ImportType(&schema);
   ARROW_EXPECT_OK(arrow_type);
   EXPECT_TRUE(arrow_type.ValueUnsafe()->Equals(fixed_size_binary(45)));
@@ -207,6 +219,9 @@ TEST(SchemaTest, SchemaInitFixedSize) {
   arrow_type = ImportType(&schema);
   ARROW_EXPECT_OK(arrow_type);
   EXPECT_TRUE(arrow_type.ValueUnsafe()->Equals(fixed_size_list(int32(), 12)));
+#else
+  ArrowSchemaRelease(&schema);
+#endif
 }
 
 TEST(SchemaTest, SchemaInitDecimal) {
@@ -220,6 +235,7 @@ TEST(SchemaTest, SchemaInitDecimal) {
             NANOARROW_OK);
   EXPECT_STREQ(schema.format, "d:1,2");
 
+#if defined(NANOARROW_BUILD_TESTS_WITH_ARROW)
   auto arrow_type = ImportType(&schema);
   ARROW_EXPECT_OK(arrow_type);
   EXPECT_TRUE(arrow_type.ValueUnsafe()->Equals(decimal128(1, 2)));
@@ -231,8 +247,10 @@ TEST(SchemaTest, SchemaInitDecimal) {
   arrow_type = ImportType(&schema);
   ARROW_EXPECT_OK(arrow_type);
   EXPECT_TRUE(arrow_type.ValueUnsafe()->Equals(decimal256(3, 4)));
-}
+#else
+  ArrowSchemaRelease(&schema);
 #endif
+}
 
 TEST(SchemaTest, SchemaInitRunEndEncoded) {
   struct ArrowSchema schema;
@@ -250,7 +268,8 @@ TEST(SchemaTest, SchemaInitRunEndEncoded) {
 
   ASSERT_EQ(ArrowSchemaSetType(schema.children[1], NANOARROW_TYPE_FLOAT), NANOARROW_OK);
 
-#if !defined(ARROW_VERSION_MAJOR) || ARROW_VERSION_MAJOR < 12
+#if !defined(NANOARROW_BUILD_TESTS_WITH_ARROW) || !defined(ARROW_VERSION_MAJOR) || \
+    ARROW_VERSION_MAJOR < 12
   ArrowSchemaRelease(&schema);
 #else
   auto arrow_type = ImportType(&schema);
@@ -279,7 +298,6 @@ TEST(SchemaTest, SchemaInitRunEndEncoded) {
 #endif
 }
 
-#if defined(NANOARROW_BUILD_TESTS_WITH_ARROW)
 TEST(SchemaTest, SchemaInitDateTime) {
   struct ArrowSchema schema;
 
@@ -326,6 +344,7 @@ TEST(SchemaTest, SchemaInitDateTime) {
             NANOARROW_OK);
   EXPECT_STREQ(schema.format, "tts");
 
+#if defined(NANOARROW_BUILD_TESTS_WITH_ARROW)
   auto arrow_type = ImportType(&schema);
   ARROW_EXPECT_OK(arrow_type);
   EXPECT_TRUE(arrow_type.ValueUnsafe()->Equals(time32(TimeUnit::SECOND)));
@@ -400,6 +419,9 @@ TEST(SchemaTest, SchemaInitDateTime) {
   ARROW_EXPECT_OK(arrow_type);
   EXPECT_TRUE(
       arrow_type.ValueUnsafe()->Equals(timestamp(TimeUnit::SECOND, "America/Halifax")));
+#else
+  ArrowSchemaRelease(&schema);
+#endif
 }
 
 TEST(SchemaTest, SchemaInitUnion) {
@@ -427,6 +449,7 @@ TEST(SchemaTest, SchemaInitUnion) {
   EXPECT_STREQ(schema.format, "+us:0");
   EXPECT_EQ(schema.n_children, 1);
 
+#if defined(NANOARROW_BUILD_TESTS_WITH_ARROW)
   auto arrow_type = ImportType(&schema);
   ARROW_EXPECT_OK(arrow_type);
   EXPECT_TRUE(arrow_type.ValueUnsafe()->Equals(sparse_union({field("u1", int32())})));
@@ -460,8 +483,10 @@ TEST(SchemaTest, SchemaInitUnion) {
   ARROW_EXPECT_OK(arrow_type);
   EXPECT_TRUE(arrow_type.ValueUnsafe()->Equals(
       dense_union({field("u1", int32()), field("u2", utf8())})));
-}
+#else
+  ArrowSchemaRelease(&schema);
 #endif
+}
 
 TEST(SchemaTest, SchemaSetFormat) {
   struct ArrowSchema schema;
