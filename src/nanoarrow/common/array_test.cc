@@ -405,6 +405,8 @@ TEST(ArrayTest, ArrayTestAppendToNullArray) {
   auto expected_array = MakeArrayOfNull(null(), 3);
   ARROW_EXPECT_OK(expected_array);
   EXPECT_TRUE(arrow_array.ValueUnsafe()->Equals(expected_array.ValueUnsafe()));
+#else
+  ArrowArrayRelease(&array);
 #endif
 
   ASSERT_EQ(ArrowArrayInitFromType(&array, NANOARROW_TYPE_NA), NANOARROW_OK);
