@@ -18,14 +18,18 @@
 srcdir = include_directories('../..')  # needed to resolve nanoarrow_config.h
 
 gbench = dependency('benchmark')
-schema_e = executable('schema_benchmark',
-                      'c/schema_benchmark.cc',
-                      include_directories: [srcdir],
-                      dependencies: [gbench, nanoarrow_dep])
+schema_e = executable(
+    'schema_benchmark',
+    'c/schema_benchmark.cc',
+    include_directories: [srcdir],
+    dependencies: [gbench, nanoarrow_dep],
+)
 benchmark('schema benchmark', schema_e)
 
-array_e = executable('array_benchmark',
-                     'c/array_benchmark.cc',
-                      include_directories: [srcdir],
-                     dependencies: [gbench, nanoarrow_dep])
+array_e = executable(
+    'array_benchmark',
+    'c/array_benchmark.cc',
+    include_directories: [srcdir],
+    dependencies: [gbench, nanoarrow_dep],
+)
 benchmark('array benchmark', array_e)

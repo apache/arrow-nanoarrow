@@ -20,14 +20,12 @@ project(
     'cpp',
     license: 'Apache 2.0',
     meson_version: '>=1.3.0',
-    default_options: [
-        'buildtype=release',
-        'warning_level=2',
-        'cpp_std=c++17',
-    ]
+    default_options: ['buildtype=release', 'warning_level=2', 'cpp_std=c++17'],
 )
 
 nanoarrow_dep = dependency('nanoarrow')
-example_exec = executable('example_meson_minimal_app',
-                          'src/app.cc',
-                          dependencies: [nanoarrow_dep])
+example_exec = executable(
+    'example_meson_minimal_app',
+    'src/app.cc',
+    dependencies: [nanoarrow_dep],
+)

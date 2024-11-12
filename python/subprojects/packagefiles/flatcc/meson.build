@@ -15,11 +15,7 @@
 # specific language governing permissions and limitations
 # under the License.
 
-project('flatcc',
-  'c',
-  version : '0.6.1',
-  license : 'Apache-2.0',
-)
+project('flatcc', 'c', version: '0.6.1', license: 'Apache-2.0')
 
 incdir = include_directories('include')
 

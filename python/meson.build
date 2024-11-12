@@ -17,7 +17,8 @@
 
 project(
     'nanoarrow',
-    'c', 'cython',
+    'c',
+    'cython',
     version: run_command(['src/nanoarrow/_version.py', '--print'], check: true).stdout().strip(),
     license: 'Apache-2.0',
     meson_version: '>=1.2.0',

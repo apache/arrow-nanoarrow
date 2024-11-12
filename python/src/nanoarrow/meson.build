@@ -41,13 +41,12 @@ vendored_files = custom_target(
     command: [
         py,
         meson.current_source_dir() + '/../../bootstrap.py',
-        '--output-dir', meson.current_build_dir()
+        '--output-dir',
+        meson.current_build_dir(),
     ],
 )
 
-nanoarrow_pyx_dep = declare_dependency(
-    sources: vendored_files[1],
-)
+nanoarrow_pyx_dep = declare_dependency(sources: vendored_files[1])
 
 cyfiles = [
     '_array.pyx',
@@ -72,23 +71,23 @@ endif
 
 fs = import('fs')
 foreach cyf : cyfiles
-  cyfile_deps = [nanoarrow_pyx_dep, nanoarrow_dep]
+    cyfile_deps = [nanoarrow_pyx_dep, nanoarrow_dep]
 
-  stem = fs.stem(cyf)
-  if stem in ['_array', '_device']
-    cyfile_deps += [nanoarrow_device_dep]
-  elif stem == '_ipc_lib'
-    cyfile_deps += [nanoarrow_ipc_dep, flatcc_dep]
-  endif
+    stem = fs.stem(cyf)
+    if stem in ['_array', '_device']
+        cyfile_deps += [nanoarrow_device_dep]
+    elif stem == '_ipc_lib'
+        cyfile_deps += [nanoarrow_ipc_dep, flatcc_dep]
+    endif
 
-  py.extension_module(
-      stem,
-      sources: [cyf],
-      cython_args: cython_args,
-      dependencies: cyfile_deps,
-      subdir: 'nanoarrow',
-      install: true,
-  )
+    py.extension_module(
+        stem,
+        sources: [cyf],
+        cython_args: cython_args,
+        dependencies: cyfile_deps,
+        subdir: 'nanoarrow',
+        install: true,
+    )
 endforeach
 
 py_sources = [
@@ -109,9 +108,6 @@ py_sources = [
     'visitor.py',
 ]
 
-foreach source: py_sources
-    py.install_sources(
-        source,
-        subdir: 'nanoarrow'
-    )
+foreach source : py_sources
+    py.install_sources(source, subdir: 'nanoarrow')
 endforeach
