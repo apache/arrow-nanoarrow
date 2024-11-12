@@ -44,7 +44,7 @@ jobs:
 
     - name: Install Python dependencies
       run: |
-        pip install pyarrow asv
+        pip install pyarrow numpy asv
 
     - name: Genereate fixtures
       run: |
