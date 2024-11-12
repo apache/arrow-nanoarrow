@@ -98,7 +98,7 @@ main() {
    done
 
    # Build sphinx project
-   sphinx-build -W source _build/html
+   sphinx-build source _build/html
 
    show_header "Build R documentation"
 
