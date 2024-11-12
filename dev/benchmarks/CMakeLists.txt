@@ -31,9 +31,6 @@ if(NOT DEFINED CMAKE_CXX_STANDARD)
   set(CMAKE_CXX_STANDARD_REQUIRED ON)
 endif()
 
-set(NANOARROW_BENCHMARK_VERSION
-    ""
-    CACHE STRING "nanoarrow version to benchmark")
 set(NANOARROW_BENCHMARK_SOURCE_DIR
     ""
     CACHE STRING "path to a nanoarrow source checkout to benchmark" OFF)
@@ -52,20 +49,26 @@ fetchcontent_declare(benchmark
 )
 fetchcontent_makeavailable(benchmark)
 
+# In nanoarrow >= 0.6.0, optional features use NANOARROW_XXX=ON instead
+# of being packaged as separate projects. This is ignored by nanoarrow
+# 0.4.0 and 0.5.0.
+set(NANOARROW_IPC
+    ON
+    CACHE INTERNAL "")
+
 if(IS_DIRECTORY "${NANOARROW_BENCHMARK_SOURCE_URL}")
-  # In nanoarrow >= 0.6.0, optional features use NANOARROW_XXX=ON instead
-  # of being packaged as separate projects.
-  set(NANOARROW_IPC
-      ON
-      CACHE INTERNAL "")
   fetchcontent_declare(nanoarrow SOURCE_DIR "${NANOARROW_BENCHMARK_SOURCE_URL}")
   fetchcontent_makeavailable(nanoarrow)
 elseif(NOT "${NANOARROW_BENCHMARK_SOURCE_URL}" STREQUAL "")
   fetchcontent_declare(nanoarrow URL "${NANOARROW_BENCHMARK_SOURCE_URL}")
-  fetchcontent_declare(nanoarrow_ipc URL "${NANOARROW_BENCHMARK_SOURCE_URL}"
-                                         SOURCE_SUBDIR extensions/nanoarrow_ipc)
   fetchcontent_makeavailable(nanoarrow)
-  fetchcontent_makeavailable(nanoarrow_ipc)
+
+  # nanoarrow 0.4.0 and 0.5.0 packaged IPC in a subdirectory
+  if (NANOARROW_VERSION VERSION_LESS "0.6.0")
+    fetchcontent_declare(nanoarrow_ipc URL "${NANOARROW_BENCHMARK_SOURCE_URL}"
+                                          SOURCE_SUBDIR extensions/nanoarrow_ipc)
+    fetchcontent_makeavailable(nanoarrow_ipc)
+  endif()
 endif()
 
 # Check that either the parent scope or this CMakeLists.txt defines a nanoarrow target
