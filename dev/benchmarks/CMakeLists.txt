@@ -64,9 +64,9 @@ elseif(NOT "${NANOARROW_BENCHMARK_SOURCE_URL}" STREQUAL "")
   fetchcontent_makeavailable(nanoarrow)
 
   # nanoarrow 0.4.0 and 0.5.0 packaged IPC in a subdirectory
-  if (NANOARROW_VERSION VERSION_LESS "0.6.0")
+  if(NANOARROW_VERSION VERSION_LESS "0.6.0")
     fetchcontent_declare(nanoarrow_ipc URL "${NANOARROW_BENCHMARK_SOURCE_URL}"
-                                          SOURCE_SUBDIR extensions/nanoarrow_ipc)
+                                           SOURCE_SUBDIR extensions/nanoarrow_ipc)
     fetchcontent_makeavailable(nanoarrow_ipc)
   endif()
 endif()
