@@ -17,7 +17,7 @@
 
 #include <thread>
 
-#if defined(NANOARROW_ARROW_FOUND)
+#if defined(NANOARROW_BUILD_TESTS_WITH_ARROW)
 #include <arrow/array.h>
 #include <arrow/c/bridge.h>
 #include <arrow/ipc/api.h>
@@ -31,7 +31,7 @@
 
 #include "nanoarrow/nanoarrow_ipc.hpp"
 
-#if defined(NANOARROW_ARROW_FOUND)
+#if defined(NANOARROW_BUILD_TESTS_WITH_ARROW)
 using namespace arrow;
 #endif
 
@@ -469,7 +469,7 @@ TEST(NanoarrowIpcTest, NanoarrowIpcSetSchemaErrors) {
   ArrowIpcDecoderReset(&decoder);
 }
 
-#if defined(NANOARROW_ARROW_FOUND)
+#if defined(NANOARROW_BUILD_TESTS_WITH_ARROW)
 class ArrowTypeParameterizedTestFixture
     : public ::testing::TestWithParam<std::shared_ptr<arrow::DataType>> {
  protected:
@@ -563,7 +563,7 @@ std::string ArrowSchemaToString(const struct ArrowSchema* schema) {
   return out;
 }
 
-#if defined(NANOARROW_ARROW_FOUND)
+#if defined(NANOARROW_BUILD_TESTS_WITH_ARROW)
 TEST_P(ArrowTypeParameterizedTestFixture, NanoarrowIpcNanoarrowTypeRoundtrip) {
   nanoarrow::UniqueSchema schema;
   ASSERT_TRUE(
@@ -735,7 +735,7 @@ TEST(NanoarrowIpcTest, NanoarrowIpcSharedBufferThreadSafeDecode) {
   // We will get a (occasional) memory leak if the atomic counter does not work
 }
 
-#if defined(NANOARROW_ARROW_FOUND)
+#if defined(NANOARROW_BUILD_TESTS_WITH_ARROW)
 TEST_P(ArrowTypeParameterizedTestFixture, NanoarrowIpcArrowArrayRoundtrip) {
   const std::shared_ptr<arrow::DataType>& data_type = GetParam();
   std::shared_ptr<arrow::Schema> dummy_schema =
@@ -826,7 +826,7 @@ void AssertArrayViewIdentical(const struct ArrowArrayView* actual,
   }
 }
 
-#if defined(NANOARROW_ARROW_FOUND)
+#if defined(NANOARROW_BUILD_TESTS_WITH_ARROW)
 TEST_P(ArrowTypeParameterizedTestFixture, NanoarrowIpcNanoarrowArrayRoundtrip) {
   struct ArrowError error;
   nanoarrow::UniqueSchema schema;

@@ -17,7 +17,7 @@
 
 #include <gtest/gtest.h>
 
-#if defined(NANOARROW_ARROW_FOUND)
+#if defined(NANOARROW_BUILD_TESTS_WITH_ARROW)
 #include <arrow/c/bridge.h>
 #include <arrow/config.h>
 #include <arrow/testing/gtest_util.h>
@@ -26,7 +26,7 @@
 
 #include "nanoarrow/nanoarrow.hpp"
 
-#if defined(NANOARROW_ARROW_FOUND)
+#if defined(NANOARROW_BUILD_TESTS_WITH_ARROW)
 using namespace arrow;
 #endif
 
@@ -80,7 +80,7 @@ TEST(SchemaTest, SchemaInit) {
   ArrowSchemaRelease(&schema);
 }
 
-#if defined(NANOARROW_ARROW_FOUND)
+#if defined(NANOARROW_BUILD_TESTS_WITH_ARROW)
 static void ExpectSchemaInitOk(enum ArrowType type,
                                std::shared_ptr<DataType> expected_arrow_type) {
   struct ArrowSchema schema;
@@ -126,7 +126,7 @@ TEST(SchemaTest, SchemaInitSimpleError) {
   EXPECT_EQ(schema.release, nullptr);
 }
 
-#if defined(NANOARROW_ARROW_FOUND)
+#if defined(NANOARROW_BUILD_TESTS_WITH_ARROW)
 TEST(SchemaTest, SchemaTestInitNestedList) {
   struct ArrowSchema schema;
 
@@ -279,7 +279,7 @@ TEST(SchemaTest, SchemaInitRunEndEncoded) {
 #endif
 }
 
-#if defined(NANOARROW_ARROW_FOUND)
+#if defined(NANOARROW_BUILD_TESTS_WITH_ARROW)
 TEST(SchemaTest, SchemaInitDateTime) {
   struct ArrowSchema schema;
 
@@ -515,7 +515,7 @@ TEST(SchemaTest, SchemaAllocateDictionary) {
   ArrowSchemaRelease(&schema);
 }
 
-#if defined(NANOARROW_ARROW_FOUND)
+#if defined(NANOARROW_BUILD_TESTS_WITH_ARROW)
 TEST(SchemaTest, SchemaCopySimpleType) {
   struct ArrowSchema schema;
   ARROW_EXPECT_OK(ExportType(*int32(), &schema));
@@ -683,7 +683,7 @@ TEST(SchemaViewTest, SchemaViewInitErrors) {
   ArrowSchemaRelease(&schema);
 }
 
-#if defined(NANOARROW_ARROW_FOUND)
+#if defined(NANOARROW_BUILD_TESTS_WITH_ARROW)
 void ExpectSimpleTypeOk(std::shared_ptr<DataType> arrow_t, enum ArrowType nanoarrow_t,
                         int bitwidth, const char* formatted) {
   struct ArrowSchema schema;
@@ -752,7 +752,7 @@ TEST(SchemaViewTest, SchemaViewInitSimpleErrors) {
   ArrowSchemaRelease(&schema);
 }
 
-#if defined(NANOARROW_ARROW_FOUND)
+#if defined(NANOARROW_BUILD_TESTS_WITH_ARROW)
 TEST(SchemaViewTest, SchemaViewInitDecimal) {
   struct ArrowSchema schema;
   struct ArrowSchemaView schema_view;
@@ -843,7 +843,7 @@ TEST(SchemaViewTest, SchemaViewInitDecimalErrors) {
   ArrowSchemaRelease(&schema);
 }
 
-#if defined(NANOARROW_ARROW_FOUND)
+#if defined(NANOARROW_BUILD_TESTS_WITH_ARROW)
 TEST(SchemaViewTest, SchemaViewInitBinaryAndString) {
   struct ArrowSchema schema;
   struct ArrowSchemaView schema_view;
@@ -996,7 +996,7 @@ TEST(SchemaViewTest, SchemaViewInitBinaryAndStringErrors) {
   ArrowSchemaRelease(&schema);
 }
 
-#if defined(NANOARROW_ARROW_FOUND)
+#if defined(NANOARROW_BUILD_TESTS_WITH_ARROW)
 TEST(SchemaViewTest, SchemaViewInitTimeDate) {
   struct ArrowSchema schema;
   struct ArrowSchemaView schema_view;
@@ -1213,7 +1213,7 @@ TEST(SchemaViewTest, SchemaViewInitTimeErrors) {
   ArrowSchemaRelease(&schema);
 }
 
-#if defined(NANOARROW_ARROW_FOUND)
+#if defined(NANOARROW_BUILD_TESTS_WITH_ARROW)
 TEST(SchemaViewTest, SchemaViewInitNestedList) {
   struct ArrowSchema schema;
   struct ArrowSchemaView schema_view;
@@ -1295,7 +1295,7 @@ TEST(SchemaViewTest, SchemaViewNestedListErrors) {
   ArrowSchemaRelease(&schema);
 }
 
-#if defined(NANOARROW_ARROW_FOUND)
+#if defined(NANOARROW_BUILD_TESTS_WITH_ARROW)
 TEST(SchemaViewTest, SchemaViewInitNestedStruct) {
   struct ArrowSchema schema;
   struct ArrowSchemaView schema_view;
@@ -1352,7 +1352,7 @@ TEST(SchemaViewTest, SchemaViewInitNestedStructErrors) {
   ArrowSchemaRelease(&schema);
 }
 
-#if defined(NANOARROW_ARROW_FOUND)
+#if defined(NANOARROW_BUILD_TESTS_WITH_ARROW)
 TEST(SchemaViewTest, SchemaViewInitNestedMap) {
   struct ArrowSchema schema;
   struct ArrowSchemaView schema_view;
@@ -1435,7 +1435,7 @@ TEST(SchemaViewTest, SchemaViewInitNestedMapErrors) {
   ArrowSchemaRelease(&schema);
 }
 
-#if defined(NANOARROW_ARROW_FOUND)
+#if defined(NANOARROW_BUILD_TESTS_WITH_ARROW)
 TEST(SchemaViewTest, SchemaViewInitNestedUnion) {
   struct ArrowSchema schema;
   struct ArrowSchemaView schema_view;
@@ -1528,7 +1528,7 @@ TEST(SchemaViewTest, SchemaViewInitInvalidSpecErrors) {
   ArrowSchemaRelease(&schema);
 }
 
-#if defined(NANOARROW_ARROW_FOUND)
+#if defined(NANOARROW_BUILD_TESTS_WITH_ARROW)
 TEST(SchemaViewTest, SchemaViewInitDictionary) {
   struct ArrowSchema schema;
   struct ArrowSchemaView schema_view;
@@ -1565,7 +1565,7 @@ TEST(SchemaViewTest, SchemaViewInitDictionaryErrors) {
   ArrowSchemaRelease(&schema);
 }
 
-#if defined(NANOARROW_ARROW_FOUND)
+#if defined(NANOARROW_BUILD_TESTS_WITH_ARROW)
 TEST(SchemaViewTest, SchemaViewInitExtension) {
   using namespace nanoarrow::literals;
 
@@ -1588,7 +1588,7 @@ TEST(SchemaViewTest, SchemaViewInitExtension) {
 }
 #endif
 
-#if defined(NANOARROW_ARROW_FOUND)
+#if defined(NANOARROW_BUILD_TESTS_WITH_ARROW)
 TEST(SchemaViewTest, SchemaViewInitExtensionDictionary) {
   using namespace nanoarrow::literals;
 

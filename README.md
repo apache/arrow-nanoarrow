@@ -127,13 +127,20 @@ cmake ..
 cmake --build .
 ```
 
-Building nanoarrow with tests currently requires [Arrow C++](https://arrow.apache.org/install/).
-If installed via a system package manager like `apt`, `dnf`, or `brew`, the tests can be
-built with:
+To build nanoarrow along with tests run:
 
 ```sh
 mkdir build && cd build
 cmake .. -DNANOARROW_BUILD_TESTS=ON
+cmake --build .
+```
+
+If you are able to install [Arrow C++](https://arrow.apache.org/install/) you can enable
+more testing:
+
+```sh
+mkdir build && cd build
+cmake .. -DNANOARROW_BUILD_TESTS=ON -DNANOARROW_BUILD_TESTS_WITH_ARROW=ON
 cmake --build .
 ```
 

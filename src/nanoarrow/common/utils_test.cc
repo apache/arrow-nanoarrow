@@ -18,7 +18,7 @@
 #include <cstring>
 #include <string>
 
-#if defined(NANOARROW_ARROW_FOUND)
+#if defined(NANOARROW_BUILD_TESTS_WITH_ARROW)
 #include <arrow/util/decimal.h>
 #endif
 #include <gmock/gmock-matchers.h>
@@ -27,7 +27,7 @@
 #include "nanoarrow/nanoarrow.hpp"
 #include "nanoarrow/nanoarrow_testing.hpp"
 
-#if defined(NANOARROW_ARROW_FOUND)
+#if defined(NANOARROW_BUILD_TESTS_WITH_ARROW)
 using namespace arrow;
 #endif
 
@@ -256,7 +256,7 @@ TEST(AllocatorTest, AllocatorTestMemoryPool) {
 #endif
 }
 
-#if defined(NANOARROW_ARROW_FOUND)
+#if defined(NANOARROW_BUILD_TESTS_WITH_ARROW)
 TEST(DecimalTest, Decimal128Test) {
   struct ArrowDecimal decimal;
   ArrowDecimalInit(&decimal, 128, 10, 3);
@@ -352,7 +352,7 @@ TEST(DecimalTest, DecimalNegateTest) {
   ArrowBufferReset(&buffer);
 }
 
-#if defined(NANOARROW_ARROW_FOUND)
+#if defined(NANOARROW_BUILD_TESTS_WITH_ARROW)
 TEST(DecimalTest, Decimal256Test) {
   using namespace nanoarrow::literals;
 

@@ -16,6 +16,7 @@
 # under the License.
 
 option('tests', type: 'boolean', description: 'Build tests', value: false)
+option('tests_with_arrow', type: 'boolean', description: 'Build tests with Arrow', value: false)
 option('benchmarks', type: 'boolean', description: 'Build benchmarks', value: false)
 option('apps', type: 'boolean', description: 'Build utility applications', value: false)
 option('ipc', type: 'boolean', description: 'Build IPC libraries', value: false)

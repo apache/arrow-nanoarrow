@@ -49,9 +49,11 @@ add_project_arguments(
 
 # The system include suppresses compilation warnings from Arrow
 arrow_dep = dependency('arrow', include_type: 'system', required: false)
-if arrow_dep.found()
-  add_project_arguments('-DNANOARROW_ARROW_FOUND', language : 'c')
-  add_project_arguments('-DNANOARROW_ARROW_FOUND', language : 'cpp')
+if get_option('tests_with_arrow') and not arrow_dep.found()
+  error('tests_with_arrow=true but could not find Arrow')
+elif get_option('tests_with_arrow')
+  add_project_arguments('-DNANOARROW_BUILD_TESTS_WITH_ARROW', language : 'c')
+  add_project_arguments('-DNANOARROW_BUILD_TESTS_WITH_ARROW', language : 'cpp')
 endif
 
 if get_option('buildtype') in ['debug', 'debugoptimized']

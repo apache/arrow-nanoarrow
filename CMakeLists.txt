@@ -45,6 +45,7 @@ option(NANOARROW_DEVICE_WITH_CUDA "Build CUDA libraries" OFF)
 # Development options
 option(NANOARROW_BUILD_APPS "Build utility applications" OFF)
 option(NANOARROW_BUILD_TESTS "Build tests" OFF)
+option(NANOARROW_BUILD_TESTS_WITH_ARROW "Build tests that require Arrow" OFF)
 option(NANOARROW_BUILD_BENCHMARKS "Build benchmarks" OFF)
 option(NANOARROW_BUILD_INTEGRATION_TESTS
        "Build cross-implementation Arrow integration tests" OFF)
@@ -428,7 +429,9 @@ if(NANOARROW_BUILD_TESTS)
     message(STATUS "Arrow SO version: ${ARROW_FULL_SO_VERSION}")
 
     # TODO: does this propoagate to projects using as a subproject?
-    add_compile_definitions("-DNANOARROW_ARROW_FOUND")
+    if(NANOARROW_BUILD_TESTS_WITH_ARROW)
+      add_compile_definitions("-DNANOARROW_BUILD_TESTS_WITH_ARROW")
+    endif()
 
     # Give caller the option to link a static version of Arrow C++
     if(NANOARROW_ARROW_STATIC)
