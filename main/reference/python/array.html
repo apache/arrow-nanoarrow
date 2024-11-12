@@ -393,7 +393,7 @@ representation, encompasing the role of PyArrow’s <code class="docutils litera
 to that of a fully-consumed <code class="docutils literal notranslate"><span class="pre">ArrowArrayStream</span></code> as represented by
 the Arrow C Stream interface.</p>
 <p>Note that an <a class="reference internal" href="#nanoarrow.array.Array" title="nanoarrow.array.Array"><code class="xref py py-class docutils literal notranslate"><span class="pre">Array</span></code></a> is not necessarily contiguous in memory (i.e.,
-it may consist of zero or more <a href="#id1"><span class="problematic" id="id2">``</span></a>ArrowArray``s).</p>
+it may consist of zero or more <code class="docutils literal notranslate"><span class="pre">ArrowArray</span></code> objects).</p>
 <section id="parameters">
 <h2>Parameters<a class="headerlink" href="#parameters" title="Link to this heading">#</a></h2>
 <dl class="simple">
@@ -421,8 +421,8 @@ Defaults to the CPU device.</p>
 <dt class="sig sig-object py" id="nanoarrow.array.Array.buffer">
 <span class="sig-name descname"><span class="pre">buffer</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">i</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">CBufferView</span></span></span><a class="headerlink" href="#nanoarrow.array.Array.buffer" title="Link to this definition">#</a></dt>
 <dd><p>Access a single buffer of a contiguous array</p>
-<section id="id3">
-<h3>Examples<a class="headerlink" href="#id3" title="Link to this heading">#</a></h3>
+<section id="id1">
+<h3>Examples<a class="headerlink" href="#id1" title="Link to this heading">#</a></h3>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">nanoarrow</span> <span class="k">as</span> <span class="nn">na</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">array</span> <span class="o">=</span> <span class="n">na</span><span class="o">.</span><span class="n">Array</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span> <span class="n">na</span><span class="o">.</span><span class="n">int32</span><span class="p">())</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">array</span><span class="o">.</span><span class="n">buffer</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
@@ -436,8 +436,8 @@ Defaults to the CPU device.</p>
 <dt class="sig sig-object py" id="nanoarrow.array.Array.buffers">
 <em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">buffers</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">CBufferView</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#nanoarrow.array.Array.buffers" title="Link to this definition">#</a></dt>
 <dd><p>Access buffers of a contiguous array.</p>
-<section id="id4">
-<h3>Examples<a class="headerlink" href="#id4" title="Link to this heading">#</a></h3>
+<section id="id2">
+<h3>Examples<a class="headerlink" href="#id2" title="Link to this heading">#</a></h3>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">nanoarrow</span> <span class="k">as</span> <span class="nn">na</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">array</span> <span class="o">=</span> <span class="n">na</span><span class="o">.</span><span class="n">Array</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span> <span class="n">na</span><span class="o">.</span><span class="n">int32</span><span class="p">())</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="k">for</span> <span class="n">buffer</span> <span class="ow">in</span> <span class="n">array</span><span class="o">.</span><span class="n">buffers</span><span class="p">:</span>
@@ -453,15 +453,15 @@ Defaults to the CPU device.</p>
 <dt class="sig sig-object py" id="nanoarrow.array.Array.child">
 <span class="sig-name descname"><span class="pre">child</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">i</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#nanoarrow.array.Array.child" title="Link to this definition">#</a></dt>
 <dd><p>Borrow a child Array from its parent.</p>
-<section id="id5">
-<h3>Parameters<a class="headerlink" href="#id5" title="Link to this heading">#</a></h3>
+<section id="id3">
+<h3>Parameters<a class="headerlink" href="#id3" title="Link to this heading">#</a></h3>
 <dl class="simple">
 <dt>i<span class="classifier">int</span></dt><dd><p>The index of the child to return.</p>
 </dd>
 </dl>
 </section>
-<section id="id6">
-<h3>Examples<a class="headerlink" href="#id6" title="Link to this heading">#</a></h3>
+<section id="id4">
+<h3>Examples<a class="headerlink" href="#id4" title="Link to this heading">#</a></h3>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">nanoarrow</span> <span class="k">as</span> <span class="nn">na</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">pyarrow</span> <span class="k">as</span> <span class="nn">pa</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">batch</span> <span class="o">=</span> <span class="n">pa</span><span class="o">.</span><span class="n">record_batch</span><span class="p">(</span>
@@ -483,15 +483,15 @@ Defaults to the CPU device.</p>
 <dt class="sig sig-object py" id="nanoarrow.array.Array.chunk">
 <span class="sig-name descname"><span class="pre">chunk</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">i</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#nanoarrow.array.Array.chunk" title="Link to this definition">#</a></dt>
 <dd><p>Extract a single contiguous Array from the underlying representation.</p>
-<section id="id7">
-<h3>Parameters<a class="headerlink" href="#id7" title="Link to this heading">#</a></h3>
+<section id="id5">
+<h3>Parameters<a class="headerlink" href="#id5" title="Link to this heading">#</a></h3>
 <dl class="simple">
 <dt>i<span class="classifier">int</span></dt><dd><p>The index of the chunk to extract.</p>
 </dd>
 </dl>
 </section>
-<section id="id8">
-<h3>Examples<a class="headerlink" href="#id8" title="Link to this heading">#</a></h3>
+<section id="id6">
+<h3>Examples<a class="headerlink" href="#id6" title="Link to this heading">#</a></h3>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">nanoarrow</span> <span class="k">as</span> <span class="nn">na</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">array</span> <span class="o">=</span> <span class="n">na</span><span class="o">.</span><span class="n">Array</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span> <span class="n">na</span><span class="o">.</span><span class="n">int32</span><span class="p">())</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">array</span><span class="o">.</span><span class="n">chunk</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
@@ -508,8 +508,8 @@ Defaults to the CPU device.</p>
 <dt class="sig sig-object py" id="nanoarrow.array.Array.device">
 <em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">device</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Device</span></em><a class="headerlink" href="#nanoarrow.array.Array.device" title="Link to this definition">#</a></dt>
 <dd><p>Get the device on which the buffers for this array are allocated</p>
-<section id="id9">
-<h3>Examples<a class="headerlink" href="#id9" title="Link to this heading">#</a></h3>
+<section id="id7">
+<h3>Examples<a class="headerlink" href="#id7" title="Link to this heading">#</a></h3>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">nanoarrow</span> <span class="k">as</span> <span class="nn">na</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">array</span> <span class="o">=</span> <span class="n">na</span><span class="o">.</span><span class="n">Array</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span> <span class="n">na</span><span class="o">.</span><span class="n">int32</span><span class="p">())</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">array</span><span class="o">.</span><span class="n">device</span>
@@ -527,8 +527,8 @@ Defaults to the CPU device.</p>
 <dd><p>Create an Array with explicit chunks</p>
 <p>Creates an <a class="reference internal" href="#nanoarrow.array.Array" title="nanoarrow.array.Array"><code class="xref py py-class docutils literal notranslate"><span class="pre">Array</span></code></a> with explicit chunking from an iterable of
 objects that can be converted to a <code class="xref py py-func docutils literal notranslate"><span class="pre">c_array()</span></code>.</p>
-<section id="id10">
-<h3>Parameters<a class="headerlink" href="#id10" title="Link to this heading">#</a></h3>
+<section id="id8">
+<h3>Parameters<a class="headerlink" href="#id8" title="Link to this heading">#</a></h3>
 <dl class="simple">
 <dt>obj<span class="classifier">iterable of array-like</span></dt><dd><p>An iterable of objects that can be passed to <code class="xref py py-func docutils literal notranslate"><span class="pre">c_array()</span></code>.</p>
 </dd>
@@ -541,8 +541,8 @@ this array.</p>
 </dd>
 </dl>
 </section>
-<section id="id11">
-<h3>Examples<a class="headerlink" href="#id11" title="Link to this heading">#</a></h3>
+<section id="id9">
+<h3>Examples<a class="headerlink" href="#id9" title="Link to this heading">#</a></h3>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">nanoarrow</span> <span class="k">as</span> <span class="nn">na</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">na</span><span class="o">.</span><span class="n">Array</span><span class="o">.</span><span class="n">from_chunks</span><span class="p">([[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span> <span class="p">[</span><span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">6</span><span class="p">]],</span> <span class="n">na</span><span class="o">.</span><span class="n">int32</span><span class="p">())</span>
 <span class="go">nanoarrow.Array&lt;int32&gt;[6]</span>
@@ -568,8 +568,8 @@ and children arrays).</p>
 <dt class="sig sig-object py" id="nanoarrow.array.Array.iter_children">
 <span class="sig-name descname"><span class="pre">iter_children</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Iterable</span></span></span><a class="headerlink" href="#nanoarrow.array.Array.iter_children" title="Link to this definition">#</a></dt>
 <dd><p>Iterate over children of this Array</p>
-<section id="id12">
-<h3>Examples<a class="headerlink" href="#id12" title="Link to this heading">#</a></h3>
+<section id="id10">
+<h3>Examples<a class="headerlink" href="#id10" title="Link to this heading">#</a></h3>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">nanoarrow</span> <span class="k">as</span> <span class="nn">na</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">pyarrow</span> <span class="k">as</span> <span class="nn">pa</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">batch</span> <span class="o">=</span> <span class="n">pa</span><span class="o">.</span><span class="n">record_batch</span><span class="p">(</span>
@@ -596,8 +596,8 @@ and children arrays).</p>
 <dt class="sig sig-object py" id="nanoarrow.array.Array.iter_chunk_views">
 <span class="sig-name descname"><span class="pre">iter_chunk_views</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Iterable</span><span class="p"><span class="pre">[</span></span><span class="pre">CArrayView</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#nanoarrow.array.Array.iter_chunk_views" title="Link to this definition">#</a></dt>
 <dd><p>Iterate over prepared views of each chunk</p>
-<section id="id13">
-<h3>Examples<a class="headerlink" href="#id13" title="Link to this heading">#</a></h3>
+<section id="id11">
+<h3>Examples<a class="headerlink" href="#id11" title="Link to this heading">#</a></h3>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">nanoarrow</span> <span class="k">as</span> <span class="nn">na</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">array</span> <span class="o">=</span> <span class="n">na</span><span class="o">.</span><span class="n">Array</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span> <span class="n">na</span><span class="o">.</span><span class="n">int32</span><span class="p">())</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="k">for</span> <span class="n">view</span> <span class="ow">in</span> <span class="n">array</span><span class="o">.</span><span class="n">iter_chunk_views</span><span class="p">():</span>
@@ -619,8 +619,8 @@ and children arrays).</p>
 <span class="sig-name descname"><span class="pre">iter_chunks</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Iterable</span></span></span><a class="headerlink" href="#nanoarrow.array.Array.iter_chunks" title="Link to this definition">#</a></dt>
 <dd><p>Iterate over Arrays in the underlying representation whose buffers are
 contiguous in memory.</p>
-<section id="id14">
-<h3>Examples<a class="headerlink" href="#id14" title="Link to this heading">#</a></h3>
+<section id="id12">
+<h3>Examples<a class="headerlink" href="#id12" title="Link to this heading">#</a></h3>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">nanoarrow</span> <span class="k">as</span> <span class="nn">na</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">array</span> <span class="o">=</span> <span class="n">na</span><span class="o">.</span><span class="n">Array</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span> <span class="n">na</span><span class="o">.</span><span class="n">int32</span><span class="p">())</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="k">for</span> <span class="n">chunk</span> <span class="ow">in</span> <span class="n">array</span><span class="o">.</span><span class="n">iter_chunks</span><span class="p">():</span>
@@ -638,8 +638,8 @@ contiguous in memory.</p>
 <dt class="sig sig-object py" id="nanoarrow.array.Array.iter_py">
 <span class="sig-name descname"><span class="pre">iter_py</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Iterable</span></span></span><a class="headerlink" href="#nanoarrow.array.Array.iter_py" title="Link to this definition">#</a></dt>
 <dd><p>Iterate over the default Python representation of each element.</p>
-<section id="id15">
-<h3>Examples<a class="headerlink" href="#id15" title="Link to this heading">#</a></h3>
+<section id="id13">
+<h3>Examples<a class="headerlink" href="#id13" title="Link to this heading">#</a></h3>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">nanoarrow</span> <span class="k">as</span> <span class="nn">na</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">array</span> <span class="o">=</span> <span class="n">na</span><span class="o">.</span><span class="n">Array</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span> <span class="n">na</span><span class="o">.</span><span class="n">int32</span><span class="p">())</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">array</span><span class="o">.</span><span class="n">iter_py</span><span class="p">():</span>
@@ -656,8 +656,8 @@ contiguous in memory.</p>
 <dt class="sig sig-object py" id="nanoarrow.array.Array.iter_scalar">
 <span class="sig-name descname"><span class="pre">iter_scalar</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Iterable</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#nanoarrow.array.Scalar" title="nanoarrow.array.Scalar"><span class="pre">Scalar</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#nanoarrow.array.Array.iter_scalar" title="Link to this definition">#</a></dt>
 <dd><p>Iterate over items as Scalars</p>
-<section id="id16">
-<h3>Examples<a class="headerlink" href="#id16" title="Link to this heading">#</a></h3>
+<section id="id14">
+<h3>Examples<a class="headerlink" href="#id14" title="Link to this heading">#</a></h3>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">nanoarrow</span> <span class="k">as</span> <span class="nn">na</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">array</span> <span class="o">=</span> <span class="n">na</span><span class="o">.</span><span class="n">Array</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span> <span class="n">na</span><span class="o">.</span><span class="n">int32</span><span class="p">())</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">array</span><span class="o">.</span><span class="n">iter_scalar</span><span class="p">():</span>
@@ -674,8 +674,8 @@ contiguous in memory.</p>
 <dt class="sig sig-object py" id="nanoarrow.array.Array.iter_tuples">
 <span class="sig-name descname"><span class="pre">iter_tuples</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Iterable</span><span class="p"><span class="pre">[</span></span><span class="pre">Tuple</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#nanoarrow.array.Array.iter_tuples" title="Link to this definition">#</a></dt>
 <dd><p>Iterate over rows of a struct array as tuples.</p>
-<section id="id17">
-<h3>Examples<a class="headerlink" href="#id17" title="Link to this heading">#</a></h3>
+<section id="id15">
+<h3>Examples<a class="headerlink" href="#id15" title="Link to this heading">#</a></h3>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">nanoarrow</span> <span class="k">as</span> <span class="nn">na</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">pyarrow</span> <span class="k">as</span> <span class="nn">pa</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">batch</span> <span class="o">=</span> <span class="n">pa</span><span class="o">.</span><span class="n">record_batch</span><span class="p">(</span>
@@ -697,8 +697,8 @@ contiguous in memory.</p>
 <dt class="sig sig-object py" id="nanoarrow.array.Array.n_buffers">
 <em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">n_buffers</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></em><a class="headerlink" href="#nanoarrow.array.Array.n_buffers" title="Link to this definition">#</a></dt>
 <dd><p>Get the number of buffers in each chunk of this Array</p>
-<section id="id18">
-<h3>Examples<a class="headerlink" href="#id18" title="Link to this heading">#</a></h3>
+<section id="id16">
+<h3>Examples<a class="headerlink" href="#id16" title="Link to this heading">#</a></h3>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">nanoarrow</span> <span class="k">as</span> <span class="nn">na</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">array</span> <span class="o">=</span> <span class="n">na</span><span class="o">.</span><span class="n">Array</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span> <span class="n">na</span><span class="o">.</span><span class="n">int32</span><span class="p">())</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">array</span><span class="o">.</span><span class="n">n_buffers</span>
@@ -712,8 +712,8 @@ contiguous in memory.</p>
 <dt class="sig sig-object py" id="nanoarrow.array.Array.n_children">
 <em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">n_children</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></em><a class="headerlink" href="#nanoarrow.array.Array.n_children" title="Link to this definition">#</a></dt>
 <dd><p>Get the number of children for an Array of this type.</p>
-<section id="id19">
-<h3>Examples<a class="headerlink" href="#id19" title="Link to this heading">#</a></h3>
+<section id="id17">
+<h3>Examples<a class="headerlink" href="#id17" title="Link to this heading">#</a></h3>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">nanoarrow</span> <span class="k">as</span> <span class="nn">na</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">pyarrow</span> <span class="k">as</span> <span class="nn">pa</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">batch</span> <span class="o">=</span> <span class="n">pa</span><span class="o">.</span><span class="n">record_batch</span><span class="p">(</span>
@@ -732,8 +732,8 @@ contiguous in memory.</p>
 <dt class="sig sig-object py" id="nanoarrow.array.Array.n_chunks">
 <em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">n_chunks</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></em><a class="headerlink" href="#nanoarrow.array.Array.n_chunks" title="Link to this definition">#</a></dt>
 <dd><p>Get the number of chunks in the underlying representation of this Array.</p>
-<section id="id20">
-<h3>Examples<a class="headerlink" href="#id20" title="Link to this heading">#</a></h3>
+<section id="id18">
+<h3>Examples<a class="headerlink" href="#id18" title="Link to this heading">#</a></h3>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">nanoarrow</span> <span class="k">as</span> <span class="nn">na</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">array</span> <span class="o">=</span> <span class="n">na</span><span class="o">.</span><span class="n">Array</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span> <span class="n">na</span><span class="o">.</span><span class="n">int32</span><span class="p">())</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">array</span><span class="o">.</span><span class="n">n_chunks</span>
@@ -747,8 +747,8 @@ contiguous in memory.</p>
 <dt class="sig sig-object py" id="nanoarrow.array.Array.offset">
 <em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">offset</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></em><a class="headerlink" href="#nanoarrow.array.Array.offset" title="Link to this definition">#</a></dt>
 <dd><p>Access the logical offset of a contiguous array</p>
-<section id="id21">
-<h3>Examples<a class="headerlink" href="#id21" title="Link to this heading">#</a></h3>
+<section id="id19">
+<h3>Examples<a class="headerlink" href="#id19" title="Link to this heading">#</a></h3>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">nanoarrow</span> <span class="k">as</span> <span class="nn">na</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">c_array</span> <span class="o">=</span> <span class="n">na</span><span class="o">.</span><span class="n">c_array</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span> <span class="n">na</span><span class="o">.</span><span class="n">int32</span><span class="p">())</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">na</span><span class="o">.</span><span class="n">Array</span><span class="p">(</span><span class="n">c_array</span><span class="p">[</span><span class="mi">1</span><span class="p">:])</span><span class="o">.</span><span class="n">offset</span>
@@ -768,8 +768,8 @@ contiguous in memory.</p>
 <dt class="sig sig-object py" id="nanoarrow.array.Array.serialize">
 <span class="sig-name descname"><span class="pre">serialize</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dst</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">bytes</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span></span><a class="headerlink" href="#nanoarrow.array.Array.serialize" title="Link to this definition">#</a></dt>
 <dd><p>Write this Array into dst as zero or more encapsulated IPC messages</p>
-<section id="id22">
-<h3>Parameters<a class="headerlink" href="#id22" title="Link to this heading">#</a></h3>
+<section id="id20">
+<h3>Parameters<a class="headerlink" href="#id20" title="Link to this heading">#</a></h3>
 <dl class="simple">
 <dt>dst<span class="classifier">file-like, optional</span></dt><dd><p>If present, a file-like object into which the chunks of this array
 should be serialized. If omitted, this will create a <code class="docutils literal notranslate"><span class="pre">io.BytesIO()</span></code>
@@ -793,8 +793,8 @@ an <a class="reference internal" href="#nanoarrow.array.Array" title="nanoarrow.
 <p>Note that it is rarely efficient to iterate over Scalar objects:
 use the iterators in <code class="xref py py-mod docutils literal notranslate"><span class="pre">nanoarrow.iterator</span></code> to more effectively
 iterate over an <a class="reference internal" href="#nanoarrow.array.Array" title="nanoarrow.array.Array"><code class="xref py py-class docutils literal notranslate"><span class="pre">Array</span></code></a>.</p>
-<section id="id23">
-<h2>Examples<a class="headerlink" href="#id23" title="Link to this heading">#</a></h2>
+<section id="id21">
+<h2>Examples<a class="headerlink" href="#id21" title="Link to this heading">#</a></h2>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">nanoarrow</span> <span class="k">as</span> <span class="nn">na</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">array</span> <span class="o">=</span> <span class="n">na</span><span class="o">.</span><span class="n">Array</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span> <span class="n">na</span><span class="o">.</span><span class="n">int32</span><span class="p">())</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">array</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
