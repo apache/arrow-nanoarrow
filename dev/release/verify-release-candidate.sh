@@ -361,7 +361,7 @@ test_python() {
 
     # Ensure we have debug symbols for the build we pass to valgrind
     export NANOARROW_DEBUG_EXTENSION=1
-    pip install -e .
+    pip install .
 
     show_info "Run Python tests with valgrind"
     valgrind --tool=memcheck --leak-check=full --error-exitcode=1 \
