@@ -113,7 +113,8 @@ TEST(SchemaTest, SchemaInitSimple) {
   ExpectSchemaInitOk(NANOARROW_TYPE_INTERVAL_MONTHS, month_interval());
   ExpectSchemaInitOk(NANOARROW_TYPE_INTERVAL_DAY_TIME, day_time_interval());
   ExpectSchemaInitOk(NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO, month_day_nano_interval());
-#if defined(ARROW_VERSION_MAJOR) && ARROW_VERSION_MAJOR >= 15
+#if defined(NANOARROW_BUILD_TESTS_WITH_ARROW) && defined(ARROW_VERSION_MAJOR) && \
+    ARROW_VERSION_MAJOR >= 15
   ExpectSchemaInitOk(NANOARROW_TYPE_STRING_VIEW, utf8_view());
   ExpectSchemaInitOk(NANOARROW_TYPE_BINARY_VIEW, binary_view());
 #endif
@@ -590,7 +591,8 @@ TEST(SchemaTest, SchemaCopyDictType) {
 }
 
 TEST(SchemaTest, SchemaCopyRunEndEncodedType) {
-#if !defined(ARROW_VERSION_MAJOR) || ARROW_VERSION_MAJOR < 12
+#if !defined(NANOARROW_BUILD_TESTS_WITH_ARROW) || !defined(ARROW_VERSION_MAJOR) || \
+    ARROW_VERSION_MAJOR < 12
   GTEST_SKIP() << "Arrow C++ REE integration test requires ARROW_VERSION_MAJOR >= 12";
 #else
   struct ArrowSchema schema;
@@ -957,7 +959,8 @@ TEST(SchemaViewTest, SchemaViewInitBinaryAndString) {
 }
 
 TEST(SchemaViewTest, SchemaViewInitBinaryAndStringView) {
-#if defined(ARROW_VERSION_MAJOR) && ARROW_VERSION_MAJOR >= 15
+#if defined(NANOARROW_BUILD_TESTS_WITH_ARROW) && defined(ARROW_VERSION_MAJOR) && \
+    ARROW_VERSION_MAJOR >= 15
   struct ArrowSchema schema;
   struct ArrowSchemaView schema_view;
   struct ArrowError error;

@@ -423,8 +423,8 @@ if(NANOARROW_BUILD_TESTS)
   )
   include(CTest)
 
-  find_package(Arrow)
-  if(Arrow_FOUND)
+  if(NANOARROW_BUILD_TESTS_WITH_ARROW)
+    find_package(Arrow REQUIRED)
     message(STATUS "Arrow version: ${ARROW_VERSION}")
     message(STATUS "Arrow SO version: ${ARROW_FULL_SO_VERSION}")
 

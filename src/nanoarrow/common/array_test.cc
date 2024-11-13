@@ -33,7 +33,8 @@
 #include <arrow/config.h>
 #include <arrow/util/decimal.h>
 
-#if defined(ARROW_VERSION_MAJOR) && ARROW_VERSION_MAJOR >= 12
+#if defined(NANOARROW_BUILD_TESTS_WITH_ARROW) && defined(ARROW_VERSION_MAJOR) && \
+    ARROW_VERSION_MAJOR >= 12
 #include <arrow/array/builder_run_end.h>
 #endif
 #endif

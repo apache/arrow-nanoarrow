@@ -101,13 +101,21 @@ jobs:
         if: matrix.config.label == 'windows'
         shell: bash
         run: |
-          echo "NANOARROW_CMAKE_OPTIONS=${NANOARROW_CMAKE_OPTIONS} -DNANOARROW_ARROW_STATIC=ON -DArrow_DIR=$(pwd -W)/arrow/lib/cmake/Arrow -Dgtest_force_shared_crt=ON" >> $GITHUB_ENV
+          cat << EOF | tr '\n' ' ' >> $GITHUB_ENV
+          NANOARROW_CMAKE_OPTIONS=${NANOARROW_CMAKE_OPTIONS}
+          -DNANOARROW_ARROW_STATIC=ON
+          -DNANOARROW_BUILD_TESTS_WITH_ARROW=ON
+          -DArrow_DIR=$(pwd -W)/arrow/lib/cmake/Arrow
+          -Dgtest_force_shared_crt=ON
 
       - name: Set CMake options (POSIX)
         if: matrix.config.label != 'windows'
         shell: bash
         run: |
-          echo "NANOARROW_CMAKE_OPTIONS=${NANOARROW_CMAKE_OPTIONS} -DArrow_DIR=$(pwd)/arrow/lib/cmake/Arrow" >> $GITHUB_ENV
+          cat << EOF | tr '\n' ' ' >> $GITHUB_ENV
+          NANOARROW_CMAKE_OPTIONS=${NANOARROW_CMAKE_OPTIONS}
+          -DNANOARROW_BUILD_TESTS_WITH_ARROW=ON
+          -DArrow_DIR=$(pwd)/arrow/lib/cmake/Arrow
 
       - name: Run dev/release/verify-release-candidate.sh
         shell: bash
