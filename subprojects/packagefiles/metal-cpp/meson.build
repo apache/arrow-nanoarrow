@@ -15,11 +15,7 @@
 # specific language governing permissions and limitations
 # under the License.
 
-project(
-  'metal-cpp',
-  'cpp',
-  license : 'Apache-2.0',
-)
+project('metal-cpp', 'cpp', license: 'Apache-2.0')
 
 incdir = include_directories('.')
 metal_cpp_dep = declare_dependency(include_directories: incdir)

@@ -25,8 +25,10 @@ version = meson.project_version()
 version_no_pre_release = version.split('-')[0]
 version_no_build = version_no_pre_release.split('+')[0]
 components = version_no_build.split('.')
-assert(components.length() >= 3,
-       'The version does not contain major, minor and patch')
+assert(
+    components.length() >= 3,
+    'The version does not contain major, minor and patch',
+)
 ver_major = components[0]
 ver_minor = components[1]
 ver_patch = components[2]

@@ -67,5 +67,13 @@ repos:
             (?x)
             ^thirdparty
             |flatcc_generated.h
+  - repo: local
+    hooks:
+    -  id: meson-format
+       name: meson-format
+       language: python
+       additional_dependencies: ['meson==1.6.0']
+       entry: meson format -i
+       files: meson.build
 
 exclude: "^dist"

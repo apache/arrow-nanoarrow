@@ -19,11 +19,7 @@ project(
     'nanoarrow-python-demo',
     'c',
     version: '0.0.1dev',
-    default_options: [
-        'warning_level=2',
-        'c_std=c17',
-        'default_library=static',
-    ],
+    default_options: ['warning_level=2', 'c_std=c17', 'default_library=static'],
 )
 
 py = import('python').find_installation()
@@ -31,9 +27,7 @@ nanoarrow_dep = dependency('nanoarrow')
 
 py.extension_module(
     'schema_printer',
-    sources: [
-        'src/nanoarrow_python_demo/schema_printer.c'
-    ],
+    sources: ['src/nanoarrow_python_demo/schema_printer.c'],
     dependencies: [nanoarrow_dep],
     install: true,
 )
