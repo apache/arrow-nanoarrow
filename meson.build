@@ -205,14 +205,17 @@ if get_option('tests')
     # wrap the tests with valgrind via `meson test --wrap=valgrind`. See
     # https://mesonbuild.com/Unit-tests.html
 
+    # Similarly code coverage has a built in option users should use instead
+    # https://mesonbuild.com/Unit-tests.html#coverage
+
     arrow_dep = dependency('arrow', include_type: 'system', required: false)
     if get_option('tests_with_arrow') and not arrow_dep.found()
-      error('tests_with_arrow=true but could not find Arrow')
+        error('tests_with_arrow=true but could not find Arrow')
     endif
 
     test_cpp_args = []
     if get_option('tests_with_arrow')
-      test_cpp_args += ['-DNANOARROW_BUILD_TESTS_WITH_ARROW']
+        test_cpp_args += ['-DNANOARROW_BUILD_TESTS_WITH_ARROW']
     endif
 
     gtest_dep = dependency('gtest_main')
@@ -340,119 +343,6 @@ if get_option('tests')
             )
             test('nanoarrow-device-metal', exc)
         endif
-=======
-  foreach name : nanoarrow_tests
-    exc = executable(
-        name + '-test',
-        sources: 'src/nanoarrow/common/' + name.replace('-', '_') + '_test.cc',
-        include_directories: incdir,
-        dependencies: [nanoarrow_testing_dep, arrow_dep, gtest_dep, gmock_dep],
-        cpp_args: test_cpp_args,
-    )
-    test(name, exc)
-  endforeach
-
-  nanoarrow_hpp_tests = ['array_stream', 'buffer', 'exception', 'unique', 'view']
-
-  foreach name : nanoarrow_hpp_tests
-    exc = executable(
-        'hpp-' + name + '-test',
-        sources: 'src/nanoarrow/hpp/' + name.replace('-', '_') + '_test.cc',
-        include_directories: incdir,
-        dependencies: [nanoarrow_testing_dep, gtest_dep, gmock_dep],
-        cpp_args: test_cpp_args,
-    )
-    test(name, exc)
-  endforeach
-
-  testing_test = executable(
-      'nanoarrow-testing-test',
-      'src/nanoarrow/testing/testing_test.cc',
-      include_directories: incdir,
-      dependencies: [nanoarrow_testing_dep, arrow_dep, gtest_dep],
-      cpp_args: test_cpp_args,
-  )
-  test('nanoarrow-testing-test', testing_test)
-
-  c_data_integration_test = executable(
-      'c-data-integration-test',
-      'src/nanoarrow/integration/c_data_integration_test.cc',
-      link_with: [c_data_integration_lib],
-      dependencies: [nanoarrow_testing_dep, arrow_dep, gtest_dep],
-      include_directories: incdir,
-      cpp_args: test_cpp_args,
-  )
-  test('c-data-integration', c_data_integration_test)
-
-  if get_option('ipc')
-      zlib_dep = dependency('zlib')
-      ipc_test_files = {
-          'ipc-decoder': {
-              'src': 'decoder',
-              'deps': [nanoarrow_ipc_dep, flatcc_dep, arrow_dep, gtest_dep, gmock_dep],
-              'timeout': 30,
-          },
-          'ipc-reader': {
-              'src': 'reader',
-              'deps': [nanoarrow_ipc_dep, arrow_dep, gtest_dep],
-              # the ipc reader test can take longer when executed
-              # under valgrind, hence the increased timeout
-              'timeout': 90,
-
-          },
-          'ipc-files': {
-              'src': 'files',
-              'deps': [
-                  nanoarrow_testing_dep,
-                  nanoarrow_ipc_dep,
-                  flatcc_dep,
-                  zlib_dep,
-                  arrow_dep,
-                  gtest_dep,
-              ],
-              'timeout': 30,
-          },
-          'ipc-hpp': {
-              'src': 'ipc_hpp',
-              'deps': [nanoarrow_testing_dep, nanoarrow_ipc_dep, gtest_dep],
-              'timeout': 30,
-          },
-      }
-
-      foreach name, config : ipc_test_files
-          exc = executable(
-              'nanoarrow-' + name + '-test',
-              'src/nanoarrow/ipc/' + config['src'] + '_test.cc',
-              dependencies: config['deps'],
-              cpp_args: test_cpp_args,
-          )
-          test(name, exc, timeout: config['timeout'])
-      endforeach
-  endif
-
-  if needs_device
-    device_tests = ['device', 'device_hpp']
-    foreach device_test : device_tests
-      exc = executable(
-          'nanoarrow-' + device_test.replace('_', '-') + '-test',
-          'src/nanoarrow/device/' + device_test + '_test.cc',
-          link_with: nanoarrow_device_lib,
-          dependencies: [nanoarrow_testing_dep, gtest_dep],
-          cpp_args: test_cpp_args,
-      )
-      test(device_test.replace('_', '-'), exc)
-    endforeach
-
-    if get_option('metal')
-      exc = executable(
-          'nanoarrow-device-metal-test',
-          'src/nanoarrow/device/metal_test.cc',
-          link_with: nanoarrow_device_lib,
-          dependencies: [nanoarrow_testing_dep, gtest_dep, metal_cpp_dep],
-          cpp_args: test_cpp_args,
-      )
-      test('nanoarrow-device-metal', exc)
->>>>>>> a580e29 (Meson configuration cleanup)
     endif
 endif
 
