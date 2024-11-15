@@ -429,6 +429,14 @@ static int ArrowIpcDecoderSetTypeDecimal(struct ArrowSchema* schema,
 
   int result;
   switch (bitwidth) {
+    case 32:
+      result =
+          ArrowSchemaSetTypeDecimal(schema, NANOARROW_TYPE_DECIMAL32, precision, scale);
+      break;
+    case 64:
+      result =
+          ArrowSchemaSetTypeDecimal(schema, NANOARROW_TYPE_DECIMAL64, precision, scale);
+      break;
     case 128:
       result =
           ArrowSchemaSetTypeDecimal(schema, NANOARROW_TYPE_DECIMAL128, precision, scale);
@@ -1538,13 +1546,20 @@ static int ArrowIpcDecoderSwapEndian(struct ArrowIpcBufferSource* src,
   }
 
   switch (src->data_type) {
+    case NANOARROW_TYPE_DECIMAL32:
+      uint32_t* ptr = (uint32_t*)dst->data;
+      for (int64_t i = 0; i < (dst->size_bytes / 4); i++) {
+        ptr[i] = bswap32(out_view->data.as_uint32[i]);
+      }
+      break;
+    case NANOARROW_TYPE_DECIMAL64:
     case NANOARROW_TYPE_DECIMAL128:
     case NANOARROW_TYPE_DECIMAL256: {
       const uint64_t* ptr_src = out_view->data.as_uint64;
       uint64_t* ptr_dst = (uint64_t*)dst->data;
       uint64_t words[4];
       int n_words = (int)(src->element_size_bits / 64);
-      NANOARROW_DCHECK(n_words == 2 || n_words == 4);
+      NANOARROW_DCHECK(n_words == 1 || n_words == 2 || n_words == 4);
 
       for (int64_t i = 0; i < (dst->size_bytes / n_words / 8); i++) {
         for (int j = 0; j < n_words; j++) {

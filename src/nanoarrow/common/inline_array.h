@@ -700,6 +700,22 @@ static inline ArrowErrorCode ArrowArrayAppendDecimal(struct ArrowArray* array,
   struct ArrowBuffer* data_buffer = ArrowArrayBuffer(array, 1);
 
   switch (private_data->storage_type) {
+    case NANOARROW_TYPE_DECIMAL32:
+      if (value->n_words != 0) {
+        return EINVAL;
+      } else {
+        NANOARROW_RETURN_NOT_OK(
+            ArrowBufferAppend(data_buffer, value->words, sizeof(uint32_t)));
+        break;
+      }
+    case NANOARROW_TYPE_DECIMAL64:
+      if (value->n_words != 1) {
+        return EINVAL;
+      } else {
+        NANOARROW_RETURN_NOT_OK(
+            ArrowBufferAppend(data_buffer, value->words, sizeof(uint64_t)));
+        break;
+      }
     case NANOARROW_TYPE_DECIMAL128:
       if (value->n_words != 2) {
         return EINVAL;

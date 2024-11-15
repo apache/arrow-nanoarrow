@@ -436,6 +436,8 @@ enum ArrowType {
   NANOARROW_TYPE_TIME64,
   NANOARROW_TYPE_INTERVAL_MONTHS,
   NANOARROW_TYPE_INTERVAL_DAY_TIME,
+  NANOARROW_TYPE_DECIMAL32,
+  NANOARROW_TYPE_DECIMAL64,
   NANOARROW_TYPE_DECIMAL128,
   NANOARROW_TYPE_DECIMAL256,
   NANOARROW_TYPE_LIST,
@@ -916,13 +918,14 @@ static inline void ArrowDecimalInit(struct ArrowDecimal* decimal, int32_t bitwid
   memset(decimal->words, 0, sizeof(decimal->words));
   decimal->precision = precision;
   decimal->scale = scale;
+  // n_words will be 0 for bitwidth == 32
   decimal->n_words = (int)(bitwidth / 8 / sizeof(uint64_t));
 
   if (_ArrowIsLittleEndian()) {
     decimal->low_word_index = 0;
-    decimal->high_word_index = decimal->n_words - 1;
+    decimal->high_word_index = decimal->n_words > 0 ? decimal->n_words - 1 : 0;
   } else {
-    decimal->low_word_index = decimal->n_words - 1;
+    decimal->low_word_index = decimal->n_words > 0 ? decimal->n_words - 1 : 0;
     decimal->high_word_index = 0;
   }
 }
@@ -933,6 +936,9 @@ static inline void ArrowDecimalInit(struct ArrowDecimal* decimal, int32_t bitwid
 /// within the signed 64-bit integer range (A precision less than or equal
 /// to 18 is sufficiently small).
 static inline int64_t ArrowDecimalGetIntUnsafe(const struct ArrowDecimal* decimal) {
+  if (decimal->n_words == 0) {
+    return ((int32_t*)decimal->words)[0];
+  }
   return (int64_t)decimal->words[decimal->low_word_index];
 }
 
@@ -940,18 +946,28 @@ static inline int64_t ArrowDecimalGetIntUnsafe(const struct ArrowDecimal* decima
 /// \ingroup nanoarrow-utils
 static inline void ArrowDecimalGetBytes(const struct ArrowDecimal* decimal,
                                         uint8_t* out) {
-  memcpy(out, decimal->words, decimal->n_words * sizeof(uint64_t));
+  memcpy(out, decimal->words,
+         (decimal->n_words > 0 ? decimal->n_words : 1) * sizeof(uint64_t));
 }
 
 /// \brief Returns 1 if the value represented by decimal is >= 0 or -1 otherwise
 /// \ingroup nanoarrow-utils
 static inline int64_t ArrowDecimalSign(const struct ArrowDecimal* decimal) {
+  if (decimal->n_words == 0) {
+    return 1 | (((int32_t*)decimal->words)[0] >> 31);
+  }
+
   return 1 | ((int64_t)(decimal->words[decimal->high_word_index]) >> 63);
 }
 
 /// \brief Sets the integer value of this decimal
 /// \ingroup nanoarrow-utils
 static inline void ArrowDecimalSetInt(struct ArrowDecimal* decimal, int64_t value) {
+  if (decimal->n_words == 0) {
+    ((int32_t*)decimal->words)[0] = (int32_t)value;
+    return;
+  }
+
   if (value < 0) {
     memset(decimal->words, 0xff, decimal->n_words * sizeof(uint64_t));
   } else {
@@ -964,6 +980,11 @@ static inline void ArrowDecimalSetInt(struct ArrowDecimal* decimal, int64_t valu
 /// \brief Negate the value of this decimal in place
 /// \ingroup nanoarrow-utils
 static inline void ArrowDecimalNegate(struct ArrowDecimal* decimal) {
+  if (decimal->n_words == 0) {
+    ((int32_t*)decimal->words)[0] = -((int32_t*)decimal->words)[0];
+    return;
+  }
+
   uint64_t carry = 1;
 
   if (decimal->low_word_index == 0) {
@@ -987,7 +1008,11 @@ static inline void ArrowDecimalNegate(struct ArrowDecimal* decimal) {
 /// \ingroup nanoarrow-utils
 static inline void ArrowDecimalSetBytes(struct ArrowDecimal* decimal,
                                         const uint8_t* value) {
-  memcpy(decimal->words, value, decimal->n_words * sizeof(uint64_t));
+  if (decimal->n_words == 0) {
+    memcpy(decimal->words, value, sizeof(int32_t));
+  } else {
+    memcpy(decimal->words, value, decimal->n_words * sizeof(uint64_t));
+  }
 }
 
 #ifdef __cplusplus
