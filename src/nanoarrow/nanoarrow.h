@@ -369,8 +369,8 @@ ArrowErrorCode ArrowSchemaSetTypeFixedSize(struct ArrowSchema* schema,
 /// \brief Set the format field of a decimal schema
 ///
 /// Returns EINVAL for scale <= 0 or for type that is not
-/// NANOARROW_TYPE_DECIMAL32, NANOARROW_TYPE_DECIMAL64, NANOARROW_TYPE_DECIMAL128 or 
-/// NANOARROW_TYPE_DECIMAL256. Schema must have been initialized using 
+/// NANOARROW_TYPE_DECIMAL32, NANOARROW_TYPE_DECIMAL64, NANOARROW_TYPE_DECIMAL128 or
+/// NANOARROW_TYPE_DECIMAL256. Schema must have been initialized using
 /// ArrowSchemaInit() or ArrowSchemaDeepCopy().
 ArrowErrorCode ArrowSchemaSetTypeDecimal(struct ArrowSchema* schema, enum ArrowType type,
                                          int32_t decimal_precision,
