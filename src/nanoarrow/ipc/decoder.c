@@ -1546,12 +1546,13 @@ static int ArrowIpcDecoderSwapEndian(struct ArrowIpcBufferSource* src,
   }
 
   switch (src->data_type) {
-    case NANOARROW_TYPE_DECIMAL32:
+    case NANOARROW_TYPE_DECIMAL32: {
       uint32_t* ptr = (uint32_t*)dst->data;
       for (int64_t i = 0; i < (dst->size_bytes / 4); i++) {
         ptr[i] = bswap32(out_view->data.as_uint32[i]);
       }
       break;
+    }
     case NANOARROW_TYPE_DECIMAL64:
     case NANOARROW_TYPE_DECIMAL128:
     case NANOARROW_TYPE_DECIMAL256: {
