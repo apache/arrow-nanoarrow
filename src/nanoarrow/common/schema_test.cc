@@ -248,6 +248,22 @@ TEST(SchemaTest, SchemaInitDecimal) {
   arrow_type = ImportType(&schema);
   ARROW_EXPECT_OK(arrow_type);
   EXPECT_TRUE(arrow_type.ValueUnsafe()->Equals(decimal256(3, 4)));
+
+  ArrowSchemaInit(&schema);
+  EXPECT_EQ(ArrowSchemaSetTypeDecimal(&schema, NANOARROW_TYPE_DECIMAL32, 3, 4),
+            NANOARROW_OK);
+  EXPECT_STREQ(schema.format, "d:3,4,32");
+  arrow_type = ImportType(&schema);
+  ARROW_EXPECT_OK(arrow_type);
+  EXPECT_TRUE(arrow_type.ValueUnsafe()->Equals(decimal32(3, 4)));
+
+  ArrowSchemaInit(&schema);
+  EXPECT_EQ(ArrowSchemaSetTypeDecimal(&schema, NANOARROW_TYPE_DECIMAL64, 3, 4),
+            NANOARROW_OK);
+  EXPECT_STREQ(schema.format, "d:3,4,64");
+  arrow_type = ImportType(&schema);
+  ARROW_EXPECT_OK(arrow_type);
+  EXPECT_TRUE(arrow_type.ValueUnsafe()->Equals(decimal64(3, 4)));
 #else
   ArrowSchemaRelease(&schema);
 #endif
@@ -784,6 +800,44 @@ TEST(SchemaViewTest, SchemaViewInitDecimal) {
   struct ArrowSchema schema;
   struct ArrowSchemaView schema_view;
   struct ArrowError error;
+
+  ARROW_EXPECT_OK(ExportType(*decimal32(5, 6), &schema));
+  EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), NANOARROW_OK);
+  EXPECT_EQ(schema_view.type, NANOARROW_TYPE_DECIMAL32);
+  EXPECT_EQ(schema_view.storage_type, NANOARROW_TYPE_DECIMAL32);
+  EXPECT_EQ(schema_view.layout.buffer_type[0], NANOARROW_BUFFER_TYPE_VALIDITY);
+  EXPECT_EQ(schema_view.layout.buffer_type[1], NANOARROW_BUFFER_TYPE_DATA);
+  EXPECT_EQ(schema_view.layout.buffer_type[2], NANOARROW_BUFFER_TYPE_NONE);
+  EXPECT_EQ(schema_view.layout.buffer_data_type[0], NANOARROW_TYPE_BOOL);
+  EXPECT_EQ(schema_view.layout.buffer_data_type[1], NANOARROW_TYPE_DECIMAL32);
+  EXPECT_EQ(schema_view.layout.buffer_data_type[2], NANOARROW_TYPE_UNINITIALIZED);
+  EXPECT_EQ(schema_view.layout.element_size_bits[0], 1);
+  EXPECT_EQ(schema_view.layout.element_size_bits[1], 32);
+  EXPECT_EQ(schema_view.layout.element_size_bits[2], 0);
+  EXPECT_EQ(schema_view.decimal_bitwidth, 32);
+  EXPECT_EQ(schema_view.decimal_precision, 5);
+  EXPECT_EQ(schema_view.decimal_scale, 6);
+  EXPECT_EQ(ArrowSchemaToStdString(&schema), "decimal32(5, 6)");
+  ArrowSchemaRelease(&schema);
+
+  ARROW_EXPECT_OK(ExportType(*decimal64(5, 6), &schema));
+  EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), NANOARROW_OK);
+  EXPECT_EQ(schema_view.type, NANOARROW_TYPE_DECIMAL64);
+  EXPECT_EQ(schema_view.storage_type, NANOARROW_TYPE_DECIMAL64);
+  EXPECT_EQ(schema_view.layout.buffer_type[0], NANOARROW_BUFFER_TYPE_VALIDITY);
+  EXPECT_EQ(schema_view.layout.buffer_type[1], NANOARROW_BUFFER_TYPE_DATA);
+  EXPECT_EQ(schema_view.layout.buffer_type[2], NANOARROW_BUFFER_TYPE_NONE);
+  EXPECT_EQ(schema_view.layout.buffer_data_type[0], NANOARROW_TYPE_BOOL);
+  EXPECT_EQ(schema_view.layout.buffer_data_type[1], NANOARROW_TYPE_DECIMAL64);
+  EXPECT_EQ(schema_view.layout.buffer_data_type[2], NANOARROW_TYPE_UNINITIALIZED);
+  EXPECT_EQ(schema_view.layout.element_size_bits[0], 1);
+  EXPECT_EQ(schema_view.layout.element_size_bits[1], 64);
+  EXPECT_EQ(schema_view.layout.element_size_bits[2], 0);
+  EXPECT_EQ(schema_view.decimal_bitwidth, 64);
+  EXPECT_EQ(schema_view.decimal_precision, 5);
+  EXPECT_EQ(schema_view.decimal_scale, 6);
+  EXPECT_EQ(ArrowSchemaToStdString(&schema), "decimal64(5, 6)");
+  ArrowSchemaRelease(&schema);
 
   ARROW_EXPECT_OK(ExportType(*decimal128(5, 6), &schema));
   EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), NANOARROW_OK);

@@ -512,6 +512,10 @@ static inline const char* ArrowTypeString(enum ArrowType type) {
       return "interval_months";
     case NANOARROW_TYPE_INTERVAL_DAY_TIME:
       return "interval_day_time";
+    case NANOARROW_TYPE_DECIMAL32:
+      return "decimal32";
+    case NANOARROW_TYPE_DECIMAL64:
+      return "decimal64";
     case NANOARROW_TYPE_DECIMAL128:
       return "decimal128";
     case NANOARROW_TYPE_DECIMAL256:
@@ -954,7 +958,7 @@ static inline void ArrowDecimalGetBytes(const struct ArrowDecimal* decimal,
 /// \ingroup nanoarrow-utils
 static inline int64_t ArrowDecimalSign(const struct ArrowDecimal* decimal) {
   if (decimal->n_words == 0) {
-    return 1 | ((int32_t)decimal->words[0] >> 31);
+    return (int64_t)(1 | ((int32_t)(decimal->words[0]) >> 31));
   }
 
   return 1 | ((int64_t)(decimal->words[decimal->high_word_index]) >> 63);
@@ -981,7 +985,9 @@ static inline void ArrowDecimalSetInt(struct ArrowDecimal* decimal, int64_t valu
 /// \ingroup nanoarrow-utils
 static inline void ArrowDecimalNegate(struct ArrowDecimal* decimal) {
   if (decimal->n_words == 0) {
-    decimal->words[0] = -(int32_t)decimal->words[0];
+    uint32_t elem = (uint32_t)decimal->words[0];
+    elem = ~elem + 1;
+    decimal->words[0] = (int32_t)elem;
     return;
   }
 
