@@ -253,17 +253,21 @@ TEST(SchemaTest, SchemaInitDecimal) {
   EXPECT_EQ(ArrowSchemaSetTypeDecimal(&schema, NANOARROW_TYPE_DECIMAL32, 3, 4),
             NANOARROW_OK);
   EXPECT_STREQ(schema.format, "d:3,4,32");
+#if ARROW_MAJOR_VERSION >= 18
   arrow_type = ImportType(&schema);
   ARROW_EXPECT_OK(arrow_type);
   EXPECT_TRUE(arrow_type.ValueUnsafe()->Equals(decimal32(3, 4)));
+#endif
 
   ArrowSchemaInit(&schema);
   EXPECT_EQ(ArrowSchemaSetTypeDecimal(&schema, NANOARROW_TYPE_DECIMAL64, 3, 4),
             NANOARROW_OK);
   EXPECT_STREQ(schema.format, "d:3,4,64");
+#if ARROW_MAJOR_VERSION >= 18
   arrow_type = ImportType(&schema);
   ARROW_EXPECT_OK(arrow_type);
   EXPECT_TRUE(arrow_type.ValueUnsafe()->Equals(decimal64(3, 4)));
+#endif
 #else
   ArrowSchemaRelease(&schema);
 #endif
