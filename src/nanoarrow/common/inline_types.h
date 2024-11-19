@@ -1015,7 +1015,7 @@ static inline void ArrowDecimalNegate(struct ArrowDecimal* decimal) {
 static inline void ArrowDecimalSetBytes(struct ArrowDecimal* decimal,
                                         const uint8_t* value) {
   if (decimal->n_words == 0) {
-    memcpy(decimal->words + sizeof(int32_t), value, sizeof(int32_t));
+    memcpy(decimal->words, value, sizeof(int32_t));
   } else {
     memcpy(decimal->words, value, decimal->n_words * sizeof(uint64_t));
   }

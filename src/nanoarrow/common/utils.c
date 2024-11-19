@@ -363,12 +363,10 @@ ArrowErrorCode ArrowDecimalAppendDigitsToBuffer(const struct ArrowDecimal* decim
   int is_negative = ArrowDecimalSign(decimal) < 0;
 
   uint64_t words_little_endian[4];
-  if (decimal->low_word_index == 0) {
-    if (decimal->n_words > 0) {
-      memcpy(words_little_endian, decimal->words, decimal->n_words * sizeof(uint64_t));
-    } else {
-      memcpy(words_little_endian, decimal->words, sizeof(uint32_t));
-    }
+  if (decimal->n_words == 0) {
+    memcpy(words_little_endian, decimal->words, sizeof(uint32_t));
+  } else if (decimal->low_word_index == 0) {
+    memcpy(words_little_endian, decimal->words, decimal->n_words * sizeof(uint64_t));
   } else {
     for (int i = 0; i < decimal->n_words; i++) {
       words_little_endian[i] = decimal->words[decimal->n_words - i - 1];
