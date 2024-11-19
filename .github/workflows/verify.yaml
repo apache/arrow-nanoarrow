@@ -93,7 +93,7 @@ jobs:
           key: arrow-${{ runner.os }}-${{ runner.arch }}-2
 
       - name: Build Arrow C++
-        if: steps.cache-arrow-build.outputs.cache-hit != 'true' && label != 'windows-win32'
+        if: steps.cache-arrow-build.outputs.cache-hit != 'true' && matrix.config.label != 'windows-win32'
         shell: bash
         run: |
           src/ci/scripts/build-arrow-cpp-minimal.sh 18.0.0 arrow
