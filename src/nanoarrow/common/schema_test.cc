@@ -805,6 +805,7 @@ TEST(SchemaViewTest, SchemaViewInitDecimal) {
   struct ArrowSchemaView schema_view;
   struct ArrowError error;
 
+#if ARROW_MAJOR_VERSION >= 18
   ARROW_EXPECT_OK(ExportType(*decimal32(5, 6), &schema));
   EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), NANOARROW_OK);
   EXPECT_EQ(schema_view.type, NANOARROW_TYPE_DECIMAL32);
@@ -842,6 +843,7 @@ TEST(SchemaViewTest, SchemaViewInitDecimal) {
   EXPECT_EQ(schema_view.decimal_scale, 6);
   EXPECT_EQ(ArrowSchemaToStdString(&schema), "decimal64(5, 6)");
   ArrowSchemaRelease(&schema);
+#endif
 
   ARROW_EXPECT_OK(ExportType(*decimal128(5, 6), &schema));
   EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), NANOARROW_OK);
