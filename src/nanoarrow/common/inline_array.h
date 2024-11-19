@@ -1287,7 +1287,7 @@ static inline void ArrowArrayViewGetDecimalUnsafe(const struct ArrowArrayView* a
       ArrowDecimalSetBytes(out, data_view + (i * 4));
       break;
     case NANOARROW_TYPE_DECIMAL64:
-      ArrowDecimalSetBytes(out, data_view + (i * 8));      
+      ArrowDecimalSetBytes(out, data_view + (i * 8));
       break;
     case NANOARROW_TYPE_DECIMAL128:
       ArrowDecimalSetBytes(out, data_view + (i * 16));
