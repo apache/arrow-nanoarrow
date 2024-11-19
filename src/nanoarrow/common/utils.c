@@ -378,7 +378,9 @@ ArrowErrorCode ArrowDecimalAppendDigitsToBuffer(const struct ArrowDecimal* decim
   // We've already made a copy, so negate that if needed
   if (is_negative) {
     if (decimal->n_words == 0) {
-      words_little_endian[0] = -(int32_t)words_little_endian[0];
+      uint32_t elem = (uint32_t)words_little_endian[0];
+      elem = ~elem + 1;
+      words_little_endian[0] = (int32_t)elem;
     } else {
       uint64_t carry = 1;
       for (int i = 0; i < decimal->n_words; i++) {

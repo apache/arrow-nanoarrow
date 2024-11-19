@@ -257,6 +257,8 @@ TEST(SchemaTest, SchemaInitDecimal) {
   arrow_type = ImportType(&schema);
   ARROW_EXPECT_OK(arrow_type);
   EXPECT_TRUE(arrow_type.ValueUnsafe()->Equals(decimal32(3, 4)));
+#else
+  ArrowSchemaRelease(&schema);
 #endif
 
   ArrowSchemaInit(&schema);
@@ -267,6 +269,8 @@ TEST(SchemaTest, SchemaInitDecimal) {
   arrow_type = ImportType(&schema);
   ARROW_EXPECT_OK(arrow_type);
   EXPECT_TRUE(arrow_type.ValueUnsafe()->Equals(decimal64(3, 4)));
+#else
+  ArrowSchemaRelease(&schema);
 #endif
 #else
   ArrowSchemaRelease(&schema);
