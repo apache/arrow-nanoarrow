@@ -17,10 +17,12 @@
 
 #include <thread>
 
+#if defined(NANOARROW_BUILD_TESTS_WITH_ARROW)
 #include <arrow/array.h>
 #include <arrow/c/bridge.h>
 #include <arrow/ipc/api.h>
 #include <arrow/util/key_value_metadata.h>
+#endif
 #include <gmock/gmock-matchers.h>
 #include <gtest/gtest.h>
 
@@ -29,7 +31,9 @@
 
 #include "nanoarrow/nanoarrow_ipc.hpp"
 
+#if defined(NANOARROW_BUILD_TESTS_WITH_ARROW)
 using namespace arrow;
+#endif
 
 // Copied from decoder.c so we can test the internal state
 extern "C" {
@@ -465,6 +469,7 @@ TEST(NanoarrowIpcTest, NanoarrowIpcSetSchemaErrors) {
   ArrowIpcDecoderReset(&decoder);
 }
 
+#if defined(NANOARROW_BUILD_TESTS_WITH_ARROW)
 class ArrowTypeParameterizedTestFixture
     : public ::testing::TestWithParam<std::shared_ptr<arrow::DataType>> {
  protected:
@@ -500,6 +505,7 @@ TEST_P(ArrowTypeParameterizedTestFixture, NanoarrowIpcArrowTypeRoundtrip) {
 
   ArrowIpcDecoderReset(&decoder);
 }
+#endif
 
 std::string ArrowSchemaMetadataToString(const char* metadata) {
   struct ArrowMetadataReader reader {};
@@ -557,6 +563,7 @@ std::string ArrowSchemaToString(const struct ArrowSchema* schema) {
   return out;
 }
 
+#if defined(NANOARROW_BUILD_TESTS_WITH_ARROW)
 TEST_P(ArrowTypeParameterizedTestFixture, NanoarrowIpcNanoarrowTypeRoundtrip) {
   nanoarrow::UniqueSchema schema;
   ASSERT_TRUE(
@@ -593,6 +600,7 @@ TEST_P(ArrowTypeParameterizedTestFixture, NanoarrowIpcNanoarrowTypeRoundtrip) {
 
   EXPECT_EQ(ArrowSchemaToString(roundtripped.get()), ArrowSchemaToString(schema.get()));
 }
+#endif
 
 TEST(NanoarrowIpcTest, NanoarrowIpcDecodeSimpleRecordBatchFromShared) {
   struct ArrowIpcDecoder decoder;
@@ -727,6 +735,7 @@ TEST(NanoarrowIpcTest, NanoarrowIpcSharedBufferThreadSafeDecode) {
   // We will get a (occasional) memory leak if the atomic counter does not work
 }
 
+#if defined(NANOARROW_BUILD_TESTS_WITH_ARROW)
 TEST_P(ArrowTypeParameterizedTestFixture, NanoarrowIpcArrowArrayRoundtrip) {
   const std::shared_ptr<arrow::DataType>& data_type = GetParam();
   std::shared_ptr<arrow::Schema> dummy_schema =
@@ -792,6 +801,7 @@ TEST_P(ArrowTypeParameterizedTestFixture, NanoarrowIpcArrowArrayRoundtrip) {
   ArrowSchemaRelease(&schema);
   ArrowIpcDecoderReset(&decoder);
 }
+#endif
 
 void AssertArrayViewIdentical(const struct ArrowArrayView* actual,
                               const struct ArrowArrayView* expected) {
@@ -816,6 +826,7 @@ void AssertArrayViewIdentical(const struct ArrowArrayView* actual,
   }
 }
 
+#if defined(NANOARROW_BUILD_TESTS_WITH_ARROW)
 TEST_P(ArrowTypeParameterizedTestFixture, NanoarrowIpcNanoarrowArrayRoundtrip) {
   struct ArrowError error;
   nanoarrow::UniqueSchema schema;
@@ -1224,6 +1235,7 @@ INSTANTIATE_TEST_SUITE_P(NanoarrowIpcTest, ArrowTypeIdParameterizedTestFixture,
                                            NANOARROW_TYPE_DECIMAL128,
                                            NANOARROW_TYPE_DECIMAL256,
                                            NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO));
+#endif
 
 TEST(NanoarrowIpcTest, NanoarrowIpcFooterDecodingErrors) {
   struct ArrowError error;

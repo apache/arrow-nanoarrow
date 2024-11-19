@@ -45,6 +45,7 @@ option(NANOARROW_DEVICE_WITH_CUDA "Build CUDA libraries" OFF)
 # Development options
 option(NANOARROW_BUILD_APPS "Build utility applications" OFF)
 option(NANOARROW_BUILD_TESTS "Build tests" OFF)
+option(NANOARROW_BUILD_TESTS_WITH_ARROW "Build tests that require Arrow" OFF)
 option(NANOARROW_BUILD_BENCHMARKS "Build benchmarks" OFF)
 option(NANOARROW_BUILD_INTEGRATION_TESTS
        "Build cross-implementation Arrow integration tests" OFF)
@@ -422,26 +423,28 @@ if(NANOARROW_BUILD_TESTS)
   )
   include(CTest)
 
-  find_package(Arrow REQUIRED)
-  message(STATUS "Arrow version: ${ARROW_VERSION}")
-  message(STATUS "Arrow SO version: ${ARROW_FULL_SO_VERSION}")
+  if(NANOARROW_BUILD_TESTS_WITH_ARROW)
+    find_package(Arrow REQUIRED)
+    message(STATUS "Arrow version: ${ARROW_VERSION}")
+    message(STATUS "Arrow SO version: ${ARROW_FULL_SO_VERSION}")
 
-  # Give caller the option to link a static version of Arrow C++
-  if(NANOARROW_ARROW_STATIC)
-    set(NANOARROW_ARROW_TARGET arrow_static)
-  else()
-    set(NANOARROW_ARROW_TARGET arrow_shared)
-  endif()
+    # Give caller the option to link a static version of Arrow C++
+    if(NANOARROW_ARROW_STATIC)
+      set(NANOARROW_ARROW_TARGET arrow_static)
+    else()
+      set(NANOARROW_ARROW_TARGET arrow_shared)
+    endif()
 
-  # Arrow >= 10.0.0 requires C++17; GTest requires C++11.
-  # Leave the option open to use an older version of Arrow
-  # to make it easier to test on old Linux (e.g., Centos7)
-  if(${ARROW_VERSION} VERSION_GREATER_EQUAL "10.0.0")
-    set(CMAKE_CXX_STANDARD 17)
-  else()
-    set(CMAKE_CXX_STANDARD 11)
+    # Arrow >= 10.0.0 requires C++17; GTest requires C++11.
+    # Leave the option open to use an older version of Arrow
+    # to make it easier to test on old Linux (e.g., Centos7)
+    if(${ARROW_VERSION} VERSION_GREATER_EQUAL "10.0.0")
+      set(CMAKE_CXX_STANDARD 17)
+    else()
+      set(CMAKE_CXX_STANDARD 11)
+    endif()
+    set(CMAKE_CXX_STANDARD_REQUIRED ON)
   endif()
-  set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
   add_subdirectory("thirdparty/googletest")
 
@@ -517,6 +520,27 @@ if(NANOARROW_BUILD_TESTS)
                         gmock_main
                         nanoarrow_coverage_config)
 
+  list(APPEND
+       NanoarrowTests
+       utils_test
+       buffer_test
+       array_test
+       schema_test
+       array_stream_test
+       nanoarrow_testing_test
+       c_data_integration_test
+       hpp_array_stream
+       hpp_buffer
+       hpp_exception
+       hpp_unique
+       hpp_view)
+  if(Arrow_FOUND)
+    foreach(test_target ${NanoarrowTests})
+      target_compile_definitions(${test_target}
+                                 PRIVATE -DNANOARROW_BUILD_TESTS_WITH_ARROW)
+    endforeach()
+  endif()
+
   include(GoogleTest)
   # Some users have reported a timeout with the default value of 5
   # Building with -DBUILD_SHARED_LIBS=ON may also help reduce the size of test
@@ -569,6 +593,11 @@ if(NANOARROW_BUILD_TESTS)
         target_link_libraries(nanoarrow_ipc_${name}_test flatccrt)
       endif()
 
+      if(Arrow_FOUND)
+        target_compile_definitions(nanoarrow_ipc_${name}_test
+                                   PRIVATE -DNANOARROW_BUILD_TESTS_WITH_ARROW)
+      endif()
+
       gtest_discover_tests(nanoarrow_ipc_${name}_test)
     endforeach()
 
@@ -593,6 +622,13 @@ if(NANOARROW_BUILD_TESTS)
                           gtest_main
                           nanoarrow_coverage_config)
 
+    if(Arrow_FOUND)
+      target_compile_definitions(nanoarrow_device_test
+                                 PRIVATE -DNANOARROW_BUILD_TESTS_WITH_ARROW)
+      target_compile_definitions(nanoarrow_device_hpp_test
+                                 PRIVATE -DNANOARROW_BUILD_TESTS_WITH_ARROW)
+    endif()
+
     include(GoogleTest)
     gtest_discover_tests(nanoarrow_device_test)
     gtest_discover_tests(nanoarrow_device_hpp_test)
@@ -604,6 +640,10 @@ if(NANOARROW_BUILD_TESTS)
                             nanoarrow
                             gtest_main
                             nanoarrow_coverage_config)
+      if(Arrow_FOUND)
+        target_compile_definitions(nanoarrow_device_metal_test
+                                   PRIVATE -DNANOARROW_BUILD_TESTS_WITH_ARROW)
+      endif()
       gtest_discover_tests(nanoarrow_device_metal_test)
     endif()
 
@@ -615,6 +655,10 @@ if(NANOARROW_BUILD_TESTS)
                             CUDA::cuda_driver
                             gtest_main
                             nanoarrow_coverage_config)
+      if(Arrow_FOUND)
+        target_compile_definitions(nanoarrow_device_cuda_test
+                                   PRIVATE -DNANOARROW_BUILD_TESTS_WITH_ARROW)
+      endif()
       gtest_discover_tests(nanoarrow_device_cuda_test)
     endif()
   endif()

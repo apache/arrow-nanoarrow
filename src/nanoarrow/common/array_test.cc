@@ -20,6 +20,7 @@
 #include <cmath>
 #include <cstdint>
 
+#if defined(NANOARROW_BUILD_TESTS_WITH_ARROW)
 #include <arrow/array.h>
 #include <arrow/array/builder_binary.h>
 #include <arrow/array/builder_decimal.h>
@@ -32,13 +33,17 @@
 #include <arrow/config.h>
 #include <arrow/util/decimal.h>
 
-#if defined(ARROW_VERSION_MAJOR) && ARROW_VERSION_MAJOR >= 12
+#if defined(NANOARROW_BUILD_TESTS_WITH_ARROW) && defined(ARROW_VERSION_MAJOR) && \
+    ARROW_VERSION_MAJOR >= 12
 #include <arrow/array/builder_run_end.h>
+#endif
 #endif
 
 #include "nanoarrow/nanoarrow.hpp"
 
+#if defined(NANOARROW_BUILD_TESTS_WITH_ARROW)
 using namespace arrow;
+#endif
 using namespace nanoarrow::literals;
 using nanoarrow::NA;
 using testing::ElementsAre;
@@ -46,6 +51,7 @@ using testing::ElementsAre;
 // Lightweight versions of ArrowTesting's ARROW_EXPECT_OK. This
 // version accomplishes the task of making sure the status message
 // ends up in the ctests log.
+#if defined(NANOARROW_BUILD_TESTS_WITH_ARROW)
 void ARROW_EXPECT_OK(Status status) {
   if (!status.ok()) {
     throw std::runtime_error(status.message());
@@ -57,6 +63,7 @@ void ARROW_EXPECT_OK(Result<std::shared_ptr<Array>> result) {
     throw std::runtime_error(result.status().message());
   }
 }
+#endif
 
 TEST(ArrayTest, ArrayTestInit) {
   struct ArrowArray array;
@@ -393,11 +400,15 @@ TEST(ArrayTest, ArrayTestAppendToNullArray) {
   EXPECT_EQ(array.length, 3);
   EXPECT_EQ(array.null_count, 3);
 
+#if defined(NANOARROW_BUILD_TESTS_WITH_ARROW)
   auto arrow_array = ImportArray(&array, null());
   ARROW_EXPECT_OK(arrow_array);
   auto expected_array = MakeArrayOfNull(null(), 3);
   ARROW_EXPECT_OK(expected_array);
   EXPECT_TRUE(arrow_array.ValueUnsafe()->Equals(expected_array.ValueUnsafe()));
+#else
+  ArrowArrayRelease(&array);
+#endif
 
   ASSERT_EQ(ArrowArrayInitFromType(&array, NANOARROW_TYPE_NA), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayAppendInt(&array, 0), EINVAL);
@@ -434,6 +445,7 @@ TEST(ArrayTest, ArrayTestAppendToInt64Array) {
   EXPECT_EQ(data_buffer[3], 3);
   EXPECT_EQ(data_buffer[4], 0);
 
+#if defined(NANOARROW_BUILD_TESTS_WITH_ARROW)
   auto arrow_array = ImportArray(&array, int64());
   ARROW_EXPECT_OK(arrow_array);
 
@@ -445,6 +457,9 @@ TEST(ArrayTest, ArrayTestAppendToInt64Array) {
   auto expected_array = builder.Finish();
 
   EXPECT_TRUE(arrow_array.ValueUnsafe()->Equals(expected_array.ValueUnsafe()));
+#else
+  ArrowArrayRelease(&array);
+#endif
 }
 
 TEST(ArrayTest, ArrayTestAppendToInt32Array) {
@@ -463,6 +478,7 @@ TEST(ArrayTest, ArrayTestAppendToInt32Array) {
   EXPECT_EQ(array.buffers[0], nullptr);
   EXPECT_EQ(data_buffer[0], 123);
 
+#if defined(NANOARROW_BUILD_TESTS_WITH_ARROW)
   auto arrow_array = ImportArray(&array, int32());
   ARROW_EXPECT_OK(arrow_array);
 
@@ -471,6 +487,9 @@ TEST(ArrayTest, ArrayTestAppendToInt32Array) {
   auto expected_array = builder.Finish();
 
   EXPECT_TRUE(arrow_array.ValueUnsafe()->Equals(expected_array.ValueUnsafe()));
+#else
+  ArrowArrayRelease(&array);
+#endif
 }
 
 TEST(ArrayTest, ArrayTestAppendToInt16Array) {
@@ -489,6 +508,7 @@ TEST(ArrayTest, ArrayTestAppendToInt16Array) {
   EXPECT_EQ(array.buffers[0], nullptr);
   EXPECT_EQ(data_buffer[0], 123);
 
+#if defined(NANOARROW_BUILD_TESTS_WITH_ARROW)
   auto arrow_array = ImportArray(&array, int16());
   ARROW_EXPECT_OK(arrow_array);
 
@@ -497,6 +517,9 @@ TEST(ArrayTest, ArrayTestAppendToInt16Array) {
   auto expected_array = builder.Finish();
 
   EXPECT_TRUE(arrow_array.ValueUnsafe()->Equals(expected_array.ValueUnsafe()));
+#else
+  ArrowArrayRelease(&array);
+#endif
 }
 
 TEST(ArrayTest, ArrayTestAppendToInt8Array) {
@@ -515,6 +538,7 @@ TEST(ArrayTest, ArrayTestAppendToInt8Array) {
   EXPECT_EQ(array.buffers[0], nullptr);
   EXPECT_EQ(data_buffer[0], 123);
 
+#if defined(NANOARROW_BUILD_TESTS_WITH_ARROW)
   auto arrow_array = ImportArray(&array, int8());
   ARROW_EXPECT_OK(arrow_array);
 
@@ -523,6 +547,9 @@ TEST(ArrayTest, ArrayTestAppendToInt8Array) {
   auto expected_array = builder.Finish();
 
   EXPECT_TRUE(arrow_array.ValueUnsafe()->Equals(expected_array.ValueUnsafe()));
+#else
+  ArrowArrayRelease(&array);
+#endif
 }
 
 TEST(ArrayTest, ArrayTestAppendToStringArray) {
@@ -554,6 +581,7 @@ TEST(ArrayTest, ArrayTestAppendToStringArray) {
   EXPECT_EQ(offset_buffer[4], 9);
   EXPECT_EQ(memcmp(data_buffer, "123456789", 9), 0);
 
+#if defined(NANOARROW_BUILD_TESTS_WITH_ARROW)
   auto arrow_array = ImportArray(&array, utf8());
   ARROW_EXPECT_OK(arrow_array);
 
@@ -565,6 +593,9 @@ TEST(ArrayTest, ArrayTestAppendToStringArray) {
   auto expected_array = builder.Finish();
 
   EXPECT_TRUE(arrow_array.ValueUnsafe()->Equals(expected_array.ValueUnsafe()));
+#else
+  ArrowArrayRelease(&array);
+#endif
 }
 
 TEST(ArrayTest, ArrayTestAppendEmptyToString) {
@@ -597,6 +628,7 @@ TEST(ArrayTest, ArrayTestAppendToUInt64Array) {
   EXPECT_EQ(data_buffer[2], 0);
   EXPECT_EQ(data_buffer[3], 3);
 
+#if defined(NANOARROW_BUILD_TESTS_WITH_ARROW)
   auto arrow_array = ImportArray(&array, uint64());
   ARROW_EXPECT_OK(arrow_array);
 
@@ -607,6 +639,9 @@ TEST(ArrayTest, ArrayTestAppendToUInt64Array) {
   auto expected_array = builder.Finish();
 
   EXPECT_TRUE(arrow_array.ValueUnsafe()->Equals(expected_array.ValueUnsafe()));
+#else
+  ArrowArrayRelease(&array);
+#endif
 }
 
 TEST(ArrayTest, ArrayTestAppendToUInt32Array) {
@@ -649,6 +684,7 @@ TEST(ArrayTest, ArrayTestAppendToUInt16Array) {
   EXPECT_EQ(data_buffer[0], 1);
   EXPECT_EQ(data_buffer[1], 3);
 
+#if defined(NANOARROW_BUILD_TESTS_WITH_ARROW)
   auto arrow_array = ImportArray(&array, uint16());
   ARROW_EXPECT_OK(arrow_array);
 
@@ -658,6 +694,9 @@ TEST(ArrayTest, ArrayTestAppendToUInt16Array) {
   auto expected_array = builder.Finish();
 
   EXPECT_TRUE(arrow_array.ValueUnsafe()->Equals(expected_array.ValueUnsafe()));
+#else
+  ArrowArrayRelease(&array);
+#endif
 }
 
 TEST(ArrayTest, ArrayTestAppendToUInt8Array) {
@@ -680,6 +719,7 @@ TEST(ArrayTest, ArrayTestAppendToUInt8Array) {
   EXPECT_EQ(data_buffer[0], 1);
   EXPECT_EQ(data_buffer[1], 3);
 
+#if defined(NANOARROW_BUILD_TESTS_WITH_ARROW)
   auto arrow_array = ImportArray(&array, uint8());
   ARROW_EXPECT_OK(arrow_array);
 
@@ -689,6 +729,9 @@ TEST(ArrayTest, ArrayTestAppendToUInt8Array) {
   auto expected_array = builder.Finish();
 
   EXPECT_TRUE(arrow_array.ValueUnsafe()->Equals(expected_array.ValueUnsafe()));
+#else
+  ArrowArrayRelease(&array);
+#endif
 }
 
 TEST(ArrayTest, ArrayTestAppendToDoubleArray) {
@@ -728,6 +771,7 @@ TEST(ArrayTest, ArrayTestAppendToDoubleArray) {
   EXPECT_FLOAT_EQ(static_cast<float>(data_buffer[9]), -1);
   EXPECT_FLOAT_EQ(static_cast<float>(data_buffer[10]), 0);
 
+#if defined(NANOARROW_BUILD_TESTS_WITH_ARROW)
   auto arrow_array = ImportArray(&array, float64());
   ARROW_EXPECT_OK(arrow_array);
 
@@ -746,6 +790,9 @@ TEST(ArrayTest, ArrayTestAppendToDoubleArray) {
 
   auto options = arrow::EqualOptions::Defaults().nans_equal(true);
   EXPECT_TRUE(arrow_array.ValueUnsafe()->Equals(expected_array.ValueUnsafe(), options));
+#else
+  ArrowArrayRelease(&array);
+#endif
 }
 
 TEST(ArrayTest, ArrayTestAppendToFloatArray) {
@@ -784,6 +831,7 @@ TEST(ArrayTest, ArrayTestAppendToFloatArray) {
   EXPECT_FLOAT_EQ(data_buffer[9], -1);
   EXPECT_FLOAT_EQ(data_buffer[10], 0);
 
+#if defined(NANOARROW_BUILD_TESTS_WITH_ARROW)
   auto arrow_array = ImportArray(&array, float32());
   ARROW_EXPECT_OK(arrow_array);
 
@@ -802,6 +850,9 @@ TEST(ArrayTest, ArrayTestAppendToFloatArray) {
 
   auto options = arrow::EqualOptions::Defaults().nans_equal(true);
   EXPECT_TRUE(arrow_array.ValueUnsafe()->Equals(expected_array.ValueUnsafe(), options));
+#else
+  ArrowArrayRelease(&array);
+#endif
 }
 
 TEST(ArrayTest, ArrayTestAppendToHalfFloatArray) {
@@ -841,8 +892,12 @@ TEST(ArrayTest, ArrayTestAppendToHalfFloatArray) {
   EXPECT_FLOAT_EQ(ArrowHalfFloatToFloat(data_buffer[9]), -1);
   EXPECT_FLOAT_EQ(ArrowHalfFloatToFloat(data_buffer[10]), 0);
 
+#if defined(NANOARROW_BUILD_TESTS_WITH_ARROW)
   auto arrow_array = ImportArray(&array, float16());
   ARROW_EXPECT_OK(arrow_array);
+#else
+  ArrowArrayRelease(&array);
+#endif
 }
 
 TEST(ArrayTest, ArrayTestAppendToBoolArray) {
@@ -1118,6 +1173,7 @@ TEST(ArrayTest, ArrayTestAppendToIntervalArrayDayTime) {
   EXPECT_EQ(memcmp(data_buffer, &interval.days, 4), 0);
   EXPECT_EQ(memcmp(data_buffer + sizeof(interval.days), &interval.ms, 4), 0);
 
+#if defined(NANOARROW_BUILD_TESTS_WITH_ARROW)
   auto arrow_array = ImportArray(&array, day_time_interval());
   ARROW_EXPECT_OK(arrow_array);
 
@@ -1128,6 +1184,9 @@ TEST(ArrayTest, ArrayTestAppendToIntervalArrayDayTime) {
   auto expected_array = builder.Finish();
 
   EXPECT_TRUE(arrow_array.ValueUnsafe()->Equals(expected_array.ValueUnsafe()));
+#else
+  ArrowArrayRelease(&array);
+#endif
 }
 
 TEST(ArrayTest, ArrayTestAppendToIntervalArrayMonthDayNano) {
@@ -1167,6 +1226,7 @@ TEST(ArrayTest, ArrayTestAppendToIntervalArrayMonthDayNano) {
                    &interval.ns, sizeof(interval.ns)),
             0);
 
+#if defined(NANOARROW_BUILD_TESTS_WITH_ARROW)
   auto arrow_array = ImportArray(&array, month_day_nano_interval());
   ARROW_EXPECT_OK(arrow_array);
 
@@ -1180,6 +1240,9 @@ TEST(ArrayTest, ArrayTestAppendToIntervalArrayMonthDayNano) {
   auto expected_array = builder.Finish();
 
   EXPECT_TRUE(arrow_array.ValueUnsafe()->Equals(expected_array.ValueUnsafe()));
+#else
+  ArrowArrayRelease(&array);
+#endif
 }
 
 TEST(ArrayTest, ArrayTestAppendToDecimal128Array) {
@@ -1210,6 +1273,7 @@ TEST(ArrayTest, ArrayTestAppendToDecimal128Array) {
   ArrowDecimalSetInt(&decimal, -67890);
   EXPECT_EQ(memcmp(data_buffer + 3 * 16, decimal.words, 16), 0);
 
+#if defined(NANOARROW_BUILD_TESTS_WITH_ARROW)
   auto arrow_array = ImportArray(&array, decimal128(10, 3));
   ARROW_EXPECT_OK(arrow_array);
 
@@ -1220,6 +1284,9 @@ TEST(ArrayTest, ArrayTestAppendToDecimal128Array) {
   auto expected_array = builder.Finish();
 
   EXPECT_TRUE(arrow_array.ValueUnsafe()->Equals(expected_array.ValueUnsafe()));
+#else
+  ArrowArrayRelease(&array);
+#endif
 }
 
 TEST(ArrayTest, ArrayTestAppendToDecimal256Array) {
@@ -1250,6 +1317,7 @@ TEST(ArrayTest, ArrayTestAppendToDecimal256Array) {
   ArrowDecimalSetInt(&decimal, -67890);
   EXPECT_EQ(memcmp(data_buffer + 3 * 32, decimal.words, 32), 0);
 
+#if defined(NANOARROW_BUILD_TESTS_WITH_ARROW)
   auto arrow_array = ImportArray(&array, decimal256(10, 3));
   ARROW_EXPECT_OK(arrow_array);
 
@@ -1260,6 +1328,9 @@ TEST(ArrayTest, ArrayTestAppendToDecimal256Array) {
   auto expected_array = builder.Finish();
 
   EXPECT_TRUE(arrow_array.ValueUnsafe()->Equals(expected_array.ValueUnsafe()));
+#else
+  ArrowArrayRelease(&array);
+#endif
 }
 
 TEST(ArrayTest, ArrayTestAppendToListArray) {
@@ -1305,6 +1376,7 @@ TEST(ArrayTest, ArrayTestAppendToListArray) {
   array.children[0]->length = array.children[0]->length + 1;
   EXPECT_EQ(ArrowArrayFinishBuildingDefault(&array, &error), NANOARROW_OK);
 
+#if defined(NANOARROW_BUILD_TESTS_WITH_ARROW)
   auto arrow_array = ImportArray(&array, &schema);
   ARROW_EXPECT_OK(arrow_array);
 
@@ -1321,6 +1393,10 @@ TEST(ArrayTest, ArrayTestAppendToListArray) {
   ARROW_EXPECT_OK(expected_array);
 
   EXPECT_TRUE(arrow_array.ValueUnsafe()->Equals(expected_array.ValueUnsafe()));
+#else
+  ArrowSchemaRelease(&schema);
+  ArrowArrayRelease(&array);
+#endif
 }
 
 TEST(ArrayTest, ArrayTestAppendToLargeListArray) {
@@ -1367,6 +1443,7 @@ TEST(ArrayTest, ArrayTestAppendToLargeListArray) {
   array.children[0]->length = array.children[0]->length + 1;
   EXPECT_EQ(ArrowArrayFinishBuildingDefault(&array, &error), NANOARROW_OK);
 
+#if defined(NANOARROW_BUILD_TESTS_WITH_ARROW)
   auto arrow_array = ImportArray(&array, &schema);
   ARROW_EXPECT_OK(arrow_array);
 
@@ -1384,6 +1461,10 @@ TEST(ArrayTest, ArrayTestAppendToLargeListArray) {
   ARROW_EXPECT_OK(expected_array);
 
   EXPECT_TRUE(arrow_array.ValueUnsafe()->Equals(expected_array.ValueUnsafe()));
+#else
+  ArrowSchemaRelease(&schema);
+  ArrowArrayRelease(&array);
+#endif
 }
 
 TEST(ArrayTest, ArrayTestAppendToMapArray) {
@@ -1431,6 +1512,7 @@ TEST(ArrayTest, ArrayTestAppendToMapArray) {
   array.children[0]->length = array.children[0]->length + 1;
   EXPECT_EQ(ArrowArrayFinishBuildingDefault(&array, &error), NANOARROW_OK);
 
+#if defined(NANOARROW_BUILD_TESTS_WITH_ARROW)
   auto maybe_arrow_array = ImportArray(&array, &schema);
   ARROW_EXPECT_OK(maybe_arrow_array);
   auto arrow_array = std::move(maybe_arrow_array).MoveValueUnsafe();
@@ -1449,6 +1531,10 @@ TEST(ArrayTest, ArrayTestAppendToMapArray) {
   auto expected_array = std::move(maybe_expected_array).MoveValueUnsafe();
 
   EXPECT_TRUE(arrow_array->Equals(expected_array));
+#else
+  ArrowSchemaRelease(&schema);
+  ArrowArrayRelease(&array);
+#endif
 }
 
 TEST(ArrayTest, ArrayTestAppendToFixedSizeListArray) {
@@ -1499,6 +1585,7 @@ TEST(ArrayTest, ArrayTestAppendToFixedSizeListArray) {
   array.children[0]->length = array.children[0]->length + 1;
   EXPECT_EQ(ArrowArrayFinishBuildingDefault(&array, nullptr), NANOARROW_OK);
 
+#if defined(NANOARROW_BUILD_TESTS_WITH_ARROW)
   auto arrow_array = ImportArray(&array, &schema);
   ARROW_EXPECT_OK(arrow_array);
 
@@ -1517,6 +1604,10 @@ TEST(ArrayTest, ArrayTestAppendToFixedSizeListArray) {
   ARROW_EXPECT_OK(expected_array);
 
   EXPECT_TRUE(arrow_array.ValueUnsafe()->Equals(expected_array.ValueUnsafe()));
+#else
+  ArrowSchemaRelease(&schema);
+  ArrowArrayRelease(&array);
+#endif
 }
 
 TEST(ArrayTest, ArrayTestAppendToListArrayErrors) {
@@ -1566,6 +1657,7 @@ TEST(ArrayTest, ArrayTestAppendToStructArray) {
 
   EXPECT_EQ(ArrowArrayFinishBuildingDefault(&array, nullptr), NANOARROW_OK);
 
+#if defined(NANOARROW_BUILD_TESTS_WITH_ARROW)
   auto arrow_array = ImportArray(&array, &schema);
   ARROW_EXPECT_OK(arrow_array);
 
@@ -1582,6 +1674,10 @@ TEST(ArrayTest, ArrayTestAppendToStructArray) {
   ARROW_EXPECT_OK(expected_array);
 
   EXPECT_TRUE(arrow_array.ValueUnsafe()->Equals(expected_array.ValueUnsafe()));
+#else
+  ArrowSchemaRelease(&schema);
+  ArrowArrayRelease(&array);
+#endif
 }
 
 TEST(ArrayTest, ArrayTestAppendToRunEndEncodedArray) {
@@ -1719,7 +1815,8 @@ TEST(ArrayTest, ArrayTestAppendToRunEndEncodedArray) {
   EXPECT_EQ(ArrowArrayFinishBuilding(&array, NANOARROW_VALIDATION_LEVEL_FULL, &error),
             NANOARROW_OK);
 
-#if !defined(ARROW_VERSION_MAJOR) || ARROW_VERSION_MAJOR < 12
+#if !defined(NANOARROW_BUILD_TESTS_WITH_ARROW) || !defined(ARROW_VERSION_MAJOR) || \
+    ARROW_VERSION_MAJOR < 12
   ArrowSchemaRelease(&schema);
   ArrowArrayRelease(&array);
 #else
@@ -1800,6 +1897,7 @@ TEST(ArrayTest, ArrayTestAppendToDenseUnionArray) {
 
   EXPECT_EQ(ArrowArrayFinishBuildingDefault(&array, nullptr), NANOARROW_OK);
 
+#if defined(NANOARROW_BUILD_TESTS_WITH_ARROW)
   auto arrow_array = ImportArray(&array, &schema);
   ARROW_EXPECT_OK(arrow_array);
 
@@ -1820,6 +1918,10 @@ TEST(ArrayTest, ArrayTestAppendToDenseUnionArray) {
   ARROW_EXPECT_OK(expected_array);
 
   EXPECT_TRUE(arrow_array.ValueUnsafe()->Equals(expected_array.ValueUnsafe()));
+#else
+  ArrowSchemaRelease(&schema);
+  ArrowArrayRelease(&array);
+#endif
 }
 
 TEST(ArrayTest, ArrayTestAppendToSparseUnionArray) {
@@ -1845,6 +1947,7 @@ TEST(ArrayTest, ArrayTestAppendToSparseUnionArray) {
   EXPECT_EQ(ArrowArrayAppendEmpty(&array, 1), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayFinishBuildingDefault(&array, nullptr), NANOARROW_OK);
 
+#if defined(NANOARROW_BUILD_TESTS_WITH_ARROW)
   auto arrow_array = ImportArray(&array, &schema);
   ARROW_EXPECT_OK(arrow_array);
 
@@ -1870,6 +1973,10 @@ TEST(ArrayTest, ArrayTestAppendToSparseUnionArray) {
   EXPECT_EQ(arrow_array.ValueUnsafe()->ToString(),
             expected_array.ValueUnsafe()->ToString());
   EXPECT_TRUE(arrow_array.ValueUnsafe()->Equals(expected_array.ValueUnsafe()));
+#else
+  ArrowSchemaRelease(&schema);
+  ArrowArrayRelease(&array);
+#endif
 }
 
 TEST(ArrayTest, ArrayTestAppendToUnionArrayErrors) {
@@ -3250,6 +3357,7 @@ TEST(ArrayTest, ArrayViewTestSparseUnionGet) {
 // the "value type" that would correspond to what ArrowArrayViewGetDoubleUnsafe()
 // or ArrowArrayAppendDouble() do since they operate on the logical/represented
 // value.
+#if defined(NANOARROW_BUILD_TESTS_WITH_ARROW)
 template <typename TypeClass, typename BuilderValueT>
 BuilderValueT logical_value_to_builder_value(int64_t value) {
   return static_cast<BuilderValueT>(value);
@@ -3352,6 +3460,7 @@ TEST(ArrayViewTest, ArrayViewTestGetNumeric) {
   TestGetFromNumericArrayView<FloatType>();
   TestGetFromNumericArrayView<HalfFloatType>();
 }
+#endif
 
 TEST(ArrayViewTest, ArrayViewTestGetFloat16) {
   struct ArrowArray array;
@@ -3419,6 +3528,7 @@ TEST(ArrayViewTest, ArrayViewTestGetFloat16) {
   ArrowSchemaRelease(&schema);
 }
 
+#if defined(NANOARROW_BUILD_TESTS_WITH_ARROW)
 template <typename BuilderClass>
 void TestGetFromBinary(BuilderClass& builder) {
   struct ArrowArray array;
@@ -3569,7 +3679,8 @@ void TestGetFromBinaryView(
 }
 
 TEST(ArrayViewTest, ArrayViewTestGetStringView) {
-#if defined(ARROW_VERSION_MAJOR) && ARROW_VERSION_MAJOR >= 15
+#if !defined(NANOARROW_BUILD_TESTS_WITH_ARROW) || \
+    defined(ARROW_VERSION_MAJOR) && ARROW_VERSION_MAJOR >= 15
   auto string_view_builder = StringViewBuilder();
   const auto get_string_view = [](const struct ArrowStringView* sv) { return sv->data; };
   TestGetFromInlinedBinaryView<StringViewBuilder, struct ArrowStringView>(
@@ -3582,7 +3693,8 @@ TEST(ArrayViewTest, ArrayViewTestGetStringView) {
 }
 
 TEST(ArrayViewTest, ArrayViewTestGetBinaryView) {
-#if defined(ARROW_VERSION_MAJOR) && ARROW_VERSION_MAJOR >= 15
+#if !defined(NANOARROW_BUILD_TESTS_WITH_ARROW) || \
+    defined(ARROW_VERSION_MAJOR) && ARROW_VERSION_MAJOR >= 15
   auto binary_view_builder = BinaryViewBuilder();
   const auto get_buffer_view = [](const struct ArrowBufferView* bv) {
     return bv->data.data;
@@ -3595,6 +3707,7 @@ TEST(ArrayViewTest, ArrayViewTestGetBinaryView) {
   GTEST_SKIP() << "Arrow C++ StringView compatibility test needs Arrow C++ >= 15";
 #endif
 }
+#endif
 
 TEST(ArrayViewTest, ArrayViewTestGetIntervalYearMonth) {
   struct ArrowArray array;
@@ -3633,6 +3746,7 @@ TEST(ArrayViewTest, ArrayViewTestGetIntervalYearMonth) {
   ArrowArrayRelease(&array);
 }
 
+#if defined(NANOARROW_BUILD_TESTS_WITH_ARROW)
 TEST(ArrayViewTest, ArrayViewTestGetIntervalDayTime) {
   struct ArrowArray array;
   struct ArrowSchema schema;
@@ -3780,3 +3894,4 @@ TEST(ArrayViewTest, ArrayViewTestGetDecimal256) {
   ArrowSchemaRelease(&schema);
   ArrowArrayRelease(&array);
 }
+#endif

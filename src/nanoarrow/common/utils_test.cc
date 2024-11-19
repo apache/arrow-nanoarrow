@@ -18,14 +18,18 @@
 #include <cstring>
 #include <string>
 
+#if defined(NANOARROW_BUILD_TESTS_WITH_ARROW)
 #include <arrow/util/decimal.h>
+#endif
 #include <gmock/gmock-matchers.h>
 #include <gtest/gtest.h>
 
 #include "nanoarrow/nanoarrow.hpp"
 #include "nanoarrow/nanoarrow_testing.hpp"
 
+#if defined(NANOARROW_BUILD_TESTS_WITH_ARROW)
 using namespace arrow;
+#endif
 
 TEST(BuildIdTest, VersionTest) {
   EXPECT_STREQ(ArrowNanoarrowVersion(), NANOARROW_VERSION);
@@ -266,6 +270,7 @@ TEST(DecimalTest, Decimal128Test) {
     EXPECT_EQ(decimal.low_word_index - decimal.high_word_index + 1, decimal.n_words);
   }
 
+#if defined(NANOARROW_BUILD_TESTS_WITH_ARROW)
   auto dec_pos = *Decimal128::FromString("12.345");
   uint8_t bytes_pos[16];
   dec_pos.ToBytes(bytes_pos);
@@ -287,6 +292,7 @@ TEST(DecimalTest, Decimal128Test) {
   EXPECT_EQ(memcmp(decimal.words, bytes_neg, sizeof(bytes_neg)), 0);
   ArrowDecimalSetBytes(&decimal, bytes_neg);
   EXPECT_EQ(memcmp(decimal.words, bytes_neg, sizeof(bytes_neg)), 0);
+#endif
 }
 
 TEST(DecimalTest, DecimalNegateTest) {
@@ -362,6 +368,7 @@ TEST(DecimalTest, Decimal256Test) {
     EXPECT_EQ(decimal.low_word_index - decimal.high_word_index + 1, decimal.n_words);
   }
 
+#if defined(NANOARROW_BUILD_TESTS_WITH_ARROW)
   auto dec_pos = *Decimal256::FromString("12.345");
   uint8_t bytes_pos[32];
   dec_pos.ToBytes(bytes_pos);
@@ -383,6 +390,7 @@ TEST(DecimalTest, Decimal256Test) {
   EXPECT_EQ(memcmp(decimal.words, bytes_neg, sizeof(bytes_neg)), 0);
   ArrowDecimalSetBytes(&decimal, bytes_neg);
   EXPECT_EQ(memcmp(decimal.words, bytes_neg, sizeof(bytes_neg)), 0);
+#endif
 }
 
 TEST(DecimalTest, DecimalStringTestBasic) {

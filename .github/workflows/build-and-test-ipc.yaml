@@ -91,8 +91,8 @@ jobs:
           cd build
 
           cmake .. -DCMAKE_BUILD_TYPE=Debug -DNANOARROW_BUILD_TESTS=ON \
-            -DNANOARROW_IPC=ON -DCMAKE_PREFIX_PATH="${ARROW_PATH}" \
-            ${{ matrix.config.cmake_args }}
+            -DNANOARROW_BUILD_TESTS_WITH_ARROW=ON  -DNANOARROW_IPC=ON \
+            -DCMAKE_PREFIX_PATH="${ARROW_PATH}" ${{ matrix.config.cmake_args }}
 
           cmake --build .
 

@@ -208,8 +208,16 @@ if get_option('tests')
     # Similarly code coverage has a built in option users should use instead
     # https://mesonbuild.com/Unit-tests.html#coverage
 
-    # The system include suppresses compilation warnings from Arrow
-    arrow_dep = dependency('arrow', include_type: 'system')
+    arrow_dep = dependency('arrow', include_type: 'system', required: false)
+    if get_option('tests_with_arrow') and not arrow_dep.found()
+        error('tests_with_arrow=true but could not find Arrow')
+    endif
+
+    test_cpp_args = []
+    if get_option('tests_with_arrow')
+        test_cpp_args += ['-DNANOARROW_BUILD_TESTS_WITH_ARROW']
+    endif
+
     gtest_dep = dependency('gtest_main')
     gmock_dep = dependency('gmock')
 
