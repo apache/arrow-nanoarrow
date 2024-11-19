@@ -401,12 +401,14 @@ class Schema:
         return self._c_schema_view.dictionary_ordered
 
     @property
-    def value_type(self):
-        """Dictionary or list value type
+    def value_type(self) -> Union["Schema", None]:
+        """Dictionary, map, or list value type
 
         >>> import nanoarrow as na
         >>> na.list_(na.int32()).value_type
         <Schema> 'item': int32
+        >>> na.map_(na.int32(), na.string()).value_type
+        <Schema> string
         >>> na.dictionary(na.int32(), na.string()).value_type
         <Schema> string
         """
@@ -416,8 +418,30 @@ class Schema:
             _types.FIXED_SIZE_LIST,
         ):
             return self.field(0)
+        elif self._c_schema_view.type_id == _types.MAP:
+            return Schema(self._c_schema.child(0).child(1))
         elif self._c_schema_view.type_id == _types.DICTIONARY:
             return Schema(self._c_schema.dictionary)
+        else:
+            return None
+
+    @property
+    def key_type(self) -> Union["Schema", None]:
+        """Map key type
+
+        >>> import nanoarrow as na
+        >>> na.map_(na.int32(), na.string()).key_type
+        <Schema> int32
+        """
+        if self._c_schema_view.type_id == _types.MAP:
+            return Schema(self._c_schema.child(0).child(0))
+        else:
+            return None
+
+    @property
+    def keys_sorted(self):
+        if self._c_schema_view.type_id == _types.MAP:
+            return self._c_schema_view.map_keys_sorted
         else:
             return None
 

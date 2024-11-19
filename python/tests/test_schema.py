@@ -198,6 +198,16 @@ def test_schema_fixed_size_list():
     assert schema_obj.list_size == 123
 
 
+def test_schema_map():
+    schema_obj = na.map_(na.int32(), na.string())
+    assert schema_obj.type == na.Type.MAP
+    assert schema_obj.key_type.type == na.Type.INT32
+    assert schema_obj.value_type.type == na.Type.STRING
+    assert schema_obj.keys_sorted is False
+
+    assert na.map_(na.int32(), na.string(), keys_sorted=True).keys_sorted is True
+
+
 def test_schema_dictionary():
     schema_obj = na.dictionary(na.int8(), na.null())
     assert schema_obj.type == na.Type.DICTIONARY
