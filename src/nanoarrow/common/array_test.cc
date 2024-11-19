@@ -3905,6 +3905,7 @@ TEST(ArrayViewTest, ArrayViewTestGetIntervalMonthDayNano) {
   ArrowArrayRelease(&array);
 }
 
+#if ARROW_VERSION_MAJOR >= 18
 TEST(ArrayViewTest, ArrayViewTestGetDecimal32) {
   struct ArrowArray array;
   struct ArrowSchema schema;
@@ -3978,6 +3979,7 @@ TEST(ArrayViewTest, ArrayViewTestGetDecimal64) {
   ArrowSchemaRelease(&schema);
   ArrowArrayRelease(&array);
 }
+#endif
 
 TEST(ArrayViewTest, ArrayViewTestGetDecimal128) {
   struct ArrowArray array;
