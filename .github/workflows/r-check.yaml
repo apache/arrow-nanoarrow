@@ -70,9 +70,7 @@ jobs:
           R CMD INSTALL r --preclean
         shell: bash
 
-      # r-lib/actions/setup-r-dependencies pinned because the latest action on the
-      # v2 branch requires quarto-dev actions which have not yet been whitelisted by Apache Infra
-      - uses: r-lib/actions/setup-r-dependencies@f4937e0dc26f9b99c969cd3e4ca943b576e7f991
+      - uses: r-lib/actions/setup-r-dependencies@v2
         with:
           extra-packages: any::rcmdcheck, arrow=?ignore-before-r=4.0.0
           needs: check
