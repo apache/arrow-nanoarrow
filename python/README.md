@@ -422,7 +422,9 @@ This means you can build the project using:
 ```shell
 git clone https://github.com/apache/arrow-nanoarrow.git
 cd arrow-nanoarrow/python
-pip install -e .
+# Build dependencies:
+# pip install meson meson-python cython
+pip install -e . --no-build-isolation
 ```
 
 Tests use [pytest](https://docs.pytest.org/):
