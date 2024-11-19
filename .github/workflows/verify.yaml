@@ -60,8 +60,8 @@ jobs:
       matrix:
         config:
           - {os: macOS-latest, label: macos, extra_cmake_config: "-DNANOARROW_BUILD_TESTS_WITH_ARROW=ON"}
-          - {os: windows-latest, label: windows, extra_cmake_install: "--config=Debug", extra_cmake_config: "-A x86 -DNANOARROW_ARROW_STATIC=ON -Dgtest_force_shared_crt=ON -DNANOARROW_BUILD_TESTS_WITH_ARROW=ON"}
-          - {os: windows-latest, label: windows-win32, extra_cmake_install: "--config=Debug", extra_cmake_config: "-A Win32 -Dgtest_force_shared_crt=ON"}
+          - {os: windows-latest, label: windows, extra_cmake_config: "-DNANOARROW_ARROW_STATIC=ON -Dgtest_force_shared_crt=ON -DNANOARROW_BUILD_TESTS_WITH_ARROW=ON"}
+          - {os: windows-latest, label: windows-win32, extra_cmake_config: "-A Win32 -Dgtest_force_shared_crt=ON"}
           - {os: ubuntu-latest, label: ubuntu, extra_cmake_config: "-DNANOARROW_BUILD_TESTS_WITH_ARROW=ON"}
 
     steps:
@@ -79,7 +79,7 @@ jobs:
           use-public-rspm: true
           windows-path-include-rtools: false
           windows-path-include-mingw: false
-      - uses: r-lib/actions/setup-r-dependencies@f4937e0dc26f9b99c969cd3e4ca943b576e7f991
+      - uses: r-lib/actions/setup-r-dependencies@v2
         with:
           needs: check
           working-directory: src/r
