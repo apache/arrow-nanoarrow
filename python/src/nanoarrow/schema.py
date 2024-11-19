@@ -1194,7 +1194,7 @@ def fixed_size_list(value_type, list_size, nullable=True) -> Schema:
     )
 
 
-def map_(key_type, value_type, keys_sorted, nullable=True):
+def map_(key_type, value_type, keys_sorted=False, nullable=True):
     return Schema(
         Type.MAP,
         key_type=key_type,
@@ -1308,10 +1308,11 @@ def _c_schema_from_type_and_params(type: Type, params: dict):
         entries.set_format("+s")
         entries.set_nullable(False)
         entries.allocate_children(2)
-        entries.set_child(0, "key", key_schema.modify(nullabel=False))
+        entries.set_child(0, "key", key_schema.modify(nullable=False))
         entries.set_child(1, "value", value_schema)
 
         factory.set_format("+m")
+        factory.allocate_children(1)
         factory.set_child(0, "entries", entries.finish())
         factory.set_nullable(False)
 
