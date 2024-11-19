@@ -408,7 +408,7 @@ class Schema:
         >>> na.list_(na.int32()).value_type
         <Schema> 'item': int32
         >>> na.map_(na.int32(), na.string()).value_type
-        <Schema> string
+        <Schema> 'value': string
         >>> na.dictionary(na.int32(), na.string()).value_type
         <Schema> string
         """
@@ -431,7 +431,7 @@ class Schema:
 
         >>> import nanoarrow as na
         >>> na.map_(na.int32(), na.string()).key_type
-        <Schema> int32
+        <Schema> 'key': non-nullable int32
         """
         if self._c_schema_view.type_id == _types.MAP:
             return Schema(self._c_schema.child(0).child(0))
@@ -1219,6 +1219,29 @@ def fixed_size_list(value_type, list_size, nullable=True) -> Schema:
 
 
 def map_(key_type, value_type, keys_sorted=False, nullable=True):
+    """Create a type representing a list of key/value mappings
+
+    Note that each element in the list contains potentially many
+    key/value pairs (and that a map array contains potentially
+    many individual mappings).
+
+    Parameters
+    ----------
+    value_type : schema-like
+        The type of keys in each map element.
+    value_type : schema-like
+        The type of values in each map element
+    keys_sorted : bool, optional
+        True if keys within each map element are sorted.
+    nullable : bool, optional
+        Use ``False`` to mark this field as non-nullable.
+
+    Examples
+    --------
+    >>> import nanoarrow as na
+    >>> na.map_(na.int32(), na.string())
+    <Schema> map<entries: struct<key: int32, value: string>>
+    """
     return Schema(
         Type.MAP,
         key_type=key_type,
