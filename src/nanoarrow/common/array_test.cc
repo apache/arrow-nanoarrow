@@ -1284,6 +1284,8 @@ TEST(ArrayTest, ArrayTestAppendToDecimal32Array) {
   auto expected_array = builder.Finish();
 
   EXPECT_TRUE(arrow_array.ValueUnsafe()->Equals(expected_array.ValueUnsafe()));
+#else
+  ArrowArrayRelease(&array);
 #endif
 }
 
@@ -1326,6 +1328,8 @@ TEST(ArrayTest, ArrayTestAppendToDecimal64Array) {
   auto expected_array = builder.Finish();
 
   EXPECT_TRUE(arrow_array.ValueUnsafe()->Equals(expected_array.ValueUnsafe()));
+#else
+  ArrowArrayRelease(&array);
 #endif
 }
 
