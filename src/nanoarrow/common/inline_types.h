@@ -958,7 +958,7 @@ static inline void ArrowDecimalGetBytes(const struct ArrowDecimal* decimal,
 /// \ingroup nanoarrow-utils
 static inline int64_t ArrowDecimalSign(const struct ArrowDecimal* decimal) {
   if (decimal->n_words == 0) {
-    return (int64_t)(1 | ((int32_t)(decimal->words[0]) >> 31));
+    return 1 | ((int32_t)(decimal->words[0]) >> 31);
   }
 
   return 1 | ((int64_t)(decimal->words[decimal->high_word_index]) >> 63);
