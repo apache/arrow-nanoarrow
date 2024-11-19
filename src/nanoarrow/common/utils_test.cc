@@ -264,7 +264,7 @@ TEST(DecimalTest, Decimal32Test) {
   EXPECT_EQ(decimal.precision, 8);
   EXPECT_EQ(decimal.scale, 3);
 
-#if defined(NANOARROW_BUILD_TESTS_WITH_ARROW) && defined(ARROW_VERSION_MAJOR) && ARROW_VERSION_MAJOR >= 18
+#if defined(NANOARROW_BUILD_TESTS_WITH_ARROW) && ARROW_VERSION_MAJOR >= 18
   auto dec_pos = *Decimal32::FromString("12.345");
   uint8_t bytes_pos[4];
   dec_pos.ToBytes(bytes_pos);
@@ -277,7 +277,7 @@ TEST(DecimalTest, Decimal32Test) {
   ArrowDecimalSetInt(&decimal, 12345);
   EXPECT_EQ(ArrowDecimalGetIntUnsafe(&decimal), 12345);
   EXPECT_EQ(ArrowDecimalSign(&decimal), 1);
-#if defined(NANOARROW_BUILD_TESTS_WITH_ARROW) && defined(ARROW_VERSION_MAJOR) && ARROW_VERSION_MAJOR >= 18
+#if defined(NANOARROW_BUILD_TESTS_WITH_ARROW) && ARROW_VERSION_MAJOR >= 18
   EXPECT_EQ(memcmp(decimal.words, bytes_pos, sizeof(bytes_pos)), 0);
   ArrowDecimalSetBytes(&decimal, bytes_pos);
   EXPECT_EQ(memcmp(decimal.words, bytes_pos, sizeof(bytes_pos)), 0);
@@ -286,7 +286,7 @@ TEST(DecimalTest, Decimal32Test) {
   ArrowDecimalSetInt(&decimal, -34567);
   EXPECT_EQ(ArrowDecimalGetIntUnsafe(&decimal), -34567);
   EXPECT_EQ(ArrowDecimalSign(&decimal), -1);
-#if defined(NANOARROW_BUILD_TESTS_WITH_ARROW) && defined(ARROW_VERSION_MAJOR) && ARROW_VERSION_MAJOR >= 18
+#if defined(NANOARROW_BUILD_TESTS_WITH_ARROW) && ARROW_VERSION_MAJOR >= 18
   EXPECT_EQ(memcmp(decimal.words, bytes_neg, sizeof(bytes_neg)), 0);
   ArrowDecimalSetBytes(&decimal, bytes_neg);
   EXPECT_EQ(memcmp(decimal.words, bytes_neg, sizeof(bytes_neg)), 0);
@@ -307,7 +307,7 @@ TEST(DecimalTest, Decimal64Test) {
     EXPECT_EQ(decimal.low_word_index - decimal.high_word_index + 1, decimal.n_words);
   }
 
-#if defined(NANOARROW_BUILD_TESTS_WITH_ARROW) && defined(ARROW_VERSION_MAJOR) && ARROW_VERSION_MAJOR >= 18
+#if defined(NANOARROW_BUILD_TESTS_WITH_ARROW) && ARROW_VERSION_MAJOR >= 18
   auto dec_pos = *Decimal64::FromString("12.345");
   uint8_t bytes_pos[8];
   dec_pos.ToBytes(bytes_pos);
@@ -320,7 +320,7 @@ TEST(DecimalTest, Decimal64Test) {
   ArrowDecimalSetInt(&decimal, 12345);
   EXPECT_EQ(ArrowDecimalGetIntUnsafe(&decimal), 12345);
   EXPECT_EQ(ArrowDecimalSign(&decimal), 1);
-#if defined(NANOARROW_BUILD_TESTS_WITH_ARROW) && defined(ARROW_VERSION_MAJOR) && ARROW_VERSION_MAJOR >= 18
+#if defined(NANOARROW_BUILD_TESTS_WITH_ARROW) && ARROW_VERSION_MAJOR >= 18
   EXPECT_EQ(memcmp(decimal.words, bytes_pos, sizeof(bytes_pos)), 0);
   ArrowDecimalSetBytes(&decimal, bytes_pos);
   EXPECT_EQ(memcmp(decimal.words, bytes_pos, sizeof(bytes_pos)), 0);
@@ -329,7 +329,7 @@ TEST(DecimalTest, Decimal64Test) {
   ArrowDecimalSetInt(&decimal, -34567);
   EXPECT_EQ(ArrowDecimalGetIntUnsafe(&decimal), -34567);
   EXPECT_EQ(ArrowDecimalSign(&decimal), -1);
-#if defined(NANOARROW_BUILD_TESTS_WITH_ARROW) && defined(ARROW_VERSION_MAJOR) && ARROW_VERSION_MAJOR >= 18
+#if defined(NANOARROW_BUILD_TESTS_WITH_ARROW) && ARROW_VERSION_MAJOR >= 18
   EXPECT_EQ(memcmp(decimal.words, bytes_neg, sizeof(bytes_neg)), 0);
   ArrowDecimalSetBytes(&decimal, bytes_neg);
   EXPECT_EQ(memcmp(decimal.words, bytes_neg, sizeof(bytes_neg)), 0);
