@@ -1194,6 +1194,16 @@ def fixed_size_list(value_type, list_size, nullable=True) -> Schema:
     )
 
 
+def map_(key_type, value_type, keys_sorted, nullable=True):
+    return Schema(
+        Type.MAP,
+        key_type=key_type,
+        value_type=value_type,
+        keys_sorted=keys_sorted,
+        nullable=nullable,
+    )
+
+
 def dictionary(index_type, value_type, dictionary_ordered=False):
     """Create a type representing dictionary-encoded values
 
@@ -1289,6 +1299,24 @@ def _c_schema_from_type_and_params(type: Type, params: dict):
         factory.set_format(f"+w:{fixed_size}")
         factory.allocate_children(1)
         factory.set_child(0, "item", c_schema(params.pop("value_type")))
+
+    elif type == Type.MAP:
+        key_schema = c_schema(params.pop("key_type"))
+        value_schema = c_schema(params.pop("value_type"))
+
+        entries = CSchemaBuilder.allocate()
+        entries.set_format("+s")
+        entries.set_nullable(False)
+        entries.allocate_children(2)
+        entries.set_child(0, "key", key_schema.modify(nullabel=False))
+        entries.set_child(1, "value", value_schema)
+
+        factory.set_format("+m")
+        factory.set_child(0, "entries", entries.finish())
+        factory.set_nullable(False)
+
+        if "keys_sorted" in params:
+            factory.set_map_keys_sorted(params.pop("keys_sorted"))
 
     elif type == Type.DICTIONARY:
         index_type = c_schema(params.pop("index_type"))
