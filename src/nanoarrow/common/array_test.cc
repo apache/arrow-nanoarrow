@@ -1273,6 +1273,7 @@ TEST(ArrayTest, ArrayTestAppendToDecimal32Array) {
   ArrowDecimalSetInt(&decimal, -67890);
   EXPECT_EQ(memcmp(data_buffer + 3 * 4, decimal.words, 4), 0);
 
+#if defined(NANOARROW_BUILD_TESTS_WITH_ARROW) && ARROW_VERSION_MAJOR >= 18
   auto arrow_array = ImportArray(&array, decimal32(8, 3));
   ARROW_EXPECT_OK(arrow_array);
 
@@ -1283,6 +1284,7 @@ TEST(ArrayTest, ArrayTestAppendToDecimal32Array) {
   auto expected_array = builder.Finish();
 
   EXPECT_TRUE(arrow_array.ValueUnsafe()->Equals(expected_array.ValueUnsafe()));
+#endif
 }
 
 TEST(ArrayTest, ArrayTestAppendToDecimal64Array) {
@@ -1313,6 +1315,7 @@ TEST(ArrayTest, ArrayTestAppendToDecimal64Array) {
   ArrowDecimalSetInt(&decimal, -67890);
   EXPECT_EQ(memcmp(data_buffer + 3 * 8, decimal.words, 8), 0);
 
+#if defined(NANOARROW_BUILD_TESTS_WITH_ARROW) && ARROW_VERSION_MAJOR >= 18
   auto arrow_array = ImportArray(&array, decimal64(10, 3));
   ARROW_EXPECT_OK(arrow_array);
 
@@ -1323,6 +1326,7 @@ TEST(ArrayTest, ArrayTestAppendToDecimal64Array) {
   auto expected_array = builder.Finish();
 
   EXPECT_TRUE(arrow_array.ValueUnsafe()->Equals(expected_array.ValueUnsafe()));
+#endif
 }
 
 TEST(ArrayTest, ArrayTestAppendToDecimal128Array) {
