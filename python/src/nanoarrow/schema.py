@@ -1281,6 +1281,18 @@ def dictionary(index_type, value_type, dictionary_ordered: bool = False) -> Sche
     )
 
 
+def bool8(nullable: bool=True):
+    """Create a type representing dictionary-encoded values
+
+    Parameters
+    ----------
+    nullable : bool, optional
+        Use ``False`` to mark this field as non-nullable.
+    """
+
+    return extension_type(int8(nullable=nullable), "arrow.bool8")
+
+
 def extension_type(
     storage_schema,
     extension_name: str,
@@ -1305,6 +1317,8 @@ def extension_type(
     metadata["ARROW:extension:name"] = extension_name
     if extension_metadata:
         metadata["ARROW:extension:metadata"] = extension_metadata
+    else:
+        metadata["ARROW:extension:metadata"] = ""
 
     return Schema(storage_schema, nullable=nullable, metadata=metadata)
 
