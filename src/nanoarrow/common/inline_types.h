@@ -896,7 +896,8 @@ static inline void ArrowIntervalInit(struct ArrowInterval* interval,
 /// values set using ArrowDecimalSetInt(), ArrowDecimalSetBytes128(),
 /// or ArrowDecimalSetBytes256().
 struct ArrowDecimal {
-  /// \brief An array of 64-bit integers of n_words length defined in native-endian order
+  /// \brief An array of 64-bit integers of n_words length defined in native-endian order.
+  /// For a 32-bit decimal value, index 0 will be a 32-bit integer value.
   uint64_t words[4];
 
   /// \brief The number of significant digits this decimal number can represent
