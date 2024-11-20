@@ -438,7 +438,7 @@
 <dt class="sig sig-object cpp" id="_CPPv425ArrowSchemaSetTypeDecimalP11ArrowSchema9ArrowType7int32_t7int32_t">
 <span id="_CPPv325ArrowSchemaSetTypeDecimalP11ArrowSchema9ArrowType7int32_t7int32_t"></span><span id="_CPPv225ArrowSchemaSetTypeDecimalP11ArrowSchema9ArrowType7int32_t7int32_t"></span><span id="ArrowSchemaSetTypeDecimal__ArrowSchemaP.ArrowType.int32_t.int32_t"></span><span class="target" id="group__nanoarrow-schema_1gac929a2a27c4b336f31aa3adc6e9a70ee"></span><a class="reference internal" href="#_CPPv414ArrowErrorCode" title="ArrowErrorCode"><span class="n"><span class="pre">ArrowErrorCode</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">ArrowSchemaSetTypeDecimal</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv411ArrowSchema" title="ArrowSchema"><span class="n"><span class="pre">ArrowSchema</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">schema</span></span>, <span class="k"><span class="pre">enum</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv49ArrowType" title="ArrowType"><span class="n"><span class="pre">ArrowType</span></span></a><span class="w"> </span><span class="n sig-param"><span class="pre">type</span></span>, <span class="n"><span class="pre">int32_t</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">decimal_precision</span></span>, <span class="n"><span class="pre">int32_t</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">decimal_scale</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv425ArrowSchemaSetTypeDecimalP11ArrowSchema9ArrowType7int32_t7int32_t" title="Link to this definition">#</a><br /></dt>
 <dd><p>Set the format field of a decimal schema. </p>
-<p>Returns EINVAL for scale &lt;= 0 or for type that is not NANOARROW_TYPE_DECIMAL128 or NANOARROW_TYPE_DECIMAL256. Schema must have been initialized using <a class="reference internal" href="#group__nanoarrow-schema_1ga4d0f9b69f912b9316ee4201b974d7b6a"><span class="std std-ref">ArrowSchemaInit()</span></a> or <a class="reference internal" href="#group__nanoarrow-schema_1gac1a2699e005030333c05bff130590c33"><span class="std std-ref">ArrowSchemaDeepCopy()</span></a>. </p>
+<p>Returns EINVAL for scale &lt;= 0 or for type that is not NANOARROW_TYPE_DECIMAL32, NANOARROW_TYPE_DECIMAL64, NANOARROW_TYPE_DECIMAL128 or NANOARROW_TYPE_DECIMAL256. Schema must have been initialized using <a class="reference internal" href="#group__nanoarrow-schema_1ga4d0f9b69f912b9316ee4201b974d7b6a"><span class="std std-ref">ArrowSchemaInit()</span></a> or <a class="reference internal" href="#group__nanoarrow-schema_1gac1a2699e005030333c05bff130590c33"><span class="std std-ref">ArrowSchemaDeepCopy()</span></a>. </p>
 </dd></dl>
 
 <dl class="cpp function">
@@ -2010,6 +2010,16 @@
 <span id="_CPPv3N9ArrowType26NANOARROW_TYPE_STRING_VIEWE"></span><span id="_CPPv2N9ArrowType26NANOARROW_TYPE_STRING_VIEWE"></span><span class="target" id="group__nanoarrow-utils_1ggae040d7d64b46dd1dc796225aa77c2112a42c3dbc96e365ed4e28773d750aa47d7"></span><span class="k"><span class="pre">enumerator</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">NANOARROW_TYPE_STRING_VIEW</span></span></span><a class="headerlink" href="#_CPPv4N9ArrowType26NANOARROW_TYPE_STRING_VIEWE" title="Link to this definition">#</a><br /></dt>
 <dd></dd></dl>
 
+<dl class="cpp enumerator">
+<dt class="sig sig-object cpp" id="_CPPv4N9ArrowType24NANOARROW_TYPE_DECIMAL32E">
+<span id="_CPPv3N9ArrowType24NANOARROW_TYPE_DECIMAL32E"></span><span id="_CPPv2N9ArrowType24NANOARROW_TYPE_DECIMAL32E"></span><span class="target" id="group__nanoarrow-utils_1ggae040d7d64b46dd1dc796225aa77c2112af40a70369b65b37f0034db22bb4218f5"></span><span class="k"><span class="pre">enumerator</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">NANOARROW_TYPE_DECIMAL32</span></span></span><a class="headerlink" href="#_CPPv4N9ArrowType24NANOARROW_TYPE_DECIMAL32E" title="Link to this definition">#</a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp enumerator">
+<dt class="sig sig-object cpp" id="_CPPv4N9ArrowType24NANOARROW_TYPE_DECIMAL64E">
+<span id="_CPPv3N9ArrowType24NANOARROW_TYPE_DECIMAL64E"></span><span id="_CPPv2N9ArrowType24NANOARROW_TYPE_DECIMAL64E"></span><span class="target" id="group__nanoarrow-utils_1ggae040d7d64b46dd1dc796225aa77c2112aaa68e6f79aa2b79cbf2bec1f24f1dd4c"></span><span class="k"><span class="pre">enumerator</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">NANOARROW_TYPE_DECIMAL64</span></span></span><a class="headerlink" href="#_CPPv4N9ArrowType24NANOARROW_TYPE_DECIMAL64E" title="Link to this definition">#</a><br /></dt>
+<dd></dd></dl>
+
 </dd></dl>
 
 <dl class="cpp enum">
@@ -2306,7 +2316,7 @@
 <dl class="cpp var">
 <dt class="sig sig-object cpp" id="_CPPv4N12ArrowDecimal5wordsE">
 <span id="_CPPv3N12ArrowDecimal5wordsE"></span><span id="_CPPv2N12ArrowDecimal5wordsE"></span><span id="ArrowDecimal::words__uint64_tA"></span><span class="target" id="struct_arrow_decimal_1aca665738c134dae7f1cb545b48d1ebb8"></span><span class="n"><span class="pre">uint64_t</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">words</span></span></span><span class="p"><span class="pre">[</span></span><span class="m"><span class="pre">4</span></span><span class="p"><span class="pre">]</span></span><a class="headerlink" href="#_CPPv4N12ArrowDecimal5wordsE" title="Link to this definition">#</a><br /></dt>
-<dd><p>An array of 64-bit integers of n_words length defined in native-endian order. </p>
+<dd><p>An array of 64-bit integers of n_words length defined in native-endian order. For a 32-bit decimal value, index 0 will be a 32-bit integer value. </p>
 </dd></dl>
 
 <dl class="cpp var">
@@ -2324,7 +2334,7 @@
 <dl class="cpp var">
 <dt class="sig sig-object cpp" id="_CPPv4N12ArrowDecimal7n_wordsE">
 <span id="_CPPv3N12ArrowDecimal7n_wordsE"></span><span id="_CPPv2N12ArrowDecimal7n_wordsE"></span><span id="ArrowDecimal::n_words__i"></span><span class="target" id="struct_arrow_decimal_1a6c70dd46548980ab26e411f6051c5e96"></span><span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">n_words</span></span></span><a class="headerlink" href="#_CPPv4N12ArrowDecimal7n_wordsE" title="Link to this definition">#</a><br /></dt>
-<dd><p>The number of words in the words array. </p>
+<dd><p>The number of 64-bit words in the words array. For the special case of a 32-bit decimal value, this will be 0. </p>
 </dd></dl>
 
 <dl class="cpp var">
@@ -2899,6 +2909,8 @@
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N9ArrowType30NANOARROW_TYPE_RUN_END_ENCODEDE"><code class="docutils literal notranslate"><span class="pre">ArrowType::NANOARROW_TYPE_RUN_END_ENCODED</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N9ArrowType26NANOARROW_TYPE_BINARY_VIEWE"><code class="docutils literal notranslate"><span class="pre">ArrowType::NANOARROW_TYPE_BINARY_VIEW</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N9ArrowType26NANOARROW_TYPE_STRING_VIEWE"><code class="docutils literal notranslate"><span class="pre">ArrowType::NANOARROW_TYPE_STRING_VIEW</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N9ArrowType24NANOARROW_TYPE_DECIMAL32E"><code class="docutils literal notranslate"><span class="pre">ArrowType::NANOARROW_TYPE_DECIMAL32</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N9ArrowType24NANOARROW_TYPE_DECIMAL64E"><code class="docutils literal notranslate"><span class="pre">ArrowType::NANOARROW_TYPE_DECIMAL64</span></code></a></li>
 </ul>
 </li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv413ArrowTimeUnit"><code class="docutils literal notranslate"><span class="pre">ArrowTimeUnit</span></code></a><ul class="nav section-nav flex-column">
