@@ -905,7 +905,8 @@ struct ArrowDecimal {
   /// \brief The number of digits after the decimal point. This can be negative.
   int32_t scale;
 
-  /// \brief The number of words in the words array
+  /// \brief The number of 64-bit words in the words array. For the special case of a 32-bit
+  /// decimal value, this will be 0.
   int n_words;
 
   /// \brief Cached value used by the implementation
