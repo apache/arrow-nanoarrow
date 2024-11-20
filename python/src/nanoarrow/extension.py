@@ -31,13 +31,12 @@ class Extension:
     ) -> Optional[Iterator]:
         return None
 
-    def get_sequence_converter(
-        self, params, c_array_view: CArrayView, offset: int, length: int
-    ):
+    def get_sequence_converter(self, c_schema):
         return None
 
 
 global_extension_registry = {}
+
 
 def resolve_extension(c_schema_view: CSchemaView) -> Optional[Extension]:
     extension_name = c_schema_view.extension_name

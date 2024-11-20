@@ -101,6 +101,7 @@ py_sources = [
     'c_buffer.py',
     'c_schema.py',
     'device.py',
+    'extension.py',
     'ipc.py',
     'iterator.py',
     '_repr_utils.py',

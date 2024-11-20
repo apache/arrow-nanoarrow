@@ -23,6 +23,7 @@ from typing import Iterable, Tuple
 from nanoarrow._array import CArrayView
 from nanoarrow.c_array_stream import c_array_stream
 from nanoarrow.c_schema import c_schema, c_schema_view
+from nanoarrow.extension import resolve_extension
 from nanoarrow.schema import Schema
 
 from nanoarrow import _types
@@ -183,6 +184,8 @@ class PyIterator(ArrayViewBaseIterator):
 
     def __init__(self, schema, *, array_view=None):
         super().__init__(schema, array_view=array_view)
+        self._ext = resolve_extension(self._schema_view)
+        self._ext_params = self._ext.get_params(schema) if self._ext else None
 
         self._children = list(
             map(self._make_child, self._schema.children, self._array_view.children)
@@ -208,11 +211,14 @@ class PyIterator(ArrayViewBaseIterator):
 
     def _iter_chunk(self, offset, length):
         """Iterate over all elements in a slice of the current chunk"""
+
         # Check for an extension type first since this isn't reflected by
         # self._schema_view.type_id. Currently we just return the storage
         # iterator with a warning for extension types.
         maybe_extension_name = self._schema_view.extension_name
-        if maybe_extension_name:
+        if self._ext:
+            return self._ext.get_pyiter(self._ext_params, self._array_view, offset, length)
+        elif maybe_extension_name:
             self._warn(
                 f"Converting unregistered extension '{maybe_extension_name}' "
                 "as storage type",
