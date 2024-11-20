@@ -878,6 +878,14 @@ cdef class CSchemaBuilder:
 
         return self
 
+    def set_map_keys_sorted(self, map_keys_sorted) -> CSchemaBuilder:
+        if map_keys_sorted:
+            self._ptr.flags = self._ptr.flags | ARROW_FLAG_MAP_KEYS_SORTED
+        else:
+            self._ptr.flags = self._ptr.flags & ~ARROW_FLAG_MAP_KEYS_SORTED
+
+        return self
+
     def validate(self) -> CSchemaView:
         return CSchemaView(self.c_schema)
 

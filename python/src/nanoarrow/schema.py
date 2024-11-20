@@ -401,12 +401,14 @@ class Schema:
         return self._c_schema_view.dictionary_ordered
 
     @property
-    def value_type(self):
-        """Dictionary or list value type
+    def value_type(self) -> Union["Schema", None]:
+        """Dictionary, map, or list value type
 
         >>> import nanoarrow as na
         >>> na.list_(na.int32()).value_type
         <Schema> 'item': int32
+        >>> na.map_(na.int32(), na.string()).value_type
+        <Schema> 'value': string
         >>> na.dictionary(na.int32(), na.string()).value_type
         <Schema> string
         """
@@ -416,8 +418,30 @@ class Schema:
             _types.FIXED_SIZE_LIST,
         ):
             return self.field(0)
+        elif self._c_schema_view.type_id == _types.MAP:
+            return Schema(self._c_schema.child(0).child(1))
         elif self._c_schema_view.type_id == _types.DICTIONARY:
             return Schema(self._c_schema.dictionary)
+        else:
+            return None
+
+    @property
+    def key_type(self) -> Union["Schema", None]:
+        """Map key type
+
+        >>> import nanoarrow as na
+        >>> na.map_(na.int32(), na.string()).key_type
+        <Schema> 'key': non-nullable int32
+        """
+        if self._c_schema_view.type_id == _types.MAP:
+            return Schema(self._c_schema.child(0).child(0))
+        else:
+            return None
+
+    @property
+    def keys_sorted(self) -> Union[bool, None]:
+        if self._c_schema_view.type_id == _types.MAP:
+            return self._c_schema_view.map_keys_sorted
         else:
             return None
 
@@ -979,7 +1003,7 @@ def timestamp(
     return Schema(Type.TIMESTAMP, timezone=timezone, unit=unit, nullable=nullable)
 
 
-def duration(unit, nullable: bool = True):
+def duration(unit, nullable: bool = True) -> Schema:
     """Create an instance of a duration type.
 
     Parameters
@@ -999,7 +1023,7 @@ def duration(unit, nullable: bool = True):
     return Schema(Type.DURATION, unit=unit, nullable=nullable)
 
 
-def interval_months(nullable: bool = True):
+def interval_months(nullable: bool = True) -> Schema:
     """Create an instance of an interval type measured in months.
 
     Parameters
@@ -1017,7 +1041,7 @@ def interval_months(nullable: bool = True):
     return Schema(Type.INTERVAL_MONTHS, nullable=nullable)
 
 
-def interval_day_time(nullable: bool = True):
+def interval_day_time(nullable: bool = True) -> Schema:
     """Create an instance of an interval type measured as a day/time pair.
 
     Parameters
@@ -1035,7 +1059,7 @@ def interval_day_time(nullable: bool = True):
     return Schema(Type.INTERVAL_DAY_TIME, nullable=nullable)
 
 
-def interval_month_day_nano(nullable: bool = True):
+def interval_month_day_nano(nullable: bool = True) -> Schema:
     """Create an instance of an interval type measured as a month/day/nanosecond
     tuple.
 
@@ -1100,7 +1124,7 @@ def decimal256(precision: int, scale: int, nullable: bool = True) -> Schema:
     return Schema(Type.DECIMAL256, precision=precision, scale=scale, nullable=nullable)
 
 
-def struct(fields, nullable=True) -> Schema:
+def struct(fields, nullable: bool = True) -> Schema:
     """Create a type representing a named sequence of fields.
 
     Parameters
@@ -1124,7 +1148,7 @@ def struct(fields, nullable=True) -> Schema:
     return Schema(Type.STRUCT, fields=fields, nullable=nullable)
 
 
-def list_(value_type, nullable=True) -> Schema:
+def list_(value_type, nullable: bool = True) -> Schema:
     """Create a type representing a variable-size list of some other type.
 
     Parameters
@@ -1144,7 +1168,7 @@ def list_(value_type, nullable=True) -> Schema:
     return Schema(Type.LIST, value_type=value_type, nullable=nullable)
 
 
-def large_list(value_type, nullable=True) -> Schema:
+def large_list(value_type, nullable: bool = True) -> Schema:
     """Create a type representing a variable-size list of some other type.
 
     Unlike :func:`list_`, the func:`large_list` can accomodate arrays
@@ -1167,7 +1191,7 @@ def large_list(value_type, nullable=True) -> Schema:
     return Schema(Type.LARGE_LIST, value_type=value_type, nullable=nullable)
 
 
-def fixed_size_list(value_type, list_size, nullable=True) -> Schema:
+def fixed_size_list(value_type, list_size: int, nullable: bool = True) -> Schema:
     """Create a type representing a fixed-size list of some other type.
 
     Parameters
@@ -1194,7 +1218,40 @@ def fixed_size_list(value_type, list_size, nullable=True) -> Schema:
     )
 
 
-def dictionary(index_type, value_type, dictionary_ordered=False):
+def map_(key_type, value_type, keys_sorted: bool = False, nullable: bool = True):
+    """Create a type representing a list of key/value mappings
+
+    Note that each element in the list contains potentially many
+    key/value pairs (and that a map array contains potentially
+    many individual mappings).
+
+    Parameters
+    ----------
+    value_type : schema-like
+        The type of keys in each map element.
+    value_type : schema-like
+        The type of values in each map element
+    keys_sorted : bool, optional
+        True if keys within each map element are sorted.
+    nullable : bool, optional
+        Use ``False`` to mark this field as non-nullable.
+
+    Examples
+    --------
+    >>> import nanoarrow as na
+    >>> na.map_(na.int32(), na.string())
+    <Schema> map<entries: struct<key: int32, value: string>>
+    """
+    return Schema(
+        Type.MAP,
+        key_type=key_type,
+        value_type=value_type,
+        keys_sorted=keys_sorted,
+        nullable=nullable,
+    )
+
+
+def dictionary(index_type, value_type, dictionary_ordered: bool = False) -> Schema:
     """Create a type representing dictionary-encoded values
 
     Parameters
@@ -1289,6 +1346,25 @@ def _c_schema_from_type_and_params(type: Type, params: dict):
         factory.set_format(f"+w:{fixed_size}")
         factory.allocate_children(1)
         factory.set_child(0, "item", c_schema(params.pop("value_type")))
+
+    elif type == Type.MAP:
+        key_schema = c_schema(params.pop("key_type"))
+        value_schema = c_schema(params.pop("value_type"))
+
+        entries = CSchemaBuilder.allocate()
+        entries.set_format("+s")
+        entries.set_nullable(False)
+        entries.allocate_children(2)
+        entries.set_child(0, "key", key_schema.modify(nullable=False))
+        entries.set_child(1, "value", value_schema)
+
+        factory.set_format("+m")
+        factory.allocate_children(1)
+        factory.set_child(0, "entries", entries.finish())
+        factory.set_nullable(False)
+
+        if "keys_sorted" in params:
+            factory.set_map_keys_sorted(params.pop("keys_sorted"))
 
     elif type == Type.DICTIONARY:
         index_type = c_schema(params.pop("index_type"))
