@@ -256,6 +256,86 @@ TEST(AllocatorTest, AllocatorTestMemoryPool) {
 #endif
 }
 
+TEST(DecimalTest, Decimal32Test) {
+  struct ArrowDecimal decimal;
+  ArrowDecimalInit(&decimal, 32, 8, 3);
+
+  EXPECT_EQ(decimal.n_words, 0);
+  EXPECT_EQ(decimal.precision, 8);
+  EXPECT_EQ(decimal.scale, 3);
+
+#if defined(NANOARROW_BUILD_TESTS_WITH_ARROW) && ARROW_VERSION_MAJOR >= 18
+  auto dec_pos = *Decimal32::FromString("12.345");
+  uint8_t bytes_pos[4];
+  dec_pos.ToBytes(bytes_pos);
+
+  auto dec_neg = *Decimal32::FromString("-34.567");
+  uint8_t bytes_neg[4];
+  dec_neg.ToBytes(bytes_neg);
+#endif
+
+  ArrowDecimalSetInt(&decimal, 12345);
+  EXPECT_EQ(ArrowDecimalGetIntUnsafe(&decimal), 12345);
+  EXPECT_EQ(ArrowDecimalSign(&decimal), 1);
+#if defined(NANOARROW_BUILD_TESTS_WITH_ARROW) && ARROW_VERSION_MAJOR >= 18
+  EXPECT_EQ(memcmp(decimal.words, bytes_pos, sizeof(bytes_pos)), 0);
+  ArrowDecimalSetBytes(&decimal, bytes_pos);
+  EXPECT_EQ(memcmp(decimal.words, bytes_pos, sizeof(bytes_pos)), 0);
+#endif
+
+  ArrowDecimalSetInt(&decimal, -34567);
+  EXPECT_EQ(ArrowDecimalGetIntUnsafe(&decimal), -34567);
+  EXPECT_EQ(ArrowDecimalSign(&decimal), -1);
+#if defined(NANOARROW_BUILD_TESTS_WITH_ARROW) && ARROW_VERSION_MAJOR >= 18
+  EXPECT_EQ(memcmp(decimal.words, bytes_neg, sizeof(bytes_neg)), 0);
+  ArrowDecimalSetBytes(&decimal, bytes_neg);
+  EXPECT_EQ(memcmp(decimal.words, bytes_neg, sizeof(bytes_neg)), 0);
+#endif
+}
+
+TEST(DecimalTest, Decimal64Test) {
+  struct ArrowDecimal decimal;
+  ArrowDecimalInit(&decimal, 64, 10, 3);
+
+  EXPECT_EQ(decimal.n_words, 1);
+  EXPECT_EQ(decimal.precision, 10);
+  EXPECT_EQ(decimal.scale, 3);
+
+  if (_ArrowIsLittleEndian()) {
+    EXPECT_EQ(decimal.high_word_index - decimal.low_word_index + 1, decimal.n_words);
+  } else {
+    EXPECT_EQ(decimal.low_word_index - decimal.high_word_index + 1, decimal.n_words);
+  }
+
+#if defined(NANOARROW_BUILD_TESTS_WITH_ARROW) && ARROW_VERSION_MAJOR >= 18
+  auto dec_pos = *Decimal64::FromString("12.345");
+  uint8_t bytes_pos[8];
+  dec_pos.ToBytes(bytes_pos);
+
+  auto dec_neg = *Decimal64::FromString("-34.567");
+  uint8_t bytes_neg[8];
+  dec_neg.ToBytes(bytes_neg);
+#endif
+
+  ArrowDecimalSetInt(&decimal, 12345);
+  EXPECT_EQ(ArrowDecimalGetIntUnsafe(&decimal), 12345);
+  EXPECT_EQ(ArrowDecimalSign(&decimal), 1);
+#if defined(NANOARROW_BUILD_TESTS_WITH_ARROW) && ARROW_VERSION_MAJOR >= 18
+  EXPECT_EQ(memcmp(decimal.words, bytes_pos, sizeof(bytes_pos)), 0);
+  ArrowDecimalSetBytes(&decimal, bytes_pos);
+  EXPECT_EQ(memcmp(decimal.words, bytes_pos, sizeof(bytes_pos)), 0);
+#endif
+
+  ArrowDecimalSetInt(&decimal, -34567);
+  EXPECT_EQ(ArrowDecimalGetIntUnsafe(&decimal), -34567);
+  EXPECT_EQ(ArrowDecimalSign(&decimal), -1);
+#if defined(NANOARROW_BUILD_TESTS_WITH_ARROW) && ARROW_VERSION_MAJOR >= 18
+  EXPECT_EQ(memcmp(decimal.words, bytes_neg, sizeof(bytes_neg)), 0);
+  ArrowDecimalSetBytes(&decimal, bytes_neg);
+  EXPECT_EQ(memcmp(decimal.words, bytes_neg, sizeof(bytes_neg)), 0);
+#endif
+}
+
 TEST(DecimalTest, Decimal128Test) {
   struct ArrowDecimal decimal;
   ArrowDecimalInit(&decimal, 128, 10, 3);
@@ -302,8 +382,12 @@ TEST(DecimalTest, DecimalNegateTest) {
   struct ArrowBuffer buffer;
   ArrowBufferInit(&buffer);
 
-  for (auto bitwidth : {128, 256}) {
-    ArrowDecimalInit(&decimal, bitwidth, 39, 0);
+  for (auto bitwidth : {32, 64, 128, 256}) {
+    if (bitwidth > 64) {
+      ArrowDecimalInit(&decimal, bitwidth, 39, 0);
+    } else {
+      ArrowDecimalInit(&decimal, bitwidth, 8, 3);
+    }
 
     // Check with a value whose value is contained entirely in the least significant digit
     ArrowDecimalSetInt(&decimal, 12345);
@@ -314,25 +398,41 @@ TEST(DecimalTest, DecimalNegateTest) {
 
     // Check with a value whose negative value will carry into a more significant digit
     memset(decimal.words, 0, sizeof(decimal.words));
-    decimal.words[decimal.low_word_index] = std::numeric_limits<uint64_t>::max();
+    if (bitwidth > 64) {
+      decimal.words[decimal.low_word_index] = std::numeric_limits<uint64_t>::max();
+    } else if (bitwidth == 64) {
+      decimal.words[decimal.low_word_index] = std::numeric_limits<int64_t>::max();
+    } else {
+      decimal.words[decimal.low_word_index] = std::numeric_limits<int32_t>::max();
+    }
     ASSERT_EQ(ArrowDecimalSign(&decimal), 1);
     ArrowDecimalNegate(&decimal);
     ASSERT_EQ(ArrowDecimalSign(&decimal), -1);
     ArrowDecimalNegate(&decimal);
     ASSERT_EQ(ArrowDecimalSign(&decimal), 1);
-    EXPECT_EQ(decimal.words[decimal.low_word_index],
-              std::numeric_limits<uint64_t>::max());
+    if (bitwidth > 64) {
+      EXPECT_EQ(decimal.words[decimal.low_word_index],
+                std::numeric_limits<uint64_t>::max());
+    } else if (bitwidth == 64) {
+      EXPECT_EQ(decimal.words[decimal.low_word_index],
+                std::numeric_limits<int64_t>::max());
+    } else {
+      EXPECT_EQ(decimal.words[decimal.low_word_index],
+                std::numeric_limits<int32_t>::max());
+    }
 
-    // Check with a large value that fits in the 128 bit size
-    ASSERT_EQ(
-        ArrowDecimalSetDigits(&decimal, "123456789012345678901234567890123456789"_asv),
-        NANOARROW_OK);
-    ArrowDecimalNegate(&decimal);
+    if (bitwidth > 64) {
+      // Check with a large value that fits in the 128 bit size
+      ASSERT_EQ(
+          ArrowDecimalSetDigits(&decimal, "123456789012345678901234567890123456789"_asv),
+          NANOARROW_OK);
+      ArrowDecimalNegate(&decimal);
 
-    buffer.size_bytes = 0;
-    ASSERT_EQ(ArrowDecimalAppendDigitsToBuffer(&decimal, &buffer), NANOARROW_OK);
-    EXPECT_EQ(std::string(reinterpret_cast<char*>(buffer.data), buffer.size_bytes),
-              "-123456789012345678901234567890123456789");
+      buffer.size_bytes = 0;
+      ASSERT_EQ(ArrowDecimalAppendDigitsToBuffer(&decimal, &buffer), NANOARROW_OK);
+      EXPECT_EQ(std::string(reinterpret_cast<char*>(buffer.data), buffer.size_bytes),
+                "-123456789012345678901234567890123456789");
+    }
   }
 
   // Check with a large value that only fits in the 256 bit range

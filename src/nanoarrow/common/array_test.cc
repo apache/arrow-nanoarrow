@@ -1245,6 +1245,94 @@ TEST(ArrayTest, ArrayTestAppendToIntervalArrayMonthDayNano) {
 #endif
 }
 
+TEST(ArrayTest, ArrayTestAppendToDecimal32Array) {
+  struct ArrowArray array;
+  struct ArrowDecimal decimal;
+
+  ArrowDecimalInit(&decimal, 32, 8, 3);
+  ASSERT_EQ(ArrowArrayInitFromType(&array, NANOARROW_TYPE_DECIMAL32), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayStartAppending(&array), NANOARROW_OK);
+
+  ArrowDecimalSetInt(&decimal, 12345);
+  EXPECT_EQ(ArrowArrayAppendDecimal(&array, &decimal), NANOARROW_OK);
+
+  EXPECT_EQ(ArrowArrayAppendNull(&array, 2), NANOARROW_OK);
+
+  ArrowDecimalSetInt(&decimal, -67890);
+  EXPECT_EQ(ArrowArrayAppendDecimal(&array, &decimal), NANOARROW_OK);
+
+  EXPECT_EQ(ArrowArrayFinishBuildingDefault(&array, nullptr), NANOARROW_OK);
+  EXPECT_EQ(array.length, 4);
+  EXPECT_EQ(array.null_count, 2);
+  auto validity_buffer = reinterpret_cast<const uint8_t*>(array.buffers[0]);
+  auto data_buffer = reinterpret_cast<const uint8_t*>(array.buffers[1]);
+  EXPECT_EQ(validity_buffer[0], 0b00001001);
+
+  ArrowDecimalSetInt(&decimal, 12345);
+  EXPECT_EQ(memcmp(data_buffer, decimal.words, 4), 0);
+  ArrowDecimalSetInt(&decimal, -67890);
+  EXPECT_EQ(memcmp(data_buffer + 3 * 4, decimal.words, 4), 0);
+
+#if defined(NANOARROW_BUILD_TESTS_WITH_ARROW) && ARROW_VERSION_MAJOR >= 18
+  auto arrow_array = ImportArray(&array, decimal32(8, 3));
+  ARROW_EXPECT_OK(arrow_array);
+
+  auto builder = Decimal32Builder(decimal32(8, 3));
+  ARROW_EXPECT_OK(builder.Append(*Decimal32::FromString("12.345")));
+  ARROW_EXPECT_OK(builder.AppendNulls(2));
+  ARROW_EXPECT_OK(builder.Append(*Decimal32::FromString("-67.890")));
+  auto expected_array = builder.Finish();
+
+  EXPECT_TRUE(arrow_array.ValueUnsafe()->Equals(expected_array.ValueUnsafe()));
+#else
+  ArrowArrayRelease(&array);
+#endif
+}
+
+TEST(ArrayTest, ArrayTestAppendToDecimal64Array) {
+  struct ArrowArray array;
+  struct ArrowDecimal decimal;
+
+  ArrowDecimalInit(&decimal, 64, 10, 3);
+  ASSERT_EQ(ArrowArrayInitFromType(&array, NANOARROW_TYPE_DECIMAL64), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayStartAppending(&array), NANOARROW_OK);
+
+  ArrowDecimalSetInt(&decimal, 12345);
+  EXPECT_EQ(ArrowArrayAppendDecimal(&array, &decimal), NANOARROW_OK);
+
+  EXPECT_EQ(ArrowArrayAppendNull(&array, 2), NANOARROW_OK);
+
+  ArrowDecimalSetInt(&decimal, -67890);
+  EXPECT_EQ(ArrowArrayAppendDecimal(&array, &decimal), NANOARROW_OK);
+
+  EXPECT_EQ(ArrowArrayFinishBuildingDefault(&array, nullptr), NANOARROW_OK);
+  EXPECT_EQ(array.length, 4);
+  EXPECT_EQ(array.null_count, 2);
+  auto validity_buffer = reinterpret_cast<const uint8_t*>(array.buffers[0]);
+  auto data_buffer = reinterpret_cast<const uint8_t*>(array.buffers[1]);
+  EXPECT_EQ(validity_buffer[0], 0b00001001);
+
+  ArrowDecimalSetInt(&decimal, 12345);
+  EXPECT_EQ(memcmp(data_buffer, decimal.words, 8), 0);
+  ArrowDecimalSetInt(&decimal, -67890);
+  EXPECT_EQ(memcmp(data_buffer + 3 * 8, decimal.words, 8), 0);
+
+#if defined(NANOARROW_BUILD_TESTS_WITH_ARROW) && ARROW_VERSION_MAJOR >= 18
+  auto arrow_array = ImportArray(&array, decimal64(10, 3));
+  ARROW_EXPECT_OK(arrow_array);
+
+  auto builder = Decimal64Builder(decimal64(10, 3));
+  ARROW_EXPECT_OK(builder.Append(*Decimal64::FromString("12.345")));
+  ARROW_EXPECT_OK(builder.AppendNulls(2));
+  ARROW_EXPECT_OK(builder.Append(*Decimal64::FromString("-67.890")));
+  auto expected_array = builder.Finish();
+
+  EXPECT_TRUE(arrow_array.ValueUnsafe()->Equals(expected_array.ValueUnsafe()));
+#else
+  ArrowArrayRelease(&array);
+#endif
+}
+
 TEST(ArrayTest, ArrayTestAppendToDecimal128Array) {
   struct ArrowArray array;
   struct ArrowDecimal decimal;
@@ -3820,6 +3908,82 @@ TEST(ArrayViewTest, ArrayViewTestGetIntervalMonthDayNano) {
   ArrowSchemaRelease(&schema);
   ArrowArrayRelease(&array);
 }
+
+#if ARROW_VERSION_MAJOR >= 18
+TEST(ArrayViewTest, ArrayViewTestGetDecimal32) {
+  struct ArrowArray array;
+  struct ArrowSchema schema;
+  struct ArrowArrayView array_view;
+  struct ArrowError error;
+
+  auto type = decimal32(8, 3);
+
+  // Array with nulls
+  auto builder = Decimal32Builder(type);
+  ARROW_EXPECT_OK(builder.Append(*Decimal32::FromReal(1.234, 8, 3)));
+  ARROW_EXPECT_OK(builder.AppendNulls(2));
+  ARROW_EXPECT_OK(builder.Append(*Decimal32::FromReal(-5.678, 8, 3)));
+  auto maybe_arrow_array = builder.Finish();
+  ARROW_EXPECT_OK(maybe_arrow_array);
+  auto arrow_array = maybe_arrow_array.ValueUnsafe();
+
+  ARROW_EXPECT_OK(ExportArray(*arrow_array, &array, &schema));
+  ASSERT_EQ(ArrowArrayViewInitFromSchema(&array_view, &schema, &error), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayViewValidate(&array_view, NANOARROW_VALIDATION_LEVEL_FULL, &error),
+            NANOARROW_OK);
+
+  ArrowDecimal decimal;
+  ArrowDecimalInit(&decimal, 32, 8, 3);
+
+  ArrowArrayViewGetDecimalUnsafe(&array_view, 0, &decimal);
+  EXPECT_EQ(ArrowDecimalGetIntUnsafe(&decimal), 1234);
+
+  ArrowArrayViewGetDecimalUnsafe(&array_view, 3, &decimal);
+  EXPECT_EQ(ArrowDecimalGetIntUnsafe(&decimal), -5678);
+
+  ArrowArrayViewReset(&array_view);
+  ArrowSchemaRelease(&schema);
+  ArrowArrayRelease(&array);
+}
+
+TEST(ArrayViewTest, ArrayViewTestGetDecimal64) {
+  struct ArrowArray array;
+  struct ArrowSchema schema;
+  struct ArrowArrayView array_view;
+  struct ArrowError error;
+
+  auto type = decimal64(10, 3);
+
+  // Array with nulls
+  auto builder = Decimal64Builder(type);
+  ARROW_EXPECT_OK(builder.Append(*Decimal64::FromReal(1.234, 10, 3)));
+  ARROW_EXPECT_OK(builder.AppendNulls(2));
+  ARROW_EXPECT_OK(builder.Append(*Decimal64::FromReal(-5.678, 10, 3)));
+  auto maybe_arrow_array = builder.Finish();
+  ARROW_EXPECT_OK(maybe_arrow_array);
+  auto arrow_array = maybe_arrow_array.ValueUnsafe();
+
+  ARROW_EXPECT_OK(ExportArray(*arrow_array, &array, &schema));
+  ASSERT_EQ(ArrowArrayViewInitFromSchema(&array_view, &schema, &error), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayViewValidate(&array_view, NANOARROW_VALIDATION_LEVEL_FULL, &error),
+            NANOARROW_OK);
+
+  ArrowDecimal decimal;
+  ArrowDecimalInit(&decimal, 64, 10, 3);
+
+  ArrowArrayViewGetDecimalUnsafe(&array_view, 0, &decimal);
+  EXPECT_EQ(ArrowDecimalGetIntUnsafe(&decimal), 1234);
+
+  ArrowArrayViewGetDecimalUnsafe(&array_view, 3, &decimal);
+  EXPECT_EQ(ArrowDecimalGetIntUnsafe(&decimal), -5678);
+
+  ArrowArrayViewReset(&array_view);
+  ArrowSchemaRelease(&schema);
+  ArrowArrayRelease(&array);
+}
+#endif
 
 TEST(ArrayViewTest, ArrayViewTestGetDecimal128) {
   struct ArrowArray array;

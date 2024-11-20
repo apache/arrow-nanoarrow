@@ -111,6 +111,7 @@ void ArrowLayoutInit(struct ArrowLayout* layout, enum ArrowType storage_type) {
     case NANOARROW_TYPE_UINT32:
     case NANOARROW_TYPE_INT32:
     case NANOARROW_TYPE_FLOAT:
+    case NANOARROW_TYPE_DECIMAL32:
       layout->element_size_bits[1] = 32;
       break;
     case NANOARROW_TYPE_INTERVAL_MONTHS:
@@ -122,6 +123,7 @@ void ArrowLayoutInit(struct ArrowLayout* layout, enum ArrowType storage_type) {
     case NANOARROW_TYPE_INT64:
     case NANOARROW_TYPE_DOUBLE:
     case NANOARROW_TYPE_INTERVAL_DAY_TIME:
+    case NANOARROW_TYPE_DECIMAL64:
       layout->element_size_bits[1] = 64;
       break;
 
@@ -326,7 +328,7 @@ ArrowErrorCode ArrowDecimalSetDigits(struct ArrowDecimal* decimal,
 
   // Use 32-bit words for portability
   uint32_t words32[8];
-  int n_words32 = decimal->n_words * 2;
+  int n_words32 = decimal->n_words > 0 ? decimal->n_words * 2 : 1;
   NANOARROW_DCHECK(n_words32 <= 8);
   memset(words32, 0, sizeof(words32));
 
@@ -356,11 +358,14 @@ ArrowErrorCode ArrowDecimalSetDigits(struct ArrowDecimal* decimal,
 // https://github.com/apache/arrow/blob/cd3321b28b0c9703e5d7105d6146c1270bbadd7f/cpp/src/arrow/util/decimal.cc#L365
 ArrowErrorCode ArrowDecimalAppendDigitsToBuffer(const struct ArrowDecimal* decimal,
                                                 struct ArrowBuffer* buffer) {
-  NANOARROW_DCHECK(decimal->n_words == 2 || decimal->n_words == 4);
+  NANOARROW_DCHECK(decimal->n_words == 0 || decimal->n_words == 1 ||
+                   decimal->n_words == 2 || decimal->n_words == 4);
   int is_negative = ArrowDecimalSign(decimal) < 0;
 
   uint64_t words_little_endian[4];
-  if (decimal->low_word_index == 0) {
+  if (decimal->n_words == 0) {
+    memcpy(words_little_endian, decimal->words, sizeof(uint32_t));
+  } else if (decimal->low_word_index == 0) {
     memcpy(words_little_endian, decimal->words, decimal->n_words * sizeof(uint64_t));
   } else {
     for (int i = 0; i < decimal->n_words; i++) {
@@ -370,21 +375,33 @@ ArrowErrorCode ArrowDecimalAppendDigitsToBuffer(const struct ArrowDecimal* decim
 
   // We've already made a copy, so negate that if needed
   if (is_negative) {
-    uint64_t carry = 1;
-    for (int i = 0; i < decimal->n_words; i++) {
-      uint64_t elem = words_little_endian[i];
-      elem = ~elem + carry;
-      carry &= (elem == 0);
-      words_little_endian[i] = elem;
+    if (decimal->n_words == 0) {
+      uint32_t elem = (uint32_t)words_little_endian[0];
+      elem = ~elem + 1;
+      words_little_endian[0] = (int32_t)elem;
+    } else {
+      uint64_t carry = 1;
+      for (int i = 0; i < decimal->n_words; i++) {
+        uint64_t elem = words_little_endian[i];
+        elem = ~elem + carry;
+        carry &= (elem == 0);
+        words_little_endian[i] = elem;
+      }
     }
   }
 
   // Find the most significant word that is non-zero
   int most_significant_elem_idx = -1;
-  for (int i = decimal->n_words - 1; i >= 0; i--) {
-    if (words_little_endian[i] != 0) {
-      most_significant_elem_idx = i;
-      break;
+  if (decimal->n_words == 0) {
+    if (words_little_endian[0] != 0) {
+      most_significant_elem_idx = 0;
+    }
+  } else {
+    for (int i = decimal->n_words - 1; i >= 0; i--) {
+      if (words_little_endian[i] != 0) {
+        most_significant_elem_idx = i;
+        break;
+      }
     }
   }
 

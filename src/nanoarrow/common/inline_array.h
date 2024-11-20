@@ -700,6 +700,22 @@ static inline ArrowErrorCode ArrowArrayAppendDecimal(struct ArrowArray* array,
   struct ArrowBuffer* data_buffer = ArrowArrayBuffer(array, 1);
 
   switch (private_data->storage_type) {
+    case NANOARROW_TYPE_DECIMAL32:
+      if (value->n_words != 0) {
+        return EINVAL;
+      } else {
+        NANOARROW_RETURN_NOT_OK(
+            ArrowBufferAppend(data_buffer, value->words, sizeof(uint32_t)));
+        break;
+      }
+    case NANOARROW_TYPE_DECIMAL64:
+      if (value->n_words != 1) {
+        return EINVAL;
+      } else {
+        NANOARROW_RETURN_NOT_OK(
+            ArrowBufferAppend(data_buffer, value->words, sizeof(uint64_t)));
+        break;
+      }
     case NANOARROW_TYPE_DECIMAL128:
       if (value->n_words != 2) {
         return EINVAL;
@@ -1267,6 +1283,12 @@ static inline void ArrowArrayViewGetDecimalUnsafe(const struct ArrowArrayView* a
   i += array_view->offset;
   const uint8_t* data_view = array_view->buffer_views[1].data.as_uint8;
   switch (array_view->storage_type) {
+    case NANOARROW_TYPE_DECIMAL32:
+      ArrowDecimalSetBytes(out, data_view + (i * 4));
+      break;
+    case NANOARROW_TYPE_DECIMAL64:
+      ArrowDecimalSetBytes(out, data_view + (i * 8));
+      break;
     case NANOARROW_TYPE_DECIMAL128:
       ArrowDecimalSetBytes(out, data_view + (i * 16));
       break;

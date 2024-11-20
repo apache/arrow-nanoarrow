@@ -184,6 +184,8 @@ static ArrowErrorCode ArrowIpcEncodeFieldType(flatcc_builder_t* builder,
           Field_type_FloatingPoint_create(builder, ns(Precision_DOUBLE)), error);
       return NANOARROW_OK;
 
+    case NANOARROW_TYPE_DECIMAL32:
+    case NANOARROW_TYPE_DECIMAL64:
     case NANOARROW_TYPE_DECIMAL128:
     case NANOARROW_TYPE_DECIMAL256:
       FLATCC_RETURN_UNLESS_0(

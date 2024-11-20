@@ -271,6 +271,14 @@ ArrowErrorCode ArrowSchemaSetTypeDecimal(struct ArrowSchema* schema, enum ArrowT
   char buffer[64];
   int n_chars;
   switch (type) {
+    case NANOARROW_TYPE_DECIMAL32:
+      n_chars = snprintf(buffer, sizeof(buffer), "d:%d,%d,32", decimal_precision,
+                         decimal_scale);
+      break;
+    case NANOARROW_TYPE_DECIMAL64:
+      n_chars = snprintf(buffer, sizeof(buffer), "d:%d,%d,64", decimal_precision,
+                         decimal_scale);
+      break;
     case NANOARROW_TYPE_DECIMAL128:
       n_chars =
           snprintf(buffer, sizeof(buffer), "d:%d,%d", decimal_precision, decimal_scale);
@@ -721,6 +729,12 @@ static ArrowErrorCode ArrowSchemaViewParse(struct ArrowSchemaView* schema_view,
       *format_end_out = parse_end;
 
       switch (schema_view->decimal_bitwidth) {
+        case 32:
+          ArrowSchemaViewSetPrimitive(schema_view, NANOARROW_TYPE_DECIMAL32);
+          return NANOARROW_OK;
+        case 64:
+          ArrowSchemaViewSetPrimitive(schema_view, NANOARROW_TYPE_DECIMAL64);
+          return NANOARROW_OK;
         case 128:
           ArrowSchemaViewSetPrimitive(schema_view, NANOARROW_TYPE_DECIMAL128);
           return NANOARROW_OK;
@@ -1157,6 +1171,8 @@ static ArrowErrorCode ArrowSchemaViewValidate(struct ArrowSchemaView* schema_vie
     case NANOARROW_TYPE_HALF_FLOAT:
     case NANOARROW_TYPE_FLOAT:
     case NANOARROW_TYPE_DOUBLE:
+    case NANOARROW_TYPE_DECIMAL32:
+    case NANOARROW_TYPE_DECIMAL64:
     case NANOARROW_TYPE_DECIMAL128:
     case NANOARROW_TYPE_DECIMAL256:
     case NANOARROW_TYPE_STRING:
@@ -1316,6 +1332,8 @@ static int64_t ArrowSchemaTypeToStringInternal(struct ArrowSchemaView* schema_vi
                                                char* out, int64_t n) {
   const char* type_string = ArrowTypeString(schema_view->type);
   switch (schema_view->type) {
+    case NANOARROW_TYPE_DECIMAL32:
+    case NANOARROW_TYPE_DECIMAL64:
     case NANOARROW_TYPE_DECIMAL128:
     case NANOARROW_TYPE_DECIMAL256:
       return snprintf(out, n, "%s(%" PRId32 ", %" PRId32 ")", type_string,
