@@ -439,7 +439,7 @@ class Schema:
             return None
 
     @property
-    def keys_sorted(self):
+    def keys_sorted(self) -> Union[bool, None]:
         if self._c_schema_view.type_id == _types.MAP:
             return self._c_schema_view.map_keys_sorted
         else:
@@ -1003,7 +1003,7 @@ def timestamp(
     return Schema(Type.TIMESTAMP, timezone=timezone, unit=unit, nullable=nullable)
 
 
-def duration(unit, nullable: bool = True):
+def duration(unit, nullable: bool = True) -> Schema:
     """Create an instance of a duration type.
 
     Parameters
@@ -1023,7 +1023,7 @@ def duration(unit, nullable: bool = True):
     return Schema(Type.DURATION, unit=unit, nullable=nullable)
 
 
-def interval_months(nullable: bool = True):
+def interval_months(nullable: bool = True) -> Schema:
     """Create an instance of an interval type measured in months.
 
     Parameters
@@ -1041,7 +1041,7 @@ def interval_months(nullable: bool = True):
     return Schema(Type.INTERVAL_MONTHS, nullable=nullable)
 
 
-def interval_day_time(nullable: bool = True):
+def interval_day_time(nullable: bool = True) -> Schema:
     """Create an instance of an interval type measured as a day/time pair.
 
     Parameters
@@ -1059,7 +1059,7 @@ def interval_day_time(nullable: bool = True):
     return Schema(Type.INTERVAL_DAY_TIME, nullable=nullable)
 
 
-def interval_month_day_nano(nullable: bool = True):
+def interval_month_day_nano(nullable: bool = True) -> Schema:
     """Create an instance of an interval type measured as a month/day/nanosecond
     tuple.
 
@@ -1124,7 +1124,7 @@ def decimal256(precision: int, scale: int, nullable: bool = True) -> Schema:
     return Schema(Type.DECIMAL256, precision=precision, scale=scale, nullable=nullable)
 
 
-def struct(fields, nullable=True) -> Schema:
+def struct(fields, nullable: bool = True) -> Schema:
     """Create a type representing a named sequence of fields.
 
     Parameters
@@ -1148,7 +1148,7 @@ def struct(fields, nullable=True) -> Schema:
     return Schema(Type.STRUCT, fields=fields, nullable=nullable)
 
 
-def list_(value_type, nullable=True) -> Schema:
+def list_(value_type, nullable: bool = True) -> Schema:
     """Create a type representing a variable-size list of some other type.
 
     Parameters
@@ -1168,7 +1168,7 @@ def list_(value_type, nullable=True) -> Schema:
     return Schema(Type.LIST, value_type=value_type, nullable=nullable)
 
 
-def large_list(value_type, nullable=True) -> Schema:
+def large_list(value_type, nullable: bool = True) -> Schema:
     """Create a type representing a variable-size list of some other type.
 
     Unlike :func:`list_`, the func:`large_list` can accomodate arrays
@@ -1191,7 +1191,7 @@ def large_list(value_type, nullable=True) -> Schema:
     return Schema(Type.LARGE_LIST, value_type=value_type, nullable=nullable)
 
 
-def fixed_size_list(value_type, list_size, nullable=True) -> Schema:
+def fixed_size_list(value_type, list_size: int, nullable: bool = True) -> Schema:
     """Create a type representing a fixed-size list of some other type.
 
     Parameters
@@ -1218,7 +1218,7 @@ def fixed_size_list(value_type, list_size, nullable=True) -> Schema:
     )
 
 
-def map_(key_type, value_type, keys_sorted=False, nullable=True):
+def map_(key_type, value_type, keys_sorted: bool = False, nullable: bool = True):
     """Create a type representing a list of key/value mappings
 
     Note that each element in the list contains potentially many
@@ -1251,7 +1251,7 @@ def map_(key_type, value_type, keys_sorted=False, nullable=True):
     )
 
 
-def dictionary(index_type, value_type, dictionary_ordered=False):
+def dictionary(index_type, value_type, dictionary_ordered: bool = False) -> Schema:
     """Create a type representing dictionary-encoded values
 
     Parameters
