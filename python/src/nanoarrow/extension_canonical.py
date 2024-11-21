@@ -17,6 +17,7 @@
 
 from typing import Any, Iterator, Mapping, Optional
 
+from nanoarrow.c_array import CArrayBuilder
 from nanoarrow.c_buffer import CBufferBuilder
 from nanoarrow.c_schema import CSchema, c_schema_view
 from nanoarrow.schema import extension_type, int8
@@ -33,7 +34,7 @@ def bool8(nullable: bool = True):
         Use ``False`` to mark this field as non-nullable.
     """
 
-    return extension_type(int8(nullable=nullable), "arrow.bool8")
+    return extension_type(int8(), "arrow.bool8", nullable=nullable)
 
 
 class Bool8SequenceConverter(ToPyBufferConverter):
@@ -72,3 +73,7 @@ class Bool8Extension(extension.Extension):
     def get_sequence_converter(self, c_schema: CSchema):
         self.get_params(c_schema)
         return Bool8SequenceConverter
+
+    def get_sequence_appender(self, c_schema: CSchema, array_builder):
+        self.get_params(c_schema)
+        return None

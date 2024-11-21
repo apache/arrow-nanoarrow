@@ -25,8 +25,9 @@ def test_extension_bool8():
     assert schema.extension.name == "arrow.bool8"
     assert schema.extension.metadata == b""
 
-    buf = na.c_buffer([1, 0, 1, 1], na.int8())
-    bool8_array = na.Array(na.c_array_from_buffers(schema, 4, [None, buf]))
+    assert na.bool8(nullable=False).nullable is False
+
+    bool8_array = na.Array([True, False, True, True], na.bool8())
     assert bool8_array.schema.type == na.Type.EXTENSION
     assert bool8_array.schema.extension.name == "arrow.bool8"
     assert bool8_array.to_pylist() == [True, False, True, True]
@@ -34,10 +35,9 @@ def test_extension_bool8():
     sequence = bool8_array.to_pysequence()
     assert list(sequence) == [True, False, True, True]
 
-    validity = na.c_buffer([True, True, False, True], na.bool_())
-    bool8_array = na.Array(na.c_array_from_buffers(schema, 4, [validity, buf]))
+    bool8_array = na.Array([True, False, None, True], na.bool8())
     assert bool8_array.to_pylist() == [True, False, None, True]
 
     sequence = bool8_array.to_pysequence(handle_nulls=na.nulls_separate())
-    assert list(sequence[1]) == [True, False, True, True]
+    assert list(sequence[1]) == [True, False, False, True]
     assert list(sequence[0]) == [True, True, False, True]

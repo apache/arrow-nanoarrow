@@ -15,9 +15,10 @@
 # specific language governing permissions and limitations
 # under the License.
 
-from typing import Any, Iterator, Mapping, Optional, Type
+from typing import Any, Iterator, Mapping, Optional, Type, Callable, Iterable
 
 from nanoarrow.c_schema import CSchema, CSchemaView, c_schema_view
+from nanoarrow.c_array import CArrayBuilder
 
 
 class Extension:
@@ -36,6 +37,11 @@ class Extension:
         return None
 
     def get_sequence_converter(self, c_schema: CSchema):
+        return None
+
+    def get_iterable_appender(
+        self, c_schema: CSchema, array_builder
+    ) -> Optional[Callable[[Iterable], None]]:
         return None
 
 
@@ -59,7 +65,9 @@ def register_extension(extension: Extension) -> Optional[Extension]:
     else:
         key = schema_view.type_id
 
-    prev = _global_extension_registry[key] if key in _global_extension_registry else None
+    prev = (
+        _global_extension_registry[key] if key in _global_extension_registry else None
+    )
     _global_extension_registry[key] = extension
     return prev
 

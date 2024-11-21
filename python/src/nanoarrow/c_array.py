@@ -24,6 +24,7 @@ from nanoarrow._schema import CSchema, CSchemaBuilder
 from nanoarrow._utils import obj_is_buffer, obj_is_capsule
 from nanoarrow.c_buffer import c_buffer
 from nanoarrow.c_schema import c_schema, c_schema_view
+from nanoarrow.extension import resolve_extension
 
 from nanoarrow import _types
 
@@ -462,6 +463,13 @@ class ArrayFromIterableBuilder(ArrayBuilder):
 
         # Resolve the method name we are going to use to do the building from
         # the provided schema.
+        ext = resolve_extension(self._schema_view)
+        if ext is not None:
+            maybe_appender = ext.get_iterable_appender(self._schema, self)
+            if maybe_appender:
+                self._append_impl = maybe_appender
+                return
+
         type_id = self._schema_view.type_id
         if type_id not in _ARRAY_BUILDER_FROM_ITERABLE_METHOD:
             raise ValueError(
