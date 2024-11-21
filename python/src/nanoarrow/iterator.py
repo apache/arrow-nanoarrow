@@ -213,11 +213,12 @@ class PyIterator(ArrayViewBaseIterator):
         """Iterate over all elements in a slice of the current chunk"""
 
         # Check for an extension type first since this isn't reflected by
-        # self._schema_view.type_id. Currently we just return the storage
-        # iterator with a warning for extension types.
+        # self._schema_view.type_id.
         maybe_extension_name = self._schema_view.extension_name
         if self._ext:
-            return self._ext.get_pyiter(self._ext_params, self._array_view, offset, length)
+            maybe_iter = self._ext.get_pyiter(self, offset, length)
+            if maybe_iter:
+                return maybe_iter
         elif maybe_extension_name:
             self._warn(
                 f"Converting unregistered extension '{maybe_extension_name}' "

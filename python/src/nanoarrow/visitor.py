@@ -334,8 +334,7 @@ class ToPyListConverter(ArrayViewVisitor):
 
 class ToPyBufferConverter(ArrayViewVisitor):
     def begin(self, total_elements: Union[int, None]):
-        self._builder = CBufferBuilder()
-        self._builder.set_format(self._schema_view.buffer_format)
+        self._builder = self._make_builder()
 
         if total_elements is not None:
             element_size_bits = self._schema_view.layout.element_size_bits[1]
@@ -353,6 +352,9 @@ class ToPyBufferConverter(ArrayViewVisitor):
 
     def finish(self) -> Any:
         return self._builder.finish()
+
+    def _make_builder(self):
+        return CBufferBuilder().set_format(self._schema_view.buffer_format)
 
 
 class ToBooleanBufferConverter(ArrayViewVisitor):

@@ -27,6 +27,7 @@ from nanoarrow._schema import (
     SchemaMetadata,
 )
 from nanoarrow.c_schema import c_schema
+from nanoarrow.extension import resolve_extension
 
 from nanoarrow import _repr_utils, _types
 
@@ -124,6 +125,11 @@ class ExtensionAccessor:
 
     def __init__(self, schema) -> None:
         self._schema = schema
+        self._ext = resolve_extension(self._schema._c_schema_view)
+        self._params = self._ext.get_params(self._schema) if self._ext else {}
+
+    def __dir__(self) -> List[str]:
+        return ["name", "metadata", "storage"] + list(self._params.keys())
 
     @property
     def name(self) -> str:
@@ -147,6 +153,9 @@ class ExtensionAccessor:
             del metadata[b"ARROW:extension:metadata"]
 
         return Schema(self._schema, metadata=metadata)
+
+    def __getattr__(self, key: str):
+        return self._params[key]
 
 
 class Schema:
@@ -1279,18 +1288,6 @@ def dictionary(index_type, value_type, dictionary_ordered: bool = False) -> Sche
         value_type=value_type,
         dictionary_ordered=dictionary_ordered,
     )
-
-
-def bool8(nullable: bool=True):
-    """Create a type representing dictionary-encoded values
-
-    Parameters
-    ----------
-    nullable : bool, optional
-        Use ``False`` to mark this field as non-nullable.
-    """
-
-    return extension_type(int8(nullable=nullable), "arrow.bool8")
 
 
 def extension_type(

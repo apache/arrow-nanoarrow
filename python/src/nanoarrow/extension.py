@@ -15,23 +15,29 @@
 # specific language governing permissions and limitations
 # under the License.
 
-from typing import Optional, Mapping, Any, Iterator
+from typing import Any, Iterator, Mapping, Optional, Type
 
 from nanoarrow.c_array import CArrayView
-from nanoarrow.c_schema import CSchema, CSchemaView
+from nanoarrow.c_schema import CSchema, CSchemaView, c_schema_view
 
 
 class Extension:
+    def get_schema(self) -> CSchema:
+        raise NotImplementedError()
 
-    def get_params(self, c_schema: CSchema) -> Optional[Mapping[str, Any]]:
-        return None
+    def get_params(self, c_schema: CSchema) -> Mapping[str, Any]:
+        return {}
 
     def get_pyiter(
-        self, params, c_array_view: CArrayView, offset: int, length: int
+        self,
+        params: Mapping[str, Any],
+        c_array_view: CArrayView,
+        offset: int,
+        length: int,
     ) -> Optional[Iterator]:
         return None
 
-    def get_sequence_converter(self, c_schema):
+    def get_sequence_converter(self, c_schema: CSchema):
         return None
 
 
@@ -48,3 +54,22 @@ def resolve_extension(c_schema_view: CSchemaView) -> Optional[Extension]:
         return global_extension_registry[type_id]
 
     return None
+
+
+def register_extension(extension: Extension) -> Optional[Extension]:
+    global global_extension_registry
+
+    schema_view = c_schema_view(extension.get_schema())
+    if schema_view.extension_name:
+        key = schema_view.extension_name
+    else:
+        key = schema_view.type_id
+
+    prev = global_extension_registry[key] if key in global_extension_registry else None
+    global_extension_registry[key] = extension
+    return prev
+
+
+def register(extension_cls: Type[Extension]):
+    register_extension(extension_cls())
+    return extension_cls

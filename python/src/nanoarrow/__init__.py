@@ -29,6 +29,7 @@ from nanoarrow.c_array import c_array_from_buffers, c_array
 from nanoarrow.c_array_stream import c_array_stream
 from nanoarrow.c_schema import c_schema
 from nanoarrow.c_buffer import c_buffer
+from nanoarrow.extension_canonical import bool8
 from nanoarrow.schema import (
     Schema,
     Type,
@@ -63,7 +64,6 @@ from nanoarrow.schema import (
     time32,
     time64,
     timestamp,
-    bool8,
     extension_type,
     duration,
     interval_months,
