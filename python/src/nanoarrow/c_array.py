@@ -423,7 +423,8 @@ class ArrayFromPyBufferBuilder(ArrayBuilder):
             self._append_ext = ext.get_buffer_appender(self._schema, self)
         elif self._schema_view.extension_name:
             raise NotImplementedError(
-                f"Can't create array for unregistered extension {self._schema_view.extension_name}"
+                "Can't create array for unregistered extension "
+                f"'{self._schema_view.extension_name}'"
             )
 
         if self._schema_view.storage_buffer_format is None:
@@ -486,7 +487,8 @@ class ArrayFromIterableBuilder(ArrayBuilder):
                 return
         elif self._schema_view.extension_name:
             raise NotImplementedError(
-                f"Can't create array for unregistered extension {self._schema_view.extension_name}"
+                f"Can't create array for unregistered extension "
+                f"'{self._schema_view.extension_name}'"
             )
 
         type_id = self._schema_view.type_id

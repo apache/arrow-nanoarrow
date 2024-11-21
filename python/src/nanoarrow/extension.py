@@ -15,10 +15,9 @@
 # specific language governing permissions and limitations
 # under the License.
 
-from typing import Any, Iterator, Mapping, Optional, Type, Callable, Iterable
+from typing import Any, Callable, Iterable, Iterator, Mapping, Optional, Type
 
 from nanoarrow.c_schema import CSchema, CSchemaView, c_schema_view
-from nanoarrow.c_array import CArrayBuilder
 
 
 class Extension:

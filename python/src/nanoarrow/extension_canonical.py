@@ -17,11 +17,11 @@
 
 from typing import Any, Iterator, Mapping, Optional
 
-from nanoarrow.c_array import CArrayBuilder
 from nanoarrow.c_buffer import CBufferBuilder
 from nanoarrow.c_schema import CSchema, c_schema_view
 from nanoarrow.schema import extension_type, int8
 from nanoarrow.visitor import ToPyBufferConverter
+
 from nanoarrow import extension
 
 
@@ -44,7 +44,6 @@ class Bool8SequenceConverter(ToPyBufferConverter):
 
 @extension.register
 class Bool8Extension(extension.Extension):
-
     def get_schema(self) -> CSchema:
         return bool8()
 
