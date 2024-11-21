@@ -417,6 +417,15 @@ class ArrayFromPyBufferBuilder(ArrayBuilder):
     def __init__(self, schema):
         super().__init__(schema)
 
+        ext = resolve_extension(self._schema_view)
+        self._append_ext = None
+        if ext is not None:
+            self._append_ext = ext.get_buffer_appender(self._schema, self)
+        elif self._schema_view.extension_name:
+            raise NotImplementedError(
+                f"Can't create array for unregistered extension {self._schema_view.extension_name}"
+            )
+
         if self._schema_view.storage_buffer_format is None:
             raise ValueError(
                 f"Can't build array of type {self._schema_view.type} from PyBuffer"
@@ -429,6 +438,12 @@ class ArrayFromPyBufferBuilder(ArrayBuilder):
         if not isinstance(obj, CBuffer):
             obj = CBuffer.from_pybuffer(obj)
 
+        if self._append_ext is not None:
+            return self._append_ext(obj)
+
+        return self._append_impl(obj)
+
+    def _append_impl(self, obj):
         if (
             self._schema_view.buffer_format in ("b", "c")
             and obj.format not in ("b", "c")
@@ -469,6 +484,10 @@ class ArrayFromIterableBuilder(ArrayBuilder):
             if maybe_appender:
                 self._append_impl = maybe_appender
                 return
+        elif self._schema_view.extension_name:
+            raise NotImplementedError(
+                f"Can't create array for unregistered extension {self._schema_view.extension_name}"
+            )
 
         type_id = self._schema_view.type_id
         if type_id not in _ARRAY_BUILDER_FROM_ITERABLE_METHOD:

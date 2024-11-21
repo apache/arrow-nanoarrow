@@ -41,3 +41,6 @@ def test_extension_bool8():
     sequence = bool8_array.to_pysequence(handle_nulls=na.nulls_separate())
     assert list(sequence[1]) == [True, False, False, True]
     assert list(sequence[0]) == [True, True, False, True]
+
+    bool8_array = na.Array(sequence[1], na.bool8())
+    assert bool8_array.to_pylist() == [True, False, False, True]
