@@ -137,10 +137,10 @@ class ExtensionAccessor:
         return self._schema._c_schema_view.extension_name
 
     @property
-    def metadata(self) -> Union[bytes, None]:
+    def metadata(self) -> bytes:
         """Extension metadata for this extension type if present"""
         extension_metadata = self._schema._c_schema_view.extension_metadata
-        return extension_metadata if extension_metadata else None
+        return extension_metadata if extension_metadata else b""
 
     @property
     def storage(self):

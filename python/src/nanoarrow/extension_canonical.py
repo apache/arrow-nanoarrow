@@ -19,9 +19,9 @@ from typing import Any, Iterator, Mapping, Optional
 
 from nanoarrow.c_buffer import CBufferBuilder
 from nanoarrow.c_schema import CSchema, c_schema_view
-from nanoarrow.extension import Extension, register
 from nanoarrow.schema import extension_type, int8
 from nanoarrow.visitor import ToPyBufferConverter
+from nanoarrow import extension
 
 
 def bool8(nullable: bool = True):
@@ -41,8 +41,8 @@ class Bool8SequenceConverter(ToPyBufferConverter):
         return CBufferBuilder().set_format("?")
 
 
-@register
-class Bool8Extension(Extension):
+@extension.register
+class Bool8Extension(extension.Extension):
 
     def get_schema(self) -> CSchema:
         return bool8()
@@ -65,7 +65,7 @@ class Bool8Extension(Extension):
 
         if py_iterator._contains_nulls():
             validity = view.buffer(0).elements(offset, length)
-            return self._wrap_iter_nullable(validity, items)
+            return py_iterator._wrap_iter_nullable(validity, items)
         else:
             return items
 

@@ -432,7 +432,7 @@ class ToNullableSequenceConverter(ArrayViewVisitor):
 def _resolve_converter_cls(schema, handle_nulls=None):
     schema_view = c_schema_view(schema)
     ext = resolve_extension(schema_view)
-    ext_converter_cls = ext.get_sequence_converter_cls(schema) if ext else None
+    ext_converter_cls = ext.get_sequence_converter(schema) if ext else None
 
     if schema_view.nullable:
         if ext_converter_cls:
