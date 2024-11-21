@@ -17,7 +17,6 @@
 
 from typing import Any, Iterator, Mapping, Optional
 
-from nanoarrow.c_array import CArrayView
 from nanoarrow.c_buffer import CBufferBuilder
 from nanoarrow.c_schema import CSchema, c_schema_view
 from nanoarrow.extension import Extension, register
@@ -38,7 +37,6 @@ def bool8(nullable: bool = True):
 
 
 class Bool8SequenceConverter(ToPyBufferConverter):
-
     def _make_builder(self):
         return CBufferBuilder().set_format("?")
 
@@ -61,7 +59,7 @@ class Bool8Extension(Extension):
         py_iterator,
         offset: int,
         length: int,
-    ) -> Iterator[Optional[bool]]:
+    ) -> Optional[Iterator[Optional[bool]]]:
         view = py_iterator._array_view
         items = map(bool, view.buffer(1).elements(offset, length))
 

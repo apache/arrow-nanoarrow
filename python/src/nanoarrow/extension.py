@@ -17,7 +17,6 @@
 
 from typing import Any, Iterator, Mapping, Optional, Type
 
-from nanoarrow.c_array import CArrayView
 from nanoarrow.c_schema import CSchema, CSchemaView, c_schema_view
 
 
@@ -30,34 +29,29 @@ class Extension:
 
     def get_pyiter(
         self,
-        params: Mapping[str, Any],
-        c_array_view: CArrayView,
+        py_iterator,
         offset: int,
         length: int,
-    ) -> Optional[Iterator]:
+    ) -> Optional[Iterator[Optional[bool]]]:
         return None
 
     def get_sequence_converter(self, c_schema: CSchema):
         return None
 
 
-global_extension_registry = {}
+_global_extension_registry = {}
 
 
 def resolve_extension(c_schema_view: CSchemaView) -> Optional[Extension]:
     extension_name = c_schema_view.extension_name
-    if extension_name in global_extension_registry:
-        return global_extension_registry[extension_name]
-
-    type_id = c_schema_view.type_id
-    if type_id in global_extension_registry:
-        return global_extension_registry[type_id]
+    if extension_name in _global_extension_registry:
+        return _global_extension_registry[extension_name]
 
     return None
 
 
 def register_extension(extension: Extension) -> Optional[Extension]:
-    global global_extension_registry
+    global _global_extension_registry
 
     schema_view = c_schema_view(extension.get_schema())
     if schema_view.extension_name:
@@ -65,8 +59,8 @@ def register_extension(extension: Extension) -> Optional[Extension]:
     else:
         key = schema_view.type_id
 
-    prev = global_extension_registry[key] if key in global_extension_registry else None
-    global_extension_registry[key] = extension
+    prev = _global_extension_registry[key] if key in _global_extension_registry else None
+    _global_extension_registry[key] = extension
     return prev
 
 
