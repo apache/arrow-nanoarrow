@@ -18,6 +18,7 @@
 #include <gmock/gmock-matchers.h>
 #include <gtest/gtest.h>
 
+#include "nanoarrow/hpp/schema.hpp"
 #include "nanoarrow/nanoarrow.hpp"
 #include "nanoarrow/nanoarrow_gtest_util.hpp"
 
@@ -32,7 +33,7 @@ TEST(NanoarrowHppTest, NanoarrowHppViewArrayAsTest) {
                                 std::vector<float>{8, 4, 2, 1, .5, .25, .125});
 
   const void* buffers[] = {is_valid->data, floats->data};
-  struct ArrowArray array {};
+  struct ArrowArray array{};
   array.length = 7;
   array.null_count = 2;
   array.n_buffers = 2;
@@ -63,7 +64,7 @@ TEST(NanoarrowHppTest, NanoarrowHppViewArrayAsBytesTest) {
   nanoarrow::BufferInitSequence(data.get(), std::string{"abcdefghi"});
 
   const void* buffers[] = {is_valid->data, offsets->data, data->data};
-  struct ArrowArray array {};
+  struct ArrowArray array{};
   array.length = 7;
   array.null_count = 2;
   array.n_buffers = 2;
@@ -93,7 +94,7 @@ TEST(NanoarrowHppTest, NanoarrowHppViewArrayAsFixedSizeBytesTest) {
       data.get(), std::string{"foo"} + "bar" + "foo" + "bar" + "foo" + "bar" + "foo");
 
   const void* buffers[] = {is_valid->data, data->data};
-  struct ArrowArray array {};
+  struct ArrowArray array{};
   array.length = 7;
   array.null_count = 2;
   array.n_buffers = 2;
@@ -113,7 +114,7 @@ TEST(NanoarrowHppTest, NanoarrowHppViewArrayAsFixedSizeBytesTest) {
 TEST(NanoarrowHppTest, NanoarrowHppViewArrayStreamTest) {
   static int32_t slot = 1;
 
-  struct ArrowArrayStream stream {};
+  struct ArrowArrayStream stream{};
   stream.get_schema = [](struct ArrowArrayStream*, struct ArrowSchema* out) {
     return ArrowSchemaInitFromType(out, NANOARROW_TYPE_INT32);
   };
@@ -134,4 +135,25 @@ TEST(NanoarrowHppTest, NanoarrowHppViewArrayStreamTest) {
   EXPECT_EQ(stream_view.count(), 4);
   EXPECT_EQ(stream_view.code(), ENOMEM);
   EXPECT_STREQ(stream_view.error()->message, "foo bar");
+}
+
+TEST(SchemaHpp, SchemaHppDump) {
+  std::stringstream ss;
+
+  auto schema = nanoarrow::schema::struct_({{"foofy", NANOARROW_TYPE_INT32}});
+  nanoarrow::ViewSchema view(schema);
+
+  ss << "metadata size: " << view.metadata().size() << std::endl;
+
+  for (const auto& item : view.metadata()) {
+    ss << item.first << ", " << item.second << std::endl;
+  }
+
+  for (const auto& child : view.children()) {
+    ss << "child: " << child.name() << std::endl;
+  }
+
+  if (view.dictionary()) {
+    ss << "has dictionary\n";
+  }
 }
