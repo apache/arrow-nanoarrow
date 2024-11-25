@@ -184,9 +184,9 @@ def test_numpy_null_handling():
         np.array([1, np.nan, 3], dtype=np.float64),
     )
 
+
 def test_iterator_unregistered_extension():
     from nanoarrow.iterator import UnregisteredExtensionWarning
-
 
     schema = na.extension_type(na.int32(), "arrow.test")
     storage_array = na.c_array([1, 2, 3], na.int32())
