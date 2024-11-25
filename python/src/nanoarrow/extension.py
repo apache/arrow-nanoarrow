@@ -33,15 +33,27 @@ class Extension:
         offset: int,
         length: int,
     ) -> Optional[Iterator[Optional[bool]]]:
-        return None
+        name = py_iterator._schema_view.extension_name
+        raise NotImplementedError(f"Extension get_pyiter() for {name}")
 
     def get_sequence_converter(self, c_schema: CSchema):
-        return None
+        schema_view = c_schema_view(c_schema)
+        name = schema_view.extension_name
+        raise NotImplementedError(f"Extension get_sequence_converter() for {name}")
+
+    def get_buffer_appender(
+        self, c_schema: CSchema, array_builder
+    ) -> Optional[Callable[[Iterable], None]]:
+        schema_view = c_schema_view(c_schema)
+        name = schema_view.extension_name
+        raise NotImplementedError(f"Extension get_buffer_appender() for {name}")
 
     def get_iterable_appender(
         self, c_schema: CSchema, array_builder
     ) -> Optional[Callable[[Iterable], None]]:
-        return None
+        schema_view = c_schema_view(c_schema)
+        name = schema_view.extension_name
+        raise NotImplementedError(f"Extension get_iterable_appender() for {name}")
 
 
 _global_extension_registry = {}
@@ -59,15 +71,17 @@ def register_extension(extension: Extension) -> Optional[Extension]:
     global _global_extension_registry
 
     schema_view = c_schema_view(extension.get_schema())
-    if schema_view.extension_name:
-        key = schema_view.extension_name
-    else:
-        key = schema_view.type_id
-
+    key = schema_view.extension_name
     prev = (
         _global_extension_registry[key] if key in _global_extension_registry else None
     )
     _global_extension_registry[key] = extension
+    return prev
+
+
+def unregister_extension(extension_name: str):
+    prev = _global_extension_registry[extension_name]
+    del _global_extension_registry[extension_name]
     return prev
 
 

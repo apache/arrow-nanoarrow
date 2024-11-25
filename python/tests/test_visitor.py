@@ -183,3 +183,18 @@ def test_numpy_null_handling():
         nulls_as_sentinel(is_valid_non_empty, data),
         np.array([1, np.nan, 3], dtype=np.float64),
     )
+
+def test_iterator_unregistered_extension():
+    from nanoarrow.iterator import UnregisteredExtensionWarning
+
+
+    schema = na.extension_type(na.int32(), "arrow.test")
+    storage_array = na.c_array([1, 2, 3], na.int32())
+    _, storage_array_capsule = na.c_array(storage_array).__arrow_c_array__()
+    extension_array = na.c_array(storage_array_capsule, schema)
+
+    with pytest.warns(UnregisteredExtensionWarning):
+        visitor.ToPyListConverter.visit(extension_array)
+
+    with pytest.warns(UnregisteredExtensionWarning):
+        visitor.ToPySequenceConverter.visit(extension_array)

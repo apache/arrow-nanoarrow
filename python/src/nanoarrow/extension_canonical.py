@@ -80,3 +80,7 @@ class Bool8Extension(extension.Extension):
     def get_buffer_appender(self, c_schema: CSchema, array_builder):
         self.get_params(c_schema)
         return None
+
+    def get_iterable_appender(self, c_schema: CSchema, array_builder):
+        self.get_params(c_schema)
+        return None
