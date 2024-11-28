@@ -16,14 +16,13 @@
 # under the License.
 
 import pytest
+from nanoarrow.c_schema import c_schema_view
 
 import nanoarrow as na
-from nanoarrow.c_schema import c_schema_view
 from nanoarrow import extension
 
 
 def test_basic_extension():
-
     class TestExtension(extension.Extension):
         def get_schema(self):
             return na.extension_type(na.int32(), "arrow.test")
