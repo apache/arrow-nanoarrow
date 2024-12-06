@@ -27,6 +27,7 @@ from nanoarrow._schema import (
     SchemaMetadata,
 )
 from nanoarrow.c_schema import c_schema
+from nanoarrow.extension import resolve_extension
 
 from nanoarrow import _repr_utils, _types
 
@@ -124,6 +125,11 @@ class ExtensionAccessor:
 
     def __init__(self, schema) -> None:
         self._schema = schema
+        self._ext = resolve_extension(self._schema._c_schema_view)
+        self._params = self._ext.get_params(self._schema) if self._ext else {}
+
+    def __dir__(self) -> List[str]:
+        return ["name", "metadata", "storage"] + list(self._params.keys())
 
     @property
     def name(self) -> str:
@@ -131,10 +137,10 @@ class ExtensionAccessor:
         return self._schema._c_schema_view.extension_name
 
     @property
-    def metadata(self) -> Union[bytes, None]:
+    def metadata(self) -> bytes:
         """Extension metadata for this extension type if present"""
         extension_metadata = self._schema._c_schema_view.extension_metadata
-        return extension_metadata if extension_metadata else None
+        return extension_metadata if extension_metadata else b""
 
     @property
     def storage(self):
@@ -147,6 +153,9 @@ class ExtensionAccessor:
             del metadata[b"ARROW:extension:metadata"]
 
         return Schema(self._schema, metadata=metadata)
+
+    def __getattr__(self, key: str):
+        return self._params[key]
 
 
 class Schema:
@@ -1305,6 +1314,8 @@ def extension_type(
     metadata["ARROW:extension:name"] = extension_name
     if extension_metadata:
         metadata["ARROW:extension:metadata"] = extension_metadata
+    else:
+        metadata["ARROW:extension:metadata"] = ""
 
     return Schema(storage_schema, nullable=nullable, metadata=metadata)
 

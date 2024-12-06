@@ -248,7 +248,7 @@ def test_schema_extension():
 
     schema_obj = na.extension_type(na.int32(), "arrow.test", nullable=False)
     assert schema_obj.extension.name == "arrow.test"
-    assert schema_obj.extension.metadata is None
+    assert schema_obj.extension.metadata == b""
     assert schema_obj.extension.storage.type == na.Type.INT32
     assert schema_obj.nullable is False
 

@@ -21,6 +21,7 @@ from nanoarrow._array import CArrayView
 from nanoarrow._buffer import CBuffer, CBufferBuilder
 from nanoarrow.c_array_stream import c_array_stream
 from nanoarrow.c_schema import c_schema_view
+from nanoarrow.extension import resolve_extension
 from nanoarrow.iterator import ArrayViewBaseIterator, PyIterator
 from nanoarrow.schema import Type
 
@@ -333,8 +334,7 @@ class ToPyListConverter(ArrayViewVisitor):
 
 class ToPyBufferConverter(ArrayViewVisitor):
     def begin(self, total_elements: Union[int, None]):
-        self._builder = CBufferBuilder()
-        self._builder.set_format(self._schema_view.buffer_format)
+        self._builder = self._make_builder()
 
         if total_elements is not None:
             element_size_bits = self._schema_view.layout.element_size_bits[1]
@@ -352,6 +352,9 @@ class ToPyBufferConverter(ArrayViewVisitor):
 
     def finish(self) -> Any:
         return self._builder.finish()
+
+    def _make_builder(self):
+        return CBufferBuilder().set_format(self._schema_view.buffer_format)
 
 
 class ToBooleanBufferConverter(ArrayViewVisitor):
@@ -428,9 +431,16 @@ class ToNullableSequenceConverter(ArrayViewVisitor):
 
 def _resolve_converter_cls(schema, handle_nulls=None):
     schema_view = c_schema_view(schema)
+    ext = resolve_extension(schema_view)
+    ext_converter_cls = ext.get_sequence_converter(schema) if ext else None
 
     if schema_view.nullable:
-        if schema_view.type_id == _types.BOOL:
+        if ext_converter_cls:
+            return ToNullableSequenceConverter, {
+                "converter_cls": ext_converter_cls,
+                "handle_nulls": handle_nulls,
+            }
+        elif schema_view.type_id == _types.BOOL:
             return ToNullableSequenceConverter, {
                 "converter_cls": ToBooleanBufferConverter,
                 "handle_nulls": handle_nulls,
@@ -443,8 +453,9 @@ def _resolve_converter_cls(schema, handle_nulls=None):
         else:
             return ToPyListConverter, {}
     else:
-
-        if schema_view.type_id == _types.BOOL:
+        if ext_converter_cls:
+            return ext_converter_cls, {}
+        elif schema_view.type_id == _types.BOOL:
             return ToBooleanBufferConverter, {}
         elif schema_view.buffer_format is not None:
             return ToPyBufferConverter, {}

@@ -555,6 +555,8 @@ cdef class CSchemaView:
             (_types.TIMESTAMP, _types.DATE64, _types.DURATION)
         ):
             return 'q'
+        elif self.extension_name:
+            return self._get_buffer_format()
         else:
             return None
 
@@ -564,7 +566,13 @@ cdef class CSchemaView:
         or None if there is no Python format string that can represent this
         type without loosing information.
         """
-        if self.extension_name or self._schema_view.type != self._schema_view.storage_type:
+        if self.extension_name:
+            return None
+        else:
+            return self._get_buffer_format()
+
+    def _get_buffer_format(self):
+        if self._schema_view.type != self._schema_view.storage_type:
             return None
 
         # String/binary types do not have format strings as far as the Python

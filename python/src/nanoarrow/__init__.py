@@ -29,6 +29,7 @@ from nanoarrow.c_array import c_array_from_buffers, c_array
 from nanoarrow.c_array_stream import c_array_stream
 from nanoarrow.c_schema import c_schema
 from nanoarrow.c_buffer import c_buffer
+from nanoarrow.extension_canonical import bool8
 from nanoarrow.schema import (
     Schema,
     Type,
@@ -87,6 +88,7 @@ __all__ = [
     "binary",
     "binary_view",
     "bool_",
+    "bool8",
     "c_array",
     "c_array_from_buffers",
     "c_array_stream",
