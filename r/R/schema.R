@@ -154,6 +154,14 @@ infer_nanoarrow_schema.vctrs_unspecified <- function(x, ...) {
 }
 
 #' @export
+infer_nanoarrow_schema.matrix <- function(x, ...) {
+  na_fixed_size_list(
+    infer_nanoarrow_schema(unclass(x[integer(0)])),
+    list_size = ncol(x)
+  )
+}
+
+#' @export
 infer_nanoarrow_schema.vctrs_list_of <- function(x, ...) {
   child_type <- infer_nanoarrow_schema(attr(x, "ptype"))
   if (length(x) > 0 && sum(lengths(x)) > .Machine$integer.max) {

@@ -195,6 +195,42 @@ as_nanoarrow_array.blob <- function(x, ..., schema = NULL) {
 }
 
 #' @export
+as_nanoarrow_array.matrix <- function(x, ..., schema = NULL) {
+  if (is.null(schema)) {
+    schema <- infer_nanoarrow_schema(x)
+  } else {
+    schema <- as_nanoarrow_schema(schema)
+  }
+
+  expected_format <- paste0("+w:", ncol(x))
+  if (expected_format != schema$format) {
+    stop(
+      sprintf(
+        "Expected schema for matrix with fixed-size list of %d elements but got %s",
+        ncol(x),
+        nanoarrow_schema_formatted(schema)
+      )
+    )
+  }
+
+  # Raw unclass() doesn't work for matrix()
+  row_major_data <- t(x)
+  attributes(row_major_data) <- NULL
+
+  child_array <- as_nanoarrow_array(row_major_data, schema = schema$children[[1]])
+  array <- nanoarrow_array_init(schema)
+  nanoarrow_array_modify(
+    array,
+    list(
+      length = nrow(x),
+      null_count = 0,
+      buffers = list(NULL),
+      children = list(child_array)
+    )
+  )
+}
+
+#' @export
 as_nanoarrow_array.data.frame <- function(x, ..., schema = NULL) {
   # We need to override this to prevent the list implementation from handling it
   as_nanoarrow_array.default(x, ..., schema = schema)
