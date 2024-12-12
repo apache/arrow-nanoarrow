@@ -137,6 +137,30 @@ test_that("convert array stream works for struct-style vectors", {
   )
 })
 
+test_that("convert array stream works for fixed_size_list_of() -> matrix()", {
+  mat <- matrix(1:6, ncol = 2, byrow = TRUE)
+  array <- as_nanoarrow_array(mat)
+  stream <- basic_array_stream(list(array, array))
+  expect_identical(
+    convert_array_stream(stream, matrix(integer(), ncol = 2)),
+    rbind(mat, mat)
+  )
+
+  stream <- basic_array_stream(list(array, array))
+  expect_identical(
+    convert_array_stream(stream, matrix(double(), ncol = 2)),
+    rbind(
+      matrix(as.double(1:6), ncol = 2, byrow = TRUE),
+      matrix(as.double(1:6), ncol = 2, byrow = TRUE)
+    )
+  )
+
+  # TODO: Because we special-case the array in the converter, we need
+  # - Check the nested case (matrix column in a data frame)
+  # - Check the list_of case
+  # - Check the "source has non-zero offset" case
+})
+
 test_that("convert array stream respects the value of n", {
   batches <- list(
     data.frame(x = 1:5),

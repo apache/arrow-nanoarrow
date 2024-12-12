@@ -174,6 +174,37 @@ convert_array.double <- function(array, to, ...) {
 }
 
 #' @export
+convert_array.matrix <- function(array, to, ...) {
+  schema <- infer_nanoarrow_schema(array)
+  parsed <- nanoarrow_schema_parse(schema)
+  if (parsed$type != "fixed_size_list") {
+    stop_cant_convert_array(array, to)
+  }
+
+  if (identical(to, matrix())) {
+    to <- matrix(
+      infer_nanoarrow_ptype(array$children[[1]]),
+      nrow = 0,
+      ncol = parsed$fixed_size
+    )
+  }
+
+  if (ncol(to) != parsed$fixed_size) {
+    stop(
+      sprintf(
+        "Can't convert fixed_size_list(list_size=%d) to matrix with %d cols",
+        parsed$fixed_size,
+        ncol(to)
+      )
+    )
+  }
+
+  attributes(to) <- NULL
+  child_vctr <- convert_array(array$children[[1]], to)
+  matrix(child_vctr, ncol = parsed$fixed_size, byrow = TRUE)
+}
+
+#' @export
 convert_array.vctrs_partial_frame <- function(array, to, ...) {
   ptype <- infer_nanoarrow_ptype(array)
   if (!is.data.frame(ptype)) {

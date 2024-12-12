@@ -1041,6 +1041,32 @@ test_that("convert to vector works for null -> vctrs::list_of()", {
   )
 })
 
+test_that("convert to vector works for fixed_size_list_of() -> matrix()", {
+  mat <- matrix(1:6, ncol = 2, byrow = TRUE)
+  array <- as_nanoarrow_array(mat)
+
+  expect_identical(convert_array(array, matrix()), mat)
+  expect_identical(
+    convert_array(array, matrix(double(), ncol = 2)),
+    matrix(as.double(1:6), ncol = 2, byrow = TRUE)
+  )
+})
+
+test_that("convert to vector errors for invalid matrix()", {
+  expect_error(
+    convert_array(as_nanoarrow_array(1:6), matrix()),
+    "Can't convert array <int32> to R vector of type matrix"
+  )
+
+  mat <- matrix(1:6, ncol = 2, byrow = TRUE)
+  array <- as_nanoarrow_array(mat)
+  expect_error(
+    convert_array(array, matrix(integer(), ncol = 3)),
+    "Can't convert fixed_size_list(list_size=2) to matrix with 3 cols",
+    fixed = TRUE
+  )
+})
+
 test_that("convert to vector works for Date", {
   array_date <- as_nanoarrow_array(as.Date(c(NA, "2000-01-01")))
   expect_identical(

@@ -116,7 +116,14 @@ int nanoarrow_ptype_is_nanoarrow_vctr(SEXP ptype) {
 SEXP nanoarrow_materialize_realloc(SEXP ptype, R_xlen_t len) {
   SEXP result;
 
-  if (Rf_isObject(ptype)) {
+  if (Rf_isMatrix(ptype)) {
+    if (Rf_ncols(ptype) == 0) {
+      Rf_error("Can't allocate ptype matrix with ncol = 0");
+    }
+
+    // We currently build the result as row-major and transpose at the end
+    result = PROTECT(Rf_allocVector(TYPEOF(ptype), Rf_ncols(ptype) * len));
+  } else if (Rf_isObject(ptype)) {
     // There may be a more accurate test that more precisely captures the case
     // where a user has specified a valid ptype that doesn't work in a preallocate
     // + fill conversion.
@@ -301,6 +308,7 @@ static void copy_vec_into(SEXP x, SEXP dst, R_xlen_t offset, R_xlen_t len) {
 
 int nanoarrow_materialize_finalize_result(SEXP converter_xptr) {
   SEXP converter_shelter = R_ExternalPtrProtected(converter_xptr);
+  struct RConverter* converter = (struct RConverter*)R_ExternalPtrAddr(converter_xptr);
   SEXP result = VECTOR_ELT(converter_shelter, 4);
 
   // Materialize never called (e.g., empty stream)
@@ -357,6 +365,17 @@ int nanoarrow_materialize_finalize_result(SEXP converter_xptr) {
       SET_VECTOR_ELT(result, i, child_result);
       UNPROTECT(1);
     }
+  } else if (converter->ptype_view.vector_type == VECTOR_TYPE_MATRIX) {
+    SEXP matrix_symbol = PROTECT(Rf_install("matrix"));
+    SEXP nrow_sexp =
+        PROTECT(Rf_ScalarInteger(Rf_xlength(result) / converter->schema_view.fixed_size));
+    SEXP ncol_sexp = PROTECT(Rf_ScalarInteger(converter->schema_view.fixed_size));
+    SEXP byrow_sexp = PROTECT(Rf_ScalarLogical(TRUE));
+    SEXP matrix_call =
+        PROTECT(Rf_lang5(matrix_symbol, result, nrow_sexp, ncol_sexp, byrow_sexp));
+    SEXP final_result = PROTECT(Rf_eval(matrix_call, R_BaseNamespace));
+    SET_VECTOR_ELT(converter_shelter, 4, final_result);
+    UNPROTECT(6);
   }
 
   return NANOARROW_OK;
@@ -581,6 +600,50 @@ static int nanoarrow_materialize_list_of(struct RConverter* converter,
   return NANOARROW_OK;
 }
 
+static int nanoarrow_materialize_matrix(struct RConverter* converter,
+                                        SEXP converter_xptr) {
+  SEXP converter_shelter = R_ExternalPtrProtected(converter_xptr);
+  SEXP child_converter_xptrs = VECTOR_ELT(converter_shelter, 3);
+  struct RConverter* child_converter = converter->children[0];
+  SEXP child_converter_xptr = VECTOR_ELT(child_converter_xptrs, 0);
+
+  struct ArrayViewSlice* src = &converter->src;
+  struct VectorSlice* dst = &converter->dst;
+
+  // Make sure we error for dictionary types
+  if (src->array_view->array->dictionary != NULL) {
+    return EINVAL;
+  }
+
+  switch (src->array_view->storage_type) {
+    case NANOARROW_TYPE_FIXED_SIZE_LIST:
+      break;
+    default:
+      return EINVAL;
+  }
+
+  int64_t raw_src_offset = src->array_view->array->offset + src->offset;
+  int64_t list_length = src->array_view->layout.child_size_elements;
+  int64_t offset;
+
+  for (int64_t i = 0; i < dst->length; i++) {
+    if (!ArrowArrayViewIsNull(src->array_view, src->offset + i)) {
+      offset = (raw_src_offset + i) * list_length;
+      NANOARROW_RETURN_NOT_OK(materialize_list_element(
+          child_converter, child_converter_xptr, offset, list_length));
+      SEXP child_slice =
+          PROTECT(nanoarrow_converter_release_result(child_converter_xptr));
+      copy_vec_into(child_slice, dst->vec_sexp, (dst->offset + i) * list_length,
+                    list_length);
+      UNPROTECT(1);
+    } else {
+      fill_vec_with_nulls(dst->vec_sexp, dst->offset + i * list_length, list_length);
+    }
+  }
+
+  return NANOARROW_OK;
+}
+
 static int nanoarrow_materialize_base(struct RConverter* converter, SEXP converter_xptr) {
   struct ArrayViewSlice* src = &converter->src;
   struct VectorSlice* dst = &converter->dst;
@@ -614,6 +677,8 @@ static int nanoarrow_materialize_base(struct RConverter* converter, SEXP convert
       return nanoarrow_materialize_blob(src, dst, options);
     case VECTOR_TYPE_LIST_OF:
       return nanoarrow_materialize_list_of(converter, converter_xptr);
+    case VECTOR_TYPE_MATRIX:
+      return nanoarrow_materialize_matrix(converter, converter_xptr);
     case VECTOR_TYPE_DATA_FRAME:
       return nanoarrow_materialize_data_frame(converter, converter_xptr);
     default:
