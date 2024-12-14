@@ -1045,7 +1045,6 @@ test_that("convert to vector works for fixed_size_list_of() -> matrix()", {
   mat <- matrix(1:6, ncol = 2, byrow = TRUE)
   array <- as_nanoarrow_array(mat)
 
-  expect_identical(convert_array(array, matrix()), mat)
   expect_identical(
     convert_array(array, matrix(double(), ncol = 2)),
     matrix(as.double(1:6), ncol = 2, byrow = TRUE)

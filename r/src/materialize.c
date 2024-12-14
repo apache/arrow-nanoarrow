@@ -622,6 +622,12 @@ static int nanoarrow_materialize_matrix(struct RConverter* converter,
       return EINVAL;
   }
 
+  if (converter->schema_view.fixed_size != Rf_ncols(converter->ptype_view.ptype)) {
+    Rf_error("Can't convert fixed_size_list(list_size=%d) to matrix with %d cols",
+             (int)converter->schema_view.fixed_size,
+             Rf_ncols(converter->ptype_view.ptype));
+  }
+
   int64_t raw_src_offset = src->array_view->array->offset + src->offset;
   int64_t list_length = src->array_view->layout.child_size_elements;
   int64_t offset;
