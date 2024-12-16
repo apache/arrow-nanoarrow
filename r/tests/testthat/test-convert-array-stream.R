@@ -146,6 +146,7 @@ test_that("convert array stream works for fixed_size_list_of() -> matrix()", {
     rbind(mat, mat)
   )
 
+  # Check with non-default ptype
   stream <- basic_array_stream(list(array, array))
   expect_identical(
     convert_array_stream(stream, matrix(double(), ncol = 2)),
@@ -159,6 +160,40 @@ test_that("convert array stream works for fixed_size_list_of() -> matrix()", {
   # - Check the nested case (matrix column in a data frame)
   # - Check the list_of case
   # - Check the "source has non-zero offset" case
+})
+
+test_that("convert array stream works for empty fixed_size_list_of() -> matrix()", {
+  stream <- basic_array_stream(list(), schema = na_fixed_size_list(na_int32(), 2))
+  expect_identical(
+    convert_array_stream(stream, matrix(integer(), ncol = 2)),
+    matrix(integer(), ncol = 2)
+  )
+})
+
+test_that("convert array stream works for nested fixed_size_list_of() -> matrix()", {
+  df <- data.frame(x = 1:3)
+  df$mat <- matrix(1:6, ncol = 2, byrow = TRUE)
+
+  expected <- df[c(1:3, 1:3),]
+  row.names(expected) <- 1:6
+
+  array <- as_nanoarrow_array(df)
+  stream <- basic_array_stream(list(array, array))
+  expect_identical(
+    convert_array_stream(stream, df[integer(0),]),
+    expected
+  )
+})
+
+test_that("convert array stream works for fixed_size_list_of() with non-zero offset -> matrix() ", {
+  mat <- matrix(1:6, ncol = 2, byrow = TRUE)
+  array <- as_nanoarrow_array(mat)
+  array <- nanoarrow_array_modify(array, list(offset = 1, length = 2))
+  stream <- basic_array_stream(list(array, array))
+  expect_identical(
+    convert_array_stream(stream, matrix(integer(), ncol = 2)),
+    rbind(mat[2:3, ], mat[2:3, ])
+  )
 })
 
 test_that("convert array stream respects the value of n", {
