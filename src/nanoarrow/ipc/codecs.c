@@ -15,38 +15,109 @@
 // specific language governing permissions and limitations
 // under the License.
 
+#include <inttypes.h>
+
 #include "nanoarrow/nanoarrow_ipc.h"
 
-static ArrowErrorCode ArrowIpcDefaultDecompressorAdd(
-    struct ArrowIpcDecompressor* decompressor,
-    enum ArrowIpcCompressionType compression_type, struct ArrowBufferView* src,
-    uint8_t* dst, int64_t* dst_size) {
-  NANOARROW_UNUSED(decompressor);
-  NANOARROW_UNUSED(compression_type);
-  NANOARROW_UNUSED(src);
-  NANOARROW_UNUSED(dst);
-  NANOARROW_UNUSED(dst_size);
-  return ENOTSUP;
+#include </opt/homebrew/opt/zstd/include/zstd.h>
+
+static ArrowErrorCode ArrowIpcDecompressZstd(struct ArrowBufferView src, uint8_t* dst,
+                                             int64_t* dst_size,
+                                             struct ArrowError* error) {
+  size_t code =
+      ZSTD_decompress((void*)dst, (size_t)dst_size, src.data.data, src.size_bytes);
+  if (ZSTD_isError(code)) {
+    ArrowErrorSet(error,
+                  "ZSTD_decompress([buffer with %" PRId64
+                  " bytes] -> [buffer with %" PRId64 " bytes]) failed with error '%s'",
+                  src.size_bytes, *dst_size, ZSTD_getErrorName(code));
+    return EIO;
+  }
+
+  *dst_size = (int64_t)code;
+  return NANOARROW_OK;
 }
 
-static ArrowErrorCode ArrowIpcDefaultDecompressorWait(
+ArrowIpcDecompressFunction ArrowIpcGetZstdDecompressionFunction(void) {
+  return &ArrowIpcDecompressZstd;
+}
+
+struct ArrowIpcSerialDecompressorPrivate {
+  ArrowIpcDecompressFunction decompress_functions[3];
+};
+
+static ArrowErrorCode ArrowIpcSerialDecompressorAdd(
+    struct ArrowIpcDecompressor* decompressor,
+    enum ArrowIpcCompressionType compression_type, struct ArrowBufferView src,
+    uint8_t* dst, int64_t* dst_size, struct ArrowError* error) {
+  struct ArrowIpcSerialDecompressorPrivate* private_data =
+      (struct ArrowIpcSerialDecompressorPrivate*)decompressor->private_data;
+
+  ArrowIpcDecompressFunction fn = NULL;
+  switch (compression_type) {
+    case NANOARROW_IPC_COMPRESSION_TYPE_ZSTD:
+    case NANOARROW_IPC_COMPRESSION_TYPE_LZ4_FRAME:
+      fn = private_data->decompress_functions[compression_type];
+      break;
+    default:
+      ArrowErrorSet(error, "Unknown decompression type with value %d",
+                    (int)compression_type);
+      return EINVAL;
+  }
+
+  if (fn == NULL) {
+    ArrowErrorSet(
+        error, "Compression type with value %d not supported by this build of nanoarrow",
+        (int)compression_type);
+    return ENOTSUP;
+  }
+
+  NANOARROW_RETURN_NOT_OK(fn(src, dst, dst_size, error));
+  return NANOARROW_OK;
+}
+
+static ArrowErrorCode ArrowIpcSerialDecompressorWait(
     struct ArrowIpcDecompressor* decompressor, int64_t timeout_ms,
     struct ArrowError* error) {
   NANOARROW_UNUSED(decompressor);
   NANOARROW_UNUSED(timeout_ms);
-  ArrowErrorSet(error, "Decompression is not supported in this build of nanoarrow_ipc");
-  return ENOTSUP;
+  NANOARROW_UNUSED(error);
+  return NANOARROW_OK;
 }
 
-static void ArrowIpcDefaultDecompressorRelease(
-    struct ArrowIpcDecompressor* decompressor) {
+static void ArrowIpcSerialDecompressorRelease(struct ArrowIpcDecompressor* decompressor) {
   decompressor->release = NULL;
 }
 
-ArrowErrorCode ArrowIpcGetDefaultDecompressor(struct ArrowIpcDecompressor* decompressor) {
-  decompressor->decompress_add = &ArrowIpcDefaultDecompressorAdd;
-  decompressor->decompress_wait = &ArrowIpcDefaultDecompressorWait;
-  decompressor->release = &ArrowIpcDefaultDecompressorRelease;
-  decompressor->private_data = NULL;
+ArrowErrorCode ArrowIpcGetSerialDecompressor(struct ArrowIpcDecompressor* decompressor) {
+  decompressor->decompress_add = &ArrowIpcSerialDecompressorAdd;
+  decompressor->decompress_wait = &ArrowIpcSerialDecompressorWait;
+  decompressor->release = &ArrowIpcSerialDecompressorRelease;
+  decompressor->private_data =
+      ArrowMalloc(sizeof(struct ArrowIpcSerialDecompressorPrivate));
+  if (decompressor->private_data == NULL) {
+    return ENOMEM;
+  }
+
+  memset(decompressor->private_data, 0, sizeof(struct ArrowIpcSerialDecompressorPrivate));
+  return NANOARROW_OK;
+}
+
+ArrowErrorCode ArrowIpcSerialDecompressorSetFunction(
+    struct ArrowIpcDecompressor* decompressor,
+    enum ArrowIpcCompressionType compression_type,
+    ArrowIpcDecompressFunction decompress_function) {
+  struct ArrowIpcSerialDecompressorPrivate* private_data =
+      (struct ArrowIpcSerialDecompressorPrivate*)decompressor->private_data;
+
+  switch (compression_type) {
+    case NANOARROW_IPC_COMPRESSION_TYPE_ZSTD:
+    case NANOARROW_IPC_COMPRESSION_TYPE_LZ4_FRAME:
+      break;
+    default:
+      return EINVAL;
+  }
+
+  private_data->decompress_functions[compression_type] = decompress_function;
   return NANOARROW_OK;
 }
