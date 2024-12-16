@@ -89,7 +89,7 @@ static void ArrowIpcSerialDecompressorRelease(struct ArrowIpcDecompressor* decom
   decompressor->release = NULL;
 }
 
-ArrowErrorCode ArrowIpcGetSerialDecompressor(struct ArrowIpcDecompressor* decompressor) {
+ArrowErrorCode ArrowIpcSerialDecompressor(struct ArrowIpcDecompressor* decompressor) {
   decompressor->decompress_add = &ArrowIpcSerialDecompressorAdd;
   decompressor->decompress_wait = &ArrowIpcSerialDecompressorWait;
   decompressor->release = &ArrowIpcSerialDecompressorRelease;
@@ -100,6 +100,8 @@ ArrowErrorCode ArrowIpcGetSerialDecompressor(struct ArrowIpcDecompressor* decomp
   }
 
   memset(decompressor->private_data, 0, sizeof(struct ArrowIpcSerialDecompressorPrivate));
+  ArrowIpcSerialDecompressorSetFunction(decompressor, NANOARROW_IPC_COMPRESSION_TYPE_ZSTD,
+                                        ArrowIpcDecompressZstd);
   return NANOARROW_OK;
 }
 

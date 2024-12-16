@@ -245,6 +245,15 @@ ArrowErrorCode ArrowIpcDecoderInit(struct ArrowIpcDecoder* decoder) {
   return NANOARROW_OK;
 }
 
+static ArrowErrorCode ArrowIpcDecoderInitDecompressor(
+    struct ArrowIpcDecoderPrivate* private_data) {
+  if (private_data->decompressor.release == NULL) {
+    NANOARROW_RETURN_NOT_OK(ArrowIpcSerialDecompressor(&private_data->decompressor));
+  }
+
+  return NANOARROW_OK;
+}
+
 ArrowErrorCode ArrowIpcDecoderSetDecompressor(struct ArrowIpcDecoder* decoder,
                                               struct ArrowIpcDecompressor* decompressor) {
   struct ArrowIpcDecoderPrivate* private_data =
@@ -1485,6 +1494,11 @@ static ArrowErrorCode ArrowIpcMakeBufferFromView(struct ArrowIpcBufferFactory* f
   NANOARROW_UNUSED(dst);
   NANOARROW_UNUSED(error);
 
+  if (src->codec != NANOARROW_IPC_COMPRESSION_TYPE_NONE) {
+    ArrowErrorSet(error, "The nanoarrow_ipc extension does not support compression");
+    return ENOTSUP;
+  }
+
   struct ArrowBufferView* body = (struct ArrowBufferView*)factory->private_data;
   dst_view->data.as_uint8 = body->data.as_uint8 + src->body_offset_bytes;
   dst_view->size_bytes = src->buffer_length_bytes;
@@ -1505,6 +1519,11 @@ static ArrowErrorCode ArrowIpcMakeBufferFromShared(struct ArrowIpcBufferFactory*
                                                    struct ArrowBuffer* dst,
                                                    struct ArrowError* error) {
   NANOARROW_UNUSED(error);
+
+  if (src->codec != NANOARROW_IPC_COMPRESSION_TYPE_NONE) {
+    ArrowErrorSet(error, "The nanoarrow_ipc extension does not support compression");
+    return ENOTSUP;
+  }
 
   struct ArrowIpcSharedBuffer* shared =
       (struct ArrowIpcSharedBuffer*)factory->private_data;
@@ -1680,14 +1699,6 @@ static int ArrowIpcDecoderMakeBuffer(struct ArrowIpcArraySetter* setter, int64_t
                   ") but body has size %" PRId64,
                   buffer_start, buffer_end, setter->body_size_bytes);
     return EINVAL;
-  }
-
-  // If the ArrowIpcBufferFactory is made public, these should get moved (since then a
-  // user could inject support for either one). More likely, by the time that happens,
-  // this library will be able to support some of these features.
-  if (setter->src.codec != NANOARROW_IPC_COMPRESSION_TYPE_NONE) {
-    ArrowErrorSet(error, "The nanoarrow_ipc extension does not support compression");
-    return ENOTSUP;
   }
 
   setter->src.body_offset_bytes = offset;
@@ -1874,6 +1885,10 @@ static ArrowErrorCode ArrowIpcDecoderDecodeArrayViewInternal(
   setter.src.codec = decoder->codec;
   setter.src.swap_endian = ArrowIpcDecoderNeedsSwapEndian(decoder);
   setter.version = decoder->metadata_version;
+
+  // If we are going to need a decompressor here, ensure the default one is
+  // initialized.
+  NANOARROW_RETURN_NOT_OK(ArrowIpcDecoderInitDecompressor(private_data));
 
   // The flatbuffers FieldNode doesn't count the root struct so we have to loop over the
   // children ourselves
