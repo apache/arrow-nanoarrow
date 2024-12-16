@@ -209,6 +209,7 @@ def bundle_nanoarrow_ipc(
     nanoarrow_ipc_c = concatenate_content(
         [
             src_dir / "ipc" / "flatcc_generated.h",
+            src_dir / "ipc" / "codecs.c",
             src_dir / "ipc" / "decoder.c",
             src_dir / "ipc" / "encoder.c",
             src_dir / "ipc" / "reader.c",

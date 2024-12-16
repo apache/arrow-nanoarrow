@@ -118,6 +118,7 @@ if get_option('ipc')
 
     nanoarrow_ipc_lib = library(
         'nanoarrow_ipc',
+        'src/nanoarrow/ipc/codecs.c',
         'src/nanoarrow/ipc/decoder.c',
         'src/nanoarrow/ipc/encoder.c',
         'src/nanoarrow/ipc/reader.c',

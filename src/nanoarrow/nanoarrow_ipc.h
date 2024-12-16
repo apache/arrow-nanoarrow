@@ -196,14 +196,17 @@ int ArrowIpcSharedBufferIsThreadSafe(void);
 
 /// \brief A user-extensible decompressor
 ///
-/// An implementation of a decompressor may implement more than one
+/// The ArrowIpcDecompressor is the underlying object that enables decompression in the
+/// ArrowIpcDecoder. Its structure allows it to be backed by a multithreaded
+/// implementation; however, this is not required and the default implementation does not
+/// implement this. An implementation of a decompressor may support more than one
 /// ArrowIpcCompressionType.
 struct ArrowIpcDecompressor {
   /// \brief Queue a buffer for decompression
   ///
   /// The values pointed to by dst and dst_size after a call to decompress_add
   /// are undefined until the next call to decompress_wait returns NANOARROW_OK.
-  ArrowErrorCode (*decompress_add)(struct ArrowIpcDecompressor* codec,
+  ArrowErrorCode (*decompress_add)(struct ArrowIpcDecompressor* decompressor,
                                    enum ArrowIpcCompressionType compression_type,
                                    struct ArrowBufferView* src, uint8_t* dst,
                                    int64_t* dst_size);
@@ -212,21 +215,22 @@ struct ArrowIpcDecompressor {
   ///
   /// Returns NANOARROW_OK if all pending calls completed. Returns ETIMEOUT
   /// if not all remaining calls completed.
-  ArrowErrorCode (*decompress_wait)(struct ArrowIpcDecompressor* codec, int64_t timeout_ms,
-                                    struct ArrowError* error);
+  ArrowErrorCode (*decompress_wait)(struct ArrowIpcDecompressor* decompressor,
+                                    int64_t timeout_ms, struct ArrowError* error);
 
   /// \brief Release the decompressor and any resources it may be holding
   ///
   /// Release callback implementations must set the release member to NULL.
   /// Callers must check that the release callback is not NULL before calling
   /// decompress() or release().
-  void (*release)(struct ArrowIpcDecompressor* codec);
+  void (*release)(struct ArrowIpcDecompressor* decompressor);
 
   /// \brief Implementation-specific opaque data
   void* private_data;
 };
 
-/// \brief Populate a new decompressor containing any capabilities nanoarrow was built with
+/// \brief Populate a new decompressor containing any capabilities nanoarrow was built
+/// with
 ///
 /// In the case that nanoarrow was built with no capabilities, this will populate a
 /// decompressor that fails for all calls.

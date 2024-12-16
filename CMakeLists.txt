@@ -207,6 +207,7 @@ if(NANOARROW_IPC)
 
   if(NOT NANOARROW_BUNDLE)
     set(NANOARROW_IPC_BUILD_SOURCES
+        src/nanoarrow/ipc/codecs.c
         src/nanoarrow/ipc/decoder.c src/nanoarrow/ipc/encoder.c
         src/nanoarrow/ipc/reader.c src/nanoarrow/ipc/writer.c)
   endif()
