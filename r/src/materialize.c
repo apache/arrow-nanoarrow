@@ -117,12 +117,10 @@ SEXP nanoarrow_materialize_realloc(SEXP ptype, R_xlen_t len) {
   SEXP result;
 
   if (Rf_isMatrix(ptype)) {
-    if (Rf_ncols(ptype) == 0) {
-      Rf_error("Can't allocate ptype matrix with ncol = 0");
-    }
-
-    // We currently build the result as row-major and transpose at the end
-    result = PROTECT(Rf_allocVector(TYPEOF(ptype), Rf_ncols(ptype) * len));
+    // The actual value is built in the child converter but we can't have
+    // a NULL here because that confuses the internals into thinking that
+    // the allocate was never called.
+    result = PROTECT(Rf_allocVector(TYPEOF(ptype), 0));
   } else if (Rf_isObject(ptype)) {
     // There may be a more accurate test that more precisely captures the case
     // where a user has specified a valid ptype that doesn't work in a preallocate
@@ -372,8 +370,8 @@ int nanoarrow_materialize_finalize_result(SEXP converter_xptr) {
     SEXP item_result = PROTECT(nanoarrow_converter_release_result(item_converter_xptr));
 
     SEXP matrix_symbol = PROTECT(Rf_install("matrix"));
-    SEXP nrow_sexp =
-        PROTECT(Rf_ScalarInteger(Rf_xlength(result) / converter->schema_view.fixed_size));
+    SEXP nrow_sexp = PROTECT(
+        Rf_ScalarInteger(Rf_xlength(item_result) / converter->schema_view.fixed_size));
     SEXP ncol_sexp = PROTECT(Rf_ScalarInteger(converter->schema_view.fixed_size));
     SEXP byrow_sexp = PROTECT(Rf_ScalarLogical(TRUE));
     SEXP matrix_call =
