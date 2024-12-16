@@ -199,18 +199,22 @@ int ArrowIpcSharedBufferIsThreadSafe(void);
 /// An implementation of this codec may implement more than one
 /// ArrowIpcCompressionType.
 struct ArrowIpcCodec {
-  /// \brief Decompress a buffer into a preallocated buffer.
+  /// \brief Queue a buffer for decompression
   ///
-  /// The caller must place the size of dst into the value pointed to by
-  /// dst_size; the implementation must update dst_size to equal the
-  /// number of bytes in the decompressed buffer (or return EOVERFLOW
-  /// if the allocated buffer is not of sufficient size). In the context
-  /// of the Arrow IPC format, the decompressed size is always known in
-  /// advance.
-  ArrowErrorCode (*decompress)(struct ArrowIpcCodec* codec,
-                               enum ArrowIpcCompressionType compression_type,
-                               struct ArrowBufferView* src, uint8_t* dst,
-                               int64_t* dst_size);
+  /// The values pointed to by dst after a call to decompress_add
+  /// are undefined until the next call to decompress_wait returns NANOARROW_OK;
+  /// However, an implementation is free to perform the decompression immediately
+  /// without implementing background decompression.
+  ArrowErrorCode (*decompress_add)(struct ArrowIpcCodec* codec,
+                                   enum ArrowIpcCompressionType compression_type,
+                                   struct ArrowBufferView* src, uint8_t* dst,
+                                   int64_t* dst_size);
+
+  /// \brief Wait for any unfinished calls to decompress_add to complete
+  ///
+  /// Returns NANOARROW_OK if all pending calls completed. Returns ETIMEOUT
+  /// if not all remaining calls completed.
+  ArrowErrorCode (*decompress_wait)(struct ArrowIpcCodec* codec, int64_t timeout_ms);
 
   /// \brief Release the codec and any resources it may be holding
   ///
