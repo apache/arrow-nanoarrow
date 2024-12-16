@@ -194,18 +194,16 @@ void ArrowIpcSharedBufferReset(struct ArrowIpcSharedBuffer* shared);
 /// the resulting arrays must not be passed to other threads to be released.
 int ArrowIpcSharedBufferIsThreadSafe(void);
 
-/// \brief An user-extensible compressor/decompressor
+/// \brief A user-extensible decompressor
 ///
-/// An implementation of this codec may implement more than one
+/// An implementation of a decompressor may implement more than one
 /// ArrowIpcCompressionType.
-struct ArrowIpcCodec {
+struct ArrowIpcDecompressor {
   /// \brief Queue a buffer for decompression
   ///
-  /// The values pointed to by dst after a call to decompress_add
-  /// are undefined until the next call to decompress_wait returns NANOARROW_OK;
-  /// However, an implementation is free to perform the decompression immediately
-  /// without implementing background decompression.
-  ArrowErrorCode (*decompress_add)(struct ArrowIpcCodec* codec,
+  /// The values pointed to by dst and dst_size after a call to decompress_add
+  /// are undefined until the next call to decompress_wait returns NANOARROW_OK.
+  ArrowErrorCode (*decompress_add)(struct ArrowIpcDecompressor* codec,
                                    enum ArrowIpcCompressionType compression_type,
                                    struct ArrowBufferView* src, uint8_t* dst,
                                    int64_t* dst_size);
@@ -214,18 +212,25 @@ struct ArrowIpcCodec {
   ///
   /// Returns NANOARROW_OK if all pending calls completed. Returns ETIMEOUT
   /// if not all remaining calls completed.
-  ArrowErrorCode (*decompress_wait)(struct ArrowIpcCodec* codec, int64_t timeout_ms);
+  ArrowErrorCode (*decompress_wait)(struct ArrowIpcDecompressor* codec, int64_t timeout_ms,
+                                    struct ArrowError* error);
 
-  /// \brief Release the codec and any resources it may be holding
+  /// \brief Release the decompressor and any resources it may be holding
   ///
   /// Release callback implementations must set the release member to NULL.
   /// Callers must check that the release callback is not NULL before calling
   /// decompress() or release().
-  void (*release)(struct ArrowIpcCodec* codec);
+  void (*release)(struct ArrowIpcDecompressor* codec);
 
   /// \brief Implementation-specific opaque data
   void* private_data;
 };
+
+/// \brief Populate a new decompressor containing any capabilities nanoarrow was built with
+///
+/// In the case that nanoarrow was built with no capabilities, this will populate a
+/// decompressor that fails for all calls.
+ArrowErrorCode ArrowIpcGetDefaultDecompressor(struct ArrowIpcDecompressor* decompressor);
 
 /// \brief Decoder for Arrow IPC messages
 ///

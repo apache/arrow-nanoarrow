@@ -17,4 +17,36 @@
 
 #include "nanoarrow/nanoarrow_ipc.h"
 
-ArrowErrorCode ArrowIpcGetDefaultCodec(struct ArrowIpcCodec* codec) { return ENOTSUP; }
+static ArrowErrorCode ArrowIpcDefaultDecompressorAdd(
+    struct ArrowIpcDecompressor* decompressor,
+    enum ArrowIpcCompressionType compression_type, struct ArrowBufferView* src,
+    uint8_t* dst, int64_t* dst_size) {
+  NANOARROW_UNUSED(decompressor);
+  NANOARROW_UNUSED(compression_type);
+  NANOARROW_UNUSED(src);
+  NANOARROW_UNUSED(dst);
+  NANOARROW_UNUSED(dst_size);
+  return ENOTSUP;
+}
+
+static ArrowErrorCode ArrowIpcDefaultDecompressorWait(
+    struct ArrowIpcDecompressor* decompressor, int64_t timeout_ms,
+    struct ArrowError* error) {
+  NANOARROW_UNUSED(decompressor);
+  NANOARROW_UNUSED(timeout_ms);
+  ArrowErrorSet(error, "Decompression is not supported in this build of nanoarrow_ipc");
+  return ENOTSUP;
+}
+
+static void ArrowIpcDefaultDecompressorRelease(
+    struct ArrowIpcDecompressor* decompressor) {
+  decompressor->release = NULL;
+}
+
+ArrowErrorCode ArrowIpcGetDefaultDecompressor(struct ArrowIpcDecompressor* decompressor) {
+  decompressor->decompress_add = &ArrowIpcDefaultDecompressorAdd;
+  decompressor->decompress_wait = &ArrowIpcDefaultDecompressorWait;
+  decompressor->release = &ArrowIpcDefaultDecompressorRelease;
+  decompressor->private_data = NULL;
+  return NANOARROW_OK;
+}
