@@ -352,17 +352,23 @@ void sync_after_converter_reallocate(SEXP converter_xptr, struct RConverter* con
                                       converter->children[i], VECTOR_ELT(result_sexp, i),
                                       capacity);
     }
+  } else if (converter->ptype_view.vector_type == VECTOR_TYPE_MATRIX) {
+    // Reserve for the child converter here, which ensures that a matrix column in
+    // a data.frame() will get allocated properly.
+    SEXP child_converters = VECTOR_ELT(converter_shelter, 3);
+    SEXP item_converter_xptr = VECTOR_ELT(child_converters, 0);
+    nanoarrow_converter_reserve(item_converter_xptr,
+                                capacity * Rf_ncols(converter->ptype_view.ptype));
   }
 }
 
-int nanoarrow_converter_reserve(SEXP converter_xptr, R_xlen_t additional_size) {
+void nanoarrow_converter_reserve(SEXP converter_xptr, R_xlen_t additional_size) {
   struct RConverter* converter = (struct RConverter*)R_ExternalPtrAddr(converter_xptr);
   SEXP converter_shelter = R_ExternalPtrProtected(converter_xptr);
   SEXP current_result = VECTOR_ELT(converter_shelter, 4);
 
   if (current_result != R_NilValue) {
-    ArrowErrorSet(&converter->error, "Reallocation in converter is not implemented");
-    return ENOTSUP;
+    Rf_error("Reallocation in converter is not implemented");
   }
 
   SEXP result_sexp;
@@ -377,7 +383,6 @@ int nanoarrow_converter_reserve(SEXP converter_xptr, R_xlen_t additional_size) {
   sync_after_converter_reallocate(converter_xptr, converter, result_sexp,
                                   additional_size);
   UNPROTECT(1);
-  return NANOARROW_OK;
 }
 
 R_xlen_t nanoarrow_converter_materialize_n(SEXP converter_xptr, R_xlen_t n) {
@@ -410,7 +415,7 @@ R_xlen_t nanoarrow_converter_materialize_n(SEXP converter_xptr, R_xlen_t n) {
 int nanoarrow_converter_materialize_all(SEXP converter_xptr) {
   struct RConverter* converter = (struct RConverter*)R_ExternalPtrAddr(converter_xptr);
   R_xlen_t remaining = converter->array_view.array->length;
-  NANOARROW_RETURN_NOT_OK(nanoarrow_converter_reserve(converter_xptr, remaining));
+  nanoarrow_converter_reserve(converter_xptr, remaining);
   if (nanoarrow_converter_materialize_n(converter_xptr, remaining) != remaining) {
     return ERANGE;
   } else {
