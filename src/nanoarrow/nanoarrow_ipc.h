@@ -307,6 +307,10 @@ ArrowErrorCode ArrowIpcDecoderInit(struct ArrowIpcDecoder* decoder);
 /// \brief Release all resources attached to a decoder
 void ArrowIpcDecoderReset(struct ArrowIpcDecoder* decoder);
 
+/// \brief Set the decompressor implementation used by this decoder
+ArrowErrorCode ArrowIpcDecoderSetDecompressor(struct ArrowIpcDecoder* decoder,
+                                              struct ArrowIpcDecompressor* decompressor);
+
 /// \brief Peek at a message header
 ///
 /// The first 8 bytes of an Arrow IPC message are 0xFFFFFFFF followed by the size

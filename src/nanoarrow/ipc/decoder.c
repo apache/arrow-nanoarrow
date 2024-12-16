@@ -245,6 +245,19 @@ ArrowErrorCode ArrowIpcDecoderInit(struct ArrowIpcDecoder* decoder) {
   return NANOARROW_OK;
 }
 
+ArrowErrorCode ArrowIpcDecoderSetDecompressor(struct ArrowIpcDecoder* decoder,
+                                              struct ArrowIpcDecompressor* decompressor) {
+  struct ArrowIpcDecoderPrivate* private_data =
+      (struct ArrowIpcDecoderPrivate*)decoder->private_data;
+
+  if (private_data->decompressor.release != NULL) {
+    private_data->decompressor.release(&private_data->decompressor);
+  }
+
+  memcpy(&private_data->decompressor, decompressor, sizeof(struct ArrowIpcDecompressor));
+  return NANOARROW_OK;
+}
+
 void ArrowIpcDecoderReset(struct ArrowIpcDecoder* decoder) {
   struct ArrowIpcDecoderPrivate* private_data =
       (struct ArrowIpcDecoderPrivate*)decoder->private_data;
