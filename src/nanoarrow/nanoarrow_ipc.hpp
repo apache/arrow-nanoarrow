@@ -74,6 +74,25 @@ inline void release_pointer(struct ArrowIpcEncoder* data) {
 }
 
 template <>
+inline void init_pointer(struct ArrowIpcDecompressor* data) {
+  data->private_data = nullptr;
+}
+
+template <>
+inline void move_pointer(struct ArrowIpcDecompressor* src,
+                         struct ArrowIpcDecompressor* dst) {
+  memcpy(dst, src, sizeof(struct ArrowIpcDecompressor));
+  src->release = nullptr;
+}
+
+template <>
+inline void release_pointer(struct ArrowIpcDecompressor* data) {
+  if (data->release != nullptr) {
+    data->release(data);
+  }
+}
+
+template <>
 inline void init_pointer(struct ArrowIpcInputStream* data) {
   data->release = nullptr;
 }
@@ -149,6 +168,9 @@ using UniqueFooter = internal::Unique<struct ArrowIpcFooter>;
 
 /// \brief Class wrapping a unique struct ArrowIpcEncoder
 using UniqueEncoder = internal::Unique<struct ArrowIpcEncoder>;
+
+/// \brief Class wrapping a unique struct ArrowIpcDecompressor
+using UniqueDecompressor = internal::Unique<struct ArrowIpcDecompressor>;
 
 /// \brief Class wrapping a unique struct ArrowIpcInputStream
 using UniqueInputStream = internal::Unique<struct ArrowIpcInputStream>;

@@ -97,6 +97,8 @@ struct ArrowIpcDecoderPrivate {
   const void* last_message;
   // Storage for a Footer
   struct ArrowIpcFooter footer;
+  // Decompressor for compression support
+  struct ArrowIpcDecompressor decompressor;
 };
 
 ArrowErrorCode ArrowIpcCheckRuntime(struct ArrowError* error) {
@@ -262,6 +264,10 @@ void ArrowIpcDecoderReset(struct ArrowIpcDecoder* decoder) {
     private_data->n_union_fields = 0;
 
     ArrowIpcFooterReset(&private_data->footer);
+
+    if (private_data->decompressor.release != NULL) {
+      private_data->decompressor.release(&private_data->decompressor);
+    }
 
     ArrowFree(private_data);
     memset(decoder, 0, sizeof(struct ArrowIpcDecoder));
