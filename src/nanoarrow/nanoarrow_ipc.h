@@ -194,6 +194,35 @@ void ArrowIpcSharedBufferReset(struct ArrowIpcSharedBuffer* shared);
 /// the resulting arrays must not be passed to other threads to be released.
 int ArrowIpcSharedBufferIsThreadSafe(void);
 
+/// \brief An user-extensible compressor/decompressor
+///
+/// An implementation of this codec may implement more than one
+/// ArrowIpcCompressionType.
+struct ArrowIpcCodec {
+  /// \brief Decompress a buffer into a preallocated buffer.
+  ///
+  /// The caller must place the size of dst into the value pointed to by
+  /// dst_size; the implementation must update dst_size to equal the
+  /// number of bytes in the decompressed buffer (or return EOVERFLOW
+  /// if the allocated buffer is not of sufficient size). In the context
+  /// of the Arrow IPC format, the decompressed size is always known in
+  /// advance.
+  ArrowErrorCode (*decompress)(struct ArrowIpcCodec* codec,
+                               enum ArrowIpcCompressionType compression_type,
+                               struct ArrowBufferView* src, uint8_t* dst,
+                               int64_t* dst_size);
+
+  /// \brief Release the codec and any resources it may be holding
+  ///
+  /// Release callback implementations must set the release member to NULL.
+  /// Callers must check that the release callback is not NULL before calling
+  /// decompress() or release().
+  void (*release)(struct ArrowIpcCodec* codec);
+
+  /// \brief Implementation-specific opaque data
+  void* private_data;
+};
+
 /// \brief Decoder for Arrow IPC messages
 ///
 /// This structure is intended to be allocated by the caller,
