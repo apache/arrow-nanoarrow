@@ -19,7 +19,8 @@
 
 #include "nanoarrow/nanoarrow_ipc.h"
 
-#include </opt/homebrew/opt/zstd/include/zstd.h>
+#if defined(NANOARROW_IPC_WITH_ZSTD)
+#include <zstd.h>
 
 static ArrowErrorCode ArrowIpcDecompressZstd(struct ArrowBufferView src, uint8_t* dst,
                                              int64_t* dst_size,
@@ -37,9 +38,14 @@ static ArrowErrorCode ArrowIpcDecompressZstd(struct ArrowBufferView src, uint8_t
   *dst_size = (int64_t)code;
   return NANOARROW_OK;
 }
+#endif
 
 ArrowIpcDecompressFunction ArrowIpcGetZstdDecompressionFunction(void) {
+#if defined(NANOARROW_IPC_WITH_ZSTD)
   return &ArrowIpcDecompressZstd;
+#else
+  return NULL;
+#endif
 }
 
 struct ArrowIpcSerialDecompressorPrivate {
