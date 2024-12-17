@@ -23,19 +23,23 @@
 #include <zstd.h>
 
 static ArrowErrorCode ArrowIpcDecompressZstd(struct ArrowBufferView src, uint8_t* dst,
-                                             int64_t* dst_size,
-                                             struct ArrowError* error) {
+                                             int64_t dst_size, struct ArrowError* error) {
   size_t code =
       ZSTD_decompress((void*)dst, (size_t)dst_size, src.data.data, src.size_bytes);
   if (ZSTD_isError(code)) {
     ArrowErrorSet(error,
                   "ZSTD_decompress([buffer with %" PRId64
                   " bytes] -> [buffer with %" PRId64 " bytes]) failed with error '%s'",
-                  src.size_bytes, *dst_size, ZSTD_getErrorName(code));
+                  src.size_bytes, dst_size, ZSTD_getErrorName(code));
     return EIO;
   }
 
-  *dst_size = (int64_t)code;
+  if (dst_size != (int64_t)code) {
+    ArrowErrorSet(error,
+                  "Expected decompressed size of %" PRId64 " bytes but got %" PRId64
+                  " bytes",
+                  dst_size, (int64_t)code);
+  }
   return NANOARROW_OK;
 }
 #endif
@@ -55,7 +59,7 @@ struct ArrowIpcSerialDecompressorPrivate {
 static ArrowErrorCode ArrowIpcSerialDecompressorAdd(
     struct ArrowIpcDecompressor* decompressor,
     enum ArrowIpcCompressionType compression_type, struct ArrowBufferView src,
-    uint8_t* dst, int64_t* dst_size, struct ArrowError* error) {
+    uint8_t* dst, int64_t dst_size, struct ArrowError* error) {
   struct ArrowIpcSerialDecompressorPrivate* private_data =
       (struct ArrowIpcSerialDecompressorPrivate*)decompressor->private_data;
 

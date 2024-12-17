@@ -217,7 +217,7 @@ struct ArrowIpcDecompressor {
   ArrowErrorCode (*decompress_add)(struct ArrowIpcDecompressor* decompressor,
                                    enum ArrowIpcCompressionType compression_type,
                                    struct ArrowBufferView src, uint8_t* dst,
-                                   int64_t* dst_size, struct ArrowError* error);
+                                   int64_t dst_size, struct ArrowError* error);
 
   /// \brief Wait for any unfinished calls to decompress_add to complete
   ///
@@ -245,7 +245,7 @@ struct ArrowIpcDecompressor {
 /// may be more efficient to implement a full ArrowIpcDecompressor, which allows
 /// for persistent state/allocations between decodes.
 typedef ArrowErrorCode (*ArrowIpcDecompressFunction)(struct ArrowBufferView src,
-                                                     uint8_t* dst, int64_t* dst_size,
+                                                     uint8_t* dst, int64_t dst_size,
                                                      struct ArrowError* error);
 
 /// \brief Get the decompression function for ZSTD
