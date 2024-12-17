@@ -137,6 +137,117 @@ test_that("convert array stream works for struct-style vectors", {
   )
 })
 
+test_that("convert array stream works for fixed_size_list_of() -> matrix()", {
+  mat <- matrix(1:6, ncol = 2, byrow = TRUE)
+  array <- as_nanoarrow_array(mat)
+  stream <- basic_array_stream(list(array, array))
+  expect_identical(
+    convert_array_stream(stream, matrix(integer(), ncol = 2)),
+    rbind(mat, mat)
+  )
+
+  # Check with non-default ptype
+  stream <- basic_array_stream(list(array, array))
+  expect_identical(
+    convert_array_stream(stream, matrix(double(), ncol = 2)),
+    rbind(
+      matrix(as.double(1:6), ncol = 2, byrow = TRUE),
+      matrix(as.double(1:6), ncol = 2, byrow = TRUE)
+    )
+  )
+})
+
+test_that("convert array stream works for empty fixed_size_list_of() -> matrix()", {
+  stream <- basic_array_stream(list(), schema = na_fixed_size_list(na_int32(), 2))
+  expect_identical(
+    convert_array_stream(stream, matrix(integer(), ncol = 2)),
+    matrix(integer(), ncol = 2)
+  )
+})
+
+test_that("convert array stream works for nested fixed_size_list_of() -> matrix()", {
+  df <- data.frame(x = 1:3)
+  df$mat <- matrix(1:6, ncol = 2, byrow = TRUE)
+
+  expected <- df[c(1:3, 1:3),]
+  row.names(expected) <- 1:6
+
+  array <- as_nanoarrow_array(df)
+  stream <- basic_array_stream(list(array, array))
+  expect_identical(
+    convert_array_stream(stream, df[integer(0),]),
+    expected
+  )
+})
+
+test_that("convert array stream works for fixed_size_list_of() with non-zero offsets -> matrix() ", {
+  mat <- matrix(1:6, ncol = 2, byrow = TRUE)
+
+  # Non-zero parent offset
+  array <- as_nanoarrow_array(mat)
+  array <- nanoarrow_array_modify(array, list(offset = 1, length = 2))
+  stream <- basic_array_stream(list(array, array))
+  expect_identical(
+    convert_array_stream(stream, matrix(integer(), ncol = 2)),
+    rbind(mat[2:3, ], mat[2:3, ])
+  )
+
+
+  # Non-zero child offset
+  array <- as_nanoarrow_array(mat)
+  array <- nanoarrow_array_modify(
+    array,
+    list(
+      length = 2,
+      children = list(
+        nanoarrow_array_modify(array$children[[1]], list(offset = 2, length = 4))
+      )
+    )
+  )
+  stream <- basic_array_stream(list(array, array))
+  expect_identical(
+    convert_array_stream(stream, matrix(integer(), ncol = 2)),
+    rbind(mat[2:3, ], mat[2:3, ])
+  )
+
+  # Non-zero child offset and non-zero parent offset
+  array <- nanoarrow_array_modify(
+    array,
+    list(
+      offset = 1,
+      length = 1,
+      children = list(
+        nanoarrow_array_modify(array$children[[1]], list(offset = 2, length = 4))
+      )
+    )
+  )
+  stream <- basic_array_stream(list(array, array))
+  expect_identical(
+    convert_array_stream(stream, matrix(integer(), ncol = 2)),
+    rbind(mat[3, ], mat[3, ])
+  )
+})
+
+test_that("convert array stream works for fixed_size_list_of() with parent nulls -> matrix()", {
+  mat <- matrix(1:6, ncol = 2, byrow = TRUE)
+  array <- as_nanoarrow_array(mat)
+  array <- nanoarrow_array_modify(
+    array,
+    list(
+      null_count = 1,
+      buffers = list(
+        as_nanoarrow_array(c(TRUE, TRUE, FALSE))$buffers[[2]]
+      )
+    )
+  )
+
+  stream <- basic_array_stream(list(array, array))
+  expect_identical(
+    convert_array_stream(stream, matrix(integer(), ncol = 2)),
+    rbind(mat[c(1, 2, NA), ], mat[c(1, 2, NA), ])
+  )
+})
+
 test_that("convert array stream respects the value of n", {
   batches <- list(
     data.frame(x = 1:5),

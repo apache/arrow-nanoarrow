@@ -94,9 +94,7 @@ SEXP nanoarrow_c_convert_array_stream(SEXP array_stream_xptr, SEXP ptype_sexp,
     nanoarrow_converter_stop(converter_xptr);
   }
 
-  if (nanoarrow_converter_reserve(converter_xptr, size) != NANOARROW_OK) {
-    nanoarrow_converter_stop(converter_xptr);
-  }
+  nanoarrow_converter_reserve(converter_xptr, size);
 
   int64_t n_batches = 0;
   do {

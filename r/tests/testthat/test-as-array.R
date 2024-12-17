@@ -584,6 +584,27 @@ test_that("as_nanoarrow_array() works for blob::blob() -> na_binary()", {
   )
 })
 
+test_that("as_nanoarrow_array() works for matrix -> na_fixed_size_list()", {
+  mat <- matrix(1:6, ncol = 2, byrow = TRUE)
+
+  # Check without explicit schema
+  array <- as_nanoarrow_array(mat)
+  expect_identical(infer_nanoarrow_schema(array)$format, "+w:2")
+  expect_identical(infer_nanoarrow_schema(array)$children[[1]]$format, "i")
+  expect_identical(array$buffers[[1]]$size_bytes, 0)
+  expect_identical(convert_buffer(array$children[[1]]$buffers[[2]]), 1:6)
+
+  # Check with explicit schema
+  array <- as_nanoarrow_array(
+    mat,
+    schema = na_fixed_size_list(na_double(), list_size = 2)
+  )
+  expect_identical(infer_nanoarrow_schema(array)$format, "+w:2")
+  expect_identical(infer_nanoarrow_schema(array)$children[[1]]$format, "g")
+  expect_identical(array$buffers[[1]]$size_bytes, 0)
+  expect_identical(convert_buffer(array$children[[1]]$buffers[[2]]), as.double(1:6))
+})
+
 test_that("as_nanoarrow_array() works for blob::blob() -> na_fixed_size_binary()", {
   # Without nulls
   array <- as_nanoarrow_array(blob::as_blob(letters), schema = na_fixed_size_binary(1))

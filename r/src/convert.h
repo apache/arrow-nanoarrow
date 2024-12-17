@@ -41,8 +41,8 @@ int nanoarrow_converter_set_array(SEXP converter_xptr, SEXP array_xptr);
 
 // Reserve space in the R vector output for additional elements. In theory
 // this could be used to provide growable behaviour; however, this is not
-// implemented. Returns an errno code.
-int nanoarrow_converter_reserve(SEXP converter_xptr, R_xlen_t additional_size);
+// implemented.
+void nanoarrow_converter_reserve(SEXP converter_xptr, R_xlen_t additional_size);
 
 // Materialize the next n elements into the output. Returns the number of elements
 // that were actually materialized which may be less than n.

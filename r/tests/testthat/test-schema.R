@@ -85,6 +85,10 @@ test_that("infer_nanoarrow_schema() methods work for hms type", {
   expect_identical(infer_nanoarrow_schema(hms::hms())$format, "ttm")
 })
 
+test_that("infer_nanoarrow_schema() method works for matrix type", {
+  expect_identical(infer_nanoarrow_schema(matrix(ncol = 3))$format, "+w:3")
+})
+
 test_that("infer_nanoarrow_schema() methods work for vctrs types", {
   skip_if_not_installed("vctrs")
 

@@ -60,6 +60,8 @@ attribute of \code{to}.
 be converted to \code{\link[blob:blob]{blob::blob()}}.
 \item \code{\link[vctrs:list_of]{vctrs::list_of()}}: List, large list, and fixed-size list types can be
 converted to \code{\link[vctrs:list_of]{vctrs::list_of()}}.
+\item \code{\link[=matrix]{matrix()}}: Fixed-size list types can be converted to
+\code{matrix(ptype, ncol = fixed_size)}.
 \item \code{\link[=data.frame]{data.frame()}}: Struct types can be converted to \code{\link[=data.frame]{data.frame()}}.
 \item \code{\link[vctrs:unspecified]{vctrs::unspecified()}}: Any type can be converted to \code{\link[vctrs:unspecified]{vctrs::unspecified()}};
 however, a warning will be raised if any non-null values are encountered.

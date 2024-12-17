@@ -29,6 +29,8 @@
 static R_xlen_t nanoarrow_vec_size(SEXP vec_sexp, struct PTypeView* ptype_view) {
   if (ptype_view->vector_type == VECTOR_TYPE_DATA_FRAME) {
     return nanoarrow_data_frame_size(vec_sexp);
+  } else if (Rf_isMatrix(vec_sexp)) {
+    return Rf_nrows(vec_sexp);
   } else {
     return Rf_xlength(vec_sexp);
   }
@@ -149,12 +151,7 @@ static void set_converter_data_frame(SEXP converter_xptr, struct RConverter* con
 }
 
 static void set_converter_list_of(SEXP converter_xptr, struct RConverter* converter,
-                                  SEXP ptype) {
-  SEXP child_ptype = Rf_getAttrib(ptype, Rf_install("ptype"));
-  if (child_ptype == R_NilValue) {
-    Rf_error("Expected attribute 'ptype' for conversion to list_of");
-  }
-
+                                  SEXP ptype, SEXP child_ptype) {
   converter->children = (struct RConverter**)ArrowMalloc(1 * sizeof(struct RConverter*));
   if (converter->children == NULL) {
     Rf_error("Failed to allocate converter children array");
@@ -230,7 +227,12 @@ SEXP nanoarrow_converter_from_ptype(SEXP ptype) {
   SEXP converter_shelter = R_ExternalPtrProtected(converter_xptr);
   struct RConverter* converter = (struct RConverter*)R_ExternalPtrAddr(converter_xptr);
 
-  if (Rf_isObject(ptype)) {
+  if (Rf_isMatrix(ptype)) {
+    converter->ptype_view.vector_type = VECTOR_TYPE_MATRIX;
+    SEXP child_ptype = PROTECT(Rf_allocVector(TYPEOF(ptype), 0));
+    set_converter_list_of(converter_xptr, converter, ptype, child_ptype);
+    UNPROTECT(1);
+  } else if (Rf_isObject(ptype)) {
     if (nanoarrow_ptype_is_data_frame(ptype)) {
       converter->ptype_view.vector_type = VECTOR_TYPE_DATA_FRAME;
       set_converter_data_frame(converter_xptr, converter, ptype);
@@ -238,7 +240,12 @@ SEXP nanoarrow_converter_from_ptype(SEXP ptype) {
       converter->ptype_view.vector_type = VECTOR_TYPE_BLOB;
     } else if (Rf_inherits(ptype, "vctrs_list_of")) {
       converter->ptype_view.vector_type = VECTOR_TYPE_LIST_OF;
-      set_converter_list_of(converter_xptr, converter, ptype);
+      SEXP child_ptype = Rf_getAttrib(ptype, Rf_install("ptype"));
+      if (child_ptype == R_NilValue) {
+        Rf_error("Expected attribute 'ptype' for conversion to list_of");
+      }
+
+      set_converter_list_of(converter_xptr, converter, ptype, child_ptype);
     } else if (Rf_inherits(ptype, "vctrs_unspecified")) {
       converter->ptype_view.vector_type = VECTOR_TYPE_UNSPECIFIED;
     } else if (Rf_inherits(ptype, "Date")) {
@@ -300,7 +307,8 @@ int nanoarrow_converter_set_schema(SEXP converter_xptr, SEXP schema_xptr) {
       ArrowArrayViewInitFromSchema(&converter->array_view, schema, &converter->error));
 
   if (converter->ptype_view.vector_type == VECTOR_TYPE_LIST_OF ||
-      converter->ptype_view.vector_type == VECTOR_TYPE_DATA_FRAME) {
+      converter->ptype_view.vector_type == VECTOR_TYPE_DATA_FRAME ||
+      converter->ptype_view.vector_type == VECTOR_TYPE_MATRIX) {
     set_converter_children_schema(converter_xptr, schema_xptr);
   }
 
@@ -318,7 +326,8 @@ int nanoarrow_converter_set_array(SEXP converter_xptr, SEXP array_xptr) {
   converter->src.length = 0;
 
   if (converter->ptype_view.vector_type == VECTOR_TYPE_LIST_OF ||
-      converter->ptype_view.vector_type == VECTOR_TYPE_DATA_FRAME) {
+      converter->ptype_view.vector_type == VECTOR_TYPE_DATA_FRAME ||
+      converter->ptype_view.vector_type == VECTOR_TYPE_MATRIX) {
     set_converter_children_array(converter_xptr, array_xptr);
   }
 
@@ -343,17 +352,23 @@ void sync_after_converter_reallocate(SEXP converter_xptr, struct RConverter* con
                                       converter->children[i], VECTOR_ELT(result_sexp, i),
                                       capacity);
     }
+  } else if (converter->ptype_view.vector_type == VECTOR_TYPE_MATRIX) {
+    // Reserve for the child converter here, which ensures that a matrix column in
+    // a data.frame() will get allocated properly.
+    SEXP child_converters = VECTOR_ELT(converter_shelter, 3);
+    SEXP item_converter_xptr = VECTOR_ELT(child_converters, 0);
+    nanoarrow_converter_reserve(item_converter_xptr,
+                                capacity * Rf_ncols(converter->ptype_view.ptype));
   }
 }
 
-int nanoarrow_converter_reserve(SEXP converter_xptr, R_xlen_t additional_size) {
+void nanoarrow_converter_reserve(SEXP converter_xptr, R_xlen_t additional_size) {
   struct RConverter* converter = (struct RConverter*)R_ExternalPtrAddr(converter_xptr);
   SEXP converter_shelter = R_ExternalPtrProtected(converter_xptr);
   SEXP current_result = VECTOR_ELT(converter_shelter, 4);
 
   if (current_result != R_NilValue) {
-    ArrowErrorSet(&converter->error, "Reallocation in converter is not implemented");
-    return ENOTSUP;
+    Rf_error("Reallocation in converter is not implemented");
   }
 
   SEXP result_sexp;
@@ -368,7 +383,6 @@ int nanoarrow_converter_reserve(SEXP converter_xptr, R_xlen_t additional_size) {
   sync_after_converter_reallocate(converter_xptr, converter, result_sexp,
                                   additional_size);
   UNPROTECT(1);
-  return NANOARROW_OK;
 }
 
 R_xlen_t nanoarrow_converter_materialize_n(SEXP converter_xptr, R_xlen_t n) {
@@ -401,7 +415,7 @@ R_xlen_t nanoarrow_converter_materialize_n(SEXP converter_xptr, R_xlen_t n) {
 int nanoarrow_converter_materialize_all(SEXP converter_xptr) {
   struct RConverter* converter = (struct RConverter*)R_ExternalPtrAddr(converter_xptr);
   R_xlen_t remaining = converter->array_view.array->length;
-  NANOARROW_RETURN_NOT_OK(nanoarrow_converter_reserve(converter_xptr, remaining));
+  nanoarrow_converter_reserve(converter_xptr, remaining);
   if (nanoarrow_converter_materialize_n(converter_xptr, remaining) != remaining) {
     return ERANGE;
   } else {
@@ -415,6 +429,7 @@ int nanoarrow_converter_finalize(SEXP converter_xptr) {
   SEXP current_result = VECTOR_ELT(converter_shelter, 4);
 
   NANOARROW_RETURN_NOT_OK(nanoarrow_materialize_finalize_result(converter_xptr));
+  current_result = VECTOR_ELT(converter_shelter, 4);
 
   // Check result size. A future implementation could also shrink the length
   // or reallocate a shorter vector.
