@@ -531,9 +531,12 @@ TEST_P(TestFileFixture, NanoarrowIpcTestFileIPCCheckJSON) {
 INSTANTIATE_TEST_SUITE_P(
     NanoarrowIpcTest, TestFileFixture,
     ::testing::Values(
-        // Testing of other files
+// Testing of other files
+#if defined(NANOARROW_IPC_WITH_ZSTD)
         TestFile::OK("2.0.0-compression/generated_uncompressible_zstd.stream"),
-        TestFile::OK("2.0.0-compression/generated_zstd.stream")
+        TestFile::OK("2.0.0-compression/generated_zstd.stream"),
+#endif
+        TestFile::OK("0.17.1/generated_union.stream")
         // Comment to keep line from wrapping
         ));
 
