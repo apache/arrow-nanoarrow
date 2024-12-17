@@ -456,12 +456,19 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDecodeSimpleCompressedRecordBatch) {
   body.data.as_uint8 = kSimpleRecordBatchCompressed + decoder.header_size_bytes;
   body.size_bytes = decoder.body_size_bytes;
 
-  ASSERT_EQ(ArrowIpcDecoderDecodeArrayView(&decoder, body, 0, &array_view, &error),
-            NANOARROW_OK)
-      << error.message;
-  EXPECT_EQ(ArrowArrayViewGetIntUnsafe(array_view, 0), 0);
-  EXPECT_EQ(ArrowArrayViewGetIntUnsafe(array_view, 1), 1);
-  EXPECT_EQ(ArrowArrayViewGetIntUnsafe(array_view, 2), 2);
+  if (ArrowIpcGetZstdDecompressionFunction() != nullptr) {
+    ASSERT_EQ(ArrowIpcDecoderDecodeArrayView(&decoder, body, 0, &array_view, &error),
+              NANOARROW_OK);
+    EXPECT_EQ(ArrowArrayViewGetIntUnsafe(array_view, 0), 0);
+    EXPECT_EQ(ArrowArrayViewGetIntUnsafe(array_view, 1), 1);
+    EXPECT_EQ(ArrowArrayViewGetIntUnsafe(array_view, 2), 2);
+  } else {
+    ASSERT_EQ(ArrowIpcDecoderDecodeArrayView(&decoder, body, 0, &array_view, &error),
+              ENOTSUP);
+    ASSERT_STREQ(
+        error.message,
+        "Compression type with value 2 not supported by this build of nanoarrow");
+  }
 
   ArrowSchemaRelease(&schema);
   ArrowIpcDecoderReset(&decoder);

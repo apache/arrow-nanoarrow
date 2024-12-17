@@ -115,7 +115,7 @@ if get_option('ipc')
     if get_option('ipc_with_zstd')
         zstd_dep = dependency('libzstd')
         ipc_lib_deps += [zstd_dep]
-        ipc_lib_cpp_args += ['-DNANOARROW_IPC_WITH_ZSTD']
+        ipc_lib_cpp_args += '-DNANOARROW_IPC_WITH_ZSTD'
     endif
 
     install_headers(

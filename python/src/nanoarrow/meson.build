@@ -16,6 +16,7 @@
 # under the License.
 
 flatcc_dep = dependency('flatcc')
+zstd_dep = dependency('libzstd')
 nanoarrow_proj = subproject('arrow-nanoarrow')
 nanoarrow_dep = nanoarrow_proj.get_variable('nanoarrow_dep')
 nanoarrow_ipc_dep = nanoarrow_proj.get_variable('nanoarrow_ipc_dep')
@@ -77,8 +78,10 @@ foreach cyf : cyfiles
     if stem in ['_array', '_device']
         cyfile_deps += [nanoarrow_device_dep]
     elif stem == '_ipc_lib'
-        cyfile_deps += [nanoarrow_ipc_dep, flatcc_dep]
+        cyfile_deps += [nanoarrow_ipc_dep, flatcc_dep, zstd_dep]
     endif
+
+    # TODO: Where does -DNANOARROW_IPC_WITH_ZSTD go?
 
     py.extension_module(
         stem,
