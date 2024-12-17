@@ -1548,13 +1548,16 @@ static ArrowErrorCode ArrowIpcMakeBufferFromView(struct ArrowIpcBufferFactory* f
   src_view.size_bytes = src->buffer_length_bytes;
 
   int needs_decompression = 0;
+  int uncompressed_data_offset = 0;
   if (src->codec != NANOARROW_IPC_COMPRESSION_TYPE_NONE) {
     NANOARROW_RETURN_NOT_OK(ArrowIpcDecompressBufferFromView(
         factory->decompressor, src->codec, src_view, dst, &needs_decompression, error));
+    uncompressed_data_offset += sizeof(int64_t);
   }
 
   if (!needs_decompression) {
     *dst_view = src_view;
+    dst_view->data.as_uint8 += uncompressed_data_offset;
   } else {
     dst_view->data.data = dst->data;
     dst_view->size_bytes = dst->size_bytes;
@@ -1581,18 +1584,20 @@ static ArrowErrorCode ArrowIpcMakeBufferFromShared(struct ArrowIpcBufferFactory*
       (struct ArrowIpcSharedBuffer*)factory->private_data;
 
   int needs_decompression = 0;
+  int uncompressed_data_offset = 0;
   if (src->codec != NANOARROW_IPC_COMPRESSION_TYPE_NONE) {
     struct ArrowBufferView src_view;
     src_view.data.as_uint8 = shared->private_src.data + src->body_offset_bytes;
     src_view.size_bytes = src->buffer_length_bytes;
     NANOARROW_RETURN_NOT_OK(ArrowIpcDecompressBufferFromView(
         factory->decompressor, src->codec, src_view, dst, &needs_decompression, error));
+    uncompressed_data_offset += sizeof(int64_t);
   }
 
   if (!needs_decompression) {
     ArrowBufferReset(dst);
     ArrowIpcSharedBufferClone(shared, dst);
-    dst->data += src->body_offset_bytes;
+    dst->data += src->body_offset_bytes + uncompressed_data_offset;
     dst->size_bytes = src->buffer_length_bytes;
   }
 
