@@ -53,6 +53,7 @@ struct ArrowIpcDecoderPrivate {
   int64_t n_buffers;
   const void* last_message;
   struct ArrowIpcFooter footer;
+  struct ArrowIpcDecompressor decompressor;
 };
 }
 
@@ -104,6 +105,23 @@ static uint8_t kSimpleRecordBatch[] = {
     0x00, 0x00, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x03, 0x00,
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+
+static uint8_t kSimpleRecordBatchCompressed[] = {
+    0xff, 0xff, 0xff, 0xff, 0xa0, 0x00, 0x00, 0x00, 0x14, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x0c, 0x00, 0x18, 0x00, 0x06, 0x00, 0x05, 0x00, 0x08, 0x00, 0x0c, 0x00,
+    0x0c, 0x00, 0x00, 0x00, 0x00, 0x03, 0x04, 0x00, 0x1c, 0x00, 0x00, 0x00, 0x20, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0c, 0x00, 0x1e, 0x00,
+    0x10, 0x00, 0x04, 0x00, 0x08, 0x00, 0x0c, 0x00, 0x0c, 0x00, 0x00, 0x00, 0x50, 0x00,
+    0x00, 0x00, 0x24, 0x00, 0x00, 0x00, 0x18, 0x00, 0x00, 0x00, 0x03, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x06, 0x00, 0x08, 0x00,
+    0x07, 0x00, 0x06, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x02, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x1d, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x03, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x0c, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x28, 0xb5, 0x2f, 0xfd, 0x20, 0x0c,
+    0x61, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00};
 
 TEST(NanoarrowIpcTest, NanoarrowIpcCheckHeader) {
   struct ArrowIpcDecoder decoder;
@@ -388,12 +406,12 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDecodeSimpleRecordBatch) {
   ArrowArrayRelease(&array);
 
   // Field extract should fail if compression was set
-  decoder.codec = NANOARROW_IPC_COMPRESSION_TYPE_ZSTD;
-  EXPECT_EQ(ArrowIpcDecoderDecodeArray(&decoder, body, 0, &array,
-                                       NANOARROW_VALIDATION_LEVEL_FULL, &error),
-            ENOTSUP);
-  EXPECT_STREQ(error.message, "The nanoarrow_ipc extension does not support compression");
-  decoder.codec = NANOARROW_IPC_COMPRESSION_TYPE_NONE;
+  // decoder.codec = NANOARROW_IPC_COMPRESSION_TYPE_ZSTD;
+  // EXPECT_EQ(ArrowIpcDecoderDecodeArray(&decoder, body, 0, &array,
+  //                                      NANOARROW_VALIDATION_LEVEL_FULL, &error),
+  //           ENOTSUP);
+  // EXPECT_STREQ(error.message, "The nanoarrow_ipc extension does not support
+  // compression"); decoder.codec = NANOARROW_IPC_COMPRESSION_TYPE_NONE;
 
   // Field extract should fail if body is too small
   decoder.body_size_bytes = 0;
@@ -411,6 +429,39 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDecodeSimpleRecordBatch) {
   decoder_private->n_fields = 1;
   EXPECT_EQ(ArrowIpcDecoderDecodeHeader(&decoder, data, &error), EINVAL);
   EXPECT_STREQ(error.message, "Expected 0 field nodes in message but found 1");
+
+  ArrowSchemaRelease(&schema);
+  ArrowIpcDecoderReset(&decoder);
+}
+
+TEST(NanoarrowIpcTest, NanoarrowIpcDecodeSimpleCompressedRecordBatch) {
+  struct ArrowIpcDecoder decoder;
+  struct ArrowError error;
+  struct ArrowSchema schema;
+  struct ArrowArrayView* array_view;
+
+  ArrowSchemaInit(&schema);
+  ASSERT_EQ(ArrowSchemaSetTypeStruct(&schema, 1), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaSetType(schema.children[0], NANOARROW_TYPE_INT32), NANOARROW_OK);
+
+  struct ArrowBufferView data;
+  data.data.as_uint8 = kSimpleRecordBatchCompressed;
+  data.size_bytes = sizeof(kSimpleRecordBatchCompressed);
+
+  ASSERT_EQ(ArrowIpcDecoderInit(&decoder), NANOARROW_OK);
+  ASSERT_EQ(ArrowIpcDecoderSetSchema(&decoder, &schema, &error), NANOARROW_OK);
+
+  ASSERT_EQ(ArrowIpcDecoderDecodeHeader(&decoder, data, &error), NANOARROW_OK);
+  struct ArrowBufferView body;
+  body.data.as_uint8 = kSimpleRecordBatchCompressed + decoder.header_size_bytes;
+  body.size_bytes = decoder.body_size_bytes;
+
+  ASSERT_EQ(ArrowIpcDecoderDecodeArrayView(&decoder, body, 0, &array_view, &error),
+            NANOARROW_OK)
+      << error.message;
+  EXPECT_EQ(ArrowArrayViewGetIntUnsafe(array_view, 0), 0);
+  EXPECT_EQ(ArrowArrayViewGetIntUnsafe(array_view, 1), 1);
+  EXPECT_EQ(ArrowArrayViewGetIntUnsafe(array_view, 2), 2);
 
   ArrowSchemaRelease(&schema);
   ArrowIpcDecoderReset(&decoder);
@@ -508,7 +559,7 @@ TEST_P(ArrowTypeParameterizedTestFixture, NanoarrowIpcArrowTypeRoundtrip) {
 #endif
 
 std::string ArrowSchemaMetadataToString(const char* metadata) {
-  struct ArrowMetadataReader reader {};
+  struct ArrowMetadataReader reader{};
   auto st = ArrowMetadataReaderInit(&reader, metadata);
   EXPECT_EQ(st, NANOARROW_OK);
 

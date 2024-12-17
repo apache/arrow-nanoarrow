@@ -1503,7 +1503,7 @@ static ArrowErrorCode ArrowIpcDecompressBufferFromView(
   // When body compression is enabled, buffers are prefixed with a little endian
   // signed 64-bit integer that is the uncompressed body length.
   int64_t uncompressed_size;
-  memcpy(&uncompressed_size, dst->data, sizeof(int64_t));
+  memcpy(&uncompressed_size, src.data.data, sizeof(int64_t));
   if (ArrowIpcSystemEndianness() != NANOARROW_IPC_ENDIANNESS_LITTLE) {
     uncompressed_size = (int64_t)bswap64(uncompressed_size);
   }
@@ -1541,10 +1541,6 @@ static ArrowErrorCode ArrowIpcMakeBufferFromView(struct ArrowIpcBufferFactory* f
                                                  struct ArrowBufferView* dst_view,
                                                  struct ArrowBuffer* dst,
                                                  struct ArrowError* error) {
-  NANOARROW_UNUSED(factory);
-  NANOARROW_UNUSED(dst);
-  NANOARROW_UNUSED(error);
-
   struct ArrowBufferView* body = (struct ArrowBufferView*)factory->private_data;
 
   struct ArrowBufferView src_view;
@@ -1960,7 +1956,7 @@ static ArrowErrorCode ArrowIpcDecoderDecodeArrayViewInternal(
   // initialized.
   if (setter.src.codec != NANOARROW_IPC_COMPRESSION_TYPE_NONE) {
     NANOARROW_RETURN_NOT_OK(ArrowIpcDecoderInitDecompressor(private_data));
-    factory.decompressor = &private_data->decompressor;
+    setter.factory.decompressor = &private_data->decompressor;
   }
 
   // The flatbuffers FieldNode doesn't count the root struct so we have to loop over the
