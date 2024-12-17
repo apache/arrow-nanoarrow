@@ -109,6 +109,14 @@ nanoarrow_dep = declare_dependency(
 
 if get_option('ipc')
     flatcc_dep = dependency('flatcc')
+    ipc_lib_deps = [nanoarrow_dep, flatcc_dep]
+    ipc_lib_cpp_args = []
+
+    if get_option('ipc_with_zstd')
+        zstd_dep = dependency('libzstd')
+        ipc_lib_deps += [zstd_dep]
+        ipc_lib_cpp_args += ['-DNANOARROW_IPC_WITH_ZSTD']
+    endif
 
     install_headers(
         'src/nanoarrow/nanoarrow_ipc.h',
@@ -123,7 +131,8 @@ if get_option('ipc')
         'src/nanoarrow/ipc/encoder.c',
         'src/nanoarrow/ipc/reader.c',
         'src/nanoarrow/ipc/writer.c',
-        dependencies: [nanoarrow_dep, flatcc_dep],
+        dependencies: ipc_lib_deps,
+        cpp_args: ipc_lib_cpp_args,
         install: true,
     )
     nanoarrow_ipc_dep = declare_dependency(
