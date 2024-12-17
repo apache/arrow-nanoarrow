@@ -81,8 +81,6 @@ foreach cyf : cyfiles
         cyfile_deps += [nanoarrow_ipc_dep, flatcc_dep, zstd_dep]
     endif
 
-    # TODO: Where does -DNANOARROW_IPC_WITH_ZSTD go?
-
     py.extension_module(
         stem,
         sources: [cyf],

@@ -32,6 +32,7 @@ project(
         'arrow-nanoarrow:ipc_with_zstd=true',
         'arrow-nanoarrow:device=true',
         'arrow-nanoarrow:namespace=PythonPkg',
+        'zstd:bin_programs=false'
     ],
 )
 
