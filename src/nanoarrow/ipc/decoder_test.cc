@@ -123,6 +123,14 @@ static uint8_t kSimpleRecordBatchCompressed[] = {
     0x61, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00};
 
+TEST(NanoarrowIpcTest, NanoarrowIpcZstdBuildMatchesRuntime) {
+#if defined(NANOARROW_IPC_WITH_ZSTD)
+  ASSERT_NE(ArrowIpcGetZstdDecompressionFunction(), nullptr);
+#else
+  ASSERT_EQ(ArrowIpcGetZstdDecompressionFunction(), nullptr);
+#endif
+}
+
 TEST(NanoarrowIpcTest, NanoarrowIpcCheckHeader) {
   struct ArrowIpcDecoder decoder;
   struct ArrowError error;

@@ -607,7 +607,11 @@ if(NANOARROW_BUILD_TESTS)
 
       if(Arrow_FOUND)
         target_compile_definitions(nanoarrow_ipc_${name}_test
-                                   PRIVATE -DNANOARROW_BUILD_TESTS_WITH_ARROW)
+                                   PRIVATE -DNANOARROW_BUILD_TESTS_WITH_ARROW
+                                           ${NANOARROW_IPC_EXTRA_FLAGS})
+      else()
+        target_compile_definitions(nanoarrow_ipc_${name}_test
+                                   PRIVATE ${NANOARROW_IPC_EXTRA_FLAGS})
       endif()
 
       gtest_discover_tests(nanoarrow_ipc_${name}_test)
