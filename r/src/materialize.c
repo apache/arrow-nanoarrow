@@ -640,12 +640,17 @@ static int nanoarrow_materialize_matrix(struct RConverter* converter,
     return EINVAL;
   }
 
-  // Next, we have to project parent nulls into the destination
-
-  for (int64_t i = 0; i < src->length; i++) {
-    if (ArrowArrayViewIsNull(src->array_view, src->offset + i)) {
-      fill_vec_with_nulls(child_converter->dst.vec_sexp,
-                          child_converter->dst.offset + (i * list_length), list_length);
+  // If we have parent nulls, we have to project them into the destination
+  if (src->array_view->null_count != 0 &&
+      src->array_view->buffer_views[0].data.data != NULL) {
+    // Here, dst.offset has already been incremented such that it's at the end
+    // of the chunk, but we need the original one for fill_vec_with_nulls().
+    int64_t original_dst_offset = child_converter->dst.offset - child_length;
+    for (int64_t i = 0; i < src->length; i++) {
+      if (ArrowArrayViewIsNull(src->array_view, src->offset + i)) {
+        fill_vec_with_nulls(child_converter->dst.vec_sexp,
+                            original_dst_offset + (i * list_length), list_length);
+      }
     }
   }
 

@@ -228,6 +228,26 @@ test_that("convert array stream works for fixed_size_list_of() with non-zero off
   )
 })
 
+test_that("convert array stream works for fixed_size_list_of() with parent nulls -> matrix()", {
+  mat <- matrix(1:6, ncol = 2, byrow = TRUE)
+  array <- as_nanoarrow_array(mat)
+  array <- nanoarrow_array_modify(
+    array,
+    list(
+      null_count = 1,
+      buffers = list(
+        as_nanoarrow_array(c(TRUE, TRUE, FALSE))$buffers[[2]]
+      )
+    )
+  )
+
+  stream <- basic_array_stream(list(array, array))
+  expect_identical(
+    convert_array_stream(stream, matrix(integer(), ncol = 2)),
+    rbind(mat[c(1, 2, NA), ], mat[c(1, 2, NA), ])
+  )
+})
+
 test_that("convert array stream respects the value of n", {
   batches <- list(
     data.frame(x = 1:5),
