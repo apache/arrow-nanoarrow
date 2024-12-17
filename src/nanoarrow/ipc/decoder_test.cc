@@ -566,7 +566,7 @@ TEST_P(ArrowTypeParameterizedTestFixture, NanoarrowIpcArrowTypeRoundtrip) {
 #endif
 
 std::string ArrowSchemaMetadataToString(const char* metadata) {
-  struct ArrowMetadataReader reader{};
+  struct ArrowMetadataReader reader {};
   auto st = ArrowMetadataReaderInit(&reader, metadata);
   EXPECT_EQ(st, NANOARROW_OK);
 
