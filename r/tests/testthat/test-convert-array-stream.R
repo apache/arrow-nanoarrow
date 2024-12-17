@@ -155,11 +155,6 @@ test_that("convert array stream works for fixed_size_list_of() -> matrix()", {
       matrix(as.double(1:6), ncol = 2, byrow = TRUE)
     )
   )
-
-  # TODO: Because we special-case the array in the converter, we need
-  # - Check the nested case (matrix column in a data frame)
-  # - Check the list_of case
-  # - Check the "source has non-zero offset" case
 })
 
 test_that("convert array stream works for empty fixed_size_list_of() -> matrix()", {
