@@ -36,7 +36,8 @@ option(NANOARROW_FLATCC_ROOT_DIR "Root directory for flatcc include and lib dire
        OFF)
 option(NANOARROW_FLATCC_INCLUDE_DIR "Include directory for flatcc includes" OFF)
 option(NANOARROW_FLATCC_LIB_DIR "Library directory that contains libflatccrt.a" OFF)
-option(NANOARROW_IPC_WITH_ZSTD "Build nanoarrow with ZSTD compression support built in" OFF)
+option(NANOARROW_IPC_WITH_ZSTD "Build nanoarrow with ZSTD compression support built in"
+       OFF)
 
 option(NANOARROW_DEVICE "Build device extension" OFF)
 option(NANOARROW_TESTING "Build testng extension" OFF)
@@ -215,8 +216,10 @@ if(NANOARROW_IPC)
   if(NOT NANOARROW_BUNDLE)
     set(NANOARROW_IPC_BUILD_SOURCES
         src/nanoarrow/ipc/codecs.c
-        src/nanoarrow/ipc/decoder.c src/nanoarrow/ipc/encoder.c
-        src/nanoarrow/ipc/reader.c src/nanoarrow/ipc/writer.c)
+        src/nanoarrow/ipc/decoder.c
+        src/nanoarrow/ipc/encoder.c
+        src/nanoarrow/ipc/reader.c
+        src/nanoarrow/ipc/writer.c)
   endif()
 
   add_library(nanoarrow_ipc ${NANOARROW_IPC_BUILD_SOURCES})

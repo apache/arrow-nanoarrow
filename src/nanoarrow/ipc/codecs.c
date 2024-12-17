@@ -107,7 +107,7 @@ ArrowErrorCode ArrowIpcSerialDecompressor(struct ArrowIpcDecompressor* decompres
 
   memset(decompressor->private_data, 0, sizeof(struct ArrowIpcSerialDecompressorPrivate));
   ArrowIpcSerialDecompressorSetFunction(decompressor, NANOARROW_IPC_COMPRESSION_TYPE_ZSTD,
-                                        ArrowIpcDecompressZstd);
+                                        ArrowIpcGetZstdDecompressionFunction());
   return NANOARROW_OK;
 }
 
