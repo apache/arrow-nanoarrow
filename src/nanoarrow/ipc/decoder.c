@@ -1982,6 +1982,13 @@ static ArrowErrorCode ArrowIpcDecoderDecodeArrayViewInternal(
         ArrowIpcDecoderWalkSetArrayView(&setter, root->array_view, root->array, error));
   }
 
+  // If we decoded a compressed message, wait for any pending decompression tasks to
+  // complete. The default compressor already performed the decompression
+  if (setter.factory.decompressor != NULL) {
+    NANOARROW_RETURN_NOT_OK(setter.factory.decompressor->decompress_wait(
+        setter.factory.decompressor, -1, error));
+  }
+
   *out_view = root->array_view;
   return NANOARROW_OK;
 }
