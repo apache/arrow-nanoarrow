@@ -85,7 +85,7 @@ class TestFile {
   }
 
   std::string CheckJSONGzFile() {
-    size_t dot_pos = path_.find('.');
+    size_t dot_pos = path_.rfind('.');
     return path_.substr(0, dot_pos) + std::string(".json.gz");
   }
 
@@ -536,8 +536,16 @@ INSTANTIATE_TEST_SUITE_P(
         TestFile::OK("2.0.0-compression/generated_uncompressible_zstd.stream"),
         TestFile::OK("2.0.0-compression/generated_zstd.stream"),
 #endif
-        TestFile::OK("0.17.1/generated_union.stream")
-        // Comment to keep line from wrapping
+        TestFile::OK("0.17.1/generated_union.stream"),
+        TestFile::OK("0.14.1/generated_datetime.stream"),
+        TestFile::OK("0.14.1/generated_decimal.stream"),
+        TestFile::OK("0.14.1/generated_interval.stream"),
+        TestFile::OK("0.14.1/generated_map.stream"),
+        TestFile::OK("0.14.1/generated_nested.stream"),
+        TestFile::OK("0.14.1/generated_primitive.stream"),
+        TestFile::OK("0.14.1/generated_primitive_no_batches.stream"),
+        TestFile::OK("0.14.1/generated_primitive_zerolength.stream")
+        // Coment to keep line from wrapping
         ));
 
 #endif

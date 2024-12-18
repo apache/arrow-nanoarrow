@@ -1558,6 +1558,7 @@ static ArrowErrorCode ArrowIpcMakeBufferFromView(struct ArrowIpcBufferFactory* f
   if (!needs_decompression) {
     *dst_view = src_view;
     dst_view->data.as_uint8 += uncompressed_data_offset;
+    dst_view->size_bytes -= uncompressed_data_offset;
   } else {
     dst_view->data.data = dst->data;
     dst_view->size_bytes = dst->size_bytes;
@@ -1598,7 +1599,7 @@ static ArrowErrorCode ArrowIpcMakeBufferFromShared(struct ArrowIpcBufferFactory*
     ArrowBufferReset(dst);
     ArrowIpcSharedBufferClone(shared, dst);
     dst->data += src->body_offset_bytes + uncompressed_data_offset;
-    dst->size_bytes = src->buffer_length_bytes;
+    dst->size_bytes = src->buffer_length_bytes - uncompressed_data_offset;
   }
 
   dst_view->data.data = dst->data;
