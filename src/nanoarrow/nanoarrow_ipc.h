@@ -29,8 +29,16 @@
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcSharedBufferInit)
 #define ArrowIpcSharedBufferReset \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcSharedBufferReset)
+#define ArrowIpcGetZstdDecompressionFunction \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcGetZstdDecompressionFunction)
+#define ArrowIpcSerialDecompressor \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcSerialDecompressor)
+#define ArrowIpcSerialDecompressorSetFunction \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcSerialDecompressorSetFunction)
 #define ArrowIpcDecoderInit NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcDecoderInit)
 #define ArrowIpcDecoderReset NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcDecoderReset)
+#define ArrowIpcDecoderSetDecompressor \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcDecoderSetDecompressor)
 #define ArrowIpcDecoderPeekHeader \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcDecoderPeekHeader)
 #define ArrowIpcDecoderVerifyHeader \
@@ -194,6 +202,69 @@ void ArrowIpcSharedBufferReset(struct ArrowIpcSharedBuffer* shared);
 /// the resulting arrays must not be passed to other threads to be released.
 int ArrowIpcSharedBufferIsThreadSafe(void);
 
+/// \brief A user-extensible decompressor
+///
+/// The ArrowIpcDecompressor is the underlying object that enables decompression in the
+/// ArrowIpcDecoder. Its structure allows it to be backed by a multithreaded
+/// implementation; however, this is not required and the default implementation does not
+/// implement this. An implementation of a decompressor may support more than one
+/// ArrowIpcCompressionType.
+struct ArrowIpcDecompressor {
+  /// \brief Queue a buffer for decompression
+  ///
+  /// The values pointed to by dst and dst_size after a call to decompress_add
+  /// are undefined until the next call to decompress_wait returns NANOARROW_OK.
+  ArrowErrorCode (*decompress_add)(struct ArrowIpcDecompressor* decompressor,
+                                   enum ArrowIpcCompressionType compression_type,
+                                   struct ArrowBufferView src, uint8_t* dst,
+                                   int64_t dst_size, struct ArrowError* error);
+
+  /// \brief Wait for any unfinished calls to decompress_add to complete
+  ///
+  /// Returns NANOARROW_OK if all pending calls completed. Returns ETIMEOUT
+  /// if not all remaining calls completed.
+  ArrowErrorCode (*decompress_wait)(struct ArrowIpcDecompressor* decompressor,
+                                    int64_t timeout_ms, struct ArrowError* error);
+
+  /// \brief Release the decompressor and any resources it may be holding
+  ///
+  /// Release callback implementations must set the release member to NULL.
+  /// Callers must check that the release callback is not NULL before calling
+  /// decompress() or release().
+  void (*release)(struct ArrowIpcDecompressor* decompressor);
+
+  /// \brief Implementation-specific opaque data
+  void* private_data;
+};
+
+/// \brief A self-contained decompression function
+///
+/// For the most common compression type, ZSTD, this function is sufficient to
+/// capture the type of decompression that Arrow IPC requires (i.e., decompression
+/// where the uncompressed size was recorded). For other compression types, it
+/// may be more efficient to implement a full ArrowIpcDecompressor, which allows
+/// for persistent state/allocations between decodes.
+typedef ArrowErrorCode (*ArrowIpcDecompressFunction)(struct ArrowBufferView src,
+                                                     uint8_t* dst, int64_t dst_size,
+                                                     struct ArrowError* error);
+
+/// \brief Get the decompression function for ZSTD
+///
+/// The result will be NULL if nanoarrow was not built with NANOARROW_IPC_WITH_ZSTD.
+ArrowIpcDecompressFunction ArrowIpcGetZstdDecompressionFunction(void);
+
+/// \brief An ArrowIpcDecompressor implementation that performs decompression in serial
+ArrowErrorCode ArrowIpcSerialDecompressor(struct ArrowIpcDecompressor* decompressor);
+
+/// \brief Override the ArrowIpcDecompressFunction used for a specific compression type
+///
+/// This may be used to inject support for a particular type of decompression if used
+/// with a version of nanoarrow with unknown or minimal capabilities.
+ArrowErrorCode ArrowIpcSerialDecompressorSetFunction(
+    struct ArrowIpcDecompressor* decompressor,
+    enum ArrowIpcCompressionType compression_type,
+    ArrowIpcDecompressFunction decompress_function);
+
 /// \brief Decoder for Arrow IPC messages
 ///
 /// This structure is intended to be allocated by the caller,
@@ -243,6 +314,10 @@ ArrowErrorCode ArrowIpcDecoderInit(struct ArrowIpcDecoder* decoder);
 
 /// \brief Release all resources attached to a decoder
 void ArrowIpcDecoderReset(struct ArrowIpcDecoder* decoder);
+
+/// \brief Set the decompressor implementation used by this decoder
+ArrowErrorCode ArrowIpcDecoderSetDecompressor(struct ArrowIpcDecoder* decoder,
+                                              struct ArrowIpcDecompressor* decompressor);
 
 /// \brief Peek at a message header
 ///

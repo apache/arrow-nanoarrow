@@ -20,6 +20,7 @@ option('tests_with_arrow', type: 'boolean', description: 'Build tests with Arrow
 option('benchmarks', type: 'boolean', description: 'Build benchmarks', value: false)
 option('apps', type: 'boolean', description: 'Build utility applications', value: false)
 option('ipc', type: 'boolean', description: 'Build IPC libraries', value: false)
+option('ipc_with_zstd', type: 'boolean', description: 'Build IPC libraries with ZSTD compression support', value: false)
 option('integration_tests', type: 'boolean',
        description: 'Build cross-implementation Arrow integration tests',
        value: false)
