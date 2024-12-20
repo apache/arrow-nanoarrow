@@ -33,8 +33,6 @@
 #include "nanoarrow/nanoarrow_ipc.hpp"
 #include "nanoarrow/nanoarrow_testing.hpp"
 
-#include "flatcc/portable/pendian_detect.h"
-
 using namespace arrow;
 
 // Helpers for reporting Arrow C++ Result failures
