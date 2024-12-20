@@ -545,7 +545,7 @@ INSTANTIATE_TEST_SUITE_P(
         TestFile::OK("0.14.1/generated_primitive.stream"),
         TestFile::OK("0.14.1/generated_primitive_no_batches.stream"),
         TestFile::OK("0.14.1/generated_primitive_zerolength.stream")
-        // Coment to keep line from wrapping
+        // Comment to keep line from wrapping
         ));
 
 #endif
