@@ -42,7 +42,7 @@ TEST(NanoarrowIpcTest, ZstdDecodeValidInput) {
   }
 
   // Empty->empty seems to work
-  struct ArrowError error{};
+  struct ArrowError error {};
   EXPECT_EQ(decompress({{nullptr}, 0}, nullptr, 0, &error), NANOARROW_OK);
 
   // Check a decompress of a valid compressed buffer
@@ -75,7 +75,7 @@ TEST(NanoarrowIpcTest, ZstdDecodeInvalidInput) {
 }
 
 TEST(NanoarrowIpcTest, SerialDecompressor) {
-  struct ArrowError error{};
+  struct ArrowError error {};
   nanoarrow::ipc::UniqueDecompressor decompressor;
 
   ASSERT_EQ(ArrowIpcSerialDecompressor(decompressor.get()), NANOARROW_OK);
