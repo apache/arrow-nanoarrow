@@ -24,6 +24,7 @@
 #include <arrow/util/key_value_metadata.h>
 #endif
 #include <gmock/gmock-matchers.h>
+#include <gtest/gtest-spi.h>
 #include <gtest/gtest.h>
 
 // For bswap32()
@@ -123,6 +124,22 @@ static uint8_t kSimpleRecordBatchCompressed[] = {
     0x61, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00};
 
+static uint8_t kSimpleRecordBatchUncompressible[] = {
+    0xff, 0xff, 0xff, 0xff, 0xa0, 0x00, 0x00, 0x00, 0x14, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x0c, 0x00, 0x18, 0x00, 0x06, 0x00, 0x05, 0x00, 0x08, 0x00, 0x0c, 0x00,
+    0x0c, 0x00, 0x00, 0x00, 0x00, 0x03, 0x04, 0x00, 0x1c, 0x00, 0x00, 0x00, 0x20, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0c, 0x00, 0x1e, 0x00,
+    0x10, 0x00, 0x04, 0x00, 0x08, 0x00, 0x0c, 0x00, 0x0c, 0x00, 0x00, 0x00, 0x50, 0x00,
+    0x00, 0x00, 0x24, 0x00, 0x00, 0x00, 0x18, 0x00, 0x00, 0x00, 0x03, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x06, 0x00, 0x08, 0x00,
+    0x07, 0x00, 0x06, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x02, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x1d, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x03, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00,
+    0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00};
 
 TEST(NanoarrowIpcTest, NanoarrowIpcCheckHeader) {
   struct ArrowIpcDecoder decoder;
@@ -337,7 +354,68 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDecodeSimpleSchema) {
   ArrowIpcDecoderReset(&decoder);
 }
 
+void TestDecodeInt32Batch(const uint8_t* batch, size_t batch_len,
+                          const std::vector<int32_t> values) {
+  struct ArrowIpcDecoder decoder;
+  struct ArrowError error;
+  struct ArrowSchema schema;
+  struct ArrowArrayView* array_view;
+
+  ArrowSchemaInit(&schema);
+  ASSERT_EQ(ArrowSchemaSetTypeStruct(&schema, 1), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaSetType(schema.children[0], NANOARROW_TYPE_INT32), NANOARROW_OK);
+
+  struct ArrowBufferView data;
+  data.data.as_uint8 = batch;
+  data.size_bytes = static_cast<int64_t>(batch_len);
+
+  ASSERT_EQ(ArrowIpcDecoderInit(&decoder), NANOARROW_OK);
+  ASSERT_EQ(ArrowIpcDecoderSetSchema(&decoder, &schema, &error), NANOARROW_OK);
+
+  ASSERT_EQ(ArrowIpcDecoderDecodeHeader(&decoder, data, &error), NANOARROW_OK);
+  struct ArrowBufferView body;
+  body.data.as_uint8 = batch + decoder.header_size_bytes;
+  body.size_bytes = decoder.body_size_bytes;
+
+  ASSERT_EQ(ArrowIpcDecoderDecodeArrayView(&decoder, body, 0, &array_view, &error),
+            NANOARROW_OK)
+      << error.message;
+  ASSERT_EQ(array_view->length, values.size());
+  int64_t index = 0;
+  for (const auto value : values) {
+    SCOPED_TRACE(std::string("Array index ") + std::to_string(index));
+    EXPECT_EQ(ArrowArrayViewGetIntUnsafe(array_view, index), value);
+    index++;
+  }
+
+  ArrowSchemaRelease(&schema);
+  ArrowIpcDecoderReset(&decoder);
+}
+
 TEST(NanoarrowIpcTest, NanoarrowIpcDecodeSimpleRecordBatch) {
+  ASSERT_NO_FATAL_FAILURE(
+      TestDecodeInt32Batch(kSimpleRecordBatch, sizeof(kSimpleRecordBatch), {1, 2, 3}));
+}
+
+TEST(NanoarrowIpcTest, NanoarrowIpcDecodeCompressedRecordBatch) {
+  if (ArrowIpcGetZstdDecompressionFunction() == nullptr) {
+    EXPECT_FATAL_FAILURE(
+        TestDecodeInt32Batch(kSimpleRecordBatchCompressed,
+                             sizeof(kSimpleRecordBatchCompressed), {0, 1, 2}),
+        "Compression type with value 2 not supported by this build of nanoarrow");
+  } else {
+    ASSERT_NO_FATAL_FAILURE(TestDecodeInt32Batch(
+        kSimpleRecordBatchCompressed, sizeof(kSimpleRecordBatchCompressed), {0, 1, 2}));
+  }
+}
+
+TEST(NanoarrowIpcTest, NanoarrowIpcDecodeUncompressibleRecordBatch) {
+  ASSERT_NO_FATAL_FAILURE(TestDecodeInt32Batch(kSimpleRecordBatchUncompressible,
+                                               sizeof(kSimpleRecordBatchUncompressible),
+                                               {0, 1, 2}));
+}
+
+TEST(NanoarrowIpcTest, NanoarrowIpcDecodeSimpleRecordBatchErrors) {
   struct ArrowIpcDecoder decoder;
   struct ArrowError error;
   struct ArrowSchema schema;
@@ -435,46 +513,6 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDecodeSimpleRecordBatch) {
   ArrowIpcDecoderReset(&decoder);
 }
 
-TEST(NanoarrowIpcTest, NanoarrowIpcDecodeSimpleCompressedRecordBatch) {
-  struct ArrowIpcDecoder decoder;
-  struct ArrowError error;
-  struct ArrowSchema schema;
-  struct ArrowArrayView* array_view;
-
-  ArrowSchemaInit(&schema);
-  ASSERT_EQ(ArrowSchemaSetTypeStruct(&schema, 1), NANOARROW_OK);
-  ASSERT_EQ(ArrowSchemaSetType(schema.children[0], NANOARROW_TYPE_INT32), NANOARROW_OK);
-
-  struct ArrowBufferView data;
-  data.data.as_uint8 = kSimpleRecordBatchCompressed;
-  data.size_bytes = sizeof(kSimpleRecordBatchCompressed);
-
-  ASSERT_EQ(ArrowIpcDecoderInit(&decoder), NANOARROW_OK);
-  ASSERT_EQ(ArrowIpcDecoderSetSchema(&decoder, &schema, &error), NANOARROW_OK);
-
-  ASSERT_EQ(ArrowIpcDecoderDecodeHeader(&decoder, data, &error), NANOARROW_OK);
-  struct ArrowBufferView body;
-  body.data.as_uint8 = kSimpleRecordBatchCompressed + decoder.header_size_bytes;
-  body.size_bytes = decoder.body_size_bytes;
-
-  if (ArrowIpcGetZstdDecompressionFunction() != nullptr) {
-    ASSERT_EQ(ArrowIpcDecoderDecodeArrayView(&decoder, body, 0, &array_view, &error),
-              NANOARROW_OK);
-    EXPECT_EQ(ArrowArrayViewGetIntUnsafe(array_view, 0), 0);
-    EXPECT_EQ(ArrowArrayViewGetIntUnsafe(array_view, 1), 1);
-    EXPECT_EQ(ArrowArrayViewGetIntUnsafe(array_view, 2), 2);
-  } else {
-    ASSERT_EQ(ArrowIpcDecoderDecodeArrayView(&decoder, body, 0, &array_view, &error),
-              ENOTSUP);
-    ASSERT_STREQ(
-        error.message,
-        "Compression type with value 2 not supported by this build of nanoarrow");
-  }
-
-  ArrowSchemaRelease(&schema);
-  ArrowIpcDecoderReset(&decoder);
-}
-
 TEST(NanoarrowIpcTest, NanoarrowIpcSetSchema) {
   struct ArrowIpcDecoder decoder;
   struct ArrowSchema schema;
@@ -567,7 +605,7 @@ TEST_P(ArrowTypeParameterizedTestFixture, NanoarrowIpcArrowTypeRoundtrip) {
 #endif
 
 std::string ArrowSchemaMetadataToString(const char* metadata) {
-  struct ArrowMetadataReader reader {};
+  struct ArrowMetadataReader reader{};
   auto st = ArrowMetadataReaderInit(&reader, metadata);
   EXPECT_EQ(st, NANOARROW_OK);
 
