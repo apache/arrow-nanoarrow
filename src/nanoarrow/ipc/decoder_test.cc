@@ -357,8 +357,6 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDecodeSimpleSchema) {
 void TestDecodeInt32Batch(const uint8_t* batch, size_t batch_len,
                           const std::vector<int32_t> values) {
   nanoarrow::ipc::UniqueDecoder decoder;
-  ASSERT_EQ(ArrowIpcDecoderInit(decoder.get()), NANOARROW_OK);
-
   nanoarrow::UniqueSchema schema;
 
   struct ArrowError error;
