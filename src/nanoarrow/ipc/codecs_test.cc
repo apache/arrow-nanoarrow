@@ -20,6 +20,13 @@
 
 #include "nanoarrow/nanoarrow_ipc.hpp"
 
+// ZSTD compressed little endian int32s [0, 1, 2]
+const uint8_t kZstdCompressed012[] = {0x28, 0xb5, 0x2f, 0xfd, 0x20, 0x0c, 0x61,
+                                      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01,
+                                      0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00};
+const uint8_t kZstdUncompressed012[] = {0x00, 0x00, 0x00, 0x00, 0x01, 0x00,
+                                        0x00, 0x00, 0x02, 0x00, 0x00, 0x00};
+
 TEST(NanoarrowIpcTest, NanoarrowIpcZstdBuildMatchesRuntime) {
 #if defined(NANOARROW_IPC_WITH_ZSTD)
   ASSERT_NE(ArrowIpcGetZstdDecompressionFunction(), nullptr);
@@ -38,23 +45,17 @@ TEST(NanoarrowIpcTest, ZstdDecodeValidInput) {
   struct ArrowError error{};
   EXPECT_EQ(decompress({{nullptr}, 0}, nullptr, 0, &error), NANOARROW_OK);
 
-  // Check a decompress of little endian int32s [0, 1, 2]
-  const uint8_t compressed012[] = {0x28, 0xb5, 0x2f, 0xfd, 0x20, 0x0c, 0x61,
-                                   0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01,
-                                   0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00};
-  const uint8_t uncompressed012[] = {0x00, 0x00, 0x00, 0x00, 0x01, 0x00,
-                                     0x00, 0x00, 0x02, 0x00, 0x00, 0x00};
+  // Check a decompress of a valid compressed buffer
   uint8_t out[16];
   std::memset(out, 0, sizeof(out));
-
-  ASSERT_EQ(decompress({{&compressed012}, sizeof(compressed012)}, out,
-                       sizeof(uncompressed012), &error),
+  ASSERT_EQ(decompress({{&kZstdCompressed012}, sizeof(kZstdCompressed012)}, out,
+                       sizeof(kZstdUncompressed012), &error),
             NANOARROW_OK)
       << error.message;
-  EXPECT_TRUE(std::memcmp(out, uncompressed012, sizeof(uncompressed012)) == 0);
+  EXPECT_TRUE(std::memcmp(out, kZstdUncompressed012, sizeof(kZstdUncompressed012)) == 0);
 
-  ASSERT_EQ(decompress({{compressed012}, sizeof(compressed012)}, out,
-                       sizeof(uncompressed012) + 1, &error),
+  ASSERT_EQ(decompress({{kZstdCompressed012}, sizeof(kZstdCompressed012)}, out,
+                       sizeof(kZstdUncompressed012) + 1, &error),
             EIO);
   EXPECT_STREQ(error.message, "Expected decompressed size of 13 bytes but got 12 bytes");
 }
@@ -71,4 +72,49 @@ TEST(NanoarrowIpcTest, ZstdDecodeInvalidInput) {
   EXPECT_THAT(error.message,
               ::testing::StartsWith("ZSTD_decompress([buffer with 5 bytes] -> [buffer "
                                     "with 0 bytes]) failed with error"));
+}
+
+TEST(NanoarrowIpcTest, SerialDecompressor) {
+  struct ArrowError error{};
+  nanoarrow::ipc::UniqueDecompressor decompressor;
+
+  ASSERT_EQ(ArrowIpcSerialDecompressor(decompressor.get()), NANOARROW_OK);
+
+  // Check the function setter error
+  ASSERT_EQ(ArrowIpcSerialDecompressorSetFunction(
+                decompressor.get(), NANOARROW_IPC_COMPRESSION_TYPE_NONE, nullptr),
+            EINVAL);
+
+  // The serial decompressor never waits and always succeeds when requested to
+  EXPECT_EQ(decompressor->decompress_wait(decompressor.get(), 0, &error), NANOARROW_OK);
+
+  // Check a decompress for a supported codec if we have one (or for an error if we don't)
+  uint8_t out[12];
+  std::memset(out, 0, sizeof(out));
+  if (ArrowIpcGetZstdDecompressionFunction() != nullptr) {
+    EXPECT_EQ(decompressor->decompress_add(
+                  decompressor.get(), NANOARROW_IPC_COMPRESSION_TYPE_ZSTD,
+                  {{&kZstdCompressed012}, sizeof(kZstdCompressed012)}, out, sizeof(out),
+                  &error),
+              NANOARROW_OK);
+  } else {
+    EXPECT_EQ(decompressor->decompress_add(decompressor.get(),
+                                           NANOARROW_IPC_COMPRESSION_TYPE_ZSTD,
+                                           {{nullptr}, 0}, nullptr, 0, &error),
+              ENOTSUP);
+    EXPECT_STREQ(
+        error.message,
+        "Compression type with value 2 not supported by this build of nanoarrow");
+  }
+
+  // Either way, if we explicitly remove support for a codec, we should get an error
+  ASSERT_EQ(ArrowIpcSerialDecompressorSetFunction(
+                decompressor.get(), NANOARROW_IPC_COMPRESSION_TYPE_ZSTD, nullptr),
+            NANOARROW_OK);
+  EXPECT_EQ(decompressor->decompress_add(decompressor.get(),
+                                         NANOARROW_IPC_COMPRESSION_TYPE_ZSTD,
+                                         {{nullptr}, 0}, nullptr, 0, &error),
+            ENOTSUP);
+  EXPECT_STREQ(error.message,
+               "Compression type with value 2 not supported by this build of nanoarrow");
 }
