@@ -53,6 +53,7 @@ cmake ../apache-arrow-${ARROW_CPP_VERSION}/cpp \
   -DARROW_JEMALLOC=OFF \
   -DARROW_SIMD_LEVEL=NONE \
   -DARROW_FILESYSTEM=OFF \
+  -DARROW_WITH_ZSTD=ON \
   -DCMAKE_INSTALL_PREFIX="${ARROW_CPP_INSTALL_DIR}"
 cmake --build . --parallel $(nproc)
 cmake --install . --prefix="${ARROW_CPP_INSTALL_DIR}" --config=Debug

@@ -33,8 +33,6 @@
 #include "nanoarrow/nanoarrow_ipc.hpp"
 #include "nanoarrow/nanoarrow_testing.hpp"
 
-#include "flatcc/portable/pendian_detect.h"
-
 using namespace arrow;
 
 // Helpers for reporting Arrow C++ Result failures
@@ -85,7 +83,7 @@ class TestFile {
   }
 
   std::string CheckJSONGzFile() {
-    size_t dot_pos = path_.find('.');
+    size_t dot_pos = path_.rfind('.');
     return path_.substr(0, dot_pos) + std::string(".json.gz");
   }
 
@@ -401,12 +399,12 @@ ArrowErrorCode InitArrowTestingPath(std::ostream& builder, ArrowError* error) {
   return NANOARROW_OK;
 }
 
-class TestFileFixture : public ::testing::TestWithParam<TestFile> {
+class TestEndianFileFixture : public ::testing::TestWithParam<TestFile> {
  protected:
   TestFile test_file;
 };
 
-TEST_P(TestFileFixture, NanoarrowIpcTestFileNativeEndian) {
+TEST_P(TestEndianFileFixture, NanoarrowIpcTestFileNativeEndian) {
   std::stringstream dir_builder;
   ArrowError error;
   ArrowErrorInit(&error);
@@ -423,7 +421,7 @@ TEST_P(TestFileFixture, NanoarrowIpcTestFileNativeEndian) {
   param.TestEqualsArrowCpp(dir_builder.str());
 }
 
-TEST_P(TestFileFixture, NanoarrowIpcTestFileSwapEndian) {
+TEST_P(TestEndianFileFixture, NanoarrowIpcTestFileSwapEndian) {
   std::stringstream dir_builder;
   ArrowError error;
   ArrowErrorInit(&error);
@@ -440,7 +438,7 @@ TEST_P(TestFileFixture, NanoarrowIpcTestFileSwapEndian) {
   param.TestEqualsArrowCpp(dir_builder.str());
 }
 
-TEST_P(TestFileFixture, NanoarrowIpcTestFileCheckJSON) {
+TEST_P(TestEndianFileFixture, NanoarrowIpcTestFileCheckJSON) {
   std::stringstream dir_builder;
   ArrowError error;
   ArrowErrorInit(&error);
@@ -455,7 +453,7 @@ TEST_P(TestFileFixture, NanoarrowIpcTestFileCheckJSON) {
 }
 
 INSTANTIATE_TEST_SUITE_P(
-    NanoarrowIpcTest, TestFileFixture,
+    NanoarrowIpcTest, TestEndianFileFixture,
     ::testing::Values(
         // Files in data/arrow-ipc-stream/integration/1.0.0-(little|big)endian/
         // should read without error and the data should match Arrow C++'s read.
@@ -495,4 +493,57 @@ INSTANTIATE_TEST_SUITE_P(
             "Schema message field with DictionaryEncoding not supported")
         // Comment to keep last line from wrapping
         ));
+
+// Files not related to endianness (i.e., only need testing once)
+class TestFileFixture : public ::testing::TestWithParam<TestFile> {
+ protected:
+  TestFile test_file;
+};
+
+TEST_P(TestFileFixture, NanoarrowIpcTestFileEqualsArrowCpp) {
+  std::stringstream dir_builder;
+  ArrowError error;
+  ArrowErrorInit(&error);
+  if (InitArrowTestingPath(dir_builder, &error) != NANOARROW_OK) {
+    GTEST_SKIP() << error.message;
+  }
+
+  dir_builder << "/data/arrow-ipc-stream/integration/";
+  TestFile param = GetParam();
+  param.TestEqualsArrowCpp(dir_builder.str());
+}
+
+TEST_P(TestFileFixture, NanoarrowIpcTestFileIPCCheckJSON) {
+  std::stringstream dir_builder;
+  ArrowError error;
+  ArrowErrorInit(&error);
+  if (InitArrowTestingPath(dir_builder, &error) != NANOARROW_OK) {
+    GTEST_SKIP() << error.message;
+  }
+
+  dir_builder << "/data/arrow-ipc-stream/integration/";
+  TestFile param = GetParam();
+  param.TestIPCCheckJSON(dir_builder.str());
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    NanoarrowIpcTest, TestFileFixture,
+    ::testing::Values(
+// Testing of other files
+#if defined(NANOARROW_IPC_WITH_ZSTD)
+        TestFile::OK("2.0.0-compression/generated_uncompressible_zstd.stream"),
+        TestFile::OK("2.0.0-compression/generated_zstd.stream"),
+#endif
+        TestFile::OK("0.17.1/generated_union.stream"),
+        TestFile::OK("0.14.1/generated_datetime.stream"),
+        TestFile::OK("0.14.1/generated_decimal.stream"),
+        TestFile::OK("0.14.1/generated_interval.stream"),
+        TestFile::OK("0.14.1/generated_map.stream"),
+        TestFile::OK("0.14.1/generated_nested.stream"),
+        TestFile::OK("0.14.1/generated_primitive.stream"),
+        TestFile::OK("0.14.1/generated_primitive_no_batches.stream"),
+        TestFile::OK("0.14.1/generated_primitive_zerolength.stream")
+        // Comment to keep line from wrapping
+        ));
+
 #endif

@@ -36,6 +36,8 @@ option(NANOARROW_FLATCC_ROOT_DIR "Root directory for flatcc include and lib dire
        OFF)
 option(NANOARROW_FLATCC_INCLUDE_DIR "Include directory for flatcc includes" OFF)
 option(NANOARROW_FLATCC_LIB_DIR "Library directory that contains libflatccrt.a" OFF)
+option(NANOARROW_IPC_WITH_ZSTD "Build nanoarrow with ZSTD compression support built in"
+       OFF)
 
 option(NANOARROW_DEVICE "Build device extension" OFF)
 option(NANOARROW_TESTING "Build testng extension" OFF)
@@ -205,15 +207,25 @@ if(NANOARROW_IPC)
                                      "${NANOARROW_FLATCC_INCLUDE_DIR}")
   endif()
 
+  if(NANOARROW_IPC_WITH_ZSTD)
+    find_package(zstd REQUIRED)
+    set(NANOARROW_IPC_EXTRA_FLAGS "-DNANOARROW_IPC_WITH_ZSTD")
+    set(NANOARROW_IPC_EXTRA_LIBS zstd::libzstd_static)
+  endif()
+
   if(NOT NANOARROW_BUNDLE)
     set(NANOARROW_IPC_BUILD_SOURCES
-        src/nanoarrow/ipc/decoder.c src/nanoarrow/ipc/encoder.c
-        src/nanoarrow/ipc/reader.c src/nanoarrow/ipc/writer.c)
+        src/nanoarrow/ipc/codecs.c
+        src/nanoarrow/ipc/decoder.c
+        src/nanoarrow/ipc/encoder.c
+        src/nanoarrow/ipc/reader.c
+        src/nanoarrow/ipc/writer.c)
   endif()
 
   add_library(nanoarrow_ipc ${NANOARROW_IPC_BUILD_SOURCES})
+  target_compile_definitions(nanoarrow_ipc PRIVATE ${NANOARROW_IPC_EXTRA_FLAGS})
   target_link_libraries(nanoarrow_ipc
-                        PRIVATE flatccrt
+                        PRIVATE flatccrt ${NANOARROW_IPC_EXTRA_LIBS}
                         PUBLIC nanoarrow nanoarrow_coverage_config)
   target_include_directories(nanoarrow_ipc
                              PUBLIC $<BUILD_INTERFACE:${NANOARROW_BUILD_INCLUDE_DIR}>
@@ -574,6 +586,7 @@ if(NANOARROW_BUILD_TESTS)
     include(GoogleTest)
 
     foreach(name
+            codecs
             decoder
             encoder
             reader
@@ -587,6 +600,7 @@ if(NANOARROW_BUILD_TESTS)
                             nanoarrow
                             ${NANOARROW_ARROW_TARGET}
                             gtest_main
+                            gmock_main
                             nanoarrow_coverage_config)
 
       if(NOT (name MATCHES "_hpp_"))
@@ -595,7 +609,11 @@ if(NANOARROW_BUILD_TESTS)
 
       if(Arrow_FOUND)
         target_compile_definitions(nanoarrow_ipc_${name}_test
-                                   PRIVATE -DNANOARROW_BUILD_TESTS_WITH_ARROW)
+                                   PRIVATE -DNANOARROW_BUILD_TESTS_WITH_ARROW
+                                           ${NANOARROW_IPC_EXTRA_FLAGS})
+      else()
+        target_compile_definitions(nanoarrow_ipc_${name}_test
+                                   PRIVATE ${NANOARROW_IPC_EXTRA_FLAGS})
       endif()
 
       gtest_discover_tests(nanoarrow_ipc_${name}_test)
@@ -603,7 +621,6 @@ if(NANOARROW_BUILD_TESTS)
 
     target_link_libraries(nanoarrow_ipc_files_test nanoarrow_testing ZLIB::ZLIB
                           nanoarrow_coverage_config)
-    target_link_libraries(nanoarrow_ipc_decoder_test gmock_main)
   endif()
 
   if(NANOARROW_DEVICE)

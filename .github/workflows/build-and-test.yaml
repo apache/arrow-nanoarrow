@@ -127,7 +127,9 @@ jobs:
 
   verify-meson:
     name: meson-build
-    runs-on: ubuntu-latest
+    # Workaround until https://github.com/apache/arrow-nanoarrow/issues/663 is solved
+    # (after which we can use ubuntu-latest)
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
