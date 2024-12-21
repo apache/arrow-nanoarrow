@@ -356,28 +356,31 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDecodeSimpleSchema) {
 
 void TestDecodeInt32Batch(const uint8_t* batch, size_t batch_len,
                           const std::vector<int32_t> values) {
-  struct ArrowIpcDecoder decoder;
+  nanoarrow::ipc::UniqueDecoder decoder;
+  ASSERT_EQ(ArrowIpcDecoderInit(decoder.get()), NANOARROW_OK);
+
+  nanoarrow::UniqueSchema schema;
+
   struct ArrowError error;
-  struct ArrowSchema schema;
   struct ArrowArrayView* array_view;
 
-  ArrowSchemaInit(&schema);
-  ASSERT_EQ(ArrowSchemaSetTypeStruct(&schema, 1), NANOARROW_OK);
-  ASSERT_EQ(ArrowSchemaSetType(schema.children[0], NANOARROW_TYPE_INT32), NANOARROW_OK);
+  ArrowSchemaInit(schema.get());
+  ASSERT_EQ(ArrowSchemaSetTypeStruct(schema.get(), 1), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaSetType(schema->children[0], NANOARROW_TYPE_INT32), NANOARROW_OK);
 
   struct ArrowBufferView data;
   data.data.as_uint8 = batch;
   data.size_bytes = static_cast<int64_t>(batch_len);
 
-  ASSERT_EQ(ArrowIpcDecoderInit(&decoder), NANOARROW_OK);
-  ASSERT_EQ(ArrowIpcDecoderSetSchema(&decoder, &schema, &error), NANOARROW_OK);
+  ASSERT_EQ(ArrowIpcDecoderInit(decoder.get()), NANOARROW_OK);
+  ASSERT_EQ(ArrowIpcDecoderSetSchema(decoder.get(), schema.get(), &error), NANOARROW_OK);
 
-  ASSERT_EQ(ArrowIpcDecoderDecodeHeader(&decoder, data, &error), NANOARROW_OK);
+  ASSERT_EQ(ArrowIpcDecoderDecodeHeader(decoder.get(), data, &error), NANOARROW_OK);
   struct ArrowBufferView body;
-  body.data.as_uint8 = batch + decoder.header_size_bytes;
-  body.size_bytes = decoder.body_size_bytes;
+  body.data.as_uint8 = batch + decoder->header_size_bytes;
+  body.size_bytes = decoder->body_size_bytes;
 
-  ASSERT_EQ(ArrowIpcDecoderDecodeArrayView(&decoder, body, 0, &array_view, &error),
+  ASSERT_EQ(ArrowIpcDecoderDecodeArrayView(decoder.get(), body, 0, &array_view, &error),
             NANOARROW_OK)
       << error.message;
   ASSERT_EQ(array_view->length, values.size());
@@ -387,9 +390,6 @@ void TestDecodeInt32Batch(const uint8_t* batch, size_t batch_len,
     EXPECT_EQ(ArrowArrayViewGetIntUnsafe(array_view, index), value);
     index++;
   }
-
-  ArrowSchemaRelease(&schema);
-  ArrowIpcDecoderReset(&decoder);
 }
 
 TEST(NanoarrowIpcTest, NanoarrowIpcDecodeSimpleRecordBatch) {
@@ -605,7 +605,7 @@ TEST_P(ArrowTypeParameterizedTestFixture, NanoarrowIpcArrowTypeRoundtrip) {
 #endif
 
 std::string ArrowSchemaMetadataToString(const char* metadata) {
-  struct ArrowMetadataReader reader {};
+  struct ArrowMetadataReader reader{};
   auto st = ArrowMetadataReaderInit(&reader, metadata);
   EXPECT_EQ(st, NANOARROW_OK);
 
