@@ -586,6 +586,7 @@ if(NANOARROW_BUILD_TESTS)
     include(GoogleTest)
 
     foreach(name
+            codecs
             decoder
             encoder
             reader
@@ -599,6 +600,7 @@ if(NANOARROW_BUILD_TESTS)
                             nanoarrow
                             ${NANOARROW_ARROW_TARGET}
                             gtest_main
+                            gmock_main
                             nanoarrow_coverage_config)
 
       if(NOT (name MATCHES "_hpp_"))
@@ -619,7 +621,6 @@ if(NANOARROW_BUILD_TESTS)
 
     target_link_libraries(nanoarrow_ipc_files_test nanoarrow_testing ZLIB::ZLIB
                           nanoarrow_coverage_config)
-    target_link_libraries(nanoarrow_ipc_decoder_test gmock_main)
   endif()
 
   if(NANOARROW_DEVICE)

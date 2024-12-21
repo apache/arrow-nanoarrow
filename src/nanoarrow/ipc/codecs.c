@@ -39,7 +39,9 @@ static ArrowErrorCode ArrowIpcDecompressZstd(struct ArrowBufferView src, uint8_t
                   "Expected decompressed size of %" PRId64 " bytes but got %" PRId64
                   " bytes",
                   dst_size, (int64_t)code);
+    return EIO;
   }
+
   return NANOARROW_OK;
 }
 #endif
