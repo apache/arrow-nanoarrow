@@ -96,6 +96,7 @@ static ArrowErrorCode ArrowIpcSerialDecompressorWait(
 }
 
 static void ArrowIpcSerialDecompressorRelease(struct ArrowIpcDecompressor* decompressor) {
+  ArrowFree(decompressor->private_data);
   decompressor->release = NULL;
 }
 
