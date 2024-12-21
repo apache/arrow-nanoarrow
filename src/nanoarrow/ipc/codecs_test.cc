@@ -15,6 +15,8 @@
 // specific language governing permissions and limitations
 // under the License.
 
+#include <cstring>
+
 #include <gmock/gmock-matchers.h>
 #include <gtest/gtest.h>
 
@@ -66,7 +68,7 @@ TEST(NanoarrowIpcTest, ZstdDecodeInvalidInput) {
     GTEST_SKIP() << "nanoarrow_ipc not built with NANOARROW_IPC_WITH_ZSTD";
   }
 
-  struct ArrowError error{};
+  struct ArrowError error {};
   const char* bad_data = "abcde";
   EXPECT_EQ(decompress({{bad_data}, 5}, nullptr, 0, &error), EIO);
   EXPECT_THAT(error.message,
