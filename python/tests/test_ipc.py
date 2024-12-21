@@ -24,7 +24,7 @@ import pytest
 from nanoarrow._utils import NanoarrowException
 
 import nanoarrow as na
-from nanoarrow.ipc import InputStream, StreamWriter, _EXAMPLE_IPC_SCHEMA
+from nanoarrow.ipc import _EXAMPLE_IPC_SCHEMA, InputStream, StreamWriter
 
 
 def test_ipc_stream_example():
