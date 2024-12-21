@@ -482,14 +482,6 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDecodeSimpleRecordBatchErrors) {
 
   ArrowArrayRelease(&array);
 
-  // Field extract should fail if compression was set
-  // decoder.codec = NANOARROW_IPC_COMPRESSION_TYPE_ZSTD;
-  // EXPECT_EQ(ArrowIpcDecoderDecodeArray(&decoder, body, 0, &array,
-  //                                      NANOARROW_VALIDATION_LEVEL_FULL, &error),
-  //           ENOTSUP);
-  // EXPECT_STREQ(error.message, "The nanoarrow_ipc extension does not support
-  // compression"); decoder.codec = NANOARROW_IPC_COMPRESSION_TYPE_NONE;
-
   // Field extract should fail if body is too small
   decoder.body_size_bytes = 0;
   EXPECT_EQ(ArrowIpcDecoderDecodeArray(&decoder, body, 0, &array,
