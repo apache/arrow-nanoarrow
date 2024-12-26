@@ -117,8 +117,11 @@ function main() {
 
     show_header "Generate coverage reports"
     ninja coverage
-    lcov --list meson-logs/coverage.info --ignore-errors mismatch
-
+    gcovr -s -r . \
+        --gcov-exclude-directories="/usr" \
+        --gcov-exclude-directories="gtest" \
+        --gcov-exclude-directories="/flatcc" \
+        --gcov-exclude-directories="nanoarrow/_deps" \
     popd
 
     # Clean up subprojects and build folder

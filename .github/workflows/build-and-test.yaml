@@ -136,7 +136,7 @@ jobs:
 
       - name: Install system dependencies
         run: |
-          sudo apt-get update && sudo apt-get install -y lcov ninja-build valgrind
+          sudo apt-get update && sudo apt-get install -y gcovr ninja-build valgrind
 
       - name: Install meson
         run: |
