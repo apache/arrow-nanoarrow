@@ -45,11 +45,6 @@ requires = [
 build-backend = "mesonpy"
 
 [tool.meson-python.args]
-# Consistent version for zstd, rather than attempting to delocate whatever
-# version was on the build host.
-# TODO: We need to override this somehow on conda-forge because we actually
-# do want the host fallback.
-setup = ['--force-fallback-for=zstd']
 install = ['--skip-subprojects']
 dist = ['--include-subprojects']
 
