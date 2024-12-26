@@ -26,7 +26,7 @@ project(
         'warning_level=2',
         'c_std=c99',
         'default_library=static',
-        'force-fallback-for=zstd',
+        'force_fallback_for=zstd',
         # We need to set these options at the project default_option level
         # due to https://github.com/mesonbuild/meson/issues/6728
         'arrow-nanoarrow:ipc=true',
