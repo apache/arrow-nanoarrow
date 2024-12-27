@@ -117,11 +117,7 @@ function main() {
 
     show_header "Generate coverage reports"
     ninja coverage
-    gcovr -s -r . \
-        --gcov-exclude-directories="/usr" \
-        --gcov-exclude-directories="gtest" \
-        --gcov-exclude-directories="/flatcc" \
-        --gcov-exclude-directories="nanoarrow/_deps" \
+    cat meson-logs/coverage.txt
     popd
 
     # Clean up subprojects and build folder
