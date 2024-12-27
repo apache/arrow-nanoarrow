@@ -836,8 +836,6 @@
 </li>
       <li><a href="reference/device.html#_CPPv435ArrowDeviceArrayViewSetArrayMinimalP20ArrowDeviceArrayViewP16ArrowDeviceArrayP10ArrowError">ArrowDeviceArrayViewSetArrayMinimal (C++ function)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="reference/device.html#_CPPv431ArrowDeviceBasicArrayStreamInitP22ArrowDeviceArrayStreamP16ArrowArrayStreamP11ArrowDevice">ArrowDeviceBasicArrayStreamInit (C++ function)</a>
 </li>
       <li><a href="reference/device.html#_CPPv421ArrowDeviceBufferCopyP11ArrowDevice15ArrowBufferViewP11ArrowDevice15ArrowBufferView">ArrowDeviceBufferCopy (C++ function)</a>
@@ -848,6 +846,8 @@
 </li>
       <li><a href="reference/device.html#_CPPv426ArrowDeviceBufferInitAsyncP11ArrowDevice15ArrowBufferViewP11ArrowDeviceP11ArrowBufferPv">ArrowDeviceBufferInitAsync (C++ function)</a>
 </li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="reference/device.html#_CPPv421ArrowDeviceBufferMoveP11ArrowDeviceP11ArrowBufferP11ArrowDeviceP11ArrowBuffer">ArrowDeviceBufferMove (C++ function)</a>
 </li>
       <li><a href="reference/device.html#_CPPv423ArrowDeviceCheckRuntimeP10ArrowError">ArrowDeviceCheckRuntime (C++ function)</a>
@@ -948,11 +948,25 @@
 </li>
       <li><a href="reference/ipc.html#_CPPv420ArrowIpcDecoderResetP15ArrowIpcDecoder">ArrowIpcDecoderReset (C++ function)</a>
 </li>
+      <li><a href="reference/ipc.html#_CPPv430ArrowIpcDecoderSetDecompressorP15ArrowIpcDecoderP20ArrowIpcDecompressor">ArrowIpcDecoderSetDecompressor (C++ function)</a>
+</li>
       <li><a href="reference/ipc.html#_CPPv428ArrowIpcDecoderSetEndiannessP15ArrowIpcDecoder18ArrowIpcEndianness">ArrowIpcDecoderSetEndianness (C++ function)</a>
 </li>
       <li><a href="reference/ipc.html#_CPPv424ArrowIpcDecoderSetSchemaP15ArrowIpcDecoderP11ArrowSchemaP10ArrowError">ArrowIpcDecoderSetSchema (C++ function)</a>
 </li>
       <li><a href="reference/ipc.html#_CPPv427ArrowIpcDecoderVerifyHeaderP15ArrowIpcDecoder15ArrowBufferViewP10ArrowError">ArrowIpcDecoderVerifyHeader (C++ function)</a>
+</li>
+      <li><a href="reference/ipc.html#_CPPv426ArrowIpcDecompressFunction">ArrowIpcDecompressFunction (C++ type)</a>
+</li>
+      <li><a href="reference/ipc.html#_CPPv420ArrowIpcDecompressor">ArrowIpcDecompressor (C++ struct)</a>
+</li>
+      <li><a href="reference/ipc.html#_CPPv4N20ArrowIpcDecompressor14decompress_addE">ArrowIpcDecompressor::decompress_add (C++ member)</a>
+</li>
+      <li><a href="reference/ipc.html#_CPPv4N20ArrowIpcDecompressor15decompress_waitE">ArrowIpcDecompressor::decompress_wait (C++ member)</a>
+</li>
+      <li><a href="reference/ipc.html#_CPPv4N20ArrowIpcDecompressor12private_dataE">ArrowIpcDecompressor::private_data (C++ member)</a>
+</li>
+      <li><a href="reference/ipc.html#_CPPv4N20ArrowIpcDecompressor7releaseE">ArrowIpcDecompressor::release (C++ member)</a>
 </li>
       <li><a href="reference/ipc.html#_CPPv415ArrowIpcEncoder">ArrowIpcEncoder (C++ struct)</a>
 </li>
@@ -975,6 +989,8 @@
       <li><a href="reference/ipc.html#_CPPv4N18ArrowIpcEndianness31NANOARROW_IPC_ENDIANNESS_LITTLEE">ArrowIpcEndianness::NANOARROW_IPC_ENDIANNESS_LITTLE (C++ enumerator)</a>
 </li>
       <li><a href="reference/ipc.html#_CPPv4N18ArrowIpcEndianness38NANOARROW_IPC_ENDIANNESS_UNINITIALIZEDE">ArrowIpcEndianness::NANOARROW_IPC_ENDIANNESS_UNINITIALIZED (C++ enumerator)</a>
+</li>
+      <li><a href="reference/ipc.html#_CPPv436ArrowIpcGetZstdDecompressionFunctionv">ArrowIpcGetZstdDecompressionFunction (C++ function)</a>
 </li>
       <li><a href="reference/ipc.html#_CPPv419ArrowIpcInputStream">ArrowIpcInputStream (C++ struct)</a>
 </li>
@@ -1031,6 +1047,10 @@
       <li><a href="reference/ipc.html#_CPPv424ArrowIpcOutputStreamMoveP20ArrowIpcOutputStreamP20ArrowIpcOutputStream">ArrowIpcOutputStreamMove (C++ function)</a>
 </li>
       <li><a href="reference/ipc.html#_CPPv425ArrowIpcOutputStreamWriteP20ArrowIpcOutputStream15ArrowBufferViewP10ArrowError">ArrowIpcOutputStreamWrite (C++ function)</a>
+</li>
+      <li><a href="reference/ipc.html#_CPPv426ArrowIpcSerialDecompressorP20ArrowIpcDecompressor">ArrowIpcSerialDecompressor (C++ function)</a>
+</li>
+      <li><a href="reference/ipc.html#_CPPv437ArrowIpcSerialDecompressorSetFunctionP20ArrowIpcDecompressor23ArrowIpcCompressionType26ArrowIpcDecompressFunction">ArrowIpcSerialDecompressorSetFunction (C++ function)</a>
 </li>
       <li><a href="reference/ipc.html#_CPPv420ArrowIpcSharedBuffer">ArrowIpcSharedBuffer (C++ struct)</a>
 </li>
@@ -1829,6 +1849,8 @@
       <li><a href="reference/cpp.html#_CPPv412UniqueBuffer">UniqueBuffer (C++ type)</a>
 </li>
       <li><a href="reference/ipc.html#_CPPv413UniqueDecoder">UniqueDecoder (C++ type)</a>
+</li>
+      <li><a href="reference/ipc.html#_CPPv418UniqueDecompressor">UniqueDecompressor (C++ type)</a>
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
