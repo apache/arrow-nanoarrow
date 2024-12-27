@@ -48,19 +48,13 @@ static void call_as_nanoarrow_array(SEXP x_sexp, struct ArrowArray* array,
 
 static void as_array_int(SEXP x_sexp, struct ArrowArray* array, SEXP schema_xptr,
                          struct ArrowSchemaView* schema_view, struct ArrowError* error) {
-  // Consider integer -> any numeric type
+  // Consider integer -> numeric types that are easy to implement
   switch (schema_view->type) {
     case NANOARROW_TYPE_DOUBLE:
     case NANOARROW_TYPE_FLOAT:
     case NANOARROW_TYPE_HALF_FLOAT:
-    case NANOARROW_TYPE_UINT64:
     case NANOARROW_TYPE_INT64:
-    case NANOARROW_TYPE_UINT32:
     case NANOARROW_TYPE_INT32:
-    case NANOARROW_TYPE_UINT16:
-    case NANOARROW_TYPE_INT16:
-    case NANOARROW_TYPE_UINT8:
-    case NANOARROW_TYPE_INT8:
       break;
     default:
       call_as_nanoarrow_array(x_sexp, array, schema_xptr, "as_nanoarrow_array_from_c");
