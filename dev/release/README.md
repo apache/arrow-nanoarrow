@@ -76,8 +76,7 @@ candidate.
 
 For older MacOS or MacOS without Homebrew, you can
 [install GnuPG](https://gnupg.org/download/) and
-[install CMake](https://cmake.org/download/) separately (ensuring they are available
-on PATH when running the verification script).
+[install CMake](https://cmake.org/download/) separately.
 
 ### Conda (Linux and MacOS)
 
