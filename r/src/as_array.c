@@ -48,10 +48,23 @@ static void call_as_nanoarrow_array(SEXP x_sexp, struct ArrowArray* array,
 
 static void as_array_int(SEXP x_sexp, struct ArrowArray* array, SEXP schema_xptr,
                          struct ArrowSchemaView* schema_view, struct ArrowError* error) {
-  // Only consider the default create for now
-  if (schema_view->type != NANOARROW_TYPE_INT32) {
-    call_as_nanoarrow_array(x_sexp, array, schema_xptr, "as_nanoarrow_array_from_c");
-    return;
+  // Consider integer -> any numeric type
+  switch (schema_view->type) {
+    case NANOARROW_TYPE_DOUBLE:
+    case NANOARROW_TYPE_FLOAT:
+    case NANOARROW_TYPE_HALF_FLOAT:
+    case NANOARROW_TYPE_UINT64:
+    case NANOARROW_TYPE_INT64:
+    case NANOARROW_TYPE_UINT32:
+    case NANOARROW_TYPE_INT32:
+    case NANOARROW_TYPE_UINT16:
+    case NANOARROW_TYPE_INT16:
+    case NANOARROW_TYPE_UINT8:
+    case NANOARROW_TYPE_INT8:
+      break;
+    default:
+      call_as_nanoarrow_array(x_sexp, array, schema_xptr, "as_nanoarrow_array_from_c");
+      return;
   }
 
   // We don't consider altrep for now: we need an array of int32_t, and while we
@@ -60,13 +73,33 @@ static void as_array_int(SEXP x_sexp, struct ArrowArray* array, SEXP schema_xptr
   int* x_data = INTEGER(x_sexp);
   int64_t len = Rf_xlength(x_sexp);
 
-  int result = ArrowArrayInitFromType(array, NANOARROW_TYPE_INT32);
+  int result = ArrowArrayInitFromType(array, schema_view->type);
   if (result != NANOARROW_OK) {
     Rf_error("ArrowArrayInitFromType() failed");
   }
 
-  // Borrow the data buffer
-  buffer_borrowed(ArrowArrayBuffer(array, 1), x_data, len * sizeof(int32_t), x_sexp);
+  if (schema_view->type == NANOARROW_TYPE_INT32) {
+    // Zero-copy create: just borrow the data buffer
+    buffer_borrowed(ArrowArrayBuffer(array, 1), x_data, len * sizeof(int32_t), x_sexp);
+  } else {
+    // Otherwise, use the integer appender
+    result = ArrowArrayStartAppending(array);
+    if (result != NANOARROW_OK) {
+      Rf_error("ArrowArrayStartAppending() failed");
+    }
+
+    result = ArrowArrayReserve(array, len);
+    if (result != NANOARROW_OK) {
+      Rf_error("ArrowArrayReserve() failed");
+    }
+
+    for (int64_t i = 0; i < len; i++) {
+      result = ArrowArrayAppendInt(array, x_data[i]);
+      if (result != NANOARROW_OK) {
+        Rf_error("ArrowArrayAppendDouble() failed");
+      }
+    }
+  }
 
   // Set the array fields
   array->length = len;
@@ -102,6 +135,7 @@ static void as_array_int(SEXP x_sexp, struct ArrowArray* array, SEXP schema_xptr
   }
 
   array->null_count = null_count;
+
   result = ArrowArrayFinishBuildingDefault(array, error);
   if (result != NANOARROW_OK) {
     Rf_error("ArrowArrayFinishBuildingDefault(): %s", error->message);

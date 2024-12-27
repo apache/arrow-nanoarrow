@@ -111,7 +111,6 @@ test_that("as_nanoarrow_array() works for integer() -> na_int32()", {
 })
 
 test_that("as_nanoarrow_array() works for integer -> na_int64()", {
-  skip_if_not_installed("arrow")
   casted <- as_nanoarrow_array(1:10, schema = na_int64())
   expect_identical(infer_nanoarrow_schema(casted)$format, "l")
   expect_identical(convert_array(casted), as.double(1:10))
