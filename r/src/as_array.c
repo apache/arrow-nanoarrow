@@ -96,7 +96,7 @@ static void as_array_int(SEXP x_sexp, struct ArrowArray* array, SEXP schema_xptr
     for (int64_t i = 0; i < len; i++) {
       result = ArrowArrayAppendInt(array, x_data[i]);
       if (result != NANOARROW_OK) {
-        Rf_error("ArrowArrayAppendDouble() failed");
+        Rf_error("ArrowArrayAppendInt() failed");
       }
     }
   }
