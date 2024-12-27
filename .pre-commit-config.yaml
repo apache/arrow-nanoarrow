@@ -29,13 +29,12 @@ repos:
       exclude: "^r/.*?/_snaps/.*?.md$"
     - id: trailing-whitespace
       exclude: "^r/.*?/_snaps/.*?.md$"
-  - repo: https://github.com/pocc/pre-commit-hooks
-    rev: v1.3.5
+  - repo: https://github.com/pre-commit/mirrors-clang-format
+    rev: v16.0.6
     hooks:
-      - id: clang-format
-        args: [-i]
-        types_or: [c, c++]
-        exclude: "(^thirdparty/.*$)|(flatcc_generated.h)"
+    - id: clang-format
+      types_or: [c, c++]
+      exclude: "(^thirdparty/.*$)|(flatcc_generated.h)"
   - repo: https://github.com/cheshirekow/cmake-format-precommit
     rev: v0.6.13
     hooks:
@@ -75,5 +74,3 @@ repos:
        additional_dependencies: ['meson==1.6.0']
        entry: meson format -i
        files: meson.build
-
-exclude: "^dist"
