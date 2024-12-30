@@ -87,12 +87,14 @@ function main() {
     show_header "Calculate CMake project coverage"
     gcovr -r . -f "${TARGET_NANOARROW_DIR}/src" \
           -e ".*generated\.h" \
+          -e ".*_test.cc" \
           --lcov coverage.info
 
     # Generate the html coverage while we're here
     mkdir html
     gcovr -r . -f "${TARGET_NANOARROW_DIR}/src" \
           -e ".*generated\.h" \
+          -e ".*_test.cc" \
        --html html/coverage.html
 
     # Stripping the leading /nanoarrow/ out of the path is probably possible with
@@ -102,7 +104,9 @@ function main() {
 
     # Print a summary
     show_header "CMake project coverage summary"
-    gcovr -s -r . -f "${TARGET_NANOARROW_DIR}/src" -e ".*generated\.h"
+    gcovr -s -r . -f "${TARGET_NANOARROW_DIR}/src" \
+          -e ".*generated\.h" \
+          -e ".*_test.cc"
 
     # Clean up the build directories
     rm -rf nanoarrow
