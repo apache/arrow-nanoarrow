@@ -85,21 +85,15 @@ function main() {
 
     # Generate coverage.info file for both cmake projects using gcovr
     show_header "Calculate CMake project coverage"
-    gcovr -r . \
-        --gcov-exclude-directories="/usr" \
-        --gcov-exclude-directories="gtest" \
-        --gcov-exclude-directories="/flatcc" \
-        --gcov-exclude-directories="nanoarrow/_deps" \
-        --lcov coverage.info
+    gcovr -r . -f "${TARGET_NANOARROW_DIR}/src" \
+          -e ".*generated\.h" \
+          --lcov coverage.info
 
     # Generate the html coverage while we're here
     mkdir html
-    gcovr -r . \
-        --gcov-exclude-directories="/usr" \
-        --gcov-exclude-directories="gtest" \
-        --gcov-exclude-directories="/flatcc" \
-        --gcov-exclude-directories="nanoarrow/_deps" \
-        --html html/coverage.html
+    gcovr -r . -f "${TARGET_NANOARROW_DIR}/src" \
+          -e ".*generated\.h" \
+       --html html/coverage.html
 
     # Stripping the leading /nanoarrow/ out of the path is probably possible with
     # an argument of gcovr but none of the obvious ones seem to work so...
@@ -108,11 +102,7 @@ function main() {
 
     # Print a summary
     show_header "CMake project coverage summary"
-    gcovr -s -r . \
-        --gcov-exclude-directories="/usr" \
-        --gcov-exclude-directories="gtest" \
-        --gcov-exclude-directories="/flatcc" \
-        --gcov-exclude-directories="nanoarrow/_deps" \
+    gcovr -s -r . -f "${TARGET_NANOARROW_DIR}/src" -e ".*generated\.h"
 
     # Clean up the build directories
     rm -rf nanoarrow
