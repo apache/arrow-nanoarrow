@@ -17,6 +17,7 @@
 # under the License.
 
 src/nanoarrow/_*.c
+.mesonpy-*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
