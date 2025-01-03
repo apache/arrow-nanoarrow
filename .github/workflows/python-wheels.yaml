@@ -174,8 +174,7 @@ jobs:
 
       - name: Install gemfury client
         run: |
-          # GH-36692: Pin gemfury due to wrong faraday dependency declaration.
-          gem install gemfury -v 0.12.0
+          gem install gemfury
 
       - name: Upload packages to Gemfury
         shell: bash
