@@ -80,7 +80,7 @@ struct RandomAccessRange {
   };
 
   const_iterator begin() const { return {offset, this}; }
-  const_iterator end() const { return {size, this}; }
+  const_iterator end() const { return {offset + size, this}; }
 };
 
 template <typename Next>
