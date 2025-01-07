@@ -151,22 +151,15 @@ TEST(NanoarrowHppTest, NanoarrowHppViewArrayOffsetTest) {
   ASSERT_EQ(ArrowArrayFinishBuildingDefault(array.get(), nullptr), NANOARROW_OK);
   array->offset = 2;
 
-  int32_t expected[] = {2, 3};
-  int i = 0;
-  for (auto slot : nanoarrow::ViewArrayAs<int32_t>(array.get())) {
-    EXPECT_EQ(slot, expected[i]);
-    i++;
-  }
+  EXPECT_THAT(nanoarrow::ViewArrayAs<int32_t>(array.get()), testing::ElementsAre(2, 3));
 
   nanoarrow::UniqueArrayView array_view{};
   ASSERT_EQ(ArrowArrayViewInitFromSchema(array_view.get(), schema.get(), nullptr),
             NANOARROW_OK);
   ASSERT_EQ(ArrowArrayViewSetArray(array_view.get(), array.get(), nullptr), NANOARROW_OK);
-  i = 0;
-  for (auto slot : nanoarrow::ViewArrayAs<int32_t>(array_view.get())) {
-    EXPECT_EQ(slot, expected[i]);
-    i++;
-  }
+
+  EXPECT_THAT(nanoarrow::ViewArrayAs<int32_t>(array_view.get()),
+              testing::ElementsAre(2, 3));
 }
 
 TEST(NanoarrowHppTest, NanoarrowHppViewArrayAsBytesOffsetTest) {
@@ -186,22 +179,15 @@ TEST(NanoarrowHppTest, NanoarrowHppViewArrayAsBytesOffsetTest) {
   ASSERT_EQ(ArrowArrayFinishBuildingDefault(array.get(), nullptr), NANOARROW_OK);
   array->offset = 2;
 
-  ArrowStringView expected[] = {"baz"_asv, "qux"_asv};
-  int i = 0;
-  for (auto slot : nanoarrow::ViewArrayAsBytes<32>(array.get())) {
-    EXPECT_EQ(slot, expected[i]);
-    i++;
-  }
+  EXPECT_THAT(nanoarrow::ViewArrayAsBytes<32>(array.get()),
+              testing::ElementsAre("baz"_asv, "qux"_asv));
 
   nanoarrow::UniqueArrayView array_view{};
   ASSERT_EQ(ArrowArrayViewInitFromSchema(array_view.get(), schema.get(), nullptr),
             NANOARROW_OK);
   ASSERT_EQ(ArrowArrayViewSetArray(array_view.get(), array.get(), nullptr), NANOARROW_OK);
-  i = 0;
-  for (auto slot : nanoarrow::ViewArrayAsBytes<32>(array_view.get())) {
-    EXPECT_EQ(slot, expected[i]);
-    i++;
-  }
+  EXPECT_THAT(nanoarrow::ViewArrayAsBytes<32>(array_view.get()),
+              testing::ElementsAre("baz"_asv, "qux"_asv));
 }
 
 TEST(NanoarrowHppTest, NanoarrowHppViewArrayAsFixedSizeBytesOffsetTest) {
@@ -224,20 +210,13 @@ TEST(NanoarrowHppTest, NanoarrowHppViewArrayAsFixedSizeBytesOffsetTest) {
   ASSERT_EQ(ArrowArrayFinishBuildingDefault(array.get(), nullptr), NANOARROW_OK);
   array->offset = 2;
 
-  ArrowStringView expected[] = {"baz"_asv, "qux"_asv};
-  int i = 0;
-  for (auto slot : nanoarrow::ViewArrayAsFixedSizeBytes(array.get(), FixedSize)) {
-    EXPECT_EQ(slot, expected[i]);
-    i++;
-  }
+  EXPECT_THAT(nanoarrow::ViewArrayAsFixedSizeBytes(array.get(), FixedSize),
+              testing::ElementsAre("baz"_asv, "qux"_asv));
 
   nanoarrow::UniqueArrayView array_view{};
   ASSERT_EQ(ArrowArrayViewInitFromSchema(array_view.get(), schema.get(), nullptr),
             NANOARROW_OK);
   ASSERT_EQ(ArrowArrayViewSetArray(array_view.get(), array.get(), nullptr), NANOARROW_OK);
-  i = 0;
-  for (auto slot : nanoarrow::ViewArrayAsFixedSizeBytes(array_view.get(), FixedSize)) {
-    EXPECT_EQ(slot, expected[i]);
-    i++;
-  }
+  EXPECT_THAT(nanoarrow::ViewArrayAsFixedSizeBytes(array_view.get(), FixedSize),
+              testing::ElementsAre("baz"_asv, "qux"_asv));
 }
