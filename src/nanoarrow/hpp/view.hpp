@@ -65,6 +65,7 @@ class Maybe {
 template <typename Get>
 struct RandomAccessRange {
   Get get;
+  int64_t offset;
   int64_t size;
 
   using value_type = decltype(std::declval<Get>()(0));
@@ -79,7 +80,7 @@ struct RandomAccessRange {
   };
 
   const_iterator begin() const { return {0, this}; }
-  const_iterator end() const { return {size, this}; }
+  const_iterator end() const { return {size - offset, this}; }
 };
 
 template <typename Next>
@@ -157,6 +158,7 @@ class ViewArrayAs {
                 array_view->buffer_views[1].data.data,
                 array_view->offset,
             },
+            array_view->offset,
             array_view->length,
         } {}
 
@@ -165,8 +167,9 @@ class ViewArrayAs {
             Get{
                 static_cast<const uint8_t*>(array->buffers[0]),
                 array->buffers[1],
-                /*offset=*/0,
+                array->offset,
             },
+            array->offset,
             array->length,
         } {}
 
@@ -216,6 +219,7 @@ class ViewArrayAsBytes {
                 array_view->buffer_views[2].data.as_char,
                 array_view->offset,
             },
+            array_view->offset,
             array_view->length,
         } {}
 
@@ -225,8 +229,9 @@ class ViewArrayAsBytes {
                 static_cast<const uint8_t*>(array->buffers[0]),
                 array->buffers[1],
                 static_cast<const char*>(array->buffers[2]),
-                /*offset=*/0,
+                array->offset,
             },
+            array->offset,
             array->length,
         } {}
 
@@ -269,6 +274,7 @@ class ViewArrayAsFixedSizeBytes {
                 array_view->offset,
                 fixed_size,
             },
+            array_view->offset,
             array_view->length,
         } {}
 
@@ -277,9 +283,10 @@ class ViewArrayAsFixedSizeBytes {
             Get{
                 static_cast<const uint8_t*>(array->buffers[0]),
                 static_cast<const char*>(array->buffers[1]),
-                /*offset=*/0,
+                array->offset,
                 fixed_size,
             },
+            array->offset,
             array->length,
         } {}
 

@@ -135,3 +135,109 @@ TEST(NanoarrowHppTest, NanoarrowHppViewArrayStreamTest) {
   EXPECT_EQ(stream_view.code(), ENOMEM);
   EXPECT_STREQ(stream_view.error()->message, "foo bar");
 }
+
+TEST(NanoarrowHppTest, NanoarrowHppViewArrayOffsetTest) {
+  nanoarrow::UniqueSchema schema{};
+  ArrowSchemaInit(schema.get());
+  ASSERT_EQ(ArrowSchemaSetType(schema.get(), NANOARROW_TYPE_INT32), NANOARROW_OK);
+
+  nanoarrow::UniqueArray array{};
+  ASSERT_EQ(ArrowArrayInitFromSchema(array.get(), schema.get(), nullptr), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayStartAppending(array.get()), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAppendInt(array.get(), 0), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAppendInt(array.get(), 1), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAppendInt(array.get(), 2), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAppendInt(array.get(), 3), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayFinishBuildingDefault(array.get(), nullptr), NANOARROW_OK);
+  array->offset = 2;
+
+  int32_t expected[] = {2, 3};
+  int i = 0;
+  for (auto slot : nanoarrow::ViewArrayAs<int32_t>(array.get())) {
+    EXPECT_EQ(slot, expected[i]);
+    i++;
+  }
+
+  nanoarrow::UniqueArrayView array_view{};
+  ASSERT_EQ(ArrowArrayViewInitFromSchema(array_view.get(), schema.get(), nullptr),
+            NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayViewSetArray(array_view.get(), array.get(), nullptr), NANOARROW_OK);
+  i = 0;
+  for (auto slot : nanoarrow::ViewArrayAs<int32_t>(array_view.get())) {
+    EXPECT_EQ(slot, expected[i]);
+    i++;
+  }
+}
+
+TEST(NanoarrowHppTest, NanoarrowHppViewArrayAsBytesOffsetTest) {
+  using namespace nanoarrow::literals;
+
+  nanoarrow::UniqueSchema schema{};
+  ArrowSchemaInit(schema.get());
+  ASSERT_EQ(ArrowSchemaSetType(schema.get(), NANOARROW_TYPE_STRING), NANOARROW_OK);
+
+  nanoarrow::UniqueArray array{};
+  ASSERT_EQ(ArrowArrayInitFromSchema(array.get(), schema.get(), nullptr), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayStartAppending(array.get()), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAppendString(array.get(), "foo"_asv), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAppendString(array.get(), "bar"_asv), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAppendString(array.get(), "baz"_asv), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAppendString(array.get(), "qux"_asv), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayFinishBuildingDefault(array.get(), nullptr), NANOARROW_OK);
+  array->offset = 2;
+
+  ArrowStringView expected[] = {"baz"_asv, "qux"_asv};
+  int i = 0;
+  for (auto slot : nanoarrow::ViewArrayAsBytes<32>(array.get())) {
+    EXPECT_EQ(slot, expected[i]);
+    i++;
+  }
+
+  nanoarrow::UniqueArrayView array_view{};
+  ASSERT_EQ(ArrowArrayViewInitFromSchema(array_view.get(), schema.get(), nullptr),
+            NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayViewSetArray(array_view.get(), array.get(), nullptr), NANOARROW_OK);
+  i = 0;
+  for (auto slot : nanoarrow::ViewArrayAsBytes<32>(array_view.get())) {
+    EXPECT_EQ(slot, expected[i]);
+    i++;
+  }
+}
+
+TEST(NanoarrowHppTest, NanoarrowHppViewArrayAsFixedSizeBytesOffsetTest) {
+  using namespace nanoarrow::literals;
+
+  constexpr int32_t FixedSize = 3;
+  nanoarrow::UniqueSchema schema{};
+  ArrowSchemaInit(schema.get());
+  ASSERT_EQ(ArrowSchemaSetTypeFixedSize(schema.get(), NANOARROW_TYPE_FIXED_SIZE_BINARY,
+                                        FixedSize),
+            NANOARROW_OK);
+
+  nanoarrow::UniqueArray array{};
+  ASSERT_EQ(ArrowArrayInitFromSchema(array.get(), schema.get(), nullptr), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayStartAppending(array.get()), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAppendBytes(array.get(), {{"foo"}, FixedSize}), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAppendBytes(array.get(), {{"bar"}, FixedSize}), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAppendBytes(array.get(), {{"baz"}, FixedSize}), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAppendBytes(array.get(), {{"qux"}, FixedSize}), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayFinishBuildingDefault(array.get(), nullptr), NANOARROW_OK);
+  array->offset = 2;
+
+  ArrowStringView expected[] = {"baz"_asv, "qux"_asv};
+  int i = 0;
+  for (auto slot : nanoarrow::ViewArrayAsFixedSizeBytes(array.get(), FixedSize)) {
+    EXPECT_EQ(slot, expected[i]);
+    i++;
+  }
+
+  nanoarrow::UniqueArrayView array_view{};
+  ASSERT_EQ(ArrowArrayViewInitFromSchema(array_view.get(), schema.get(), nullptr),
+            NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayViewSetArray(array_view.get(), array.get(), nullptr), NANOARROW_OK);
+  i = 0;
+  for (auto slot : nanoarrow::ViewArrayAsFixedSizeBytes(array_view.get(), FixedSize)) {
+    EXPECT_EQ(slot, expected[i]);
+    i++;
+  }
+}
