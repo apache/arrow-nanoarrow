@@ -739,7 +739,7 @@ TEST(RandomAccessRangeTest, ConstructionAndPrinting) {
   auto square = [](int64_t i) { return i * i; };
 
   // the range is usable as a constant
-  const nanoarrow::internal::RandomAccessRange<decltype(square)> squares{square, 4};
+  const nanoarrow::internal::RandomAccessRange<decltype(square)> squares{square, 0, 4};
 
   // gtest recognizes the range as a container and can print it
   EXPECT_THAT(squares, testing::ElementsAre(0, 1, 4, 9));
