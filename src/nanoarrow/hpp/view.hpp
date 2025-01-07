@@ -79,8 +79,8 @@ struct RandomAccessRange {
     value_type operator*() const { return range->get(i); }
   };
 
-  const_iterator begin() const { return {0, this}; }
-  const_iterator end() const { return {size - offset, this}; }
+  const_iterator begin() const { return {offset, this}; }
+  const_iterator end() const { return {size, this}; }
 };
 
 template <typename Next>
@@ -133,10 +133,8 @@ class ViewArrayAs {
   struct Get {
     const uint8_t* validity;
     const void* values;
-    int64_t offset;
 
     internal::Maybe<T> operator()(int64_t i) const {
-      i += offset;
       if (validity == nullptr || ArrowBitGet(validity, i)) {
         if (std::is_same<T, bool>::value) {
           return ArrowBitGet(static_cast<const uint8_t*>(values), i);
@@ -156,7 +154,6 @@ class ViewArrayAs {
             Get{
                 array_view->buffer_views[0].data.as_uint8,
                 array_view->buffer_views[1].data.data,
-                array_view->offset,
             },
             array_view->offset,
             array_view->length,
@@ -167,7 +164,6 @@ class ViewArrayAs {
             Get{
                 static_cast<const uint8_t*>(array->buffers[0]),
                 array->buffers[1],
-                array->offset,
             },
             array->offset,
             array->length,
@@ -196,10 +192,8 @@ class ViewArrayAsBytes {
     const uint8_t* validity;
     const void* offsets;
     const char* data;
-    int64_t offset;
 
     internal::Maybe<ArrowStringView> operator()(int64_t i) const {
-      i += offset;
       auto* offsets = static_cast<const OffsetType*>(this->offsets);
       if (validity == nullptr || ArrowBitGet(validity, i)) {
         return ArrowStringView{data + offsets[i], offsets[i + 1] - offsets[i]};
@@ -217,7 +211,6 @@ class ViewArrayAsBytes {
                 array_view->buffer_views[0].data.as_uint8,
                 array_view->buffer_views[1].data.data,
                 array_view->buffer_views[2].data.as_char,
-                array_view->offset,
             },
             array_view->offset,
             array_view->length,
@@ -229,7 +222,6 @@ class ViewArrayAsBytes {
                 static_cast<const uint8_t*>(array->buffers[0]),
                 array->buffers[1],
                 static_cast<const char*>(array->buffers[2]),
-                array->offset,
             },
             array->offset,
             array->length,
@@ -251,11 +243,9 @@ class ViewArrayAsFixedSizeBytes {
   struct Get {
     const uint8_t* validity;
     const char* data;
-    int64_t offset;
     int fixed_size;
 
     internal::Maybe<ArrowStringView> operator()(int64_t i) const {
-      i += offset;
       if (validity == nullptr || ArrowBitGet(validity, i)) {
         return ArrowStringView{data + i * fixed_size, fixed_size};
       }
@@ -271,7 +261,6 @@ class ViewArrayAsFixedSizeBytes {
             Get{
                 array_view->buffer_views[0].data.as_uint8,
                 array_view->buffer_views[1].data.as_char,
-                array_view->offset,
                 fixed_size,
             },
             array_view->offset,
@@ -283,7 +272,6 @@ class ViewArrayAsFixedSizeBytes {
             Get{
                 static_cast<const uint8_t*>(array->buffers[0]),
                 static_cast<const char*>(array->buffers[1]),
-                array->offset,
                 fixed_size,
             },
             array->offset,
