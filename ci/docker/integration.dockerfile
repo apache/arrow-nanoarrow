@@ -52,6 +52,9 @@ RUN git clone https://github.com/apache/arrow-rs /arrow-integration/rust
 # provided arrow docker image https://github.com/apache/arrow/issues/41637
 RUN cd /arrow-integration/rust && rustup override set 1.77
 
+# Install system zstd (Arrow C++ seems to use the bundled version)
+RUN apt-get update && apt-get install -y libzstd-dev
+
 # Build all the integrations except nanoarrow (since we'll do that ourselves on each run)
 RUN ARCHERY_INTEGRATION_WITH_NANOARROW="0" \
     conda run --no-capture-output \
