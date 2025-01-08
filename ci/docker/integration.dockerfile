@@ -42,7 +42,8 @@ ENV ARROW_RUST_EXE_PATH=/build/rust/debug
 ENV BUILD_DOCS_CPP=OFF
 
 # Clone the arrow monorepo
-RUN git clone https://github.com/apache/arrow.git /arrow-integration --recurse-submodules
+RUN git clone https://github.com/paleolimbot/arrow.git /arrow-integration --recurse-submodules && \
+    cd arrow-integration && git switch archery-update-nanoarrow-skip
 
 # Clone the arrow-rs repo
 RUN git clone https://github.com/apache/arrow-rs /arrow-integration/rust
