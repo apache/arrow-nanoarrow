@@ -210,7 +210,14 @@ if(NANOARROW_IPC)
   if(NANOARROW_IPC_WITH_ZSTD)
     find_package(zstd REQUIRED)
     set(NANOARROW_IPC_EXTRA_FLAGS "-DNANOARROW_IPC_WITH_ZSTD")
-    set(NANOARROW_IPC_EXTRA_LIBS zstd::libzstd_static)
+
+    # libzstd_static is not available from conda
+    # This could be configurable if shared zstd is a must
+    if(TARGET zstd::libzstd_static)
+      set(NANOARROW_IPC_EXTRA_LIBS zstd::libzstd_static)
+    else()
+      set(NANOARROW_IPC_EXTRA_LIBS zstd::libzstd)
+    endif()
   endif()
 
   if(NOT NANOARROW_BUNDLE)
