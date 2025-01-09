@@ -42,8 +42,7 @@ ENV ARROW_RUST_EXE_PATH=/build/rust/debug
 ENV BUILD_DOCS_CPP=OFF
 
 # Clone the arrow monorepo
-RUN git clone https://github.com/paleolimbot/arrow.git /arrow-integration --recurse-submodules && \
-    cd arrow-integration && git switch archery-update-nanoarrow-skip
+RUN git clone https://github.com/apache/arrow.git /arrow-integration --recurse-submodules
 
 # Clone the arrow-rs repo
 RUN git clone https://github.com/apache/arrow-rs /arrow-integration/rust
@@ -51,9 +50,6 @@ RUN git clone https://github.com/apache/arrow-rs /arrow-integration/rust
 # Workaround: stable rust is not compatible with glibc provided by the
 # provided arrow docker image https://github.com/apache/arrow/issues/41637
 RUN cd /arrow-integration/rust && rustup override set 1.77
-
-# Install conda zstd (Arrow C++ seems to use the bundled version)
-RUN conda install -c conda-forge zstd-static
 
 # Build all the integrations except nanoarrow (since we'll do that ourselves on each run)
 RUN ARCHERY_INTEGRATION_WITH_NANOARROW="0" \
