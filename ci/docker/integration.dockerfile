@@ -53,7 +53,7 @@ RUN git clone https://github.com/apache/arrow-rs /arrow-integration/rust
 RUN cd /arrow-integration/rust && rustup override set 1.77
 
 # Install conda zstd (Arrow C++ seems to use the bundled version)
-RUN conda install -c conda-forge zstd
+RUN conda install -c conda-forge zstd-static
 
 # Build all the integrations except nanoarrow (since we'll do that ourselves on each run)
 RUN ARCHERY_INTEGRATION_WITH_NANOARROW="0" \
