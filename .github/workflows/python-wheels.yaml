@@ -101,7 +101,7 @@ jobs:
           - {os: "windows-2019", label: "windows-amd64", platform: "auto", arch: "AMD64"}
           - {os: "macOS-13", label: "macOS", platform: "auto", arch: "auto"}
           - {os: "macOS-14", label: "macOS-arm64", platform: "auto", arch: "auto"}
-          - {os: ["self-hosted", "arm"], label: "linux-arm64", platform: "auto", arch: "auto"}
+          - {os: "ubuntu-24.04-arm", label: "linux-arm64", platform: "auto", arch: "auto"}
 
     steps:
       - uses: actions/checkout@v4
