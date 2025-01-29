@@ -82,6 +82,38 @@ TEST(NanoarrowHppTest, NanoarrowHppViewArrayAsBytesTest) {
   }
 }
 
+TEST(NanoarrowHppTest, NanoarrowHppViewBinaryViewArrayAsBytesTest) {
+  using namespace nanoarrow::literals;
+
+  nanoarrow::UniqueArray array{};
+  NANOARROW_THROW_NOT_OK(ArrowArrayInitFromType(array.get(), NANOARROW_TYPE_BINARY_VIEW));
+  NANOARROW_THROW_NOT_OK(ArrowArrayStartAppending(array.get()));
+
+  NANOARROW_THROW_NOT_OK(ArrowArrayAppendString(array.get(), "foo"_asv));
+  NANOARROW_THROW_NOT_OK(ArrowArrayAppendNull(array.get(), 1));
+  NANOARROW_THROW_NOT_OK(
+      ArrowArrayAppendString(array.get(), "this_string_is_longer_than_inline"_asv));
+  NANOARROW_THROW_NOT_OK(ArrowArrayAppendNull(array.get(), 1));
+  NANOARROW_THROW_NOT_OK(ArrowArrayFinishBuildingDefault(array.get(), nullptr));
+
+  int i = 0;
+  ArrowStringView expected[] = {"foo"_asv, ""_asv,
+                                "this_string_is_longer_than_inline"_asv, ""_asv};
+
+  nanoarrow::UniqueArrayView array_view{};
+  ArrowArrayViewInitFromType(array_view.get(), NANOARROW_TYPE_BINARY_VIEW);
+  NANOARROW_THROW_NOT_OK(ArrowArrayViewSetArray(array_view.get(), array.get(), nullptr));
+
+  for (auto slot : nanoarrow::ViewBinaryViewArrayAsBytes(array_view.get())) {
+    if (i == 1 || i == 3) {
+      EXPECT_EQ(slot, nanoarrow::NA);
+    } else {
+      EXPECT_EQ(slot, expected[i]);
+    }
+    ++i;
+  }
+}
+
 TEST(NanoarrowHppTest, NanoarrowHppViewArrayAsFixedSizeBytesTest) {
   using namespace nanoarrow::literals;
 

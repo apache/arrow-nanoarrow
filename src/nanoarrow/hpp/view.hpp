@@ -234,6 +234,64 @@ class ViewArrayAsBytes {
   value_type operator[](int64_t i) const { return range_.get(i); }
 };
 
+class ViewBinaryViewArrayAsBytes {
+ private:
+  struct Get {
+    const uint8_t* validity;
+    const union ArrowBinaryView* inline_data;
+    const void** variadic_buffers;
+
+    internal::Maybe<ArrowStringView> operator()(int64_t i) const {
+      if (validity == nullptr || ArrowBitGet(validity, i)) {
+        const union ArrowBinaryView bv = inline_data[i];
+        if (bv.inlined.size <= NANOARROW_BINARY_VIEW_INLINE_SIZE) {
+          return ArrowStringView{
+              reinterpret_cast<const char*>(inline_data[i].inlined.data),
+              bv.inlined.size};
+        }
+
+        return ArrowStringView{
+            reinterpret_cast<const char*>(variadic_buffers[bv.ref.buffer_index]),
+            bv.inlined.size};
+      }
+      return NA;
+    }
+  };
+
+  internal::RandomAccessRange<Get> range_;
+
+ public:
+  ViewBinaryViewArrayAsBytes(const ArrowArrayView* array_view)
+      : range_{
+            Get{
+                array_view->buffer_views[0].data.as_uint8,
+                array_view->buffer_views[1].data.as_binary_view,
+                array_view->variadic_buffers,
+            },
+            array_view->offset,
+            array_view->length,
+        } {}
+
+  /*
+  ViewBinaryViewArrayAsBytes(const ArrowArray* array)
+      : range_{
+            Get{
+                static_cast<const uint8_t*>(array->buffers[0]),
+                array->buffers[1],
+                static_cast<const char*>(array->buffers[2]),
+            },
+            array->offset,
+            array->length,
+        } {}
+  */
+
+  using value_type = typename internal::RandomAccessRange<Get>::value_type;
+  using const_iterator = typename internal::RandomAccessRange<Get>::const_iterator;
+  const_iterator begin() const { return range_.begin(); }
+  const_iterator end() const { return range_.end(); }
+  value_type operator[](int64_t i) const { return range_.get(i); }
+};
+
 /// \brief A range-for compatible wrapper for ArrowArray of fixed size binary
 ///
 /// Provides a sequence of optional<ArrowStringView> referencing each non-null
