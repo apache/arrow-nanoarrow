@@ -243,16 +243,16 @@ class ViewBinaryViewArrayAsBytes {
 
     internal::Maybe<ArrowStringView> operator()(int64_t i) const {
       if (validity == nullptr || ArrowBitGet(validity, i)) {
-        const union ArrowBinaryView bv = inline_data[i];
-        if (bv.inlined.size <= NANOARROW_BINARY_VIEW_INLINE_SIZE) {
-          return ArrowStringView{
-              reinterpret_cast<const char*>(inline_data[i].inlined.data),
-              bv.inlined.size};
+        const union ArrowBinaryView* bv = &inline_data[i];
+        if (bv->inlined.size <= NANOARROW_BINARY_VIEW_INLINE_SIZE) {
+          return ArrowStringView{reinterpret_cast<const char*>(bv->inlined.data),
+                                 bv->inlined.size};
         }
 
         return ArrowStringView{
-            reinterpret_cast<const char*>(variadic_buffers[bv.ref.buffer_index]),
-            bv.inlined.size};
+            reinterpret_cast<const char*>(variadic_buffers[bv->ref.buffer_index]) +
+                bv->ref.offset,
+            bv->ref.size};
       }
       return NA;
     }
@@ -272,18 +272,14 @@ class ViewBinaryViewArrayAsBytes {
             array_view->length,
         } {}
 
-  /*
   ViewBinaryViewArrayAsBytes(const ArrowArray* array)
       : range_{
-            Get{
-                static_cast<const uint8_t*>(array->buffers[0]),
-                array->buffers[1],
-                static_cast<const char*>(array->buffers[2]),
-            },
+            Get{static_cast<const uint8_t*>(array->buffers[0]),
+                static_cast<const union ArrowBinaryView*>(array->buffers[1]),
+                array->buffers + NANOARROW_BINARY_VIEW_FIXED_BUFFERS},
             array->offset,
             array->length,
         } {}
-  */
 
   using value_type = typename internal::RandomAccessRange<Get>::value_type;
   using const_iterator = typename internal::RandomAccessRange<Get>::const_iterator;

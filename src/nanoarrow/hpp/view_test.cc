@@ -82,28 +82,44 @@ TEST(NanoarrowHppTest, NanoarrowHppViewArrayAsBytesTest) {
   }
 }
 
-TEST(NanoarrowHppTest, NanoarrowHppViewBinaryViewArrayAsBytesTest) {
+class BinaryViewTypeTestFixture : public ::testing::TestWithParam<enum ArrowType> {
+ protected:
+  enum ArrowType data_type;
+};
+
+TEST_P(BinaryViewTypeTestFixture, NanoarrowHppViewBinaryViewArrayAsBytesTest) {
   using namespace nanoarrow::literals;
 
   nanoarrow::UniqueArray array{};
-  NANOARROW_THROW_NOT_OK(ArrowArrayInitFromType(array.get(), NANOARROW_TYPE_BINARY_VIEW));
-  NANOARROW_THROW_NOT_OK(ArrowArrayStartAppending(array.get()));
+  ASSERT_EQ(ArrowArrayInitFromType(array.get(), GetParam()), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayStartAppending(array.get()), NANOARROW_OK);
 
-  NANOARROW_THROW_NOT_OK(ArrowArrayAppendString(array.get(), "foo"_asv));
-  NANOARROW_THROW_NOT_OK(ArrowArrayAppendNull(array.get(), 1));
-  NANOARROW_THROW_NOT_OK(
-      ArrowArrayAppendString(array.get(), "this_string_is_longer_than_inline"_asv));
-  NANOARROW_THROW_NOT_OK(ArrowArrayAppendNull(array.get(), 1));
-  NANOARROW_THROW_NOT_OK(ArrowArrayFinishBuildingDefault(array.get(), nullptr));
+  ASSERT_EQ(ArrowArrayAppendString(array.get(), "foo"_asv), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAppendNull(array.get(), 1), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAppendString(array.get(), "this_string_is_longer_than_inline"_asv),
+            NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAppendNull(array.get(), 1), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayFinishBuildingDefault(array.get(), nullptr), NANOARROW_OK);
 
-  int i = 0;
   ArrowStringView expected[] = {"foo"_asv, ""_asv,
-                                "this_string_is_longer_than_inline"_asv, ""_asv};
+                                "this_string_is_longer_than_inline"_asv, ""_asv,
+                                "here_is_another_string"_asv};
 
   nanoarrow::UniqueArrayView array_view{};
-  ArrowArrayViewInitFromType(array_view.get(), NANOARROW_TYPE_BINARY_VIEW);
-  NANOARROW_THROW_NOT_OK(ArrowArrayViewSetArray(array_view.get(), array.get(), nullptr));
+  ArrowArrayViewInitFromType(array_view.get(), GetParam());
+  ASSERT_EQ(ArrowArrayViewSetArray(array_view.get(), array.get(), nullptr), NANOARROW_OK);
 
+  int i = 0;
+  for (auto slot : nanoarrow::ViewBinaryViewArrayAsBytes(array.get())) {
+    if (i == 1 || i == 3) {
+      EXPECT_EQ(slot, nanoarrow::NA);
+    } else {
+      EXPECT_EQ(slot, expected[i]);
+    }
+    ++i;
+  }
+
+  i = 0;
   for (auto slot : nanoarrow::ViewBinaryViewArrayAsBytes(array_view.get())) {
     if (i == 1 || i == 3) {
       EXPECT_EQ(slot, nanoarrow::NA);
@@ -113,6 +129,10 @@ TEST(NanoarrowHppTest, NanoarrowHppViewBinaryViewArrayAsBytesTest) {
     ++i;
   }
 }
+
+INSTANTIATE_TEST_SUITE_P(NanoarrowHppTest, BinaryViewTypeTestFixture,
+                         ::testing::Values(NANOARROW_TYPE_BINARY_VIEW,
+                                           NANOARROW_TYPE_STRING_VIEW));
 
 TEST(NanoarrowHppTest, NanoarrowHppViewArrayAsFixedSizeBytesTest) {
   using namespace nanoarrow::literals;
