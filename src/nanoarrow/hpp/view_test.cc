@@ -82,6 +82,64 @@ TEST(NanoarrowHppTest, NanoarrowHppViewArrayAsBytesTest) {
   }
 }
 
+class BinaryViewTypeTestFixture
+    : public ::testing::TestWithParam<std::tuple<int, enum ArrowType>> {
+ protected:
+  enum ArrowType data_type;
+};
+
+TEST_P(BinaryViewTypeTestFixture, NanoarrowHppViewBinaryViewArrayAsBytesTest) {
+  using namespace nanoarrow::literals;
+
+  nanoarrow::UniqueArray array{};
+  const auto [offset, type] = GetParam();
+  ASSERT_EQ(ArrowArrayInitFromType(array.get(), type), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayStartAppending(array.get()), NANOARROW_OK);
+
+  ASSERT_EQ(ArrowArrayAppendString(array.get(), "foo"_asv), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAppendNull(array.get(), 1), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAppendString(array.get(), "this_string_is_longer_than_inline"_asv),
+            NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAppendNull(array.get(), 1), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayFinishBuildingDefault(array.get(), nullptr), NANOARROW_OK);
+  array->offset = offset;
+  array->length = array->length - offset;
+
+  ArrowStringView expected[] = {"foo"_asv, ""_asv,
+                                "this_string_is_longer_than_inline"_asv, ""_asv,
+                                "here_is_another_string"_asv};
+
+  nanoarrow::UniqueArrayView array_view{};
+  ArrowArrayViewInitFromType(array_view.get(), type);
+  ASSERT_EQ(ArrowArrayViewSetArray(array_view.get(), array.get(), nullptr), NANOARROW_OK);
+
+  int i = offset;
+  for (auto slot : nanoarrow::ViewBinaryViewArrayAsBytes(array.get())) {
+    if (i == 1 || i == 3) {
+      EXPECT_EQ(slot, nanoarrow::NA);
+    } else {
+      EXPECT_EQ(slot, expected[i]);
+    }
+    ++i;
+  }
+
+  i = offset;
+  for (auto slot : nanoarrow::ViewBinaryViewArrayAsBytes(array_view.get())) {
+    if (i == 1 || i == 3) {
+      EXPECT_EQ(slot, nanoarrow::NA);
+    } else {
+      EXPECT_EQ(slot, expected[i]);
+    }
+    ++i;
+  }
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    NanoarrowHppTest, BinaryViewTypeTestFixture,
+    ::testing::Combine(::testing::Values(0, 2),
+                       ::testing::Values(NANOARROW_TYPE_BINARY_VIEW,
+                                         NANOARROW_TYPE_STRING_VIEW)));
+
 TEST(NanoarrowHppTest, NanoarrowHppViewArrayAsFixedSizeBytesTest) {
   using namespace nanoarrow::literals;
 
