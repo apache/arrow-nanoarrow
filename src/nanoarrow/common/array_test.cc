@@ -1525,7 +1525,7 @@ TEST(ArrayTest, ArrayTestAppendToLargeListArray) {
   EXPECT_EQ(ArrowArrayFinishBuildingDefault(&array, &error), EINVAL);
   EXPECT_STREQ(
       ArrowErrorMessage(&error),
-      "Expected child of large list array to have length >= 3 but found array with "
+      "Expected child of large_list array to have length >= 3 but found array with "
       "length 2");
 
   array.children[0]->length = array.children[0]->length + 1;
@@ -1545,6 +1545,155 @@ TEST(ArrayTest, ArrayTestAppendToLargeListArray) {
   ARROW_EXPECT_OK(child_builder->Append(456));
   ARROW_EXPECT_OK(child_builder->Append(789));
   ARROW_EXPECT_OK(builder.AppendEmptyValue());
+  auto expected_array = builder.Finish();
+  ARROW_EXPECT_OK(expected_array);
+
+  EXPECT_TRUE(arrow_array.ValueUnsafe()->Equals(expected_array.ValueUnsafe()));
+#else
+  ArrowSchemaRelease(&schema);
+  ArrowArrayRelease(&array);
+#endif
+}
+
+TEST(ArrayTest, ArrayTestAppendToListViewArray) {
+  struct ArrowArray array;
+  struct ArrowSchema schema;
+  struct ArrowError error;
+
+  ASSERT_EQ(ArrowSchemaInitFromType(&schema, NANOARROW_TYPE_LIST_VIEW), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaSetType(schema.children[0], NANOARROW_TYPE_INT64), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayInitFromSchema(&array, &schema, nullptr), NANOARROW_OK);
+
+  ASSERT_EQ(ArrowArrayStartAppending(&array), NANOARROW_OK);
+
+  // Check that we can reserve recursively without erroring
+  ASSERT_EQ(ArrowArrayReserve(&array, 5), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayBuffer(array.children[0], 1)->capacity_bytes, 0);
+
+  ASSERT_EQ(ArrowArrayAppendInt(array.children[0], 123), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayFinishElement(&array), NANOARROW_OK);
+
+  ASSERT_EQ(ArrowArrayAppendNull(&array, 1), NANOARROW_OK);
+
+  ASSERT_EQ(ArrowArrayAppendInt(array.children[0], 456), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAppendInt(array.children[0], 789), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayFinishElement(&array), NANOARROW_OK);
+
+  EXPECT_EQ(ArrowArrayAppendEmpty(&array, 1), NANOARROW_OK);
+
+  // Make sure number of children is checked at finish
+  array.n_children = 0;
+  EXPECT_EQ(ArrowArrayFinishBuildingDefault(&array, &error), EINVAL);
+  EXPECT_STREQ(ArrowErrorMessage(&error),
+               "Expected 1 child of list_view array but found 0 child arrays");
+  array.n_children = 1;
+
+  // Make sure final child size is checked at finish
+  // TODO: this may be an expensive check with LIST_VIEW types
+  /*
+  array.children[0]->length = array.children[0]->length - 1;
+  EXPECT_EQ(ArrowArrayFinishBuildingDefault(&array, &error), EINVAL);
+  EXPECT_STREQ(
+      ArrowErrorMessage(&error),
+      "Expected child of list_view array to have length >= 3 but found array with "
+      "length 2");
+
+  array.children[0]->length = array.children[0]->length + 1;
+  */
+  EXPECT_EQ(ArrowArrayFinishBuildingDefault(&array, &error), NANOARROW_OK);
+
+#if defined(NANOARROW_BUILD_TESTS_WITH_ARROW)
+  auto arrow_array = ImportArray(&array, &schema);
+  ARROW_EXPECT_OK(arrow_array);
+
+  constexpr size_t nelems = 4;
+  const std::array<int32_t, nelems> offsets = {0, 1, 1, 3};
+  const std::array<int32_t, nelems> sizes = {1, 0, 2, 0};
+  const std::array<uint8_t, nelems> valid_bytes = {1, 0, 1, 1};
+
+  auto child_builder = std::make_shared<Int64Builder>();
+  auto builder =
+      ListViewBuilder(default_memory_pool(), child_builder, list_view(int64()));
+  ARROW_EXPECT_OK(
+      builder.AppendValues(offsets.data(), sizes.data(), nelems, valid_bytes.data()));
+  ARROW_EXPECT_OK(child_builder->Append(123));
+  ARROW_EXPECT_OK(child_builder->Append(456));
+  ARROW_EXPECT_OK(child_builder->Append(789));
+  auto expected_array = builder.Finish();
+  ARROW_EXPECT_OK(expected_array);
+
+  EXPECT_TRUE(arrow_array.ValueUnsafe()->Equals(expected_array.ValueUnsafe()));
+#else
+  ArrowSchemaRelease(&schema);
+  ArrowArrayRelease(&array);
+#endif
+}
+
+TEST(ArrayTest, ArrayTestAppendToLargeListViewArray) {
+  struct ArrowArray array;
+  struct ArrowSchema schema;
+  struct ArrowError error;
+
+  ASSERT_EQ(ArrowSchemaInitFromType(&schema, NANOARROW_TYPE_LARGE_LIST_VIEW),
+            NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaSetType(schema.children[0], NANOARROW_TYPE_INT64), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayInitFromSchema(&array, &schema, nullptr), NANOARROW_OK);
+
+  ASSERT_EQ(ArrowArrayStartAppending(&array), NANOARROW_OK);
+
+  // Check that we can reserve recursively without erroring
+  ASSERT_EQ(ArrowArrayReserve(&array, 5), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayBuffer(array.children[0], 1)->capacity_bytes, 0);
+
+  ASSERT_EQ(ArrowArrayAppendInt(array.children[0], 123), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayFinishElement(&array), NANOARROW_OK);
+
+  ASSERT_EQ(ArrowArrayAppendNull(&array, 1), NANOARROW_OK);
+
+  ASSERT_EQ(ArrowArrayAppendInt(array.children[0], 456), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAppendInt(array.children[0], 789), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayFinishElement(&array), NANOARROW_OK);
+
+  EXPECT_EQ(ArrowArrayAppendEmpty(&array, 1), NANOARROW_OK);
+
+  // Make sure number of children is checked at finish
+  array.n_children = 0;
+  EXPECT_EQ(ArrowArrayFinishBuildingDefault(&array, &error), EINVAL);
+  EXPECT_STREQ(ArrowErrorMessage(&error),
+               "Expected 1 child of large_list_view array but found 0 child arrays");
+  array.n_children = 1;
+
+  // Make sure final child size is checked at finish
+  // TODO: this may be an expensive check with LIST_VIEW types
+  /*
+  array.children[0]->length = array.children[0]->length - 1;
+  EXPECT_EQ(ArrowArrayFinishBuildingDefault(&array, &error), EINVAL);
+  EXPECT_STREQ(
+      ArrowErrorMessage(&error),
+      "Expected child of list_view array to have length >= 3 but found array with "
+      "length 2");
+
+  array.children[0]->length = array.children[0]->length + 1;
+  */
+  EXPECT_EQ(ArrowArrayFinishBuildingDefault(&array, &error), NANOARROW_OK);
+
+#if defined(NANOARROW_BUILD_TESTS_WITH_ARROW)
+  auto arrow_array = ImportArray(&array, &schema);
+  ARROW_EXPECT_OK(arrow_array);
+
+  constexpr size_t nelems = 4;
+  const std::array<int64_t, nelems> offsets = {0, 1, 1, 3};
+  const std::array<int64_t, nelems> sizes = {1, 0, 2, 0};
+  const std::array<uint8_t, nelems> valid_bytes = {1, 0, 1, 1};
+
+  auto child_builder = std::make_shared<Int64Builder>();
+  auto builder =
+      LargeListViewBuilder(default_memory_pool(), child_builder, list_view(int64()));
+  ARROW_EXPECT_OK(
+      builder.AppendValues(offsets.data(), sizes.data(), nelems, valid_bytes.data()));
+  ARROW_EXPECT_OK(child_builder->Append(123));
+  ARROW_EXPECT_OK(child_builder->Append(456));
+  ARROW_EXPECT_OK(child_builder->Append(789));
   auto expected_array = builder.Finish();
   ARROW_EXPECT_OK(expected_array);
 

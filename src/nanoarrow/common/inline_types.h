@@ -455,7 +455,9 @@ enum ArrowType {
   NANOARROW_TYPE_BINARY_VIEW,
   NANOARROW_TYPE_STRING_VIEW,
   NANOARROW_TYPE_DECIMAL32,
-  NANOARROW_TYPE_DECIMAL64
+  NANOARROW_TYPE_DECIMAL64,
+  NANOARROW_TYPE_LIST_VIEW,
+  NANOARROW_TYPE_LARGE_LIST_VIEW,
 };
 
 /// \brief Get a string value of an enum ArrowType value
@@ -552,6 +554,10 @@ static inline const char* ArrowTypeString(enum ArrowType type) {
       return "binary_view";
     case NANOARROW_TYPE_STRING_VIEW:
       return "string_view";
+    case NANOARROW_TYPE_LIST_VIEW:
+      return "list_view";
+    case NANOARROW_TYPE_LARGE_LIST_VIEW:
+      return "large_list_view";
     default:
       return NULL;
   }
@@ -630,7 +636,8 @@ enum ArrowBufferType {
   NANOARROW_BUFFER_TYPE_DATA_OFFSET,
   NANOARROW_BUFFER_TYPE_DATA,
   NANOARROW_BUFFER_TYPE_VARIADIC_DATA,
-  NANOARROW_BUFFER_TYPE_VARIADIC_SIZE
+  NANOARROW_BUFFER_TYPE_VARIADIC_SIZE,
+  NANOARROW_BUFFER_TYPE_SIZE,
 };
 
 /// \brief The maximum number of fixed buffers in an ArrowArrayView or ArrowLayout
@@ -864,6 +871,9 @@ struct ArrowArrayPrivateData {
 
   // Size of each variadic buffer in bytes
   int64_t* variadic_buffer_sizes;
+
+  // The current offset used to build list views
+  int64_t list_view_offset;
 };
 
 /// \brief A representation of an interval.
