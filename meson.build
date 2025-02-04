@@ -244,6 +244,7 @@ if get_option('tests')
                 gtest_dep,
                 gmock_dep,
             ],
+            cpp_args: test_cpp_args,
         )
         test(name, exc)
     endforeach
