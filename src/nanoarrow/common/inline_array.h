@@ -297,24 +297,15 @@ static inline ArrowErrorCode _ArrowArrayAppendEmptyInternal(struct ArrowArray* a
         NANOARROW_RETURN_NOT_OK(ArrowBufferAppendFill(buffer, 0, size_bytes * n));
         continue;
       case NANOARROW_BUFFER_TYPE_DATA_OFFSET: {
-        if (private_data->storage_type == NANOARROW_TYPE_LIST_VIEW) {
-          NANOARROW_RETURN_NOT_OK(
-              ArrowBufferAppendInt32(buffer, (int32_t)private_data->list_view_offset));
-        } else if (private_data->storage_type == NANOARROW_TYPE_LARGE_LIST_VIEW) {
-          NANOARROW_RETURN_NOT_OK(
-              ArrowBufferAppendInt64(buffer, private_data->list_view_offset));
-        } else {
-          // Append the current value at the end of the offset buffer for each element
-          NANOARROW_RETURN_NOT_OK(ArrowBufferReserve(buffer, size_bytes * n));
+        // Append the current value at the end of the offset buffer for each element
+        NANOARROW_RETURN_NOT_OK(ArrowBufferReserve(buffer, size_bytes * n));
 
-          for (int64_t j = 0; j < n; j++) {
-            ArrowBufferAppendUnsafe(
-                buffer, buffer->data + size_bytes * (array->length + j), size_bytes);
-          }
-          // Skip the data buffer
-          i++;
+        for (int64_t j = 0; j < n; j++) {
+          ArrowBufferAppendUnsafe(buffer, buffer->data + size_bytes * (array->length + j),
+                                  size_bytes);
         }
-
+        // Skip the data buffer
+        i++;
         continue;
       }
       case NANOARROW_BUFFER_TYPE_DATA:
@@ -325,6 +316,23 @@ static inline ArrowErrorCode _ArrowArrayAppendEmptyInternal(struct ArrowArray* a
           NANOARROW_RETURN_NOT_OK(_ArrowArrayAppendBits(array, i, 0, n));
         }
         continue;
+      case NANOARROW_BUFFER_TYPE_VIEW_OFFSET: {
+        NANOARROW_RETURN_NOT_OK(ArrowBufferReserve(buffer, size_bytes * n));
+
+        if (array->length == 0) {
+          const int64_t zero_val = 0;
+          for (int64_t j = 0; j < n; j++) {
+            ArrowBufferAppendUnsafe(buffer, &zero_val, size_bytes);
+          }
+        } else {
+          for (int64_t j = 0; j < n; j++) {
+            ArrowBufferAppendUnsafe(
+                buffer, buffer->data + size_bytes * (array->length + j - 1), size_bytes);
+          }
+        }
+
+        continue;
+      }
       case NANOARROW_BUFFER_TYPE_TYPE_ID:
       case NANOARROW_BUFFER_TYPE_UNION_OFFSET:
         // These cases return above
@@ -798,13 +806,13 @@ static inline ArrowErrorCode ArrowArrayFinishElement(struct ArrowArray* array) {
       if (current_offset == 0) {
         offset = 0;
       } else {
-        struct ArrowBuffer offsets_buf, sizes_buf;
-        offsets_buf = *ArrowArrayBuffer(array, 1);
-        sizes_buf = *ArrowArrayBuffer(array, 2);
-        NANOARROW_DCHECK(offsets_buf.size_bytes == sizes_buf.size_bytes);
+        const struct ArrowBuffer *offsets_buf, *sizes_buf;
+        offsets_buf = ArrowArrayBuffer(array, 1);
+        sizes_buf = ArrowArrayBuffer(array, 2);
+        NANOARROW_DCHECK(offsets_buf->size_bytes == sizes_buf->size_bytes);
         struct ArrowBufferView offsets, sizes;
-        offsets.data.data = offsets_buf.data;
-        sizes.data.data = sizes_buf.data;
+        offsets.data.data = offsets_buf->data;
+        sizes.data.data = sizes_buf->data;
         const int32_t prev_offset = offsets.data.as_int32[current_offset - 1];
         const int32_t prev_size = sizes.data.as_int32[current_offset - 1];
         offset = prev_offset + prev_size;
@@ -822,13 +830,13 @@ static inline ArrowErrorCode ArrowArrayFinishElement(struct ArrowArray* array) {
       if (current_offset == 0) {
         offset = 0;
       } else {
-        struct ArrowBuffer offsets_buf, sizes_buf;
-        offsets_buf = *ArrowArrayBuffer(array, 1);
-        sizes_buf = *ArrowArrayBuffer(array, 2);
-        NANOARROW_DCHECK(offsets_buf.size_bytes == sizes_buf.size_bytes);
+        const struct ArrowBuffer *offsets_buf, *sizes_buf;
+        offsets_buf = ArrowArrayBuffer(array, 1);
+        sizes_buf = ArrowArrayBuffer(array, 2);
+        NANOARROW_DCHECK(offsets_buf->size_bytes == sizes_buf->size_bytes);
         struct ArrowBufferView offsets, sizes;
-        offsets.data.data = offsets_buf.data;
-        sizes.data.data = sizes_buf.data;
+        offsets.data.data = offsets_buf->data;
+        sizes.data.data = sizes_buf->data;
         const int64_t prev_offset = offsets.data.as_int64[current_offset - 1];
         const int64_t prev_size = sizes.data.as_int64[current_offset - 1];
         offset = prev_offset + prev_size;

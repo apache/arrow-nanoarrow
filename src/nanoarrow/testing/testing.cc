@@ -1969,6 +1969,18 @@ ArrowErrorCode SetArrayColumnBuffers(const json& value, ArrowArrayView* array_vi
       }
       break;
     }
+    case NANOARROW_BUFFER_TYPE_VIEW_OFFSET: {
+      NANOARROW_RETURN_NOT_OK(
+          Check(value.contains("VIEW_OFFSET"), error, "missing key 'VIEW_OFFSET'"));
+      const auto& offset = value["VIEW_OFFSET"];
+
+      if (array_view->layout.element_size_bits[buffer_i] == 32) {
+        NANOARROW_RETURN_NOT_OK(SetBufferInt<int32_t>(offset, buffer, error));
+      } else {
+        NANOARROW_RETURN_NOT_OK(SetBufferInt<int64_t>(offset, buffer, error));
+      }
+      break;
+    }
     case NANOARROW_BUFFER_TYPE_SIZE: {
       NANOARROW_RETURN_NOT_OK(Check(value.contains("SIZE"), error, "missing key 'SIZE'"));
       const auto& offset = value["SIZE"];

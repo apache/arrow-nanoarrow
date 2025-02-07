@@ -690,9 +690,6 @@ void ArrowArrayViewSetLength(struct ArrowArrayView* array_view, int64_t length) 
       case NANOARROW_BUFFER_TYPE_VALIDITY:
         array_view->buffer_views[i].size_bytes = _ArrowBytesForBits(length);
         continue;
-      case NANOARROW_BUFFER_TYPE_SIZE:
-        array_view->buffer_views[i].size_bytes = element_size_bytes * length;
-        continue;
       case NANOARROW_BUFFER_TYPE_DATA_OFFSET:
         // Probably don't want/need to rely on the producer to have allocated an
         // offsets buffer of length 1 for a zero-size array
@@ -706,6 +703,8 @@ void ArrowArrayViewSetLength(struct ArrowArrayView* array_view, int64_t length) 
         continue;
       case NANOARROW_BUFFER_TYPE_TYPE_ID:
       case NANOARROW_BUFFER_TYPE_UNION_OFFSET:
+      case NANOARROW_BUFFER_TYPE_VIEW_OFFSET:
+      case NANOARROW_BUFFER_TYPE_SIZE:
         array_view->buffer_views[i].size_bytes = element_size_bytes * length;
         continue;
       case NANOARROW_BUFFER_TYPE_VARIADIC_DATA:
@@ -866,16 +865,14 @@ static int ArrowArrayViewValidateMinimal(struct ArrowArrayView* array_view,
         min_buffer_size_bytes = element_size_bytes * offset_plus_length;
         break;
       case NANOARROW_BUFFER_TYPE_DATA_OFFSET:
-        if (array_view->storage_type == NANOARROW_TYPE_LIST_VIEW ||
-            array_view->storage_type == NANOARROW_TYPE_LARGE_LIST_VIEW) {
-          min_buffer_size_bytes =
-              (offset_plus_length != 0) * element_size_bytes * offset_plus_length;
-        } else {
-          // Probably don't want/need to rely on the producer to have allocated an
-          // offsets buffer of length 1 for a zero-size array
-          min_buffer_size_bytes =
-              (offset_plus_length != 0) * element_size_bytes * (offset_plus_length + 1);
-        }
+        // Probably don't want/need to rely on the producer to have allocated an
+        // offsets buffer of length 1 for a zero-size array
+        min_buffer_size_bytes =
+            (offset_plus_length != 0) * element_size_bytes * (offset_plus_length + 1);
+        break;
+      case NANOARROW_BUFFER_TYPE_VIEW_OFFSET:
+        min_buffer_size_bytes =
+            (offset_plus_length != 0) * element_size_bytes * offset_plus_length;
         break;
       case NANOARROW_BUFFER_TYPE_DATA:
         min_buffer_size_bytes =
