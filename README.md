@@ -82,7 +82,7 @@ CMake is also supported via a build/install with `find_package()` or using
 
 ```
 fetchcontent_declare(nanoarrow
-                     URL "https://www.apache.org/dyn/closer.lua?action=download&filename=arrow/nanoarrow-0.5.0/apache-arrow-0.5.0.tar.gz")
+                     URL "https://www.apache.org/dyn/closer.lua?action=download&filename=arrow/apache-arrow-nanoarrow-0.6.0/apache-arrow-nanoarrow-0.6.0.tar.gz")
 
 fetchcontent_makeavailable(nanoarrow)
 ```
