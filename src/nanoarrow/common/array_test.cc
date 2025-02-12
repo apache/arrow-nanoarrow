@@ -1592,18 +1592,14 @@ TEST(ArrayTest, ArrayTestAppendToListViewArray) {
                "Expected 1 child of list_view array but found 0 child arrays");
   array.n_children = 1;
 
-  // Make sure final child size is checked at finish
-  // TODO: this may be an expensive check with LIST_VIEW types
-  /*
+  // Make sure size + offset is always within bounds of child array
   array.children[0]->length = array.children[0]->length - 1;
-  EXPECT_EQ(ArrowArrayFinishBuildingDefault(&array, &error), EINVAL);
-  EXPECT_STREQ(
-      ArrowErrorMessage(&error),
-      "Expected child of list_view array to have length >= 3 but found array with "
-      "length 2");
-
+  EXPECT_EQ(ArrowArrayFinishBuilding(&array, NANOARROW_VALIDATION_LEVEL_FULL, &error),
+            EINVAL);
+  EXPECT_STREQ(ArrowErrorMessage(&error),
+               "Offset: 3 + size: 2 at index: 4 exceeds length of child view: 4");
   array.children[0]->length = array.children[0]->length + 1;
-  */
+
   EXPECT_EQ(ArrowArrayFinishBuildingDefault(&array, &error), NANOARROW_OK);
 
 #if defined(NANOARROW_BUILD_TESTS_WITH_ARROW)
@@ -1673,18 +1669,14 @@ TEST(ArrayTest, ArrayTestAppendToLargeListViewArray) {
                "Expected 1 child of large_list_view array but found 0 child arrays");
   array.n_children = 1;
 
-  // Make sure final child size is checked at finish
-  // TODO: this may be an expensive check with LIST_VIEW types
-  /*
+  // Make sure size + offset is always within bounds of child array
   array.children[0]->length = array.children[0]->length - 1;
-  EXPECT_EQ(ArrowArrayFinishBuildingDefault(&array, &error), EINVAL);
-  EXPECT_STREQ(
-      ArrowErrorMessage(&error),
-      "Expected child of list_view array to have length >= 3 but found array with "
-      "length 2");
-
+  EXPECT_EQ(ArrowArrayFinishBuilding(&array, NANOARROW_VALIDATION_LEVEL_FULL, &error),
+            EINVAL);
+  EXPECT_STREQ(ArrowErrorMessage(&error),
+               "Offset: 3 + size: 2 at index: 4 exceeds length of child view: 4");
   array.children[0]->length = array.children[0]->length + 1;
-  */
+
   EXPECT_EQ(ArrowArrayFinishBuildingDefault(&array, &error), NANOARROW_OK);
 
 #if defined(NANOARROW_BUILD_TESTS_WITH_ARROW)

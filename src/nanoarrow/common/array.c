@@ -1481,6 +1481,34 @@ static int ArrowArrayViewValidateFull(struct ArrowArrayView* array_view,
     }
   }
 
+  if (array_view->storage_type == NANOARROW_TYPE_LIST_VIEW ||
+      array_view->storage_type == NANOARROW_TYPE_LARGE_LIST_VIEW) {
+    int64_t child_len = array_view->children[0]->length;
+
+    struct ArrowBufferView offsets, sizes;
+    offsets.data.data = array_view->buffer_views[1].data.data;
+    sizes.data.data = array_view->buffer_views[2].data.data;
+
+    for (int64_t i = 0; i < array_view->length; i++) {
+      int64_t offset, size;
+      if (array_view->storage_type == NANOARROW_TYPE_LIST_VIEW) {
+        offset = offsets.data.as_int32[i];
+        size = sizes.data.as_int32[i];
+      } else {
+        offset = offsets.data.as_int64[i];
+        size = sizes.data.as_int64[i];
+      }
+
+      if ((offset + size) > child_len) {
+        ArrowErrorSet(error,
+                      "Offset: %" PRId64 " + size: %" PRId64 " at index: %" PRId64
+                      " exceeds length of child view: %" PRId64,
+                      offset, size, i, child_len);
+        return EINVAL;
+      }
+    }
+  }
+
   // Recurse for children
   for (int64_t i = 0; i < array_view->n_children; i++) {
     NANOARROW_RETURN_NOT_OK(ArrowArrayViewValidateFull(array_view->children[i], error));
