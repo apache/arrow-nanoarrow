@@ -1581,6 +1581,10 @@ TEST(ArrayTest, ArrayTestAppendToListViewArray) {
 
   EXPECT_EQ(ArrowArrayAppendEmpty(&array, 1), NANOARROW_OK);
 
+  ASSERT_EQ(ArrowArrayAppendInt(array.children[0], 42), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAppendInt(array.children[0], 555), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayFinishElement(&array), NANOARROW_OK);
+
   // Make sure number of children is checked at finish
   array.n_children = 0;
   EXPECT_EQ(ArrowArrayFinishBuildingDefault(&array, &error), EINVAL);
@@ -1606,10 +1610,10 @@ TEST(ArrayTest, ArrayTestAppendToListViewArray) {
   auto arrow_array = ImportArray(&array, &schema);
   ARROW_EXPECT_OK(arrow_array);
 
-  constexpr size_t nelems = 4;
-  const std::array<int32_t, nelems> offsets = {0, 1, 1, 3};
-  const std::array<int32_t, nelems> sizes = {1, 0, 2, 0};
-  const std::array<uint8_t, nelems> valid_bytes = {1, 0, 1, 1};
+  constexpr size_t nelems = 5;
+  const std::array<int32_t, nelems> offsets = {0, 1, 1, 3, 3};
+  const std::array<int32_t, nelems> sizes = {1, 0, 2, 0, 2};
+  const std::array<uint8_t, nelems> valid_bytes = {1, 0, 1, 1, 1};
 
   auto child_builder = std::make_shared<Int64Builder>();
   auto builder =
@@ -1619,6 +1623,8 @@ TEST(ArrayTest, ArrayTestAppendToListViewArray) {
   ARROW_EXPECT_OK(child_builder->Append(123));
   ARROW_EXPECT_OK(child_builder->Append(456));
   ARROW_EXPECT_OK(child_builder->Append(789));
+  ARROW_EXPECT_OK(child_builder->Append(42));
+  ARROW_EXPECT_OK(child_builder->Append(555));
   auto expected_array = builder.Finish();
   ARROW_EXPECT_OK(expected_array);
 
@@ -1656,6 +1662,10 @@ TEST(ArrayTest, ArrayTestAppendToLargeListViewArray) {
 
   EXPECT_EQ(ArrowArrayAppendEmpty(&array, 1), NANOARROW_OK);
 
+  ASSERT_EQ(ArrowArrayAppendInt(array.children[0], 42), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAppendInt(array.children[0], 555), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayFinishElement(&array), NANOARROW_OK);
+
   // Make sure number of children is checked at finish
   array.n_children = 0;
   EXPECT_EQ(ArrowArrayFinishBuildingDefault(&array, &error), EINVAL);
@@ -1681,10 +1691,10 @@ TEST(ArrayTest, ArrayTestAppendToLargeListViewArray) {
   auto arrow_array = ImportArray(&array, &schema);
   ARROW_EXPECT_OK(arrow_array);
 
-  constexpr size_t nelems = 4;
-  const std::array<int64_t, nelems> offsets = {0, 1, 1, 3};
-  const std::array<int64_t, nelems> sizes = {1, 0, 2, 0};
-  const std::array<uint8_t, nelems> valid_bytes = {1, 0, 1, 1};
+  constexpr size_t nelems = 5;
+  const std::array<int64_t, nelems> offsets = {0, 1, 1, 3, 3};
+  const std::array<int64_t, nelems> sizes = {1, 0, 2, 0, 2};
+  const std::array<uint8_t, nelems> valid_bytes = {1, 0, 1, 1, 1};
 
   auto child_builder = std::make_shared<Int64Builder>();
   auto builder =
@@ -1694,6 +1704,8 @@ TEST(ArrayTest, ArrayTestAppendToLargeListViewArray) {
   ARROW_EXPECT_OK(child_builder->Append(123));
   ARROW_EXPECT_OK(child_builder->Append(456));
   ARROW_EXPECT_OK(child_builder->Append(789));
+  ARROW_EXPECT_OK(child_builder->Append(42));
+  ARROW_EXPECT_OK(child_builder->Append(555));
   auto expected_array = builder.Finish();
   ARROW_EXPECT_OK(expected_array);
 
