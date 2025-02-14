@@ -143,14 +143,11 @@ static inline ArrowErrorCode ArrowArrayStartAppending(struct ArrowArray* array) 
 
   // Initialize any data offset buffer with a single zero
   for (int i = 0; i < NANOARROW_MAX_FIXED_BUFFERS; i++) {
-    const int is_list_view =
-        (private_data->storage_type == NANOARROW_TYPE_LIST_VIEW) ||
-        (private_data->storage_type == NANOARROW_TYPE_LARGE_LIST_VIEW);
     if (private_data->layout.buffer_type[i] == NANOARROW_BUFFER_TYPE_DATA_OFFSET &&
-        !is_list_view && private_data->layout.element_size_bits[i] == 64) {
+        private_data->layout.element_size_bits[i] == 64) {
       NANOARROW_RETURN_NOT_OK(ArrowBufferAppendInt64(ArrowArrayBuffer(array, i), 0));
     } else if (private_data->layout.buffer_type[i] == NANOARROW_BUFFER_TYPE_DATA_OFFSET &&
-               !is_list_view && private_data->layout.element_size_bits[i] == 32) {
+               private_data->layout.element_size_bits[i] == 32) {
       NANOARROW_RETURN_NOT_OK(ArrowBufferAppendInt32(ArrowArrayBuffer(array, i), 0));
     }
   }
