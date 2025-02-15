@@ -34,6 +34,7 @@ RUN apt-get install -y -V ca-certificates lsb-release wget && \
 # For documentation build + Python build
 RUN python3 -m venv --upgrade-deps /venv
 RUN echo "source /venv/bin/activate && pip install pydata-sphinx-theme sphinx breathe build Cython numpy pytest pytest-cython pytest-cov pyarrow" | bash
+RUN echo "source /venv/bin/activate && pip install 'https://github.com/lidavidm/arrow-adbc/archive/gh-2432.zip#subdirectory=docs/source/ext/illiterate_sphinx'" | bash
 ENV NANOARROW_PYTHON_VENV "/venv"
 
 # Locale required for R CMD check
