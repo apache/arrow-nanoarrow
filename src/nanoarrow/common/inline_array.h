@@ -315,19 +315,7 @@ static inline ArrowErrorCode _ArrowArrayAppendEmptyInternal(struct ArrowArray* a
         continue;
       case NANOARROW_BUFFER_TYPE_VIEW_OFFSET: {
         NANOARROW_RETURN_NOT_OK(ArrowBufferReserve(buffer, size_bytes * n));
-
-        if (array->length == 0) {
-          const int64_t zero_val = 0;
-          for (int64_t j = 0; j < n; j++) {
-            ArrowBufferAppendUnsafe(buffer, &zero_val, size_bytes);
-          }
-        } else {
-          for (int64_t j = 0; j < n; j++) {
-            ArrowBufferAppendUnsafe(
-                buffer, buffer->data + size_bytes * (array->length + j - 1), size_bytes);
-          }
-        }
-
+        NANOARROW_RETURN_NOT_OK(ArrowBufferAppendFill(buffer, 0, size_bytes * n));
         continue;
       }
       case NANOARROW_BUFFER_TYPE_TYPE_ID:
@@ -803,7 +791,7 @@ static inline ArrowErrorCode ArrowArrayFinishElement(struct ArrowArray* array) {
           ArrowBufferAppendInt32(ArrowArrayBuffer(array, 1), last_valid_offset));
       NANOARROW_RETURN_NOT_OK(ArrowBufferAppendInt32(
           ArrowArrayBuffer(array, 2), (int32_t)child_length - last_valid_offset));
-      private_data->list_view_offset = (int32_t)child_length;
+      private_data->list_view_offset = child_length;
       break;
     }
     case NANOARROW_TYPE_LARGE_LIST_VIEW: {
