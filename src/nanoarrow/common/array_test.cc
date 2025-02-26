@@ -3251,45 +3251,113 @@ TEST(ArrayTest, ArrayViewTestListView) {
   EXPECT_EQ(ArrowArrayViewValidate(&array_view, NANOARROW_VALIDATION_LEVEL_FULL, nullptr),
             NANOARROW_OK);
 
+  // Expect error for offsets that will cause bad access
+  auto offsets = const_cast<int32_t*>(reinterpret_cast<const int32_t*>(array.buffers[1]));
+
+  offsets[0] = -1;
+  EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayViewValidate(&array_view, NANOARROW_VALIDATION_LEVEL_FULL, &error),
+            EINVAL);
+  EXPECT_STREQ(error.message, "Invalid negative offset -1 at index 0");
+
   // For a sliced array, this can still pass validation
-  /*
   array.offset = 1;
-  array.length = array_view.length - 1;
+  array.length = 1;
   EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayViewValidate(&array_view, NANOARROW_VALIDATION_LEVEL_FULL, &error),
             NANOARROW_OK);
 
   // Check for negative element sizes
   array.offset = 0;
-  array.length = array.length + 1;
+  array.length = 2;
   offsets[0] = 0;
   offsets[1] = -1;
   EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayViewValidate(&array_view, NANOARROW_VALIDATION_LEVEL_FULL, &error),
             EINVAL);
-  EXPECT_STREQ(error.message, "[1] Expected element size >= 0");
+  EXPECT_STREQ(error.message, "Invalid negative offset -1 at index 1");
 
   // Sliced array should also fail validation because the first element is negative
   array.offset = 1;
-  array.length = array_view.length - 1;
-  EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), EINVAL);
-  EXPECT_STREQ(error.message, "Expected first offset >= 0 but found -1");
+  array.length = 1;
+  EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayViewValidate(&array_view, NANOARROW_VALIDATION_LEVEL_FULL, &error),
+            EINVAL);
+  EXPECT_STREQ(
+      error.message,
+      "Invalid negative offset -1 at index 1");  // TODO: should the index include offset?
 
-  // Check for last element >= 0
+  // ...but the array should be valid if we do not include the negative offset
   array.offset = 0;
-  array.length = array.length + 1;
+  array.length = 1;
+  EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayViewValidate(&array_view, NANOARROW_VALIDATION_LEVEL_FULL, &error),
+            NANOARROW_OK);
   offsets[1] = 1;
-  offsets[2] = -1;
-  EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), EINVAL);
-  EXPECT_STREQ(error.message, "Expected last offset >= 0 but found -1");
+  array.length = 2;
 
-  // ...but the array should be valid if we make it one element shorter
+  // Expect error for invalid sizes
+  auto sizes = const_cast<int32_t*>(reinterpret_cast<const int32_t*>(array.buffers[2]));
+
+  sizes[0] = -1;
+  EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayViewValidate(&array_view, NANOARROW_VALIDATION_LEVEL_FULL, &error),
+            EINVAL);
+  EXPECT_STREQ(error.message, "Invalid negative size -1 at index 0");
+
+  // For a sliced array, this can still pass validation
+  array.offset = 1;
   array.length = 1;
   EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayViewValidate(&array_view, NANOARROW_VALIDATION_LEVEL_FULL, &error),
             NANOARROW_OK);
 
-  */
+  // Check for negative element sizes
+  array.offset = 0;
+  array.length = 2;
+  sizes[0] = 0;
+  sizes[1] = -1;
+  EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayViewValidate(&array_view, NANOARROW_VALIDATION_LEVEL_FULL, &error),
+            EINVAL);
+  EXPECT_STREQ(error.message, "Invalid negative size -1 at index 1");
+
+  // Sliced array should also fail validation because the first element is negative
+  array.offset = 1;
+  array.length = 1;
+  EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayViewValidate(&array_view, NANOARROW_VALIDATION_LEVEL_FULL, &error),
+            EINVAL);
+  EXPECT_STREQ(
+      error.message,
+      "Invalid negative size -1 at index 1");  // TODO: should the index include offset?
+
+  // ...but the array should be valid if we do not include the negative offset
+  array.offset = 0;
+  array.length = 1;
+  EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayViewValidate(&array_view, NANOARROW_VALIDATION_LEVEL_FULL, &error),
+            NANOARROW_OK);
+  sizes[0] = 1;
+  sizes[1] = 0;
+  array.length = 2;
+
+  // Make sure size + offset is always within bounds of child array
+  offsets[0] = 42;
+  EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayViewValidate(&array_view, NANOARROW_VALIDATION_LEVEL_FULL, &error),
+            EINVAL);
+  EXPECT_STREQ(error.message,
+               "Offset: 42 + size: 1 at index: 0 exceeds length of child view: 1");
+
+  offsets[0] = 0;
+  sizes[1] = 42;
+  EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayViewValidate(&array_view, NANOARROW_VALIDATION_LEVEL_FULL, &error),
+            EINVAL);
+  EXPECT_STREQ(error.message,
+               "Offset: 1 + size: 42 at index: 1 exceeds length of child view: 1");
+
   ArrowArrayRelease(&array);
   ArrowArrayViewReset(&array_view);
 }
@@ -3375,45 +3443,112 @@ TEST(ArrayTest, ArrayViewTestLargeListView) {
   EXPECT_EQ(ArrowArrayViewValidate(&array_view, NANOARROW_VALIDATION_LEVEL_FULL, nullptr),
             NANOARROW_OK);
 
+  // Expect error for offsets that will cause bad access
+  auto offsets = const_cast<int64_t*>(reinterpret_cast<const int64_t*>(array.buffers[1]));
+
+  offsets[0] = -1;
+  EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayViewValidate(&array_view, NANOARROW_VALIDATION_LEVEL_FULL, &error),
+            EINVAL);
+  EXPECT_STREQ(error.message, "Invalid negative offset -1 at index 0");
+
   // For a sliced array, this can still pass validation
-  /* TODO: what should we do down here
   array.offset = 1;
-  array.length = array_view.length - 1;
+  array.length = 1;
   EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayViewValidate(&array_view, NANOARROW_VALIDATION_LEVEL_FULL, &error),
             NANOARROW_OK);
 
   // Check for negative element sizes
   array.offset = 0;
-  array.length = array.length + 1;
+  array.length = 2;
   offsets[0] = 0;
   offsets[1] = -1;
   EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayViewValidate(&array_view, NANOARROW_VALIDATION_LEVEL_FULL, &error),
             EINVAL);
-  EXPECT_STREQ(error.message, "[1] Expected element size >= 0");
+  EXPECT_STREQ(error.message, "Invalid negative offset -1 at index 1");
 
   // Sliced array should also fail validation because the first element is negative
   array.offset = 1;
-  array.length = array_view.length - 1;
-  EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), EINVAL);
-  EXPECT_STREQ(error.message, "Expected first offset >= 0 but found -1");
+  array.length = 1;
+  EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayViewValidate(&array_view, NANOARROW_VALIDATION_LEVEL_FULL, &error),
+            EINVAL);
+  EXPECT_STREQ(
+      error.message,
+      "Invalid negative offset -1 at index 1");  // TODO: should the index include offset?
 
-  // Check for last element >= 0
+  // ...but the array should be valid if we do not include the negative offset
   array.offset = 0;
-  array.length = array.length + 1;
-  offsets[1] = 1;
-  offsets[2] = -1;
-  EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), EINVAL);
-  EXPECT_STREQ(error.message, "Expected last offset >= 0 but found -1");
-
-  // ...but the array should be valid if we make it one element shorter
   array.length = 1;
   EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), NANOARROW_OK);
   EXPECT_EQ(ArrowArrayViewValidate(&array_view, NANOARROW_VALIDATION_LEVEL_FULL, &error),
             NANOARROW_OK);
-  */
+  offsets[1] = 1;
+  array.length = 2;
 
+  // Expect error for invalid sizes
+  auto sizes = const_cast<int64_t*>(reinterpret_cast<const int64_t*>(array.buffers[2]));
+
+  sizes[0] = -1;
+  EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayViewValidate(&array_view, NANOARROW_VALIDATION_LEVEL_FULL, &error),
+            EINVAL);
+  EXPECT_STREQ(error.message, "Invalid negative size -1 at index 0");
+
+  // For a sliced array, this can still pass validation
+  array.offset = 1;
+  array.length = 1;
+  EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayViewValidate(&array_view, NANOARROW_VALIDATION_LEVEL_FULL, &error),
+            NANOARROW_OK);
+
+  // Check for negative element sizes
+  array.offset = 0;
+  array.length = 2;
+  sizes[0] = 0;
+  sizes[1] = -1;
+  EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayViewValidate(&array_view, NANOARROW_VALIDATION_LEVEL_FULL, &error),
+            EINVAL);
+  EXPECT_STREQ(error.message, "Invalid negative size -1 at index 1");
+
+  // Sliced array should also fail validation because the first element is negative
+  array.offset = 1;
+  array.length = 1;
+  EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayViewValidate(&array_view, NANOARROW_VALIDATION_LEVEL_FULL, &error),
+            EINVAL);
+  EXPECT_STREQ(
+      error.message,
+      "Invalid negative size -1 at index 1");  // TODO: should the index include offset?
+
+  // ...but the array should be valid if we do not include the negative offset
+  array.offset = 0;
+  array.length = 1;
+  EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayViewValidate(&array_view, NANOARROW_VALIDATION_LEVEL_FULL, &error),
+            NANOARROW_OK);
+  sizes[0] = 1;
+  sizes[1] = 0;
+  array.length = 2;
+
+  // Make sure size + offset is always within bounds of child array
+  offsets[0] = 42;
+  EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayViewValidate(&array_view, NANOARROW_VALIDATION_LEVEL_FULL, &error),
+            EINVAL);
+  EXPECT_STREQ(error.message,
+               "Offset: 42 + size: 1 at index: 0 exceeds length of child view: 1");
+
+  offsets[0] = 0;
+  sizes[1] = 42;
+  EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayViewValidate(&array_view, NANOARROW_VALIDATION_LEVEL_FULL, &error),
+            EINVAL);
+  EXPECT_STREQ(error.message,
+               "Offset: 1 + size: 42 at index: 1 exceeds length of child view: 1");
   ArrowArrayRelease(&array);
   ArrowArrayViewReset(&array_view);
 }

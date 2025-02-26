@@ -1201,10 +1201,6 @@ static int ArrowArrayViewValidateDefault(struct ArrowArrayView* array_view,
         break;
       }
 
-    case NANOARROW_TYPE_LIST_VIEW:
-    case NANOARROW_TYPE_LARGE_LIST_VIEW:
-      break;
-
     case NANOARROW_TYPE_RUN_END_ENCODED: {
       struct ArrowArrayView* run_ends_view = array_view->children[0];
       if (run_ends_view->length == 0) {
@@ -1450,7 +1446,8 @@ static int ArrowArrayViewValidateFull(struct ArrowArrayView* array_view,
     offsets.data.data = array_view->buffer_views[1].data.data;
     sizes.data.data = array_view->buffer_views[2].data.data;
 
-    for (int64_t i = 0; i < array_view->length; i++) {
+    for (int64_t i = array_view->offset; i < array_view->length + array_view->offset;
+         i++) {
       int64_t offset, size;
       if (array_view->storage_type == NANOARROW_TYPE_LIST_VIEW) {
         offset = offsets.data.as_int32[i];
@@ -1458,6 +1455,18 @@ static int ArrowArrayViewValidateFull(struct ArrowArrayView* array_view,
       } else {
         offset = offsets.data.as_int64[i];
         size = sizes.data.as_int64[i];
+      }
+
+      if (offset < 0) {
+        ArrowErrorSet(error, "Invalid negative offset %" PRId64 " at index %" PRId64,
+                      offset, i);
+        return EINVAL;
+      }
+
+      if (size < 0) {
+        ArrowErrorSet(error, "Invalid negative size %" PRId64 " at index %" PRId64, size,
+                      i);
+        return EINVAL;
       }
 
       if ((offset + size) > child_len) {
