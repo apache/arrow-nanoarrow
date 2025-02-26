@@ -1146,10 +1146,6 @@ static int ArrowArrayViewValidateDefault(struct ArrowArrayView* array_view,
 
     case NANOARROW_TYPE_LIST:
     case NANOARROW_TYPE_MAP:
-    case NANOARROW_TYPE_LIST_VIEW: {
-      const size_t idx = array_view->storage_type == NANOARROW_TYPE_LIST_VIEW
-                             ? offset_plus_length - 1
-                             : offset_plus_length;
       if (array_view->buffer_views[1].size_bytes != 0) {
         first_offset = array_view->buffer_views[1].data.as_int32[array_view->offset];
         if (first_offset < 0) {
@@ -1158,7 +1154,7 @@ static int ArrowArrayViewValidateDefault(struct ArrowArrayView* array_view,
           return EINVAL;
         }
 
-        last_offset = array_view->buffer_views[1].data.as_int32[idx];
+        last_offset = array_view->buffer_views[1].data.as_int32[offset_plus_length];
         if (last_offset < 0) {
           ArrowErrorSet(error, "Expected last offset >= 0 but found %" PRId64,
                         last_offset);
@@ -1175,31 +1171,9 @@ static int ArrowArrayViewValidateDefault(struct ArrowArrayView* array_view,
           return EINVAL;
         }
       }
-
-      if ((array_view->storage_type == NANOARROW_TYPE_LIST_VIEW) &&
-          (array_view->buffer_views[2].size_bytes != 0)) {
-        const int64_t first_size =
-            array_view->buffer_views[2].data.as_int32[array_view->offset];
-        if (first_size < 0) {
-          ArrowErrorSet(error, "Expected first size >= 0 but found %" PRId64, first_size);
-          return EINVAL;
-        }
-
-        const int64_t last_size =
-            array_view->buffer_views[2].data.as_int32[offset_plus_length - 1];
-        if (last_size < 0) {
-          ArrowErrorSet(error, "Expected last size >= 0 but found %" PRId64, last_size);
-          return EINVAL;
-        }
-      }
       break;
-    }
 
     case NANOARROW_TYPE_LARGE_LIST:
-    case NANOARROW_TYPE_LARGE_LIST_VIEW: {
-      const size_t idx = array_view->storage_type == NANOARROW_TYPE_LARGE_LIST_VIEW
-                             ? offset_plus_length - 1
-                             : offset_plus_length;
       if (array_view->buffer_views[1].size_bytes != 0) {
         first_offset = array_view->buffer_views[1].data.as_int64[array_view->offset];
         if (first_offset < 0) {
@@ -1208,7 +1182,7 @@ static int ArrowArrayViewValidateDefault(struct ArrowArrayView* array_view,
           return EINVAL;
         }
 
-        last_offset = array_view->buffer_views[1].data.as_int64[idx];
+        last_offset = array_view->buffer_views[1].data.as_int64[offset_plus_length];
         if (last_offset < 0) {
           ArrowErrorSet(error, "Expected last offset >= 0 but found %" PRId64,
                         last_offset);
@@ -1224,25 +1198,12 @@ static int ArrowArrayViewValidateDefault(struct ArrowArrayView* array_view,
                         array_view->children[0]->length);
           return EINVAL;
         }
+        break;
       }
 
-      if ((array_view->storage_type == NANOARROW_TYPE_LARGE_LIST_VIEW) &&
-          (array_view->buffer_views[2].size_bytes != 0)) {
-        const int64_t first_size =
-            array_view->buffer_views[2].data.as_int64[array_view->offset];
-        if (first_size < 0) {
-          ArrowErrorSet(error, "Expected first size >= 0 but found %" PRId64, first_size);
-          return EINVAL;
-        }
-
-        const int64_t last_size = array_view->buffer_views[2].data.as_int64[idx];
-        if (last_size < 0) {
-          ArrowErrorSet(error, "Expected last size >= 0 but found %" PRId64, last_size);
-          return EINVAL;
-        }
-      }
+    case NANOARROW_TYPE_LIST_VIEW:
+    case NANOARROW_TYPE_LARGE_LIST_VIEW:
       break;
-    }
 
     case NANOARROW_TYPE_RUN_END_ENCODED: {
       struct ArrowArrayView* run_ends_view = array_view->children[0];

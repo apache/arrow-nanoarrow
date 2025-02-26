@@ -3202,6 +3202,254 @@ TEST(ArrayTest, ArrayViewTestLargeList) {
   ArrowArrayViewReset(&array_view);
 }
 
+TEST(ArrayTest, ArrayViewTestListView) {
+  struct ArrowArrayView array_view;
+  struct ArrowError error;
+  ArrowArrayViewInitFromType(&array_view, NANOARROW_TYPE_LIST_VIEW);
+
+  EXPECT_EQ(array_view.array, nullptr);
+  EXPECT_EQ(array_view.storage_type, NANOARROW_TYPE_LIST_VIEW);
+  EXPECT_EQ(ArrowArrayViewGetBufferType(&array_view, 0), NANOARROW_BUFFER_TYPE_VALIDITY);
+  EXPECT_EQ(ArrowArrayViewGetBufferElementSizeBits(&array_view, 0), 1);
+  EXPECT_EQ(ArrowArrayViewGetBufferType(&array_view, 1),
+            NANOARROW_BUFFER_TYPE_VIEW_OFFSET);
+  EXPECT_EQ(ArrowArrayViewGetBufferElementSizeBits(&array_view, 1), 8 * sizeof(int32_t));
+  EXPECT_EQ(ArrowArrayViewGetBufferType(&array_view, 2), NANOARROW_BUFFER_TYPE_SIZE);
+  EXPECT_EQ(ArrowArrayViewGetBufferElementSizeBits(&array_view, 2), 8 * sizeof(int32_t));
+
+  EXPECT_EQ(ArrowArrayViewAllocateChildren(&array_view, 1), NANOARROW_OK);
+  EXPECT_EQ(array_view.n_children, 1);
+  ArrowArrayViewInitFromType(array_view.children[0], NANOARROW_TYPE_INT32);
+  EXPECT_EQ(array_view.children[0]->storage_type, NANOARROW_TYPE_INT32);
+
+  // Can't assume the offsets buffer exists for length == 0
+  ArrowArrayViewSetLength(&array_view, 0);
+  EXPECT_EQ(ArrowArrayViewGetBufferView(&array_view, 0).size_bytes, 0);
+  EXPECT_EQ(ArrowArrayViewGetBufferView(&array_view, 1).size_bytes, 0);
+
+  // This should pass validation even if all buffers are empty
+  EXPECT_EQ(ArrowArrayViewValidate(&array_view, NANOARROW_VALIDATION_LEVEL_FULL, &error),
+            NANOARROW_OK);
+
+  ArrowArrayViewSetLength(&array_view, 5);
+  EXPECT_EQ(ArrowArrayViewGetBufferView(&array_view, 0).size_bytes, 1);
+  EXPECT_EQ(ArrowArrayViewGetBufferView(&array_view, 1).size_bytes, 5 * sizeof(int32_t));
+
+  // Build a valid array ([[1234], []])
+  struct ArrowArray array;
+  ASSERT_EQ(ArrowArrayInitFromType(&array, NANOARROW_TYPE_LIST_VIEW), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAllocateChildren(&array, 1), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayInitFromType(array.children[0], NANOARROW_TYPE_INT32),
+            NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayStartAppending(&array), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAppendInt(array.children[0], 1234), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayFinishElement(&array), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayFinishElement(&array), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayFinishBuildingDefault(&array, nullptr), NANOARROW_OK);
+
+  EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, nullptr), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayViewValidate(&array_view, NANOARROW_VALIDATION_LEVEL_FULL, nullptr),
+            NANOARROW_OK);
+
+  // For a sliced array, this can still pass validation
+  /*
+  array.offset = 1;
+  array.length = array_view.length - 1;
+  EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayViewValidate(&array_view, NANOARROW_VALIDATION_LEVEL_FULL, &error),
+            NANOARROW_OK);
+
+  // Check for negative element sizes
+  array.offset = 0;
+  array.length = array.length + 1;
+  offsets[0] = 0;
+  offsets[1] = -1;
+  EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayViewValidate(&array_view, NANOARROW_VALIDATION_LEVEL_FULL, &error),
+            EINVAL);
+  EXPECT_STREQ(error.message, "[1] Expected element size >= 0");
+
+  // Sliced array should also fail validation because the first element is negative
+  array.offset = 1;
+  array.length = array_view.length - 1;
+  EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), EINVAL);
+  EXPECT_STREQ(error.message, "Expected first offset >= 0 but found -1");
+
+  // Check for last element >= 0
+  array.offset = 0;
+  array.length = array.length + 1;
+  offsets[1] = 1;
+  offsets[2] = -1;
+  EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), EINVAL);
+  EXPECT_STREQ(error.message, "Expected last offset >= 0 but found -1");
+
+  // ...but the array should be valid if we make it one element shorter
+  array.length = 1;
+  EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayViewValidate(&array_view, NANOARROW_VALIDATION_LEVEL_FULL, &error),
+            NANOARROW_OK);
+
+  */
+  ArrowArrayRelease(&array);
+  ArrowArrayViewReset(&array_view);
+}
+
+TEST(ArrayTest, ArrayViewTestListViewGet) {
+  struct ArrowArrayView array_view;
+  ArrowArrayViewInitFromType(&array_view, NANOARROW_TYPE_LIST_VIEW);
+  EXPECT_EQ(ArrowArrayViewAllocateChildren(&array_view, 1), NANOARROW_OK);
+  ArrowArrayViewInitFromType(array_view.children[0], NANOARROW_TYPE_INT32);
+
+  // Build a valid array
+  struct ArrowArray array;
+  ASSERT_EQ(ArrowArrayInitFromType(&array, NANOARROW_TYPE_LIST_VIEW), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAllocateChildren(&array, 1), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayInitFromType(array.children[0], NANOARROW_TYPE_INT32),
+            NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayStartAppending(&array), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAppendInt(array.children[0], 1234), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayFinishElement(&array), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAppendNull(&array, 1), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAppendInt(array.children[0], 42), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayFinishElement(&array), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayFinishBuildingDefault(&array, nullptr), NANOARROW_OK);
+
+  EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, nullptr), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayViewValidate(&array_view, NANOARROW_VALIDATION_LEVEL_FULL, nullptr),
+            NANOARROW_OK);
+
+  EXPECT_EQ(ArrowArrayViewListChildOffset(&array_view, 0), 0);
+  EXPECT_EQ(ArrowArrayViewListChildOffset(&array_view, 1), 0);
+  EXPECT_EQ(ArrowArrayViewListChildOffset(&array_view, 2), 1);
+
+  ArrowArrayRelease(&array);
+  ArrowArrayViewReset(&array_view);
+}
+
+TEST(ArrayTest, ArrayViewTestLargeListView) {
+  struct ArrowArrayView array_view;
+  struct ArrowError error;
+  ArrowArrayViewInitFromType(&array_view, NANOARROW_TYPE_LARGE_LIST_VIEW);
+
+  EXPECT_EQ(array_view.array, nullptr);
+  EXPECT_EQ(array_view.storage_type, NANOARROW_TYPE_LARGE_LIST_VIEW);
+  EXPECT_EQ(ArrowArrayViewGetBufferType(&array_view, 0), NANOARROW_BUFFER_TYPE_VALIDITY);
+  EXPECT_EQ(ArrowArrayViewGetBufferElementSizeBits(&array_view, 0), 1);
+  EXPECT_EQ(ArrowArrayViewGetBufferType(&array_view, 1),
+            NANOARROW_BUFFER_TYPE_VIEW_OFFSET);
+  EXPECT_EQ(ArrowArrayViewGetBufferElementSizeBits(&array_view, 1), 8 * sizeof(int64_t));
+  EXPECT_EQ(ArrowArrayViewGetBufferType(&array_view, 2), NANOARROW_BUFFER_TYPE_SIZE);
+  EXPECT_EQ(ArrowArrayViewGetBufferElementSizeBits(&array_view, 2), 8 * sizeof(int64_t));
+
+  EXPECT_EQ(ArrowArrayViewAllocateChildren(&array_view, 1), NANOARROW_OK);
+  EXPECT_EQ(array_view.n_children, 1);
+  ArrowArrayViewInitFromType(array_view.children[0], NANOARROW_TYPE_INT32);
+  EXPECT_EQ(array_view.children[0]->storage_type, NANOARROW_TYPE_INT32);
+
+  // Can't assume the offsets buffer exists for length == 0
+  ArrowArrayViewSetLength(&array_view, 0);
+  EXPECT_EQ(ArrowArrayViewGetBufferView(&array_view, 0).size_bytes, 0);
+  EXPECT_EQ(ArrowArrayViewGetBufferView(&array_view, 1).size_bytes, 0);
+
+  // This should pass validation even if all buffers are empty
+  EXPECT_EQ(ArrowArrayViewValidate(&array_view, NANOARROW_VALIDATION_LEVEL_FULL, &error),
+            NANOARROW_OK);
+
+  ArrowArrayViewSetLength(&array_view, 5);
+  EXPECT_EQ(ArrowArrayViewGetBufferView(&array_view, 0).size_bytes, 1);
+  EXPECT_EQ(ArrowArrayViewGetBufferView(&array_view, 1).size_bytes, 5 * sizeof(int64_t));
+
+  // Build a valid array ([[1234], []])
+  struct ArrowArray array;
+  ASSERT_EQ(ArrowArrayInitFromType(&array, NANOARROW_TYPE_LARGE_LIST_VIEW), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAllocateChildren(&array, 1), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayInitFromType(array.children[0], NANOARROW_TYPE_INT32),
+            NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayStartAppending(&array), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAppendInt(array.children[0], 1234), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayFinishElement(&array), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayFinishElement(&array), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayFinishBuildingDefault(&array, nullptr), NANOARROW_OK);
+
+  EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, nullptr), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayViewValidate(&array_view, NANOARROW_VALIDATION_LEVEL_FULL, nullptr),
+            NANOARROW_OK);
+
+  // For a sliced array, this can still pass validation
+  /* TODO: what should we do down here
+  array.offset = 1;
+  array.length = array_view.length - 1;
+  EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayViewValidate(&array_view, NANOARROW_VALIDATION_LEVEL_FULL, &error),
+            NANOARROW_OK);
+
+  // Check for negative element sizes
+  array.offset = 0;
+  array.length = array.length + 1;
+  offsets[0] = 0;
+  offsets[1] = -1;
+  EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayViewValidate(&array_view, NANOARROW_VALIDATION_LEVEL_FULL, &error),
+            EINVAL);
+  EXPECT_STREQ(error.message, "[1] Expected element size >= 0");
+
+  // Sliced array should also fail validation because the first element is negative
+  array.offset = 1;
+  array.length = array_view.length - 1;
+  EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), EINVAL);
+  EXPECT_STREQ(error.message, "Expected first offset >= 0 but found -1");
+
+  // Check for last element >= 0
+  array.offset = 0;
+  array.length = array.length + 1;
+  offsets[1] = 1;
+  offsets[2] = -1;
+  EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), EINVAL);
+  EXPECT_STREQ(error.message, "Expected last offset >= 0 but found -1");
+
+  // ...but the array should be valid if we make it one element shorter
+  array.length = 1;
+  EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayViewValidate(&array_view, NANOARROW_VALIDATION_LEVEL_FULL, &error),
+            NANOARROW_OK);
+  */
+
+  ArrowArrayRelease(&array);
+  ArrowArrayViewReset(&array_view);
+}
+
+TEST(ArrayTest, ArrayViewTestLargeListViewGet) {
+  struct ArrowArrayView array_view;
+  ArrowArrayViewInitFromType(&array_view, NANOARROW_TYPE_LARGE_LIST_VIEW);
+  EXPECT_EQ(ArrowArrayViewAllocateChildren(&array_view, 1), NANOARROW_OK);
+  ArrowArrayViewInitFromType(array_view.children[0], NANOARROW_TYPE_INT32);
+
+  // Build a valid array
+  struct ArrowArray array;
+  ASSERT_EQ(ArrowArrayInitFromType(&array, NANOARROW_TYPE_LARGE_LIST_VIEW), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAllocateChildren(&array, 1), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayInitFromType(array.children[0], NANOARROW_TYPE_INT32),
+            NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayStartAppending(&array), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAppendInt(array.children[0], 1234), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayFinishElement(&array), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAppendNull(&array, 1), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAppendInt(array.children[0], 42), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayFinishElement(&array), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayFinishBuildingDefault(&array, nullptr), NANOARROW_OK);
+
+  EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, nullptr), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayViewValidate(&array_view, NANOARROW_VALIDATION_LEVEL_FULL, nullptr),
+            NANOARROW_OK);
+
+  EXPECT_EQ(ArrowArrayViewListChildOffset(&array_view, 0), 0);
+  EXPECT_EQ(ArrowArrayViewListChildOffset(&array_view, 1), 0);
+  EXPECT_EQ(ArrowArrayViewListChildOffset(&array_view, 2), 1);
+
+  ArrowArrayRelease(&array);
+  ArrowArrayViewReset(&array_view);
+}
+
 TEST(ArrayTest, ArrayViewTestFixedSizeList) {
   struct ArrowArrayView array_view;
   ArrowArrayViewInitFromType(&array_view, NANOARROW_TYPE_FIXED_SIZE_LIST);
