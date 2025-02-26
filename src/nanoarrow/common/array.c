@@ -1198,8 +1198,8 @@ static int ArrowArrayViewValidateDefault(struct ArrowArrayView* array_view,
                         array_view->children[0]->length);
           return EINVAL;
         }
-        break;
       }
+      break;
 
     case NANOARROW_TYPE_RUN_END_ENCODED: {
       struct ArrowArrayView* run_ends_view = array_view->children[0];
