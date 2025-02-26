@@ -293,7 +293,7 @@ static inline ArrowErrorCode _ArrowArrayAppendEmptyInternal(struct ArrowArray* a
       case NANOARROW_BUFFER_TYPE_SIZE:
         NANOARROW_RETURN_NOT_OK(ArrowBufferAppendFill(buffer, 0, size_bytes * n));
         continue;
-      case NANOARROW_BUFFER_TYPE_DATA_OFFSET: {
+      case NANOARROW_BUFFER_TYPE_DATA_OFFSET:
         // Append the current value at the end of the offset buffer for each element
         NANOARROW_RETURN_NOT_OK(ArrowBufferReserve(buffer, size_bytes * n));
 
@@ -301,10 +301,10 @@ static inline ArrowErrorCode _ArrowArrayAppendEmptyInternal(struct ArrowArray* a
           ArrowBufferAppendUnsafe(buffer, buffer->data + size_bytes * (array->length + j),
                                   size_bytes);
         }
+
         // Skip the data buffer
         i++;
         continue;
-      }
       case NANOARROW_BUFFER_TYPE_DATA:
         // Zero out the next bit of memory
         if (private_data->layout.element_size_bits[i] % 8 == 0) {
@@ -313,11 +313,10 @@ static inline ArrowErrorCode _ArrowArrayAppendEmptyInternal(struct ArrowArray* a
           NANOARROW_RETURN_NOT_OK(_ArrowArrayAppendBits(array, i, 0, n));
         }
         continue;
-      case NANOARROW_BUFFER_TYPE_VIEW_OFFSET: {
+      case NANOARROW_BUFFER_TYPE_VIEW_OFFSET:
         NANOARROW_RETURN_NOT_OK(ArrowBufferReserve(buffer, size_bytes * n));
         NANOARROW_RETURN_NOT_OK(ArrowBufferAppendFill(buffer, 0, size_bytes * n));
         continue;
-      }
       case NANOARROW_BUFFER_TYPE_TYPE_ID:
       case NANOARROW_BUFFER_TYPE_UNION_OFFSET:
         // These cases return above

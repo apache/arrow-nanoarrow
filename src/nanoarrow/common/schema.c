@@ -880,18 +880,16 @@ static ArrowErrorCode ArrowSchemaViewParse(struct ArrowSchemaView* schema_view,
         // views
         case 'v':
           switch (format[2]) {
-            case 'l': {
+            case 'l':
               schema_view->storage_type = NANOARROW_TYPE_LIST_VIEW;
               schema_view->type = NANOARROW_TYPE_LIST_VIEW;
               *format_end_out = format + 3;
               return NANOARROW_OK;
-            }
-            case 'L': {
+            case 'L':
               schema_view->storage_type = NANOARROW_TYPE_LARGE_LIST_VIEW;
               schema_view->type = NANOARROW_TYPE_LARGE_LIST_VIEW;
               *format_end_out = format + 3;
               return NANOARROW_OK;
-            }
             default:
               ArrowErrorSet(
                   error, "Expected view format string +vl or +vL but found '%s'", format);
