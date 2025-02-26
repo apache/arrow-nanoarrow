@@ -138,11 +138,15 @@ TEST(SchemaTest, SchemaTestInitNestedList) {
   auto arrow_type = ImportType(&schema);
   ARROW_EXPECT_OK(arrow_type);
   EXPECT_TRUE(arrow_type.ValueUnsafe()->Equals(list(int32())));
+#else
+  ArrowSchemaRelease(&schema);
+#endif
 
   EXPECT_EQ(ArrowSchemaInitFromType(&schema, NANOARROW_TYPE_LARGE_LIST), NANOARROW_OK);
   EXPECT_STREQ(schema.format, "+L");
   ASSERT_EQ(ArrowSchemaSetType(schema.children[0], NANOARROW_TYPE_INT32), NANOARROW_OK);
 
+#if defined(NANOARROW_BUILD_TESTS_WITH_ARROW)
   arrow_type = ImportType(&schema);
   ARROW_EXPECT_OK(arrow_type);
   EXPECT_TRUE(arrow_type.ValueUnsafe()->Equals(large_list(int32())));
