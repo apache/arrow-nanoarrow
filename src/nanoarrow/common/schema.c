@@ -125,6 +125,10 @@ static const char* ArrowSchemaFormatTemplate(enum ArrowType type) {
       return "+l";
     case NANOARROW_TYPE_LARGE_LIST:
       return "+L";
+    case NANOARROW_TYPE_LIST_VIEW:
+      return "+vl";
+    case NANOARROW_TYPE_LARGE_LIST_VIEW:
+      return "+vL";
     case NANOARROW_TYPE_STRUCT:
       return "+s";
     case NANOARROW_TYPE_MAP:
@@ -143,6 +147,8 @@ static int ArrowSchemaInitChildrenIfNeeded(struct ArrowSchema* schema,
     case NANOARROW_TYPE_LIST:
     case NANOARROW_TYPE_LARGE_LIST:
     case NANOARROW_TYPE_FIXED_SIZE_LIST:
+    case NANOARROW_TYPE_LIST_VIEW:
+    case NANOARROW_TYPE_LARGE_LIST_VIEW:
       NANOARROW_RETURN_NOT_OK(ArrowSchemaAllocateChildren(schema, 1));
       ArrowSchemaInit(schema->children[0]);
       NANOARROW_RETURN_NOT_OK(ArrowSchemaSetName(schema->children[0], "item"));
@@ -871,6 +877,24 @@ static ArrowErrorCode ArrowSchemaViewParse(struct ArrowSchemaView* schema_view,
             return EINVAL;
           }
 
+        // views
+        case 'v':
+          switch (format[2]) {
+            case 'l':
+              schema_view->storage_type = NANOARROW_TYPE_LIST_VIEW;
+              schema_view->type = NANOARROW_TYPE_LIST_VIEW;
+              *format_end_out = format + 3;
+              return NANOARROW_OK;
+            case 'L':
+              schema_view->storage_type = NANOARROW_TYPE_LARGE_LIST_VIEW;
+              schema_view->type = NANOARROW_TYPE_LARGE_LIST_VIEW;
+              *format_end_out = format + 3;
+              return NANOARROW_OK;
+            default:
+              ArrowErrorSet(
+                  error, "Expected view format string +vl or +vL but found '%s'", format);
+              return EINVAL;
+          }
         default:
           ArrowErrorSet(error, "Expected nested type format string but found '%s'",
                         format);
@@ -1201,7 +1225,9 @@ static ArrowErrorCode ArrowSchemaViewValidate(struct ArrowSchemaView* schema_vie
       return ArrowSchemaViewValidateNChildren(schema_view, 0, error);
 
     case NANOARROW_TYPE_LIST:
+    case NANOARROW_TYPE_LIST_VIEW:
     case NANOARROW_TYPE_LARGE_LIST:
+    case NANOARROW_TYPE_LARGE_LIST_VIEW:
     case NANOARROW_TYPE_FIXED_SIZE_LIST:
       return ArrowSchemaViewValidateNChildren(schema_view, 1, error);
 

@@ -123,6 +123,8 @@ static ArrowErrorCode ArrowArraySetStorageType(struct ArrowArray* array,
     case NANOARROW_TYPE_LARGE_STRING:
     case NANOARROW_TYPE_BINARY:
     case NANOARROW_TYPE_LARGE_BINARY:
+    case NANOARROW_TYPE_LIST_VIEW:
+    case NANOARROW_TYPE_LARGE_LIST_VIEW:
       array->n_buffers = 3;
       break;
 
@@ -169,6 +171,7 @@ ArrowErrorCode ArrowArrayInitFromType(struct ArrowArray* array,
   private_data->n_variadic_buffers = 0;
   private_data->variadic_buffers = NULL;
   private_data->variadic_buffer_sizes = NULL;
+  private_data->list_view_offset = 0;
 
   array->private_data = private_data;
   array->buffers = (const void**)(private_data->buffer_data);
@@ -700,6 +703,8 @@ void ArrowArrayViewSetLength(struct ArrowArrayView* array_view, int64_t length) 
         continue;
       case NANOARROW_BUFFER_TYPE_TYPE_ID:
       case NANOARROW_BUFFER_TYPE_UNION_OFFSET:
+      case NANOARROW_BUFFER_TYPE_VIEW_OFFSET:
+      case NANOARROW_BUFFER_TYPE_SIZE:
         array_view->buffer_views[i].size_bytes = element_size_bytes * length;
         continue;
       case NANOARROW_BUFFER_TYPE_VARIADIC_DATA:
@@ -856,11 +861,18 @@ static int ArrowArrayViewValidateMinimal(struct ArrowArrayView* array_view,
 
         min_buffer_size_bytes = _ArrowBytesForBits(offset_plus_length);
         break;
+      case NANOARROW_BUFFER_TYPE_SIZE:
+        min_buffer_size_bytes = element_size_bytes * offset_plus_length;
+        break;
       case NANOARROW_BUFFER_TYPE_DATA_OFFSET:
         // Probably don't want/need to rely on the producer to have allocated an
         // offsets buffer of length 1 for a zero-size array
         min_buffer_size_bytes =
             (offset_plus_length != 0) * element_size_bytes * (offset_plus_length + 1);
+        break;
+      case NANOARROW_BUFFER_TYPE_VIEW_OFFSET:
+        min_buffer_size_bytes =
+            (offset_plus_length != 0) * element_size_bytes * offset_plus_length;
         break;
       case NANOARROW_BUFFER_TYPE_DATA:
         min_buffer_size_bytes =
@@ -898,6 +910,8 @@ static int ArrowArrayViewValidateMinimal(struct ArrowArrayView* array_view,
     case NANOARROW_TYPE_LARGE_LIST:
     case NANOARROW_TYPE_FIXED_SIZE_LIST:
     case NANOARROW_TYPE_MAP:
+    case NANOARROW_TYPE_LIST_VIEW:
+    case NANOARROW_TYPE_LARGE_LIST_VIEW:
       if (array_view->n_children != 1) {
         ArrowErrorSet(error,
                       "Expected 1 child of %s array but found %" PRId64 " child arrays",
@@ -1177,10 +1191,11 @@ static int ArrowArrayViewValidateDefault(struct ArrowArrayView* array_view,
 
         if (array_view->children[0]->length < last_offset) {
           ArrowErrorSet(error,
-                        "Expected child of large list array to have length >= %" PRId64
+                        "Expected child of %s array to have length >= %" PRId64
                         " but found array "
                         "with length %" PRId64,
-                        last_offset, array_view->children[0]->length);
+                        ArrowTypeString(array_view->storage_type), last_offset,
+                        array_view->children[0]->length);
           return EINVAL;
         }
       }
@@ -1419,6 +1434,47 @@ static int ArrowArrayViewValidateFull(struct ArrowArrayView* array_view,
           return EINVAL;
         }
         last_run_end = run_end;
+      }
+    }
+  }
+
+  if (array_view->storage_type == NANOARROW_TYPE_LIST_VIEW ||
+      array_view->storage_type == NANOARROW_TYPE_LARGE_LIST_VIEW) {
+    int64_t child_len = array_view->children[0]->length;
+
+    struct ArrowBufferView offsets, sizes;
+    offsets.data.data = array_view->buffer_views[1].data.data;
+    sizes.data.data = array_view->buffer_views[2].data.data;
+
+    for (int64_t i = array_view->offset; i < array_view->length + array_view->offset;
+         i++) {
+      int64_t offset, size;
+      if (array_view->storage_type == NANOARROW_TYPE_LIST_VIEW) {
+        offset = offsets.data.as_int32[i];
+        size = sizes.data.as_int32[i];
+      } else {
+        offset = offsets.data.as_int64[i];
+        size = sizes.data.as_int64[i];
+      }
+
+      if (offset < 0) {
+        ArrowErrorSet(error, "Invalid negative offset %" PRId64 " at index %" PRId64,
+                      offset, i);
+        return EINVAL;
+      }
+
+      if (size < 0) {
+        ArrowErrorSet(error, "Invalid negative size %" PRId64 " at index %" PRId64, size,
+                      i);
+        return EINVAL;
+      }
+
+      if ((offset + size) > child_len) {
+        ArrowErrorSet(error,
+                      "Offset: %" PRId64 " + size: %" PRId64 " at index: %" PRId64
+                      " exceeds length of child view: %" PRId64,
+                      offset, size, i, child_len);
+        return EINVAL;
       }
     }
   }
