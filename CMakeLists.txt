@@ -27,6 +27,8 @@ set(NANOARROW_VERSION_MAJOR "${nanoarrow_VERSION_MAJOR}")
 set(NANOARROW_VERSION_MINOR "${nanoarrow_VERSION_MINOR}")
 set(NANOARROW_VERSION_PATCH "${nanoarrow_VERSION_PATCH}")
 
+include(GNUInstallDirs)
+
 # General options
 option(NANOARROW_NAMESPACE "A prefix for exported symbols" OFF)
 
@@ -77,8 +79,10 @@ endif()
 
 add_library(nanoarrow_coverage_config INTERFACE)
 install(TARGETS nanoarrow_coverage_config
-        DESTINATION lib
-        EXPORT nanoarrow-exports)
+        EXPORT nanoarrow-exports
+        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
 
 if(NANOARROW_CODE_COVERAGE)
   target_compile_options(nanoarrow_coverage_config INTERFACE -O0 -g --coverage)
@@ -186,8 +190,10 @@ if(NANOARROW_IPC)
                                PUBLIC $<BUILD_INTERFACE:${NANOARROW_FLATCC_INCLUDE_DIR}>
                                       $<INSTALL_INTERFACE:include>)
     install(TARGETS flatccrt
-            DESTINATION lib
-            EXPORT nanoarrow-exports)
+            EXPORT nanoarrow-exports
+            RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+            LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+            ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
 
   elseif(NOT NANOARROW_FLATCC_ROOT_DIR)
     add_library(flatccrt STATIC IMPORTED)
@@ -240,7 +246,10 @@ if(NANOARROW_IPC)
                                     $<BUILD_INTERFACE:${NANOARROW_IPC_FLATCC_INCLUDE_DIR}>
                                     $<INSTALL_INTERFACE:include>)
 
-  install(TARGETS nanoarrow_ipc DESTINATION lib)
+  install(TARGETS nanoarrow_ipc
+          RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+          LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+          ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
   install(FILES src/nanoarrow/nanoarrow_ipc.h src/nanoarrow/nanoarrow_ipc.hpp
                 src/nanoarrow/ipc/flatcc_generated.h DESTINATION include/nanoarrow)
   install(FILES src/nanoarrow/hpp/array_stream.hpp
@@ -303,8 +312,10 @@ if(NANOARROW_DEVICE)
     target_include_directories(nanoarrow_metal_impl
                                PRIVATE ${NANOARROW_DEVICE_INCLUDE_METAL})
     install(TARGETS nanoarrow_metal_impl
-            DESTINATION lib
-            EXPORT nanoarrow-exports)
+            EXPORT nanoarrow-exports
+            RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+            LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+            ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
 
     set(NANOARROW_DEVICE_SOURCES_METAL src/nanoarrow/device/metal.cc)
     set(NANOARROW_DEVICE_DEFS_METAL "NANOARROW_DEVICE_WITH_METAL")
@@ -359,8 +370,10 @@ if(NANOARROW_TESTING
 
   add_subdirectory("thirdparty/nlohmann_json")
   install(TARGETS nlohmann_json
-          DESTINATION lib
-          EXPORT nanoarrow-exports)
+          EXPORT nanoarrow-exports
+          RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+          LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+          ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
 
   add_library(nanoarrow_testing src/nanoarrow/testing/testing.cc)
   target_include_directories(nanoarrow_testing
@@ -405,8 +418,10 @@ foreach(target
 
     # Ensure target is added to nanoarrow-exports
     install(TARGETS ${target}
-            DESTINATION lib
-            EXPORT nanoarrow-exports)
+            EXPORT nanoarrow-exports
+            RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+            LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+            ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
 
     # For debug builds, ensure we aggressively set compiler warning flags and
     # error for any compiler warnings
@@ -701,7 +716,6 @@ endif()
 
 # Generate package files for the build and install trees.
 include(CMakePackageConfigHelpers)
-include(GNUInstallDirs)
 
 foreach(tree_type BUILD INSTALL)
   if(tree_type STREQUAL "BUILD")
