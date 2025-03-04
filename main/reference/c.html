@@ -385,7 +385,7 @@
 <h1>C API Reference<a class="headerlink" href="#c-api-reference" title="Link to this heading">#</a></h1>
 <dl>
 <dt class="sig sig-object cpp">
-<span class="target" id="group__nanoarrow"></span><em><span class="pre">group</span></em> <span class="sig-name descname"><span class="pre">nanoarrow</span></span></dt>
+<span class="target" id="group__nanoarrow"></span><em><span class="pre">group</span></em> <span class="sig-name descname"><span class="pre">Nanoarrow</span> <span class="pre">C</span> <span class="pre">library</span></span></dt>
 <dd><p>Except where noted, objects are not thread-safe and clients should take care to serialize accesses to methods.</p>
 <p>Because this library is intended to be vendored, it provides full type definitions and encourages clients to stack or statically allocate where convenient. </p>
 </dd></dl>
@@ -394,7 +394,7 @@
 <h2>Creating schemas<a class="headerlink" href="#creating-schemas" title="Link to this heading">#</a></h2>
 <dl>
 <dt class="sig sig-object cpp">
-<span class="target" id="group__nanoarrow-schema"></span><em><span class="pre">group</span></em> <span class="sig-name descname"><span class="pre">nanoarrow-schema</span></span></dt>
+<span class="target" id="group__nanoarrow-schema"></span><em><span class="pre">group</span></em> <span class="sig-name descname"><span class="pre">Creating</span> <span class="pre">schemas</span></span></dt>
 <dd><p>These functions allocate, copy, and destroy <a class="reference internal" href="#struct_arrow_schema"><span class="std std-ref">ArrowSchema</span></a> structures </p>
 <div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric" id="breathe-section-title-functions">Functions</p>
@@ -518,7 +518,7 @@
 <h2>Reading schemas<a class="headerlink" href="#reading-schemas" title="Link to this heading">#</a></h2>
 <dl>
 <dt class="sig sig-object cpp">
-<span class="target" id="group__nanoarrow-schema-view"></span><em><span class="pre">group</span></em> <span class="sig-name descname"><span class="pre">nanoarrow-schema-view</span></span></dt>
+<span class="target" id="group__nanoarrow-schema-view"></span><em><span class="pre">group</span></em> <span class="sig-name descname"><span class="pre">Reading</span> <span class="pre">schemas</span></span></dt>
 <dd><div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric" id="breathe-section-title-defines">Defines</p>
 <dl class="cpp macro">
@@ -645,7 +645,7 @@
 <h2>Creating arrays<a class="headerlink" href="#creating-arrays" title="Link to this heading">#</a></h2>
 <dl>
 <dt class="sig sig-object cpp">
-<span class="target" id="group__nanoarrow-array"></span><em><span class="pre">group</span></em> <span class="sig-name descname"><span class="pre">nanoarrow-array</span></span></dt>
+<span class="target" id="group__nanoarrow-array"></span><em><span class="pre">group</span></em> <span class="sig-name descname"><span class="pre">Creating</span> <span class="pre">arrays</span></span></dt>
 <dd><p>These functions allocate, copy, and destroy <a class="reference internal" href="#struct_arrow_array"><span class="std std-ref">ArrowArray</span></a> structures. Once an <a class="reference internal" href="#struct_arrow_array"><span class="std std-ref">ArrowArray</span></a> has been initialized via <a class="reference internal" href="#group__nanoarrow-array_1ga7ba21750febf031b1506fa5f391d9074"><span class="std std-ref">ArrowArrayInitFromType()</span></a> or <a class="reference internal" href="#group__nanoarrow-array_1ga0b011cd02a535b58c241b7dcf1a46302"><span class="std std-ref">ArrowArrayInitFromSchema()</span></a>, the caller is responsible for releasing it using the embedded release callback. </p>
 <div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric" id="breathe-section-title-enums">Enums</p>
@@ -864,7 +864,7 @@
 <h2>Reading arrays<a class="headerlink" href="#reading-arrays" title="Link to this heading">#</a></h2>
 <dl>
 <dt class="sig sig-object cpp">
-<span class="target" id="group__nanoarrow-array-view"></span><em><span class="pre">group</span></em> <span class="sig-name descname"><span class="pre">nanoarrow-array-view</span></span></dt>
+<span class="target" id="group__nanoarrow-array-view"></span><em><span class="pre">group</span></em> <span class="sig-name descname"><span class="pre">Reading</span> <span class="pre">arrays</span></span></dt>
 <dd><p>These functions read and validate the contents <a class="reference internal" href="#struct_arrow_array"><span class="std std-ref">ArrowArray</span></a> structures. </p>
 <div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric" id="breathe-section-title-defines">Defines</p>
@@ -920,6 +920,16 @@
 <dl class="cpp enumerator">
 <dt class="sig sig-object cpp" id="_CPPv4N15ArrowBufferType35NANOARROW_BUFFER_TYPE_VARIADIC_SIZEE">
 <span id="_CPPv3N15ArrowBufferType35NANOARROW_BUFFER_TYPE_VARIADIC_SIZEE"></span><span id="_CPPv2N15ArrowBufferType35NANOARROW_BUFFER_TYPE_VARIADIC_SIZEE"></span><span class="target" id="group__nanoarrow-array-view_1ggafb87c2db710e94139307b34327b23aeba991fec0b48172e50c8b2aaa84c90e79b"></span><span class="k"><span class="pre">enumerator</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">NANOARROW_BUFFER_TYPE_VARIADIC_SIZE</span></span></span><a class="headerlink" href="#_CPPv4N15ArrowBufferType35NANOARROW_BUFFER_TYPE_VARIADIC_SIZEE" title="Link to this definition">#</a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp enumerator">
+<dt class="sig sig-object cpp" id="_CPPv4N15ArrowBufferType33NANOARROW_BUFFER_TYPE_VIEW_OFFSETE">
+<span id="_CPPv3N15ArrowBufferType33NANOARROW_BUFFER_TYPE_VIEW_OFFSETE"></span><span id="_CPPv2N15ArrowBufferType33NANOARROW_BUFFER_TYPE_VIEW_OFFSETE"></span><span class="target" id="group__nanoarrow-array-view_1ggafb87c2db710e94139307b34327b23aeba7d0ad3e989db7b17081c2d45230909cd"></span><span class="k"><span class="pre">enumerator</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">NANOARROW_BUFFER_TYPE_VIEW_OFFSET</span></span></span><a class="headerlink" href="#_CPPv4N15ArrowBufferType33NANOARROW_BUFFER_TYPE_VIEW_OFFSETE" title="Link to this definition">#</a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp enumerator">
+<dt class="sig sig-object cpp" id="_CPPv4N15ArrowBufferType26NANOARROW_BUFFER_TYPE_SIZEE">
+<span id="_CPPv3N15ArrowBufferType26NANOARROW_BUFFER_TYPE_SIZEE"></span><span id="_CPPv2N15ArrowBufferType26NANOARROW_BUFFER_TYPE_SIZEE"></span><span class="target" id="group__nanoarrow-array-view_1ggafb87c2db710e94139307b34327b23aebad323a0ab3536beaaabb223acab124e4a"></span><span class="k"><span class="pre">enumerator</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">NANOARROW_BUFFER_TYPE_SIZE</span></span></span><a class="headerlink" href="#_CPPv4N15ArrowBufferType26NANOARROW_BUFFER_TYPE_SIZEE" title="Link to this definition">#</a><br /></dt>
 <dd></dd></dl>
 
 </dd></dl>
@@ -1211,7 +1221,7 @@
 <h2>Owning, growable buffers<a class="headerlink" href="#owning-growable-buffers" title="Link to this heading">#</a></h2>
 <dl>
 <dt class="sig sig-object cpp">
-<span class="target" id="group__nanoarrow-buffer"></span><em><span class="pre">group</span></em> <span class="sig-name descname"><span class="pre">nanoarrow-buffer</span></span></dt>
+<span class="target" id="group__nanoarrow-buffer"></span><em><span class="pre">group</span></em> <span class="sig-name descname"><span class="pre">Owning,</span> <span class="pre">growable</span> <span class="pre">buffers</span></span></dt>
 <dd><div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric" id="breathe-section-title-functions">Functions</p>
 <dl class="cpp function">
@@ -1423,7 +1433,7 @@
 <h2>Bitmap utilities<a class="headerlink" href="#bitmap-utilities" title="Link to this heading">#</a></h2>
 <dl>
 <dt class="sig sig-object cpp">
-<span class="target" id="group__nanoarrow-bitmap"></span><em><span class="pre">group</span></em> <span class="sig-name descname"><span class="pre">nanoarrow-bitmap</span></span></dt>
+<span class="target" id="group__nanoarrow-bitmap"></span><em><span class="pre">group</span></em> <span class="sig-name descname"><span class="pre">Bitmap</span> <span class="pre">utilities</span></span></dt>
 <dd><div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric" id="breathe-section-title-functions">Functions</p>
 <dl class="cpp function">
@@ -1566,7 +1576,7 @@
 <h2>Create, read, and modify schema metadata<a class="headerlink" href="#create-read-and-modify-schema-metadata" title="Link to this heading">#</a></h2>
 <dl>
 <dt class="sig sig-object cpp">
-<span class="target" id="group__nanoarrow-metadata"></span><em><span class="pre">group</span></em> <span class="sig-name descname"><span class="pre">nanoarrow-metadata</span></span></dt>
+<span class="target" id="group__nanoarrow-metadata"></span><em><span class="pre">group</span></em> <span class="sig-name descname"><span class="pre">Create,</span> <span class="pre">read,</span> <span class="pre">and</span> <span class="pre">modify</span> <span class="pre">schema</span> <span class="pre">metadata</span></span></dt>
 <dd><div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric" id="breathe-section-title-functions">Functions</p>
 <dl class="cpp function">
@@ -1664,7 +1674,7 @@
 <h2>Memory management<a class="headerlink" href="#memory-management" title="Link to this heading">#</a></h2>
 <dl>
 <dt class="sig sig-object cpp">
-<span class="target" id="group__nanoarrow-malloc"></span><em><span class="pre">group</span></em> <span class="sig-name descname"><span class="pre">nanoarrow-malloc</span></span></dt>
+<span class="target" id="group__nanoarrow-malloc"></span><em><span class="pre">group</span></em> <span class="sig-name descname"><span class="pre">Memory</span> <span class="pre">management</span></span></dt>
 <dd><p>Non-buffer members of a struct <a class="reference internal" href="#struct_arrow_schema"><span class="std std-ref">ArrowSchema</span></a> and struct <a class="reference internal" href="#struct_arrow_array"><span class="std std-ref">ArrowArray</span></a> must be allocated using <a class="reference internal" href="#group__nanoarrow-malloc_1gac6b03abdd47dba7ad3f5e38553737bf6"><span class="std std-ref">ArrowMalloc()</span></a> or <a class="reference internal" href="#group__nanoarrow-malloc_1ga7cda6ac30d3262daa1279ac29cfa0d0f"><span class="std std-ref">ArrowRealloc()</span></a> and freed using <a class="reference internal" href="#group__nanoarrow-malloc_1gaa9552e61d8cce6520ef578d0c8c73860"><span class="std std-ref">ArrowFree()</span></a> for schemas and arrays allocated here. Buffer members are allocated using an <a class="reference internal" href="#struct_arrow_buffer_allocator"><span class="std std-ref">ArrowBufferAllocator</span></a>. </p>
 <div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric" id="breathe-section-title-functions">Functions</p>
@@ -1708,7 +1718,7 @@
 <h2>Error handling<a class="headerlink" href="#error-handling" title="Link to this heading">#</a></h2>
 <dl>
 <dt class="sig sig-object cpp">
-<span class="target" id="group__nanoarrow-errors"></span><em><span class="pre">group</span></em> <span class="sig-name descname"><span class="pre">nanoarrow-errors</span></span></dt>
+<span class="target" id="group__nanoarrow-errors"></span><em><span class="pre">group</span></em> <span class="sig-name descname"><span class="pre">Error</span> <span class="pre">handling</span></span></dt>
 <dd><p>Functions generally return an errno-compatible error code; functions that need to communicate more verbose error information accept a pointer to an <a class="reference internal" href="#struct_arrow_error"><span class="std std-ref">ArrowError</span></a>. This can be stack or statically allocated. The content of the message is undefined unless an error code has been returned. If a nanoarrow function is passed a non-null <a class="reference internal" href="#struct_arrow_error"><span class="std std-ref">ArrowError</span></a> pointer, the <a class="reference internal" href="#struct_arrow_error"><span class="std std-ref">ArrowError</span></a> pointed to by the argument will be propagated with a null-terminated error message. It is safe to pass a NULL <a class="reference internal" href="#struct_arrow_error"><span class="std std-ref">ArrowError</span></a> anywhere in the nanoarrow API.</p>
 <p>Except where documented, it is generally not safe to continue after a function has returned a non-zero ArrowErrorCode. The NANOARROW_RETURN_NOT_OK and NANOARROW_ASSERT_OK macros are provided to help propagate errors. C++ clients can use the helpers provided in the nanoarrow.hpp header to facilitate using C++ idioms for memory management and error propgagtion. </p>
 <div class="breathe-sectiondef docutils container">
@@ -1797,7 +1807,7 @@
 <h2>Utility data structures<a class="headerlink" href="#utility-data-structures" title="Link to this heading">#</a></h2>
 <dl>
 <dt class="sig sig-object cpp">
-<span class="target" id="group__nanoarrow-utils"></span><em><span class="pre">group</span></em> <span class="sig-name descname"><span class="pre">nanoarrow-utils</span></span></dt>
+<span class="target" id="group__nanoarrow-utils"></span><em><span class="pre">group</span></em> <span class="sig-name descname"><span class="pre">Utility</span> <span class="pre">data</span> <span class="pre">structures</span></span></dt>
 <dd><div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric" id="breathe-section-title-enums">Enums</p>
 <dl class="cpp enum">
@@ -2024,6 +2034,16 @@
 <dl class="cpp enumerator">
 <dt class="sig sig-object cpp" id="_CPPv4N9ArrowType24NANOARROW_TYPE_DECIMAL64E">
 <span id="_CPPv3N9ArrowType24NANOARROW_TYPE_DECIMAL64E"></span><span id="_CPPv2N9ArrowType24NANOARROW_TYPE_DECIMAL64E"></span><span class="target" id="group__nanoarrow-utils_1ggae040d7d64b46dd1dc796225aa77c2112aaa68e6f79aa2b79cbf2bec1f24f1dd4c"></span><span class="k"><span class="pre">enumerator</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">NANOARROW_TYPE_DECIMAL64</span></span></span><a class="headerlink" href="#_CPPv4N9ArrowType24NANOARROW_TYPE_DECIMAL64E" title="Link to this definition">#</a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp enumerator">
+<dt class="sig sig-object cpp" id="_CPPv4N9ArrowType24NANOARROW_TYPE_LIST_VIEWE">
+<span id="_CPPv3N9ArrowType24NANOARROW_TYPE_LIST_VIEWE"></span><span id="_CPPv2N9ArrowType24NANOARROW_TYPE_LIST_VIEWE"></span><span class="target" id="group__nanoarrow-utils_1ggae040d7d64b46dd1dc796225aa77c2112a9e0fb94160db23355cfffe8a6a4d7f82"></span><span class="k"><span class="pre">enumerator</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">NANOARROW_TYPE_LIST_VIEW</span></span></span><a class="headerlink" href="#_CPPv4N9ArrowType24NANOARROW_TYPE_LIST_VIEWE" title="Link to this definition">#</a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp enumerator">
+<dt class="sig sig-object cpp" id="_CPPv4N9ArrowType30NANOARROW_TYPE_LARGE_LIST_VIEWE">
+<span id="_CPPv3N9ArrowType30NANOARROW_TYPE_LARGE_LIST_VIEWE"></span><span id="_CPPv2N9ArrowType30NANOARROW_TYPE_LARGE_LIST_VIEWE"></span><span class="target" id="group__nanoarrow-utils_1ggae040d7d64b46dd1dc796225aa77c2112a6d2488f5f2cd64454cde4670aa1ebaa9"></span><span class="k"><span class="pre">enumerator</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">NANOARROW_TYPE_LARGE_LIST_VIEW</span></span></span><a class="headerlink" href="#_CPPv4N9ArrowType30NANOARROW_TYPE_LARGE_LIST_VIEWE" title="Link to this definition">#</a><br /></dt>
 <dd></dd></dl>
 
 </dd></dl>
@@ -2365,7 +2385,7 @@
 <h2>Arrow C Data Interface<a class="headerlink" href="#arrow-c-data-interface" title="Link to this heading">#</a></h2>
 <dl>
 <dt class="sig sig-object cpp">
-<span class="target" id="group__nanoarrow-arrow-cdata"></span><em><span class="pre">group</span></em> <span class="sig-name descname"><span class="pre">nanoarrow-arrow-cdata</span></span></dt>
+<span class="target" id="group__nanoarrow-arrow-cdata"></span><em><span class="pre">group</span></em> <span class="sig-name descname"><span class="pre">Arrow</span> <span class="pre">C</span> <span class="pre">Data</span> <span class="pre">interface</span></span></dt>
 <dd><p>The Arrow C Data (<a class="reference external" href="https://arrow.apache.org/docs/format/CDataInterface.html">https://arrow.apache.org/docs/format/CDataInterface.html</a>) and Arrow C Stream (<a class="reference external" href="https://arrow.apache.org/docs/format/CStreamInterface.html">https://arrow.apache.org/docs/format/CStreamInterface.html</a>) interfaces are part of the Arrow Columnar Format specification (<a class="reference external" href="https://arrow.apache.org/docs/format/Columnar.html">https://arrow.apache.org/docs/format/Columnar.html</a>). See the Arrow documentation for documentation of these structures. </p>
 <div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric" id="breathe-section-title-defines">Defines</p>
@@ -2659,31 +2679,32 @@
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#reading-schemas">Reading schemas</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#c.NANOARROW_FLAG_ALL_SUPPORTED"><code class="docutils literal notranslate"><span class="pre">NANOARROW_FLAG_ALL_SUPPORTED</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv419ArrowSchemaViewInitP15ArrowSchemaViewPK11ArrowSchemaP10ArrowError"><code class="docutils literal notranslate"><span class="pre">ArrowSchemaViewInit()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv415ArrowSchemaView"><code class="docutils literal notranslate"><span class="pre">ArrowSchemaView</span></code></a><ul class="nav section-nav flex-column">
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N15ArrowSchemaView6schemaE"><code class="docutils literal notranslate"><span class="pre">ArrowSchemaView::schema</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N15ArrowSchemaView4typeE"><code class="docutils literal notranslate"><span class="pre">ArrowSchemaView::type</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N15ArrowSchemaView12storage_typeE"><code class="docutils literal notranslate"><span class="pre">ArrowSchemaView::storage_type</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N15ArrowSchemaView6layoutE"><code class="docutils literal notranslate"><span class="pre">ArrowSchemaView::layout</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N15ArrowSchemaView14extension_nameE"><code class="docutils literal notranslate"><span class="pre">ArrowSchemaView::extension_name</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N15ArrowSchemaView18extension_metadataE"><code class="docutils literal notranslate"><span class="pre">ArrowSchemaView::extension_metadata</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N15ArrowSchemaView10fixed_sizeE"><code class="docutils literal notranslate"><span class="pre">ArrowSchemaView::fixed_size</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N15ArrowSchemaView16decimal_bitwidthE"><code class="docutils literal notranslate"><span class="pre">ArrowSchemaView::decimal_bitwidth</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N15ArrowSchemaView17decimal_precisionE"><code class="docutils literal notranslate"><span class="pre">ArrowSchemaView::decimal_precision</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N15ArrowSchemaView13decimal_scaleE"><code class="docutils literal notranslate"><span class="pre">ArrowSchemaView::decimal_scale</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N15ArrowSchemaView9time_unitE"><code class="docutils literal notranslate"><span class="pre">ArrowSchemaView::time_unit</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N15ArrowSchemaView8timezoneE"><code class="docutils literal notranslate"><span class="pre">ArrowSchemaView::timezone</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N15ArrowSchemaView14union_type_idsE"><code class="docutils literal notranslate"><span class="pre">ArrowSchemaView::union_type_ids</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N15ArrowSchemaView6schemaE"><code class="docutils literal notranslate"><span class="pre">schema</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N15ArrowSchemaView4typeE"><code class="docutils literal notranslate"><span class="pre">type</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N15ArrowSchemaView12storage_typeE"><code class="docutils literal notranslate"><span class="pre">storage_type</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N15ArrowSchemaView6layoutE"><code class="docutils literal notranslate"><span class="pre">layout</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N15ArrowSchemaView14extension_nameE"><code class="docutils literal notranslate"><span class="pre">extension_name</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N15ArrowSchemaView18extension_metadataE"><code class="docutils literal notranslate"><span class="pre">extension_metadata</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N15ArrowSchemaView10fixed_sizeE"><code class="docutils literal notranslate"><span class="pre">fixed_size</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N15ArrowSchemaView16decimal_bitwidthE"><code class="docutils literal notranslate"><span class="pre">decimal_bitwidth</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N15ArrowSchemaView17decimal_precisionE"><code class="docutils literal notranslate"><span class="pre">decimal_precision</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N15ArrowSchemaView13decimal_scaleE"><code class="docutils literal notranslate"><span class="pre">decimal_scale</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N15ArrowSchemaView9time_unitE"><code class="docutils literal notranslate"><span class="pre">time_unit</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N15ArrowSchemaView8timezoneE"><code class="docutils literal notranslate"><span class="pre">timezone</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N15ArrowSchemaView14union_type_idsE"><code class="docutils literal notranslate"><span class="pre">union_type_ids</span></code></a></li>
 </ul>
 </li>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#creating-arrays">Creating arrays</a><ul class="visible nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv420ArrowValidationLevel"><code class="docutils literal notranslate"><span class="pre">ArrowValidationLevel</span></code></a><ul class="nav section-nav flex-column">
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N20ArrowValidationLevel31NANOARROW_VALIDATION_LEVEL_NONEE"><code class="docutils literal notranslate"><span class="pre">ArrowValidationLevel::NANOARROW_VALIDATION_LEVEL_NONE</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N20ArrowValidationLevel34NANOARROW_VALIDATION_LEVEL_MINIMALE"><code class="docutils literal notranslate"><span class="pre">ArrowValidationLevel::NANOARROW_VALIDATION_LEVEL_MINIMAL</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N20ArrowValidationLevel34NANOARROW_VALIDATION_LEVEL_DEFAULTE"><code class="docutils literal notranslate"><span class="pre">ArrowValidationLevel::NANOARROW_VALIDATION_LEVEL_DEFAULT</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N20ArrowValidationLevel31NANOARROW_VALIDATION_LEVEL_FULLE"><code class="docutils literal notranslate"><span class="pre">ArrowValidationLevel::NANOARROW_VALIDATION_LEVEL_FULL</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N20ArrowValidationLevel31NANOARROW_VALIDATION_LEVEL_NONEE"><code class="docutils literal notranslate"><span class="pre">NANOARROW_VALIDATION_LEVEL_NONE</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N20ArrowValidationLevel34NANOARROW_VALIDATION_LEVEL_MINIMALE"><code class="docutils literal notranslate"><span class="pre">NANOARROW_VALIDATION_LEVEL_MINIMAL</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N20ArrowValidationLevel34NANOARROW_VALIDATION_LEVEL_DEFAULTE"><code class="docutils literal notranslate"><span class="pre">NANOARROW_VALIDATION_LEVEL_DEFAULT</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N20ArrowValidationLevel31NANOARROW_VALIDATION_LEVEL_FULLE"><code class="docutils literal notranslate"><span class="pre">NANOARROW_VALIDATION_LEVEL_FULL</span></code></a></li>
 </ul>
 </li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv422ArrowArrayInitFromTypeP10ArrowArray9ArrowType"><code class="docutils literal notranslate"><span class="pre">ArrowArrayInitFromType()</span></code></a></li>
@@ -2714,15 +2735,18 @@
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#reading-arrays">Reading arrays</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#c.NANOARROW_MAX_FIXED_BUFFERS"><code class="docutils literal notranslate"><span class="pre">NANOARROW_MAX_FIXED_BUFFERS</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv415ArrowBufferType"><code class="docutils literal notranslate"><span class="pre">ArrowBufferType</span></code></a><ul class="nav section-nav flex-column">
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N15ArrowBufferType26NANOARROW_BUFFER_TYPE_NONEE"><code class="docutils literal notranslate"><span class="pre">ArrowBufferType::NANOARROW_BUFFER_TYPE_NONE</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N15ArrowBufferType30NANOARROW_BUFFER_TYPE_VALIDITYE"><code class="docutils literal notranslate"><span class="pre">ArrowBufferType::NANOARROW_BUFFER_TYPE_VALIDITY</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N15ArrowBufferType29NANOARROW_BUFFER_TYPE_TYPE_IDE"><code class="docutils literal notranslate"><span class="pre">ArrowBufferType::NANOARROW_BUFFER_TYPE_TYPE_ID</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N15ArrowBufferType34NANOARROW_BUFFER_TYPE_UNION_OFFSETE"><code class="docutils literal notranslate"><span class="pre">ArrowBufferType::NANOARROW_BUFFER_TYPE_UNION_OFFSET</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N15ArrowBufferType33NANOARROW_BUFFER_TYPE_DATA_OFFSETE"><code class="docutils literal notranslate"><span class="pre">ArrowBufferType::NANOARROW_BUFFER_TYPE_DATA_OFFSET</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N15ArrowBufferType26NANOARROW_BUFFER_TYPE_DATAE"><code class="docutils literal notranslate"><span class="pre">ArrowBufferType::NANOARROW_BUFFER_TYPE_DATA</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N15ArrowBufferType35NANOARROW_BUFFER_TYPE_VARIADIC_DATAE"><code class="docutils literal notranslate"><span class="pre">ArrowBufferType::NANOARROW_BUFFER_TYPE_VARIADIC_DATA</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N15ArrowBufferType35NANOARROW_BUFFER_TYPE_VARIADIC_SIZEE"><code class="docutils literal notranslate"><span class="pre">ArrowBufferType::NANOARROW_BUFFER_TYPE_VARIADIC_SIZE</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N15ArrowBufferType26NANOARROW_BUFFER_TYPE_NONEE"><code class="docutils literal notranslate"><span class="pre">NANOARROW_BUFFER_TYPE_NONE</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N15ArrowBufferType30NANOARROW_BUFFER_TYPE_VALIDITYE"><code class="docutils literal notranslate"><span class="pre">NANOARROW_BUFFER_TYPE_VALIDITY</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N15ArrowBufferType29NANOARROW_BUFFER_TYPE_TYPE_IDE"><code class="docutils literal notranslate"><span class="pre">NANOARROW_BUFFER_TYPE_TYPE_ID</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N15ArrowBufferType34NANOARROW_BUFFER_TYPE_UNION_OFFSETE"><code class="docutils literal notranslate"><span class="pre">NANOARROW_BUFFER_TYPE_UNION_OFFSET</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N15ArrowBufferType33NANOARROW_BUFFER_TYPE_DATA_OFFSETE"><code class="docutils literal notranslate"><span class="pre">NANOARROW_BUFFER_TYPE_DATA_OFFSET</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N15ArrowBufferType26NANOARROW_BUFFER_TYPE_DATAE"><code class="docutils literal notranslate"><span class="pre">NANOARROW_BUFFER_TYPE_DATA</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N15ArrowBufferType35NANOARROW_BUFFER_TYPE_VARIADIC_DATAE"><code class="docutils literal notranslate"><span class="pre">NANOARROW_BUFFER_TYPE_VARIADIC_DATA</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N15ArrowBufferType35NANOARROW_BUFFER_TYPE_VARIADIC_SIZEE"><code class="docutils literal notranslate"><span class="pre">NANOARROW_BUFFER_TYPE_VARIADIC_SIZE</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N15ArrowBufferType33NANOARROW_BUFFER_TYPE_VIEW_OFFSETE"><code class="docutils literal notranslate"><span class="pre">NANOARROW_BUFFER_TYPE_VIEW_OFFSET</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N15ArrowBufferType26NANOARROW_BUFFER_TYPE_SIZEE"><code class="docutils literal notranslate"><span class="pre">NANOARROW_BUFFER_TYPE_SIZE</span></code></a></li>
 </ul>
 </li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv426ArrowArrayViewInitFromTypeP14ArrowArrayView9ArrowType"><code class="docutils literal notranslate"><span class="pre">ArrowArrayViewInitFromType()</span></code></a></li>
@@ -2753,20 +2777,20 @@
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv428ArrowArrayViewGetBytesUnsafePK14ArrowArrayView7int64_t"><code class="docutils literal notranslate"><span class="pre">ArrowArrayViewGetBytesUnsafe()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv430ArrowArrayViewGetDecimalUnsafePK14ArrowArrayView7int64_tP12ArrowDecimal"><code class="docutils literal notranslate"><span class="pre">ArrowArrayViewGetDecimalUnsafe()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv414ArrowArrayView"><code class="docutils literal notranslate"><span class="pre">ArrowArrayView</span></code></a><ul class="nav section-nav flex-column">
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N14ArrowArrayView5arrayE"><code class="docutils literal notranslate"><span class="pre">ArrowArrayView::array</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N14ArrowArrayView6offsetE"><code class="docutils literal notranslate"><span class="pre">ArrowArrayView::offset</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N14ArrowArrayView6lengthE"><code class="docutils literal notranslate"><span class="pre">ArrowArrayView::length</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N14ArrowArrayView10null_countE"><code class="docutils literal notranslate"><span class="pre">ArrowArrayView::null_count</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N14ArrowArrayView12storage_typeE"><code class="docutils literal notranslate"><span class="pre">ArrowArrayView::storage_type</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N14ArrowArrayView6layoutE"><code class="docutils literal notranslate"><span class="pre">ArrowArrayView::layout</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N14ArrowArrayView12buffer_viewsE"><code class="docutils literal notranslate"><span class="pre">ArrowArrayView::buffer_views</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N14ArrowArrayView10n_childrenE"><code class="docutils literal notranslate"><span class="pre">ArrowArrayView::n_children</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N14ArrowArrayView8childrenE"><code class="docutils literal notranslate"><span class="pre">ArrowArrayView::children</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N14ArrowArrayView10dictionaryE"><code class="docutils literal notranslate"><span class="pre">ArrowArrayView::dictionary</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N14ArrowArrayView17union_type_id_mapE"><code class="docutils literal notranslate"><span class="pre">ArrowArrayView::union_type_id_map</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N14ArrowArrayView18n_variadic_buffersE"><code class="docutils literal notranslate"><span class="pre">ArrowArrayView::n_variadic_buffers</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N14ArrowArrayView16variadic_buffersE"><code class="docutils literal notranslate"><span class="pre">ArrowArrayView::variadic_buffers</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N14ArrowArrayView21variadic_buffer_sizesE"><code class="docutils literal notranslate"><span class="pre">ArrowArrayView::variadic_buffer_sizes</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N14ArrowArrayView5arrayE"><code class="docutils literal notranslate"><span class="pre">array</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N14ArrowArrayView6offsetE"><code class="docutils literal notranslate"><span class="pre">offset</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N14ArrowArrayView6lengthE"><code class="docutils literal notranslate"><span class="pre">length</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N14ArrowArrayView10null_countE"><code class="docutils literal notranslate"><span class="pre">null_count</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N14ArrowArrayView12storage_typeE"><code class="docutils literal notranslate"><span class="pre">storage_type</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N14ArrowArrayView6layoutE"><code class="docutils literal notranslate"><span class="pre">layout</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N14ArrowArrayView12buffer_viewsE"><code class="docutils literal notranslate"><span class="pre">buffer_views</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N14ArrowArrayView10n_childrenE"><code class="docutils literal notranslate"><span class="pre">n_children</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N14ArrowArrayView8childrenE"><code class="docutils literal notranslate"><span class="pre">children</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N14ArrowArrayView10dictionaryE"><code class="docutils literal notranslate"><span class="pre">dictionary</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N14ArrowArrayView17union_type_id_mapE"><code class="docutils literal notranslate"><span class="pre">union_type_id_map</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N14ArrowArrayView18n_variadic_buffersE"><code class="docutils literal notranslate"><span class="pre">n_variadic_buffers</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N14ArrowArrayView16variadic_buffersE"><code class="docutils literal notranslate"><span class="pre">variadic_buffers</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N14ArrowArrayView21variadic_buffer_sizesE"><code class="docutils literal notranslate"><span class="pre">variadic_buffer_sizes</span></code></a></li>
 </ul>
 </li>
 </ul>
@@ -2794,16 +2818,16 @@
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv427ArrowBufferAppendStringViewP11ArrowBuffer15ArrowStringView"><code class="docutils literal notranslate"><span class="pre">ArrowBufferAppendStringView()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv427ArrowBufferAppendBufferViewP11ArrowBuffer15ArrowBufferView"><code class="docutils literal notranslate"><span class="pre">ArrowBufferAppendBufferView()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv420ArrowBufferAllocator"><code class="docutils literal notranslate"><span class="pre">ArrowBufferAllocator</span></code></a><ul class="nav section-nav flex-column">
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N20ArrowBufferAllocator10reallocateE"><code class="docutils literal notranslate"><span class="pre">ArrowBufferAllocator::reallocate</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N20ArrowBufferAllocator4freeE"><code class="docutils literal notranslate"><span class="pre">ArrowBufferAllocator::free</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N20ArrowBufferAllocator12private_dataE"><code class="docutils literal notranslate"><span class="pre">ArrowBufferAllocator::private_data</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N20ArrowBufferAllocator10reallocateE"><code class="docutils literal notranslate"><span class="pre">reallocate</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N20ArrowBufferAllocator4freeE"><code class="docutils literal notranslate"><span class="pre">free</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N20ArrowBufferAllocator12private_dataE"><code class="docutils literal notranslate"><span class="pre">private_data</span></code></a></li>
 </ul>
 </li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv411ArrowBuffer"><code class="docutils literal notranslate"><span class="pre">ArrowBuffer</span></code></a><ul class="nav section-nav flex-column">
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N11ArrowBuffer4dataE"><code class="docutils literal notranslate"><span class="pre">ArrowBuffer::data</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N11ArrowBuffer10size_bytesE"><code class="docutils literal notranslate"><span class="pre">ArrowBuffer::size_bytes</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N11ArrowBuffer14capacity_bytesE"><code class="docutils literal notranslate"><span class="pre">ArrowBuffer::capacity_bytes</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N11ArrowBuffer9allocatorE"><code class="docutils literal notranslate"><span class="pre">ArrowBuffer::allocator</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N11ArrowBuffer4dataE"><code class="docutils literal notranslate"><span class="pre">data</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N11ArrowBuffer10size_bytesE"><code class="docutils literal notranslate"><span class="pre">size_bytes</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N11ArrowBuffer14capacity_bytesE"><code class="docutils literal notranslate"><span class="pre">capacity_bytes</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N11ArrowBuffer9allocatorE"><code class="docutils literal notranslate"><span class="pre">allocator</span></code></a></li>
 </ul>
 </li>
 </ul>
@@ -2827,8 +2851,8 @@
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv428ArrowBitmapAppendInt32UnsafeP11ArrowBitmapPK7int32_t7int64_t"><code class="docutils literal notranslate"><span class="pre">ArrowBitmapAppendInt32Unsafe()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv416ArrowBitmapResetP11ArrowBitmap"><code class="docutils literal notranslate"><span class="pre">ArrowBitmapReset()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv411ArrowBitmap"><code class="docutils literal notranslate"><span class="pre">ArrowBitmap</span></code></a><ul class="nav section-nav flex-column">
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N11ArrowBitmap6bufferE"><code class="docutils literal notranslate"><span class="pre">ArrowBitmap::buffer</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N11ArrowBitmap9size_bitsE"><code class="docutils literal notranslate"><span class="pre">ArrowBitmap::size_bits</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N11ArrowBitmap6bufferE"><code class="docutils literal notranslate"><span class="pre">buffer</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N11ArrowBitmap9size_bitsE"><code class="docutils literal notranslate"><span class="pre">size_bits</span></code></a></li>
 </ul>
 </li>
 </ul>
@@ -2844,9 +2868,9 @@
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv423ArrowMetadataBuilderSetP11ArrowBuffer15ArrowStringView15ArrowStringView"><code class="docutils literal notranslate"><span class="pre">ArrowMetadataBuilderSet()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv426ArrowMetadataBuilderRemoveP11ArrowBuffer15ArrowStringView"><code class="docutils literal notranslate"><span class="pre">ArrowMetadataBuilderRemove()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv419ArrowMetadataReader"><code class="docutils literal notranslate"><span class="pre">ArrowMetadataReader</span></code></a><ul class="nav section-nav flex-column">
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N19ArrowMetadataReader8metadataE"><code class="docutils literal notranslate"><span class="pre">ArrowMetadataReader::metadata</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N19ArrowMetadataReader6offsetE"><code class="docutils literal notranslate"><span class="pre">ArrowMetadataReader::offset</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N19ArrowMetadataReader14remaining_keysE"><code class="docutils literal notranslate"><span class="pre">ArrowMetadataReader::remaining_keys</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N19ArrowMetadataReader8metadataE"><code class="docutils literal notranslate"><span class="pre">metadata</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N19ArrowMetadataReader6offsetE"><code class="docutils literal notranslate"><span class="pre">offset</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N19ArrowMetadataReader14remaining_keysE"><code class="docutils literal notranslate"><span class="pre">remaining_keys</span></code></a></li>
 </ul>
 </li>
 </ul>
@@ -2860,74 +2884,79 @@
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#error-handling">Error handling</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#c.NANOARROW_OK"><code class="docutils literal notranslate"><span class="pre">NANOARROW_OK</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#c.NANOARROW_RETURN_NOT_OK"><code class="docutils literal notranslate"><span class="pre">NANOARROW_RETURN_NOT_OK</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#c.NANOARROW_RETURN_NOT_OK_WITH_ERROR"><code class="docutils literal notranslate"><span class="pre">NANOARROW_RETURN_NOT_OK_WITH_ERROR</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv414ArrowErrorCode"><code class="docutils literal notranslate"><span class="pre">ArrowErrorCode</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv414ArrowErrorInitP10ArrowError"><code class="docutils literal notranslate"><span class="pre">ArrowErrorInit()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv417ArrowErrorMessageP10ArrowError"><code class="docutils literal notranslate"><span class="pre">ArrowErrorMessage()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv419ArrowErrorSetStringP10ArrowErrorPKc"><code class="docutils literal notranslate"><span class="pre">ArrowErrorSetString()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv413ArrowErrorSetP10ArrowErrorPKcz"><code class="docutils literal notranslate"><span class="pre">ArrowErrorSet()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv410ArrowError"><code class="docutils literal notranslate"><span class="pre">ArrowError</span></code></a><ul class="nav section-nav flex-column">
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N10ArrowError7messageE"><code class="docutils literal notranslate"><span class="pre">ArrowError::message</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N10ArrowError7messageE"><code class="docutils literal notranslate"><span class="pre">message</span></code></a></li>
 </ul>
 </li>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#utility-data-structures">Utility data structures</a><ul class="visible nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv49ArrowType"><code class="docutils literal notranslate"><span class="pre">ArrowType</span></code></a><ul class="nav section-nav flex-column">
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N9ArrowType28NANOARROW_TYPE_UNINITIALIZEDE"><code class="docutils literal notranslate"><span class="pre">ArrowType::NANOARROW_TYPE_UNINITIALIZED</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N9ArrowType17NANOARROW_TYPE_NAE"><code class="docutils literal notranslate"><span class="pre">ArrowType::NANOARROW_TYPE_NA</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N9ArrowType19NANOARROW_TYPE_BOOLE"><code class="docutils literal notranslate"><span class="pre">ArrowType::NANOARROW_TYPE_BOOL</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N9ArrowType20NANOARROW_TYPE_UINT8E"><code class="docutils literal notranslate"><span class="pre">ArrowType::NANOARROW_TYPE_UINT8</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N9ArrowType19NANOARROW_TYPE_INT8E"><code class="docutils literal notranslate"><span class="pre">ArrowType::NANOARROW_TYPE_INT8</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N9ArrowType21NANOARROW_TYPE_UINT16E"><code class="docutils literal notranslate"><span class="pre">ArrowType::NANOARROW_TYPE_UINT16</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N9ArrowType20NANOARROW_TYPE_INT16E"><code class="docutils literal notranslate"><span class="pre">ArrowType::NANOARROW_TYPE_INT16</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N9ArrowType21NANOARROW_TYPE_UINT32E"><code class="docutils literal notranslate"><span class="pre">ArrowType::NANOARROW_TYPE_UINT32</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N9ArrowType20NANOARROW_TYPE_INT32E"><code class="docutils literal notranslate"><span class="pre">ArrowType::NANOARROW_TYPE_INT32</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N9ArrowType21NANOARROW_TYPE_UINT64E"><code class="docutils literal notranslate"><span class="pre">ArrowType::NANOARROW_TYPE_UINT64</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N9ArrowType20NANOARROW_TYPE_INT64E"><code class="docutils literal notranslate"><span class="pre">ArrowType::NANOARROW_TYPE_INT64</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N9ArrowType25NANOARROW_TYPE_HALF_FLOATE"><code class="docutils literal notranslate"><span class="pre">ArrowType::NANOARROW_TYPE_HALF_FLOAT</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N9ArrowType20NANOARROW_TYPE_FLOATE"><code class="docutils literal notranslate"><span class="pre">ArrowType::NANOARROW_TYPE_FLOAT</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N9ArrowType21NANOARROW_TYPE_DOUBLEE"><code class="docutils literal notranslate"><span class="pre">ArrowType::NANOARROW_TYPE_DOUBLE</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N9ArrowType21NANOARROW_TYPE_STRINGE"><code class="docutils literal notranslate"><span class="pre">ArrowType::NANOARROW_TYPE_STRING</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N9ArrowType21NANOARROW_TYPE_BINARYE"><code class="docutils literal notranslate"><span class="pre">ArrowType::NANOARROW_TYPE_BINARY</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N9ArrowType32NANOARROW_TYPE_FIXED_SIZE_BINARYE"><code class="docutils literal notranslate"><span class="pre">ArrowType::NANOARROW_TYPE_FIXED_SIZE_BINARY</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N9ArrowType21NANOARROW_TYPE_DATE32E"><code class="docutils literal notranslate"><span class="pre">ArrowType::NANOARROW_TYPE_DATE32</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N9ArrowType21NANOARROW_TYPE_DATE64E"><code class="docutils literal notranslate"><span class="pre">ArrowType::NANOARROW_TYPE_DATE64</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N9ArrowType24NANOARROW_TYPE_TIMESTAMPE"><code class="docutils literal notranslate"><span class="pre">ArrowType::NANOARROW_TYPE_TIMESTAMP</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N9ArrowType21NANOARROW_TYPE_TIME32E"><code class="docutils literal notranslate"><span class="pre">ArrowType::NANOARROW_TYPE_TIME32</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N9ArrowType21NANOARROW_TYPE_TIME64E"><code class="docutils literal notranslate"><span class="pre">ArrowType::NANOARROW_TYPE_TIME64</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N9ArrowType30NANOARROW_TYPE_INTERVAL_MONTHSE"><code class="docutils literal notranslate"><span class="pre">ArrowType::NANOARROW_TYPE_INTERVAL_MONTHS</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N9ArrowType32NANOARROW_TYPE_INTERVAL_DAY_TIMEE"><code class="docutils literal notranslate"><span class="pre">ArrowType::NANOARROW_TYPE_INTERVAL_DAY_TIME</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N9ArrowType25NANOARROW_TYPE_DECIMAL128E"><code class="docutils literal notranslate"><span class="pre">ArrowType::NANOARROW_TYPE_DECIMAL128</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N9ArrowType25NANOARROW_TYPE_DECIMAL256E"><code class="docutils literal notranslate"><span class="pre">ArrowType::NANOARROW_TYPE_DECIMAL256</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N9ArrowType19NANOARROW_TYPE_LISTE"><code class="docutils literal notranslate"><span class="pre">ArrowType::NANOARROW_TYPE_LIST</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N9ArrowType21NANOARROW_TYPE_STRUCTE"><code class="docutils literal notranslate"><span class="pre">ArrowType::NANOARROW_TYPE_STRUCT</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N9ArrowType27NANOARROW_TYPE_SPARSE_UNIONE"><code class="docutils literal notranslate"><span class="pre">ArrowType::NANOARROW_TYPE_SPARSE_UNION</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N9ArrowType26NANOARROW_TYPE_DENSE_UNIONE"><code class="docutils literal notranslate"><span class="pre">ArrowType::NANOARROW_TYPE_DENSE_UNION</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N9ArrowType25NANOARROW_TYPE_DICTIONARYE"><code class="docutils literal notranslate"><span class="pre">ArrowType::NANOARROW_TYPE_DICTIONARY</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N9ArrowType18NANOARROW_TYPE_MAPE"><code class="docutils literal notranslate"><span class="pre">ArrowType::NANOARROW_TYPE_MAP</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N9ArrowType24NANOARROW_TYPE_EXTENSIONE"><code class="docutils literal notranslate"><span class="pre">ArrowType::NANOARROW_TYPE_EXTENSION</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N9ArrowType30NANOARROW_TYPE_FIXED_SIZE_LISTE"><code class="docutils literal notranslate"><span class="pre">ArrowType::NANOARROW_TYPE_FIXED_SIZE_LIST</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N9ArrowType23NANOARROW_TYPE_DURATIONE"><code class="docutils literal notranslate"><span class="pre">ArrowType::NANOARROW_TYPE_DURATION</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N9ArrowType27NANOARROW_TYPE_LARGE_STRINGE"><code class="docutils literal notranslate"><span class="pre">ArrowType::NANOARROW_TYPE_LARGE_STRING</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N9ArrowType27NANOARROW_TYPE_LARGE_BINARYE"><code class="docutils literal notranslate"><span class="pre">ArrowType::NANOARROW_TYPE_LARGE_BINARY</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N9ArrowType25NANOARROW_TYPE_LARGE_LISTE"><code class="docutils literal notranslate"><span class="pre">ArrowType::NANOARROW_TYPE_LARGE_LIST</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N9ArrowType38NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANOE"><code class="docutils literal notranslate"><span class="pre">ArrowType::NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N9ArrowType30NANOARROW_TYPE_RUN_END_ENCODEDE"><code class="docutils literal notranslate"><span class="pre">ArrowType::NANOARROW_TYPE_RUN_END_ENCODED</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N9ArrowType26NANOARROW_TYPE_BINARY_VIEWE"><code class="docutils literal notranslate"><span class="pre">ArrowType::NANOARROW_TYPE_BINARY_VIEW</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N9ArrowType26NANOARROW_TYPE_STRING_VIEWE"><code class="docutils literal notranslate"><span class="pre">ArrowType::NANOARROW_TYPE_STRING_VIEW</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N9ArrowType24NANOARROW_TYPE_DECIMAL32E"><code class="docutils literal notranslate"><span class="pre">ArrowType::NANOARROW_TYPE_DECIMAL32</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N9ArrowType24NANOARROW_TYPE_DECIMAL64E"><code class="docutils literal notranslate"><span class="pre">ArrowType::NANOARROW_TYPE_DECIMAL64</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N9ArrowType28NANOARROW_TYPE_UNINITIALIZEDE"><code class="docutils literal notranslate"><span class="pre">NANOARROW_TYPE_UNINITIALIZED</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N9ArrowType17NANOARROW_TYPE_NAE"><code class="docutils literal notranslate"><span class="pre">NANOARROW_TYPE_NA</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N9ArrowType19NANOARROW_TYPE_BOOLE"><code class="docutils literal notranslate"><span class="pre">NANOARROW_TYPE_BOOL</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N9ArrowType20NANOARROW_TYPE_UINT8E"><code class="docutils literal notranslate"><span class="pre">NANOARROW_TYPE_UINT8</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N9ArrowType19NANOARROW_TYPE_INT8E"><code class="docutils literal notranslate"><span class="pre">NANOARROW_TYPE_INT8</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N9ArrowType21NANOARROW_TYPE_UINT16E"><code class="docutils literal notranslate"><span class="pre">NANOARROW_TYPE_UINT16</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N9ArrowType20NANOARROW_TYPE_INT16E"><code class="docutils literal notranslate"><span class="pre">NANOARROW_TYPE_INT16</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N9ArrowType21NANOARROW_TYPE_UINT32E"><code class="docutils literal notranslate"><span class="pre">NANOARROW_TYPE_UINT32</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N9ArrowType20NANOARROW_TYPE_INT32E"><code class="docutils literal notranslate"><span class="pre">NANOARROW_TYPE_INT32</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N9ArrowType21NANOARROW_TYPE_UINT64E"><code class="docutils literal notranslate"><span class="pre">NANOARROW_TYPE_UINT64</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N9ArrowType20NANOARROW_TYPE_INT64E"><code class="docutils literal notranslate"><span class="pre">NANOARROW_TYPE_INT64</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N9ArrowType25NANOARROW_TYPE_HALF_FLOATE"><code class="docutils literal notranslate"><span class="pre">NANOARROW_TYPE_HALF_FLOAT</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N9ArrowType20NANOARROW_TYPE_FLOATE"><code class="docutils literal notranslate"><span class="pre">NANOARROW_TYPE_FLOAT</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N9ArrowType21NANOARROW_TYPE_DOUBLEE"><code class="docutils literal notranslate"><span class="pre">NANOARROW_TYPE_DOUBLE</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N9ArrowType21NANOARROW_TYPE_STRINGE"><code class="docutils literal notranslate"><span class="pre">NANOARROW_TYPE_STRING</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N9ArrowType21NANOARROW_TYPE_BINARYE"><code class="docutils literal notranslate"><span class="pre">NANOARROW_TYPE_BINARY</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N9ArrowType32NANOARROW_TYPE_FIXED_SIZE_BINARYE"><code class="docutils literal notranslate"><span class="pre">NANOARROW_TYPE_FIXED_SIZE_BINARY</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N9ArrowType21NANOARROW_TYPE_DATE32E"><code class="docutils literal notranslate"><span class="pre">NANOARROW_TYPE_DATE32</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N9ArrowType21NANOARROW_TYPE_DATE64E"><code class="docutils literal notranslate"><span class="pre">NANOARROW_TYPE_DATE64</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N9ArrowType24NANOARROW_TYPE_TIMESTAMPE"><code class="docutils literal notranslate"><span class="pre">NANOARROW_TYPE_TIMESTAMP</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N9ArrowType21NANOARROW_TYPE_TIME32E"><code class="docutils literal notranslate"><span class="pre">NANOARROW_TYPE_TIME32</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N9ArrowType21NANOARROW_TYPE_TIME64E"><code class="docutils literal notranslate"><span class="pre">NANOARROW_TYPE_TIME64</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N9ArrowType30NANOARROW_TYPE_INTERVAL_MONTHSE"><code class="docutils literal notranslate"><span class="pre">NANOARROW_TYPE_INTERVAL_MONTHS</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N9ArrowType32NANOARROW_TYPE_INTERVAL_DAY_TIMEE"><code class="docutils literal notranslate"><span class="pre">NANOARROW_TYPE_INTERVAL_DAY_TIME</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N9ArrowType25NANOARROW_TYPE_DECIMAL128E"><code class="docutils literal notranslate"><span class="pre">NANOARROW_TYPE_DECIMAL128</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N9ArrowType25NANOARROW_TYPE_DECIMAL256E"><code class="docutils literal notranslate"><span class="pre">NANOARROW_TYPE_DECIMAL256</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N9ArrowType19NANOARROW_TYPE_LISTE"><code class="docutils literal notranslate"><span class="pre">NANOARROW_TYPE_LIST</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N9ArrowType21NANOARROW_TYPE_STRUCTE"><code class="docutils literal notranslate"><span class="pre">NANOARROW_TYPE_STRUCT</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N9ArrowType27NANOARROW_TYPE_SPARSE_UNIONE"><code class="docutils literal notranslate"><span class="pre">NANOARROW_TYPE_SPARSE_UNION</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N9ArrowType26NANOARROW_TYPE_DENSE_UNIONE"><code class="docutils literal notranslate"><span class="pre">NANOARROW_TYPE_DENSE_UNION</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N9ArrowType25NANOARROW_TYPE_DICTIONARYE"><code class="docutils literal notranslate"><span class="pre">NANOARROW_TYPE_DICTIONARY</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N9ArrowType18NANOARROW_TYPE_MAPE"><code class="docutils literal notranslate"><span class="pre">NANOARROW_TYPE_MAP</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N9ArrowType24NANOARROW_TYPE_EXTENSIONE"><code class="docutils literal notranslate"><span class="pre">NANOARROW_TYPE_EXTENSION</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N9ArrowType30NANOARROW_TYPE_FIXED_SIZE_LISTE"><code class="docutils literal notranslate"><span class="pre">NANOARROW_TYPE_FIXED_SIZE_LIST</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N9ArrowType23NANOARROW_TYPE_DURATIONE"><code class="docutils literal notranslate"><span class="pre">NANOARROW_TYPE_DURATION</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N9ArrowType27NANOARROW_TYPE_LARGE_STRINGE"><code class="docutils literal notranslate"><span class="pre">NANOARROW_TYPE_LARGE_STRING</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N9ArrowType27NANOARROW_TYPE_LARGE_BINARYE"><code class="docutils literal notranslate"><span class="pre">NANOARROW_TYPE_LARGE_BINARY</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N9ArrowType25NANOARROW_TYPE_LARGE_LISTE"><code class="docutils literal notranslate"><span class="pre">NANOARROW_TYPE_LARGE_LIST</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N9ArrowType38NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANOE"><code class="docutils literal notranslate"><span class="pre">NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N9ArrowType30NANOARROW_TYPE_RUN_END_ENCODEDE"><code class="docutils literal notranslate"><span class="pre">NANOARROW_TYPE_RUN_END_ENCODED</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N9ArrowType26NANOARROW_TYPE_BINARY_VIEWE"><code class="docutils literal notranslate"><span class="pre">NANOARROW_TYPE_BINARY_VIEW</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N9ArrowType26NANOARROW_TYPE_STRING_VIEWE"><code class="docutils literal notranslate"><span class="pre">NANOARROW_TYPE_STRING_VIEW</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N9ArrowType24NANOARROW_TYPE_DECIMAL32E"><code class="docutils literal notranslate"><span class="pre">NANOARROW_TYPE_DECIMAL32</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N9ArrowType24NANOARROW_TYPE_DECIMAL64E"><code class="docutils literal notranslate"><span class="pre">NANOARROW_TYPE_DECIMAL64</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N9ArrowType24NANOARROW_TYPE_LIST_VIEWE"><code class="docutils literal notranslate"><span class="pre">NANOARROW_TYPE_LIST_VIEW</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N9ArrowType30NANOARROW_TYPE_LARGE_LIST_VIEWE"><code class="docutils literal notranslate"><span class="pre">NANOARROW_TYPE_LARGE_LIST_VIEW</span></code></a></li>
 </ul>
 </li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv413ArrowTimeUnit"><code class="docutils literal notranslate"><span class="pre">ArrowTimeUnit</span></code></a><ul class="nav section-nav flex-column">
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N13ArrowTimeUnit26NANOARROW_TIME_UNIT_SECONDE"><code class="docutils literal notranslate"><span class="pre">ArrowTimeUnit::NANOARROW_TIME_UNIT_SECOND</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N13ArrowTimeUnit25NANOARROW_TIME_UNIT_MILLIE"><code class="docutils literal notranslate"><span class="pre">ArrowTimeUnit::NANOARROW_TIME_UNIT_MILLI</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N13ArrowTimeUnit25NANOARROW_TIME_UNIT_MICROE"><code class="docutils literal notranslate"><span class="pre">ArrowTimeUnit::NANOARROW_TIME_UNIT_MICRO</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N13ArrowTimeUnit24NANOARROW_TIME_UNIT_NANOE"><code class="docutils literal notranslate"><span class="pre">ArrowTimeUnit::NANOARROW_TIME_UNIT_NANO</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N13ArrowTimeUnit26NANOARROW_TIME_UNIT_SECONDE"><code class="docutils literal notranslate"><span class="pre">NANOARROW_TIME_UNIT_SECOND</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N13ArrowTimeUnit25NANOARROW_TIME_UNIT_MILLIE"><code class="docutils literal notranslate"><span class="pre">NANOARROW_TIME_UNIT_MILLI</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N13ArrowTimeUnit25NANOARROW_TIME_UNIT_MICROE"><code class="docutils literal notranslate"><span class="pre">NANOARROW_TIME_UNIT_MICRO</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N13ArrowTimeUnit24NANOARROW_TIME_UNIT_NANOE"><code class="docutils literal notranslate"><span class="pre">NANOARROW_TIME_UNIT_NANO</span></code></a></li>
 </ul>
 </li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv417ArrowCompareLevel"><code class="docutils literal notranslate"><span class="pre">ArrowCompareLevel</span></code></a><ul class="nav section-nav flex-column">
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N17ArrowCompareLevel27NANOARROW_COMPARE_IDENTICALE"><code class="docutils literal notranslate"><span class="pre">ArrowCompareLevel::NANOARROW_COMPARE_IDENTICAL</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N17ArrowCompareLevel27NANOARROW_COMPARE_IDENTICALE"><code class="docutils literal notranslate"><span class="pre">NANOARROW_COMPARE_IDENTICAL</span></code></a></li>
 </ul>
 </li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv415ArrowTypeString9ArrowType"><code class="docutils literal notranslate"><span class="pre">ArrowTypeString()</span></code></a></li>
@@ -2949,42 +2978,47 @@
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv421ArrowHalfFloatToFloat8uint16_t"><code class="docutils literal notranslate"><span class="pre">ArrowHalfFloatToFloat()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv419ArrowResolveChunk647int64_tPK7int64_t7int64_t7int64_t"><code class="docutils literal notranslate"><span class="pre">ArrowResolveChunk64()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv415ArrowStringView"><code class="docutils literal notranslate"><span class="pre">ArrowStringView</span></code></a><ul class="nav section-nav flex-column">
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N15ArrowStringView4dataE"><code class="docutils literal notranslate"><span class="pre">ArrowStringView::data</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N15ArrowStringView10size_bytesE"><code class="docutils literal notranslate"><span class="pre">ArrowStringView::size_bytes</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N15ArrowStringView4dataE"><code class="docutils literal notranslate"><span class="pre">data</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N15ArrowStringView10size_bytesE"><code class="docutils literal notranslate"><span class="pre">size_bytes</span></code></a></li>
 </ul>
 </li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv415ArrowBufferView"><code class="docutils literal notranslate"><span class="pre">ArrowBufferView</span></code></a><ul class="nav section-nav flex-column">
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N15ArrowBufferView4dataE"><code class="docutils literal notranslate"><span class="pre">ArrowBufferView::data</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N15ArrowBufferView10size_bytesE"><code class="docutils literal notranslate"><span class="pre">ArrowBufferView::size_bytes</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N15ArrowBufferView4dataE"><code class="docutils literal notranslate"><span class="pre">data</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N15ArrowBufferView10size_bytesE"><code class="docutils literal notranslate"><span class="pre">size_bytes</span></code></a></li>
 </ul>
 </li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv411ArrowLayout"><code class="docutils literal notranslate"><span class="pre">ArrowLayout</span></code></a><ul class="nav section-nav flex-column">
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N11ArrowLayout11buffer_typeE"><code class="docutils literal notranslate"><span class="pre">ArrowLayout::buffer_type</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N11ArrowLayout16buffer_data_typeE"><code class="docutils literal notranslate"><span class="pre">ArrowLayout::buffer_data_type</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N11ArrowLayout17element_size_bitsE"><code class="docutils literal notranslate"><span class="pre">ArrowLayout::element_size_bits</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N11ArrowLayout19child_size_elementsE"><code class="docutils literal notranslate"><span class="pre">ArrowLayout::child_size_elements</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N11ArrowLayout11buffer_typeE"><code class="docutils literal notranslate"><span class="pre">buffer_type</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N11ArrowLayout16buffer_data_typeE"><code class="docutils literal notranslate"><span class="pre">buffer_data_type</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N11ArrowLayout17element_size_bitsE"><code class="docutils literal notranslate"><span class="pre">element_size_bits</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N11ArrowLayout19child_size_elementsE"><code class="docutils literal notranslate"><span class="pre">child_size_elements</span></code></a></li>
 </ul>
 </li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv413ArrowInterval"><code class="docutils literal notranslate"><span class="pre">ArrowInterval</span></code></a><ul class="nav section-nav flex-column">
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N13ArrowInterval4typeE"><code class="docutils literal notranslate"><span class="pre">ArrowInterval::type</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N13ArrowInterval6monthsE"><code class="docutils literal notranslate"><span class="pre">ArrowInterval::months</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N13ArrowInterval4daysE"><code class="docutils literal notranslate"><span class="pre">ArrowInterval::days</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N13ArrowInterval2msE"><code class="docutils literal notranslate"><span class="pre">ArrowInterval::ms</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N13ArrowInterval2nsE"><code class="docutils literal notranslate"><span class="pre">ArrowInterval::ns</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N13ArrowInterval4typeE"><code class="docutils literal notranslate"><span class="pre">type</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N13ArrowInterval6monthsE"><code class="docutils literal notranslate"><span class="pre">months</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N13ArrowInterval4daysE"><code class="docutils literal notranslate"><span class="pre">days</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N13ArrowInterval2msE"><code class="docutils literal notranslate"><span class="pre">ms</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N13ArrowInterval2nsE"><code class="docutils literal notranslate"><span class="pre">ns</span></code></a></li>
 </ul>
 </li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv412ArrowDecimal"><code class="docutils literal notranslate"><span class="pre">ArrowDecimal</span></code></a><ul class="nav section-nav flex-column">
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N12ArrowDecimal5wordsE"><code class="docutils literal notranslate"><span class="pre">ArrowDecimal::words</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N12ArrowDecimal9precisionE"><code class="docutils literal notranslate"><span class="pre">ArrowDecimal::precision</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N12ArrowDecimal5scaleE"><code class="docutils literal notranslate"><span class="pre">ArrowDecimal::scale</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N12ArrowDecimal7n_wordsE"><code class="docutils literal notranslate"><span class="pre">ArrowDecimal::n_words</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N12ArrowDecimal15high_word_indexE"><code class="docutils literal notranslate"><span class="pre">ArrowDecimal::high_word_index</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N12ArrowDecimal14low_word_indexE"><code class="docutils literal notranslate"><span class="pre">ArrowDecimal::low_word_index</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N12ArrowDecimal5wordsE"><code class="docutils literal notranslate"><span class="pre">words</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N12ArrowDecimal9precisionE"><code class="docutils literal notranslate"><span class="pre">precision</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N12ArrowDecimal5scaleE"><code class="docutils literal notranslate"><span class="pre">scale</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N12ArrowDecimal7n_wordsE"><code class="docutils literal notranslate"><span class="pre">n_words</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N12ArrowDecimal15high_word_indexE"><code class="docutils literal notranslate"><span class="pre">high_word_index</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N12ArrowDecimal14low_word_indexE"><code class="docutils literal notranslate"><span class="pre">low_word_index</span></code></a></li>
 </ul>
 </li>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#arrow-c-data-interface">Arrow C Data Interface</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#c.ARROW_C_DATA_INTERFACE"><code class="docutils literal notranslate"><span class="pre">ARROW_C_DATA_INTERFACE</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#c.ARROW_FLAG_DICTIONARY_ORDERED"><code class="docutils literal notranslate"><span class="pre">ARROW_FLAG_DICTIONARY_ORDERED</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#c.ARROW_FLAG_NULLABLE"><code class="docutils literal notranslate"><span class="pre">ARROW_FLAG_NULLABLE</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#c.ARROW_FLAG_MAP_KEYS_SORTED"><code class="docutils literal notranslate"><span class="pre">ARROW_FLAG_MAP_KEYS_SORTED</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#c.ARROW_C_STREAM_INTERFACE"><code class="docutils literal notranslate"><span class="pre">ARROW_C_STREAM_INTERFACE</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv415ArrowSchemaMoveP11ArrowSchemaP11ArrowSchema"><code class="docutils literal notranslate"><span class="pre">ArrowSchemaMove()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv418ArrowSchemaReleaseP11ArrowSchema"><code class="docutils literal notranslate"><span class="pre">ArrowSchemaRelease()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv414ArrowArrayMoveP10ArrowArrayP10ArrowArray"><code class="docutils literal notranslate"><span class="pre">ArrowArrayMove()</span></code></a></li>
@@ -2993,36 +3027,36 @@
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv423ArrowArrayStreamGetNextP16ArrowArrayStreamP10ArrowArrayP10ArrowError"><code class="docutils literal notranslate"><span class="pre">ArrowArrayStreamGetNext()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv428ArrowArrayStreamGetLastErrorP16ArrowArrayStream"><code class="docutils literal notranslate"><span class="pre">ArrowArrayStreamGetLastError()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv411ArrowSchema"><code class="docutils literal notranslate"><span class="pre">ArrowSchema</span></code></a><ul class="nav section-nav flex-column">
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N11ArrowSchema6formatE"><code class="docutils literal notranslate"><span class="pre">ArrowSchema::format</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N11ArrowSchema4nameE"><code class="docutils literal notranslate"><span class="pre">ArrowSchema::name</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N11ArrowSchema8metadataE"><code class="docutils literal notranslate"><span class="pre">ArrowSchema::metadata</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N11ArrowSchema5flagsE"><code class="docutils literal notranslate"><span class="pre">ArrowSchema::flags</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N11ArrowSchema10n_childrenE"><code class="docutils literal notranslate"><span class="pre">ArrowSchema::n_children</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N11ArrowSchema8childrenE"><code class="docutils literal notranslate"><span class="pre">ArrowSchema::children</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N11ArrowSchema10dictionaryE"><code class="docutils literal notranslate"><span class="pre">ArrowSchema::dictionary</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N11ArrowSchema7releaseE"><code class="docutils literal notranslate"><span class="pre">ArrowSchema::release</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N11ArrowSchema12private_dataE"><code class="docutils literal notranslate"><span class="pre">ArrowSchema::private_data</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N11ArrowSchema6formatE"><code class="docutils literal notranslate"><span class="pre">format</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N11ArrowSchema4nameE"><code class="docutils literal notranslate"><span class="pre">name</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N11ArrowSchema8metadataE"><code class="docutils literal notranslate"><span class="pre">metadata</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N11ArrowSchema5flagsE"><code class="docutils literal notranslate"><span class="pre">flags</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N11ArrowSchema10n_childrenE"><code class="docutils literal notranslate"><span class="pre">n_children</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N11ArrowSchema8childrenE"><code class="docutils literal notranslate"><span class="pre">children</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N11ArrowSchema10dictionaryE"><code class="docutils literal notranslate"><span class="pre">dictionary</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N11ArrowSchema7releaseE"><code class="docutils literal notranslate"><span class="pre">release</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N11ArrowSchema12private_dataE"><code class="docutils literal notranslate"><span class="pre">private_data</span></code></a></li>
 </ul>
 </li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv410ArrowArray"><code class="docutils literal notranslate"><span class="pre">ArrowArray</span></code></a><ul class="nav section-nav flex-column">
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N10ArrowArray6lengthE"><code class="docutils literal notranslate"><span class="pre">ArrowArray::length</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N10ArrowArray10null_countE"><code class="docutils literal notranslate"><span class="pre">ArrowArray::null_count</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N10ArrowArray6offsetE"><code class="docutils literal notranslate"><span class="pre">ArrowArray::offset</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N10ArrowArray9n_buffersE"><code class="docutils literal notranslate"><span class="pre">ArrowArray::n_buffers</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N10ArrowArray10n_childrenE"><code class="docutils literal notranslate"><span class="pre">ArrowArray::n_children</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N10ArrowArray7buffersE"><code class="docutils literal notranslate"><span class="pre">ArrowArray::buffers</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N10ArrowArray8childrenE"><code class="docutils literal notranslate"><span class="pre">ArrowArray::children</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N10ArrowArray10dictionaryE"><code class="docutils literal notranslate"><span class="pre">ArrowArray::dictionary</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N10ArrowArray7releaseE"><code class="docutils literal notranslate"><span class="pre">ArrowArray::release</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N10ArrowArray12private_dataE"><code class="docutils literal notranslate"><span class="pre">ArrowArray::private_data</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N10ArrowArray6lengthE"><code class="docutils literal notranslate"><span class="pre">length</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N10ArrowArray10null_countE"><code class="docutils literal notranslate"><span class="pre">null_count</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N10ArrowArray6offsetE"><code class="docutils literal notranslate"><span class="pre">offset</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N10ArrowArray9n_buffersE"><code class="docutils literal notranslate"><span class="pre">n_buffers</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N10ArrowArray10n_childrenE"><code class="docutils literal notranslate"><span class="pre">n_children</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N10ArrowArray7buffersE"><code class="docutils literal notranslate"><span class="pre">buffers</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N10ArrowArray8childrenE"><code class="docutils literal notranslate"><span class="pre">children</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N10ArrowArray10dictionaryE"><code class="docutils literal notranslate"><span class="pre">dictionary</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N10ArrowArray7releaseE"><code class="docutils literal notranslate"><span class="pre">release</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N10ArrowArray12private_dataE"><code class="docutils literal notranslate"><span class="pre">private_data</span></code></a></li>
 </ul>
 </li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv416ArrowArrayStream"><code class="docutils literal notranslate"><span class="pre">ArrowArrayStream</span></code></a><ul class="nav section-nav flex-column">
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N16ArrowArrayStream10get_schemaE"><code class="docutils literal notranslate"><span class="pre">ArrowArrayStream::get_schema</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N16ArrowArrayStream8get_nextE"><code class="docutils literal notranslate"><span class="pre">ArrowArrayStream::get_next</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N16ArrowArrayStream14get_last_errorE"><code class="docutils literal notranslate"><span class="pre">ArrowArrayStream::get_last_error</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N16ArrowArrayStream7releaseE"><code class="docutils literal notranslate"><span class="pre">ArrowArrayStream::release</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N16ArrowArrayStream12private_dataE"><code class="docutils literal notranslate"><span class="pre">ArrowArrayStream::private_data</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N16ArrowArrayStream10get_schemaE"><code class="docutils literal notranslate"><span class="pre">get_schema</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N16ArrowArrayStream8get_nextE"><code class="docutils literal notranslate"><span class="pre">get_next</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N16ArrowArrayStream14get_last_errorE"><code class="docutils literal notranslate"><span class="pre">get_last_error</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N16ArrowArrayStream7releaseE"><code class="docutils literal notranslate"><span class="pre">release</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N16ArrowArrayStream12private_dataE"><code class="docutils literal notranslate"><span class="pre">private_data</span></code></a></li>
 </ul>
 </li>
 </ul>

@@ -387,7 +387,7 @@
 <h2>C API<a class="headerlink" href="#c-api" title="Link to this heading">#</a></h2>
 <dl>
 <dt class="sig sig-object cpp">
-<span class="target" id="group__nanoarrow__ipc"></span><em><span class="pre">group</span></em> <span class="sig-name descname"><span class="pre">nanoarrow_ipc</span></span></dt>
+<span class="target" id="group__nanoarrow__ipc"></span><em><span class="pre">group</span></em> <span class="sig-name descname"><span class="pre">Nanoarrow</span> <span class="pre">IPC</span> <span class="pre">extension</span></span></dt>
 <dd><p>Except where noted, objects are not thread-safe and clients should take care to serialize accesses to methods.</p>
 <p>Because this library is intended to be vendored, it provides full type definitions and encourages clients to stack or statically allocate where convenient. </p>
 <div class="breathe-sectiondef docutils container">
@@ -1063,7 +1063,7 @@
 <h2>C++ Helpers<a class="headerlink" href="#c-helpers" title="Link to this heading">#</a></h2>
 <dl>
 <dt class="sig sig-object cpp">
-<span class="target" id="group__nanoarrow__ipc__hpp-unique"></span><em><span class="pre">group</span></em> <span class="sig-name descname"><span class="pre">nanoarrow_ipc_hpp-unique</span></span></dt>
+<span class="target" id="group__nanoarrow__ipc__hpp-unique"></span><em><span class="pre">group</span></em> <span class="sig-name descname"><span class="pre">Unique</span> <span class="pre">object</span> <span class="pre">wrappers</span></span></dt>
 <dd><p>Extends the unique object wrappers in nanoarrow.hpp to include C structs defined in the nanoarrow_ipc.h header. </p>
 <div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric" id="breathe-section-title-typedefs">Typedefs</p>
@@ -1163,34 +1163,36 @@
   <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="visible nav section-nav flex-column">
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#c-api">C API</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#c.NANOARROW_IPC_FEATURE_DICTIONARY_REPLACEMENT"><code class="docutils literal notranslate"><span class="pre">NANOARROW_IPC_FEATURE_DICTIONARY_REPLACEMENT</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#c.NANOARROW_IPC_FEATURE_COMPRESSED_BODY"><code class="docutils literal notranslate"><span class="pre">NANOARROW_IPC_FEATURE_COMPRESSED_BODY</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv426ArrowIpcDecompressFunction"><code class="docutils literal notranslate"><span class="pre">ArrowIpcDecompressFunction</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv423ArrowIpcMetadataVersion"><code class="docutils literal notranslate"><span class="pre">ArrowIpcMetadataVersion</span></code></a><ul class="nav section-nav flex-column">
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N23ArrowIpcMetadataVersion33NANOARROW_IPC_METADATA_VERSION_V1E"><code class="docutils literal notranslate"><span class="pre">ArrowIpcMetadataVersion::NANOARROW_IPC_METADATA_VERSION_V1</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N23ArrowIpcMetadataVersion33NANOARROW_IPC_METADATA_VERSION_V2E"><code class="docutils literal notranslate"><span class="pre">ArrowIpcMetadataVersion::NANOARROW_IPC_METADATA_VERSION_V2</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N23ArrowIpcMetadataVersion33NANOARROW_IPC_METADATA_VERSION_V3E"><code class="docutils literal notranslate"><span class="pre">ArrowIpcMetadataVersion::NANOARROW_IPC_METADATA_VERSION_V3</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N23ArrowIpcMetadataVersion33NANOARROW_IPC_METADATA_VERSION_V4E"><code class="docutils literal notranslate"><span class="pre">ArrowIpcMetadataVersion::NANOARROW_IPC_METADATA_VERSION_V4</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N23ArrowIpcMetadataVersion33NANOARROW_IPC_METADATA_VERSION_V5E"><code class="docutils literal notranslate"><span class="pre">ArrowIpcMetadataVersion::NANOARROW_IPC_METADATA_VERSION_V5</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N23ArrowIpcMetadataVersion33NANOARROW_IPC_METADATA_VERSION_V1E"><code class="docutils literal notranslate"><span class="pre">NANOARROW_IPC_METADATA_VERSION_V1</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N23ArrowIpcMetadataVersion33NANOARROW_IPC_METADATA_VERSION_V2E"><code class="docutils literal notranslate"><span class="pre">NANOARROW_IPC_METADATA_VERSION_V2</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N23ArrowIpcMetadataVersion33NANOARROW_IPC_METADATA_VERSION_V3E"><code class="docutils literal notranslate"><span class="pre">NANOARROW_IPC_METADATA_VERSION_V3</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N23ArrowIpcMetadataVersion33NANOARROW_IPC_METADATA_VERSION_V4E"><code class="docutils literal notranslate"><span class="pre">NANOARROW_IPC_METADATA_VERSION_V4</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N23ArrowIpcMetadataVersion33NANOARROW_IPC_METADATA_VERSION_V5E"><code class="docutils literal notranslate"><span class="pre">NANOARROW_IPC_METADATA_VERSION_V5</span></code></a></li>
 </ul>
 </li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv419ArrowIpcMessageType"><code class="docutils literal notranslate"><span class="pre">ArrowIpcMessageType</span></code></a><ul class="nav section-nav flex-column">
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N19ArrowIpcMessageType40NANOARROW_IPC_MESSAGE_TYPE_UNINITIALIZEDE"><code class="docutils literal notranslate"><span class="pre">ArrowIpcMessageType::NANOARROW_IPC_MESSAGE_TYPE_UNINITIALIZED</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N19ArrowIpcMessageType33NANOARROW_IPC_MESSAGE_TYPE_SCHEMAE"><code class="docutils literal notranslate"><span class="pre">ArrowIpcMessageType::NANOARROW_IPC_MESSAGE_TYPE_SCHEMA</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N19ArrowIpcMessageType43NANOARROW_IPC_MESSAGE_TYPE_DICTIONARY_BATCHE"><code class="docutils literal notranslate"><span class="pre">ArrowIpcMessageType::NANOARROW_IPC_MESSAGE_TYPE_DICTIONARY_BATCH</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N19ArrowIpcMessageType39NANOARROW_IPC_MESSAGE_TYPE_RECORD_BATCHE"><code class="docutils literal notranslate"><span class="pre">ArrowIpcMessageType::NANOARROW_IPC_MESSAGE_TYPE_RECORD_BATCH</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N19ArrowIpcMessageType33NANOARROW_IPC_MESSAGE_TYPE_TENSORE"><code class="docutils literal notranslate"><span class="pre">ArrowIpcMessageType::NANOARROW_IPC_MESSAGE_TYPE_TENSOR</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N19ArrowIpcMessageType40NANOARROW_IPC_MESSAGE_TYPE_SPARSE_TENSORE"><code class="docutils literal notranslate"><span class="pre">ArrowIpcMessageType::NANOARROW_IPC_MESSAGE_TYPE_SPARSE_TENSOR</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N19ArrowIpcMessageType40NANOARROW_IPC_MESSAGE_TYPE_UNINITIALIZEDE"><code class="docutils literal notranslate"><span class="pre">NANOARROW_IPC_MESSAGE_TYPE_UNINITIALIZED</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N19ArrowIpcMessageType33NANOARROW_IPC_MESSAGE_TYPE_SCHEMAE"><code class="docutils literal notranslate"><span class="pre">NANOARROW_IPC_MESSAGE_TYPE_SCHEMA</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N19ArrowIpcMessageType43NANOARROW_IPC_MESSAGE_TYPE_DICTIONARY_BATCHE"><code class="docutils literal notranslate"><span class="pre">NANOARROW_IPC_MESSAGE_TYPE_DICTIONARY_BATCH</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N19ArrowIpcMessageType39NANOARROW_IPC_MESSAGE_TYPE_RECORD_BATCHE"><code class="docutils literal notranslate"><span class="pre">NANOARROW_IPC_MESSAGE_TYPE_RECORD_BATCH</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N19ArrowIpcMessageType33NANOARROW_IPC_MESSAGE_TYPE_TENSORE"><code class="docutils literal notranslate"><span class="pre">NANOARROW_IPC_MESSAGE_TYPE_TENSOR</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N19ArrowIpcMessageType40NANOARROW_IPC_MESSAGE_TYPE_SPARSE_TENSORE"><code class="docutils literal notranslate"><span class="pre">NANOARROW_IPC_MESSAGE_TYPE_SPARSE_TENSOR</span></code></a></li>
 </ul>
 </li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv418ArrowIpcEndianness"><code class="docutils literal notranslate"><span class="pre">ArrowIpcEndianness</span></code></a><ul class="nav section-nav flex-column">
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N18ArrowIpcEndianness38NANOARROW_IPC_ENDIANNESS_UNINITIALIZEDE"><code class="docutils literal notranslate"><span class="pre">ArrowIpcEndianness::NANOARROW_IPC_ENDIANNESS_UNINITIALIZED</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N18ArrowIpcEndianness31NANOARROW_IPC_ENDIANNESS_LITTLEE"><code class="docutils literal notranslate"><span class="pre">ArrowIpcEndianness::NANOARROW_IPC_ENDIANNESS_LITTLE</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N18ArrowIpcEndianness28NANOARROW_IPC_ENDIANNESS_BIGE"><code class="docutils literal notranslate"><span class="pre">ArrowIpcEndianness::NANOARROW_IPC_ENDIANNESS_BIG</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N18ArrowIpcEndianness38NANOARROW_IPC_ENDIANNESS_UNINITIALIZEDE"><code class="docutils literal notranslate"><span class="pre">NANOARROW_IPC_ENDIANNESS_UNINITIALIZED</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N18ArrowIpcEndianness31NANOARROW_IPC_ENDIANNESS_LITTLEE"><code class="docutils literal notranslate"><span class="pre">NANOARROW_IPC_ENDIANNESS_LITTLE</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N18ArrowIpcEndianness28NANOARROW_IPC_ENDIANNESS_BIGE"><code class="docutils literal notranslate"><span class="pre">NANOARROW_IPC_ENDIANNESS_BIG</span></code></a></li>
 </ul>
 </li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv423ArrowIpcCompressionType"><code class="docutils literal notranslate"><span class="pre">ArrowIpcCompressionType</span></code></a><ul class="nav section-nav flex-column">
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N23ArrowIpcCompressionType35NANOARROW_IPC_COMPRESSION_TYPE_NONEE"><code class="docutils literal notranslate"><span class="pre">ArrowIpcCompressionType::NANOARROW_IPC_COMPRESSION_TYPE_NONE</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N23ArrowIpcCompressionType40NANOARROW_IPC_COMPRESSION_TYPE_LZ4_FRAMEE"><code class="docutils literal notranslate"><span class="pre">ArrowIpcCompressionType::NANOARROW_IPC_COMPRESSION_TYPE_LZ4_FRAME</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N23ArrowIpcCompressionType35NANOARROW_IPC_COMPRESSION_TYPE_ZSTDE"><code class="docutils literal notranslate"><span class="pre">ArrowIpcCompressionType::NANOARROW_IPC_COMPRESSION_TYPE_ZSTD</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N23ArrowIpcCompressionType35NANOARROW_IPC_COMPRESSION_TYPE_NONEE"><code class="docutils literal notranslate"><span class="pre">NANOARROW_IPC_COMPRESSION_TYPE_NONE</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N23ArrowIpcCompressionType40NANOARROW_IPC_COMPRESSION_TYPE_LZ4_FRAMEE"><code class="docutils literal notranslate"><span class="pre">NANOARROW_IPC_COMPRESSION_TYPE_LZ4_FRAME</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N23ArrowIpcCompressionType35NANOARROW_IPC_COMPRESSION_TYPE_ZSTDE"><code class="docutils literal notranslate"><span class="pre">NANOARROW_IPC_COMPRESSION_TYPE_ZSTD</span></code></a></li>
 </ul>
 </li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv420ArrowIpcCheckRuntimeP10ArrowError"><code class="docutils literal notranslate"><span class="pre">ArrowIpcCheckRuntime()</span></code></a></li>
@@ -1235,47 +1237,47 @@
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv426ArrowIpcWriterFinalizeFileP14ArrowIpcWriterP10ArrowError"><code class="docutils literal notranslate"><span class="pre">ArrowIpcWriterFinalizeFile()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv420ArrowIpcSharedBuffer"><code class="docutils literal notranslate"><span class="pre">ArrowIpcSharedBuffer</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv420ArrowIpcDecompressor"><code class="docutils literal notranslate"><span class="pre">ArrowIpcDecompressor</span></code></a><ul class="nav section-nav flex-column">
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N20ArrowIpcDecompressor14decompress_addE"><code class="docutils literal notranslate"><span class="pre">ArrowIpcDecompressor::decompress_add</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N20ArrowIpcDecompressor15decompress_waitE"><code class="docutils literal notranslate"><span class="pre">ArrowIpcDecompressor::decompress_wait</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N20ArrowIpcDecompressor7releaseE"><code class="docutils literal notranslate"><span class="pre">ArrowIpcDecompressor::release</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N20ArrowIpcDecompressor12private_dataE"><code class="docutils literal notranslate"><span class="pre">ArrowIpcDecompressor::private_data</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N20ArrowIpcDecompressor14decompress_addE"><code class="docutils literal notranslate"><span class="pre">decompress_add</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N20ArrowIpcDecompressor15decompress_waitE"><code class="docutils literal notranslate"><span class="pre">decompress_wait</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N20ArrowIpcDecompressor7releaseE"><code class="docutils literal notranslate"><span class="pre">release</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N20ArrowIpcDecompressor12private_dataE"><code class="docutils literal notranslate"><span class="pre">private_data</span></code></a></li>
 </ul>
 </li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv415ArrowIpcDecoder"><code class="docutils literal notranslate"><span class="pre">ArrowIpcDecoder</span></code></a><ul class="nav section-nav flex-column">
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N15ArrowIpcDecoder12message_typeE"><code class="docutils literal notranslate"><span class="pre">ArrowIpcDecoder::message_type</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N15ArrowIpcDecoder16metadata_versionE"><code class="docutils literal notranslate"><span class="pre">ArrowIpcDecoder::metadata_version</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N15ArrowIpcDecoder10endiannessE"><code class="docutils literal notranslate"><span class="pre">ArrowIpcDecoder::endianness</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N15ArrowIpcDecoder13feature_flagsE"><code class="docutils literal notranslate"><span class="pre">ArrowIpcDecoder::feature_flags</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N15ArrowIpcDecoder5codecE"><code class="docutils literal notranslate"><span class="pre">ArrowIpcDecoder::codec</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N15ArrowIpcDecoder17header_size_bytesE"><code class="docutils literal notranslate"><span class="pre">ArrowIpcDecoder::header_size_bytes</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N15ArrowIpcDecoder15body_size_bytesE"><code class="docutils literal notranslate"><span class="pre">ArrowIpcDecoder::body_size_bytes</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N15ArrowIpcDecoder6footerE"><code class="docutils literal notranslate"><span class="pre">ArrowIpcDecoder::footer</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N15ArrowIpcDecoder12private_dataE"><code class="docutils literal notranslate"><span class="pre">ArrowIpcDecoder::private_data</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N15ArrowIpcDecoder12message_typeE"><code class="docutils literal notranslate"><span class="pre">message_type</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N15ArrowIpcDecoder16metadata_versionE"><code class="docutils literal notranslate"><span class="pre">metadata_version</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N15ArrowIpcDecoder10endiannessE"><code class="docutils literal notranslate"><span class="pre">endianness</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N15ArrowIpcDecoder13feature_flagsE"><code class="docutils literal notranslate"><span class="pre">feature_flags</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N15ArrowIpcDecoder5codecE"><code class="docutils literal notranslate"><span class="pre">codec</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N15ArrowIpcDecoder17header_size_bytesE"><code class="docutils literal notranslate"><span class="pre">header_size_bytes</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N15ArrowIpcDecoder15body_size_bytesE"><code class="docutils literal notranslate"><span class="pre">body_size_bytes</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N15ArrowIpcDecoder6footerE"><code class="docutils literal notranslate"><span class="pre">footer</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N15ArrowIpcDecoder12private_dataE"><code class="docutils literal notranslate"><span class="pre">private_data</span></code></a></li>
 </ul>
 </li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv419ArrowIpcInputStream"><code class="docutils literal notranslate"><span class="pre">ArrowIpcInputStream</span></code></a><ul class="nav section-nav flex-column">
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N19ArrowIpcInputStream4readE"><code class="docutils literal notranslate"><span class="pre">ArrowIpcInputStream::read</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N19ArrowIpcInputStream7releaseE"><code class="docutils literal notranslate"><span class="pre">ArrowIpcInputStream::release</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N19ArrowIpcInputStream12private_dataE"><code class="docutils literal notranslate"><span class="pre">ArrowIpcInputStream::private_data</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N19ArrowIpcInputStream4readE"><code class="docutils literal notranslate"><span class="pre">read</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N19ArrowIpcInputStream7releaseE"><code class="docutils literal notranslate"><span class="pre">release</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N19ArrowIpcInputStream12private_dataE"><code class="docutils literal notranslate"><span class="pre">private_data</span></code></a></li>
 </ul>
 </li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv432ArrowIpcArrayStreamReaderOptions"><code class="docutils literal notranslate"><span class="pre">ArrowIpcArrayStreamReaderOptions</span></code></a><ul class="nav section-nav flex-column">
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N32ArrowIpcArrayStreamReaderOptions11field_indexE"><code class="docutils literal notranslate"><span class="pre">ArrowIpcArrayStreamReaderOptions::field_index</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N32ArrowIpcArrayStreamReaderOptions18use_shared_buffersE"><code class="docutils literal notranslate"><span class="pre">ArrowIpcArrayStreamReaderOptions::use_shared_buffers</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N32ArrowIpcArrayStreamReaderOptions11field_indexE"><code class="docutils literal notranslate"><span class="pre">field_index</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N32ArrowIpcArrayStreamReaderOptions18use_shared_buffersE"><code class="docutils literal notranslate"><span class="pre">use_shared_buffers</span></code></a></li>
 </ul>
 </li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv415ArrowIpcEncoder"><code class="docutils literal notranslate"><span class="pre">ArrowIpcEncoder</span></code></a><ul class="nav section-nav flex-column">
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N15ArrowIpcEncoder12private_dataE"><code class="docutils literal notranslate"><span class="pre">ArrowIpcEncoder::private_data</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N15ArrowIpcEncoder12private_dataE"><code class="docutils literal notranslate"><span class="pre">private_data</span></code></a></li>
 </ul>
 </li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv420ArrowIpcOutputStream"><code class="docutils literal notranslate"><span class="pre">ArrowIpcOutputStream</span></code></a><ul class="nav section-nav flex-column">
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N20ArrowIpcOutputStream5writeE"><code class="docutils literal notranslate"><span class="pre">ArrowIpcOutputStream::write</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N20ArrowIpcOutputStream7releaseE"><code class="docutils literal notranslate"><span class="pre">ArrowIpcOutputStream::release</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N20ArrowIpcOutputStream12private_dataE"><code class="docutils literal notranslate"><span class="pre">ArrowIpcOutputStream::private_data</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N20ArrowIpcOutputStream5writeE"><code class="docutils literal notranslate"><span class="pre">write</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N20ArrowIpcOutputStream7releaseE"><code class="docutils literal notranslate"><span class="pre">release</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N20ArrowIpcOutputStream12private_dataE"><code class="docutils literal notranslate"><span class="pre">private_data</span></code></a></li>
 </ul>
 </li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv414ArrowIpcWriter"><code class="docutils literal notranslate"><span class="pre">ArrowIpcWriter</span></code></a><ul class="nav section-nav flex-column">
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N14ArrowIpcWriter12private_dataE"><code class="docutils literal notranslate"><span class="pre">ArrowIpcWriter::private_data</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N14ArrowIpcWriter12private_dataE"><code class="docutils literal notranslate"><span class="pre">private_data</span></code></a></li>
 </ul>
 </li>
 </ul>

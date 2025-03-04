@@ -385,7 +385,7 @@
 <h1>C++ API Reference<a class="headerlink" href="#c-api-reference" title="Link to this heading">#</a></h1>
 <dl>
 <dt class="sig sig-object cpp">
-<span class="target" id="group__nanoarrow__hpp"></span><em><span class="pre">group</span></em> <span class="sig-name descname"><span class="pre">nanoarrow_hpp</span></span></dt>
+<span class="target" id="group__nanoarrow__hpp"></span><em><span class="pre">group</span></em> <span class="sig-name descname"><span class="pre">Nanoarrow</span> <span class="pre">C++</span> <span class="pre">Helpers</span></span></dt>
 <dd><p>The utilities provided in this file are intended to support C++ users of the nanoarrow C library such that C++-style resource allocation and error handling can be used with nanoarrow data structures. These utilities are not intended to mirror the nanoarrow C API. </p>
 </dd></dl>
 
@@ -393,7 +393,7 @@
 <h2>Error handling<a class="headerlink" href="#error-handling" title="Link to this heading">#</a></h2>
 <dl>
 <dt class="sig sig-object cpp">
-<span class="target" id="group__nanoarrow__hpp-errors"></span><em><span class="pre">group</span></em> <span class="sig-name descname"><span class="pre">nanoarrow_hpp-errors</span></span></dt>
+<span class="target" id="group__nanoarrow__hpp-errors"></span><em><span class="pre">group</span></em> <span class="sig-name descname"><span class="pre">Error</span> <span class="pre">handling</span> <span class="pre">helpers</span></span></dt>
 <dd><p>Most functions in the C API return an ArrowErrorCode to communicate possible failure. Except where documented, it is usually not safe to continue after a non-zero value has been returned. While the nanoarrow C++ helpers do not throw any exceptions of their own, these helpers are provided to facilitate using the nanoarrow C++ helpers in frameworks where this is a useful error handling idiom. </p>
 <div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric" id="breathe-section-title-defines">Defines</p>
@@ -420,7 +420,7 @@
 <h2>Owning object wrappers<a class="headerlink" href="#owning-object-wrappers" title="Link to this heading">#</a></h2>
 <dl>
 <dt class="sig sig-object cpp">
-<span class="target" id="group__nanoarrow__hpp-unique"></span><em><span class="pre">group</span></em> <span class="sig-name descname"><span class="pre">nanoarrow_hpp-unique</span></span></dt>
+<span class="target" id="group__nanoarrow__hpp-unique"></span><em><span class="pre">group</span></em> <span class="sig-name descname"><span class="pre">Unique</span> <span class="pre">object</span> <span class="pre">wrappers</span></span></dt>
 <dd><p>The Arrow C Data interface, the Arrow C Stream interface, and the nanoarrow C library use stack-allocatable objects, some of which require initialization or cleanup. </p>
 <div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric" id="breathe-section-title-typedefs">Typedefs</p>
@@ -468,7 +468,7 @@
 <h2>Array Stream utilities<a class="headerlink" href="#array-stream-utilities" title="Link to this heading">#</a></h2>
 <dl>
 <dt class="sig sig-object cpp">
-<span class="target" id="group__nanoarrow__hpp-array-stream"></span><em><span class="pre">group</span></em> <span class="sig-name descname"><span class="pre">nanoarrow_hpp-array-stream</span></span></dt>
+<span class="target" id="group__nanoarrow__hpp-array-stream"></span><em><span class="pre">group</span></em> <span class="sig-name descname"><span class="pre">ArrayStream</span> <span class="pre">helpers</span></span></dt>
 <dd><p>These classes provide simple <a class="reference internal" href="c.html#struct_arrow_array_stream"><span class="std std-ref">ArrowArrayStream</span></a> implementations that can be extended to help simplify the process of creating a valid <a class="reference internal" href="c.html#struct_arrow_array_stream"><span class="std std-ref">ArrowArrayStream</span></a> implementation or used as-is for testing. </p>
 <dl class="cpp class">
 <dt class="sig sig-object cpp" id="_CPPv4I0E18ArrayStreamFactory">
@@ -589,7 +589,7 @@ This class allows a standard C++ class to be exported to a generic <a class="ref
 <h2>Buffer utilities<a class="headerlink" href="#buffer-utilities" title="Link to this heading">#</a></h2>
 <dl>
 <dt class="sig sig-object cpp">
-<span class="target" id="group__nanoarrow__hpp-buffer"></span><em><span class="pre">group</span></em> <span class="sig-name descname"><span class="pre">nanoarrow_hpp-buffer</span></span></dt>
+<span class="target" id="group__nanoarrow__hpp-buffer"></span><em><span class="pre">group</span></em> <span class="sig-name descname"><span class="pre">Buffer</span> <span class="pre">helpers</span></span></dt>
 <dd><p>Helpers to wrap buffer-like C++ objects as <a class="reference internal" href="c.html#struct_arrow_buffer"><span class="std std-ref">ArrowBuffer</span></a> objects that can be used to build <a class="reference internal" href="c.html#struct_arrow_array"><span class="std std-ref">ArrowArray</span></a> objects. </p>
 <div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric" id="breathe-section-title-functions">Functions</p>
@@ -615,7 +615,7 @@ This class allows a standard C++ class to be exported to a generic <a class="ref
 <h2>Range-for utilities<a class="headerlink" href="#range-for-utilities" title="Link to this heading">#</a></h2>
 <dl>
 <dt class="sig sig-object cpp">
-<span class="target" id="group__nanoarrow__hpp-range__for"></span><em><span class="pre">group</span></em> <span class="sig-name descname"><span class="pre">nanoarrow_hpp-range_for</span></span></dt>
+<span class="target" id="group__nanoarrow__hpp-range__for"></span><em><span class="pre">group</span></em> <span class="sig-name descname"><span class="pre">Range-for</span> <span class="pre">helpers</span></span></dt>
 <dd><p>The Arrow C Data interface and the Arrow C Stream interface represent data which can be iterated through using C++’s range-for statement. </p>
 <div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric" id="breathe-section-title-variables">Variables</p>
@@ -741,6 +741,8 @@ This class allows a standard C++ class to be exported to a generic <a class="ref
   <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="visible nav section-nav flex-column">
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#error-handling">Error handling</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#c._NANOARROW_THROW_NOT_OK_IMPL"><code class="docutils literal notranslate"><span class="pre">_NANOARROW_THROW_NOT_OK_IMPL</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#c.NANOARROW_THROW_NOT_OK"><code class="docutils literal notranslate"><span class="pre">NANOARROW_THROW_NOT_OK</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv49Exception"><code class="docutils literal notranslate"><span class="pre">Exception</span></code></a></li>
 </ul>
 </li>
@@ -755,18 +757,18 @@ This class allows a standard C++ class to be exported to a generic <a class="ref
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#array-stream-utilities">Array Stream utilities</a><ul class="visible nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4I0E18ArrayStreamFactory"><code class="docutils literal notranslate"><span class="pre">ArrayStreamFactory</span></code></a><ul class="nav section-nav flex-column">
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N18ArrayStreamFactory15InitArrayStreamEP1TP16ArrowArrayStream"><code class="docutils literal notranslate"><span class="pre">ArrayStreamFactory::InitArrayStream()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N18ArrayStreamFactory15InitArrayStreamEP1TP16ArrowArrayStream"><code class="docutils literal notranslate"><span class="pre">InitArrayStream()</span></code></a></li>
 </ul>
 </li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv416EmptyArrayStream"><code class="docutils literal notranslate"><span class="pre">EmptyArrayStream</span></code></a><ul class="nav section-nav flex-column">
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N16EmptyArrayStream16EmptyArrayStreamEP11ArrowSchema"><code class="docutils literal notranslate"><span class="pre">EmptyArrayStream::EmptyArrayStream()</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N16EmptyArrayStream13ToArrayStreamEP16ArrowArrayStream"><code class="docutils literal notranslate"><span class="pre">EmptyArrayStream::ToArrayStream()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N16EmptyArrayStream16EmptyArrayStreamEP11ArrowSchema"><code class="docutils literal notranslate"><span class="pre">EmptyArrayStream()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N16EmptyArrayStream13ToArrayStreamEP16ArrowArrayStream"><code class="docutils literal notranslate"><span class="pre">ToArrayStream()</span></code></a></li>
 </ul>
 </li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv417VectorArrayStream"><code class="docutils literal notranslate"><span class="pre">VectorArrayStream</span></code></a><ul class="nav section-nav flex-column">
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N17VectorArrayStream17VectorArrayStreamEP11ArrowSchemaNSt6vectorI11UniqueArrayEE"><code class="docutils literal notranslate"><span class="pre">VectorArrayStream::VectorArrayStream()</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N17VectorArrayStream17VectorArrayStreamEP11ArrowSchemaP10ArrowArray"><code class="docutils literal notranslate"><span class="pre">VectorArrayStream::VectorArrayStream()</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N17VectorArrayStream13ToArrayStreamEP16ArrowArrayStream"><code class="docutils literal notranslate"><span class="pre">VectorArrayStream::ToArrayStream()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N17VectorArrayStream17VectorArrayStreamEP11ArrowSchemaNSt6vectorI11UniqueArrayEE"><code class="docutils literal notranslate"><span class="pre">VectorArrayStream()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N17VectorArrayStream17VectorArrayStreamEP11ArrowSchemaP10ArrowArray"><code class="docutils literal notranslate"><span class="pre">VectorArrayStream()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N17VectorArrayStream13ToArrayStreamEP16ArrowArrayStream"><code class="docutils literal notranslate"><span class="pre">ToArrayStream()</span></code></a></li>
 </ul>
 </li>
 </ul>
@@ -783,9 +785,9 @@ This class allows a standard C++ class to be exported to a generic <a class="ref
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv426ViewBinaryViewArrayAsBytes"><code class="docutils literal notranslate"><span class="pre">ViewBinaryViewArrayAsBytes</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv425ViewArrayAsFixedSizeBytes"><code class="docutils literal notranslate"><span class="pre">ViewArrayAsFixedSizeBytes</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv415ViewArrayStream"><code class="docutils literal notranslate"><span class="pre">ViewArrayStream</span></code></a><ul class="nav section-nav flex-column">
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N15ViewArrayStream4codeEv"><code class="docutils literal notranslate"><span class="pre">ViewArrayStream::code()</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N15ViewArrayStream5errorEv"><code class="docutils literal notranslate"><span class="pre">ViewArrayStream::error()</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4NK15ViewArrayStream5countEv"><code class="docutils literal notranslate"><span class="pre">ViewArrayStream::count()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N15ViewArrayStream4codeEv"><code class="docutils literal notranslate"><span class="pre">code()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N15ViewArrayStream5errorEv"><code class="docutils literal notranslate"><span class="pre">error()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4NK15ViewArrayStream5countEv"><code class="docutils literal notranslate"><span class="pre">count()</span></code></a></li>
 </ul>
 </li>
 </ul>

@@ -386,7 +386,7 @@
 <h2>C API<a class="headerlink" href="#c-api" title="Link to this heading">#</a></h2>
 <dl>
 <dt class="sig sig-object cpp">
-<span class="target" id="group__nanoarrow__device"></span><em><span class="pre">group</span></em> <span class="sig-name descname"><span class="pre">nanoarrow_device</span></span></dt>
+<span class="target" id="group__nanoarrow__device"></span><em><span class="pre">group</span></em> <span class="sig-name descname"><span class="pre">Nanoarrow</span> <span class="pre">Device</span> <span class="pre">extension</span></span></dt>
 <dd><p>Except where noted, objects are not thread-safe and clients should take care to serialize accesses to methods. </p>
 <div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric" id="breathe-section-title-functions">Functions</p>
@@ -617,7 +617,7 @@
 <h2>C++ Helpers<a class="headerlink" href="#c-helpers" title="Link to this heading">#</a></h2>
 <dl>
 <dt class="sig sig-object cpp">
-<span class="target" id="group__nanoarrow__device__hpp-unique"></span><em><span class="pre">group</span></em> <span class="sig-name descname"><span class="pre">nanoarrow_device_hpp-unique</span></span></dt>
+<span class="target" id="group__nanoarrow__device__hpp-unique"></span><em><span class="pre">group</span></em> <span class="sig-name descname"><span class="pre">Unique</span> <span class="pre">object</span> <span class="pre">wrappers</span></span></dt>
 <dd><p>Extends the unique object wrappers in nanoarrow.hpp to include C structs defined in the nanoarrow_device.h header. </p>
 <div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric" id="breathe-section-title-typedefs">Typedefs</p>
@@ -653,7 +653,7 @@
 <h2>Arrow C Device Interface<a class="headerlink" href="#arrow-c-device-interface" title="Link to this heading">#</a></h2>
 <dl>
 <dt class="sig sig-object cpp">
-<span class="target" id="group__nanoarrow__device-arrow-cdata"></span><em><span class="pre">group</span></em> <span class="sig-name descname"><span class="pre">nanoarrow_device-arrow-cdata</span></span></dt>
+<span class="target" id="group__nanoarrow__device-arrow-cdata"></span><em><span class="pre">group</span></em> <span class="sig-name descname"><span class="pre">Arrow</span> <span class="pre">C</span> <span class="pre">Device</span> <span class="pre">interface</span></span></dt>
 <dd><p>The Arrow Device and Stream interfaces are part of the Arrow C Device Data and Arrow C Device stream interfaces (<a class="reference external" href="https://arrow.apache.org/docs/dev/format/CDeviceDataInterface.html">https://arrow.apache.org/docs/dev/format/CDeviceDataInterface.html</a>). See the Arrow documentation for detailed documentation of these structures. </p>
 <div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric" id="breathe-section-title-defines">Defines</p>
@@ -892,16 +892,16 @@
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv421ArrowDeviceBufferCopyP11ArrowDevice15ArrowBufferViewP11ArrowDevice15ArrowBufferView"><code class="docutils literal notranslate"><span class="pre">ArrowDeviceBufferCopy()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv420ArrowDeviceArrayView"><code class="docutils literal notranslate"><span class="pre">ArrowDeviceArrayView</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv411ArrowDevice"><code class="docutils literal notranslate"><span class="pre">ArrowDevice</span></code></a><ul class="nav section-nav flex-column">
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N11ArrowDevice11device_typeE"><code class="docutils literal notranslate"><span class="pre">ArrowDevice::device_type</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N11ArrowDevice9device_idE"><code class="docutils literal notranslate"><span class="pre">ArrowDevice::device_id</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N11ArrowDevice10array_initE"><code class="docutils literal notranslate"><span class="pre">ArrowDevice::array_init</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N11ArrowDevice10array_moveE"><code class="docutils literal notranslate"><span class="pre">ArrowDevice::array_move</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N11ArrowDevice11buffer_initE"><code class="docutils literal notranslate"><span class="pre">ArrowDevice::buffer_init</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N11ArrowDevice11buffer_moveE"><code class="docutils literal notranslate"><span class="pre">ArrowDevice::buffer_move</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N11ArrowDevice11buffer_copyE"><code class="docutils literal notranslate"><span class="pre">ArrowDevice::buffer_copy</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N11ArrowDevice17synchronize_eventE"><code class="docutils literal notranslate"><span class="pre">ArrowDevice::synchronize_event</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N11ArrowDevice7releaseE"><code class="docutils literal notranslate"><span class="pre">ArrowDevice::release</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N11ArrowDevice12private_dataE"><code class="docutils literal notranslate"><span class="pre">ArrowDevice::private_data</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N11ArrowDevice11device_typeE"><code class="docutils literal notranslate"><span class="pre">device_type</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N11ArrowDevice9device_idE"><code class="docutils literal notranslate"><span class="pre">device_id</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N11ArrowDevice10array_initE"><code class="docutils literal notranslate"><span class="pre">array_init</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N11ArrowDevice10array_moveE"><code class="docutils literal notranslate"><span class="pre">array_move</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N11ArrowDevice11buffer_initE"><code class="docutils literal notranslate"><span class="pre">buffer_init</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N11ArrowDevice11buffer_moveE"><code class="docutils literal notranslate"><span class="pre">buffer_move</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N11ArrowDevice11buffer_copyE"><code class="docutils literal notranslate"><span class="pre">buffer_copy</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N11ArrowDevice17synchronize_eventE"><code class="docutils literal notranslate"><span class="pre">synchronize_event</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N11ArrowDevice7releaseE"><code class="docutils literal notranslate"><span class="pre">release</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N11ArrowDevice12private_dataE"><code class="docutils literal notranslate"><span class="pre">private_data</span></code></a></li>
 </ul>
 </li>
 </ul>
@@ -914,23 +914,39 @@
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#arrow-c-device-interface">Arrow C Device Interface</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#c.ARROW_C_DEVICE_DATA_INTERFACE"><code class="docutils literal notranslate"><span class="pre">ARROW_C_DEVICE_DATA_INTERFACE</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#c.ARROW_DEVICE_CPU"><code class="docutils literal notranslate"><span class="pre">ARROW_DEVICE_CPU</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#c.ARROW_DEVICE_CUDA"><code class="docutils literal notranslate"><span class="pre">ARROW_DEVICE_CUDA</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#c.ARROW_DEVICE_CUDA_HOST"><code class="docutils literal notranslate"><span class="pre">ARROW_DEVICE_CUDA_HOST</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#c.ARROW_DEVICE_OPENCL"><code class="docutils literal notranslate"><span class="pre">ARROW_DEVICE_OPENCL</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#c.ARROW_DEVICE_VULKAN"><code class="docutils literal notranslate"><span class="pre">ARROW_DEVICE_VULKAN</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#c.ARROW_DEVICE_METAL"><code class="docutils literal notranslate"><span class="pre">ARROW_DEVICE_METAL</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#c.ARROW_DEVICE_VPI"><code class="docutils literal notranslate"><span class="pre">ARROW_DEVICE_VPI</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#c.ARROW_DEVICE_ROCM"><code class="docutils literal notranslate"><span class="pre">ARROW_DEVICE_ROCM</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#c.ARROW_DEVICE_ROCM_HOST"><code class="docutils literal notranslate"><span class="pre">ARROW_DEVICE_ROCM_HOST</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#c.ARROW_DEVICE_EXT_DEV"><code class="docutils literal notranslate"><span class="pre">ARROW_DEVICE_EXT_DEV</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#c.ARROW_DEVICE_CUDA_MANAGED"><code class="docutils literal notranslate"><span class="pre">ARROW_DEVICE_CUDA_MANAGED</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#c.ARROW_DEVICE_ONEAPI"><code class="docutils literal notranslate"><span class="pre">ARROW_DEVICE_ONEAPI</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#c.ARROW_DEVICE_WEBGPU"><code class="docutils literal notranslate"><span class="pre">ARROW_DEVICE_WEBGPU</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#c.ARROW_DEVICE_HEXAGON"><code class="docutils literal notranslate"><span class="pre">ARROW_DEVICE_HEXAGON</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#c.ARROW_C_DEVICE_STREAM_INTERFACE"><code class="docutils literal notranslate"><span class="pre">ARROW_C_DEVICE_STREAM_INTERFACE</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv415ArrowDeviceType"><code class="docutils literal notranslate"><span class="pre">ArrowDeviceType</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv420ArrowDeviceArrayMoveP16ArrowDeviceArrayP16ArrowDeviceArray"><code class="docutils literal notranslate"><span class="pre">ArrowDeviceArrayMove()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv416ArrowDeviceArray"><code class="docutils literal notranslate"><span class="pre">ArrowDeviceArray</span></code></a><ul class="nav section-nav flex-column">
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N16ArrowDeviceArray5arrayE"><code class="docutils literal notranslate"><span class="pre">ArrowDeviceArray::array</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N16ArrowDeviceArray9device_idE"><code class="docutils literal notranslate"><span class="pre">ArrowDeviceArray::device_id</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N16ArrowDeviceArray11device_typeE"><code class="docutils literal notranslate"><span class="pre">ArrowDeviceArray::device_type</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N16ArrowDeviceArray10sync_eventE"><code class="docutils literal notranslate"><span class="pre">ArrowDeviceArray::sync_event</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N16ArrowDeviceArray8reservedE"><code class="docutils literal notranslate"><span class="pre">ArrowDeviceArray::reserved</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N16ArrowDeviceArray5arrayE"><code class="docutils literal notranslate"><span class="pre">array</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N16ArrowDeviceArray9device_idE"><code class="docutils literal notranslate"><span class="pre">device_id</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N16ArrowDeviceArray11device_typeE"><code class="docutils literal notranslate"><span class="pre">device_type</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N16ArrowDeviceArray10sync_eventE"><code class="docutils literal notranslate"><span class="pre">sync_event</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N16ArrowDeviceArray8reservedE"><code class="docutils literal notranslate"><span class="pre">reserved</span></code></a></li>
 </ul>
 </li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv422ArrowDeviceArrayStream"><code class="docutils literal notranslate"><span class="pre">ArrowDeviceArrayStream</span></code></a><ul class="nav section-nav flex-column">
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N22ArrowDeviceArrayStream11device_typeE"><code class="docutils literal notranslate"><span class="pre">ArrowDeviceArrayStream::device_type</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N22ArrowDeviceArrayStream10get_schemaE"><code class="docutils literal notranslate"><span class="pre">ArrowDeviceArrayStream::get_schema</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N22ArrowDeviceArrayStream8get_nextE"><code class="docutils literal notranslate"><span class="pre">ArrowDeviceArrayStream::get_next</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N22ArrowDeviceArrayStream14get_last_errorE"><code class="docutils literal notranslate"><span class="pre">ArrowDeviceArrayStream::get_last_error</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N22ArrowDeviceArrayStream7releaseE"><code class="docutils literal notranslate"><span class="pre">ArrowDeviceArrayStream::release</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N22ArrowDeviceArrayStream12private_dataE"><code class="docutils literal notranslate"><span class="pre">ArrowDeviceArrayStream::private_data</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N22ArrowDeviceArrayStream11device_typeE"><code class="docutils literal notranslate"><span class="pre">device_type</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N22ArrowDeviceArrayStream10get_schemaE"><code class="docutils literal notranslate"><span class="pre">get_schema</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N22ArrowDeviceArrayStream8get_nextE"><code class="docutils literal notranslate"><span class="pre">get_next</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N22ArrowDeviceArrayStream14get_last_errorE"><code class="docutils literal notranslate"><span class="pre">get_last_error</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N22ArrowDeviceArrayStream7releaseE"><code class="docutils literal notranslate"><span class="pre">release</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N22ArrowDeviceArrayStream12private_dataE"><code class="docutils literal notranslate"><span class="pre">private_data</span></code></a></li>
 </ul>
 </li>
 </ul>
