@@ -155,6 +155,35 @@ TEST(SchemaTest, SchemaTestInitNestedList) {
 #endif
 }
 
+TEST(SchemaTest, SchemaTestInitListView) {
+  struct ArrowSchema schema;
+
+  EXPECT_EQ(ArrowSchemaInitFromType(&schema, NANOARROW_TYPE_LIST_VIEW), NANOARROW_OK);
+  EXPECT_STREQ(schema.format, "+vl");
+  ASSERT_EQ(ArrowSchemaSetType(schema.children[0], NANOARROW_TYPE_INT32), NANOARROW_OK);
+
+#if defined(NANOARROW_BUILD_TESTS_WITH_ARROW)
+  auto arrow_type = ImportType(&schema);
+  ARROW_EXPECT_OK(arrow_type);
+  EXPECT_TRUE(arrow_type.ValueUnsafe()->Equals(list_view(int32())));
+#else
+  ArrowSchemaRelease(&schema);
+#endif
+
+  EXPECT_EQ(ArrowSchemaInitFromType(&schema, NANOARROW_TYPE_LARGE_LIST_VIEW),
+            NANOARROW_OK);
+  EXPECT_STREQ(schema.format, "+vL");
+  ASSERT_EQ(ArrowSchemaSetType(schema.children[0], NANOARROW_TYPE_INT32), NANOARROW_OK);
+
+#if defined(NANOARROW_BUILD_TESTS_WITH_ARROW)
+  arrow_type = ImportType(&schema);
+  ARROW_EXPECT_OK(arrow_type);
+  EXPECT_TRUE(arrow_type.ValueUnsafe()->Equals(large_list_view(int32())));
+#else
+  ArrowSchemaRelease(&schema);
+#endif
+}
+
 TEST(SchemaTest, SchemaTestInitNestedStruct) {
   struct ArrowSchema schema;
 
@@ -1345,6 +1374,38 @@ TEST(SchemaViewTest, SchemaViewInitNestedList) {
   EXPECT_EQ(schema_view.layout.element_size_bits[1], 64);
   EXPECT_EQ(schema_view.layout.element_size_bits[2], 0);
   EXPECT_EQ(ArrowSchemaToStdString(&schema), "large_list<item: int32>");
+  ArrowSchemaRelease(&schema);
+
+  ARROW_EXPECT_OK(ExportType(*list_view(int32()), &schema));
+  EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), NANOARROW_OK);
+  EXPECT_EQ(schema_view.type, NANOARROW_TYPE_LIST_VIEW);
+  EXPECT_EQ(schema_view.storage_type, NANOARROW_TYPE_LIST_VIEW);
+  EXPECT_EQ(schema_view.layout.buffer_type[0], NANOARROW_BUFFER_TYPE_VALIDITY);
+  EXPECT_EQ(schema_view.layout.buffer_type[1], NANOARROW_BUFFER_TYPE_VIEW_OFFSET);
+  EXPECT_EQ(schema_view.layout.buffer_type[2], NANOARROW_BUFFER_TYPE_SIZE);
+  EXPECT_EQ(schema_view.layout.buffer_data_type[0], NANOARROW_TYPE_BOOL);
+  EXPECT_EQ(schema_view.layout.buffer_data_type[1], NANOARROW_TYPE_INT32);
+  EXPECT_EQ(schema_view.layout.buffer_data_type[2], NANOARROW_TYPE_INT32);
+  EXPECT_EQ(schema_view.layout.element_size_bits[0], 1);
+  EXPECT_EQ(schema_view.layout.element_size_bits[1], 32);
+  EXPECT_EQ(schema_view.layout.element_size_bits[2], 32);
+  EXPECT_EQ(ArrowSchemaToStdString(&schema), "list_view<item: int32>");
+  ArrowSchemaRelease(&schema);
+
+  ARROW_EXPECT_OK(ExportType(*large_list_view(int32()), &schema));
+  EXPECT_EQ(ArrowSchemaViewInit(&schema_view, &schema, &error), NANOARROW_OK);
+  EXPECT_EQ(schema_view.type, NANOARROW_TYPE_LARGE_LIST_VIEW);
+  EXPECT_EQ(schema_view.storage_type, NANOARROW_TYPE_LARGE_LIST_VIEW);
+  EXPECT_EQ(schema_view.layout.buffer_type[0], NANOARROW_BUFFER_TYPE_VALIDITY);
+  EXPECT_EQ(schema_view.layout.buffer_type[1], NANOARROW_BUFFER_TYPE_VIEW_OFFSET);
+  EXPECT_EQ(schema_view.layout.buffer_type[2], NANOARROW_BUFFER_TYPE_SIZE);
+  EXPECT_EQ(schema_view.layout.buffer_data_type[0], NANOARROW_TYPE_BOOL);
+  EXPECT_EQ(schema_view.layout.buffer_data_type[1], NANOARROW_TYPE_INT64);
+  EXPECT_EQ(schema_view.layout.buffer_data_type[2], NANOARROW_TYPE_INT64);
+  EXPECT_EQ(schema_view.layout.element_size_bits[0], 1);
+  EXPECT_EQ(schema_view.layout.element_size_bits[1], 64);
+  EXPECT_EQ(schema_view.layout.element_size_bits[2], 64);
+  EXPECT_EQ(ArrowSchemaToStdString(&schema), "large_list_view<item: int32>");
   ArrowSchemaRelease(&schema);
 
   ARROW_EXPECT_OK(ExportType(*fixed_size_list(int32(), 123), &schema));

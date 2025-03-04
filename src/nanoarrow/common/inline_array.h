@@ -290,6 +290,9 @@ static inline ArrowErrorCode _ArrowArrayAppendEmptyInternal(struct ArrowArray* a
       case NANOARROW_BUFFER_TYPE_VARIADIC_SIZE:
       case NANOARROW_BUFFER_TYPE_VALIDITY:
         continue;
+      case NANOARROW_BUFFER_TYPE_SIZE:
+        NANOARROW_RETURN_NOT_OK(ArrowBufferAppendFill(buffer, 0, size_bytes * n));
+        continue;
       case NANOARROW_BUFFER_TYPE_DATA_OFFSET:
         // Append the current value at the end of the offset buffer for each element
         NANOARROW_RETURN_NOT_OK(ArrowBufferReserve(buffer, size_bytes * n));
@@ -310,7 +313,10 @@ static inline ArrowErrorCode _ArrowArrayAppendEmptyInternal(struct ArrowArray* a
           NANOARROW_RETURN_NOT_OK(_ArrowArrayAppendBits(array, i, 0, n));
         }
         continue;
-
+      case NANOARROW_BUFFER_TYPE_VIEW_OFFSET:
+        NANOARROW_RETURN_NOT_OK(ArrowBufferReserve(buffer, size_bytes * n));
+        NANOARROW_RETURN_NOT_OK(ArrowBufferAppendFill(buffer, 0, size_bytes * n));
+        continue;
       case NANOARROW_BUFFER_TYPE_TYPE_ID:
       case NANOARROW_BUFFER_TYPE_UNION_OFFSET:
         // These cases return above
@@ -757,6 +763,7 @@ static inline ArrowErrorCode ArrowArrayFinishElement(struct ArrowArray* array) {
       if (child_length > INT32_MAX) {
         return EOVERFLOW;
       }
+
       NANOARROW_RETURN_NOT_OK(
           ArrowBufferAppendInt32(ArrowArrayBuffer(array, 1), (int32_t)child_length));
       break;
@@ -772,6 +779,31 @@ static inline ArrowErrorCode ArrowArrayFinishElement(struct ArrowArray* array) {
         return EINVAL;
       }
       break;
+    case NANOARROW_TYPE_LIST_VIEW: {
+      child_length = array->children[0]->length;
+      if (child_length > INT32_MAX) {
+        return EOVERFLOW;
+      }
+
+      const int32_t last_valid_offset = (int32_t)private_data->list_view_offset;
+      NANOARROW_RETURN_NOT_OK(
+          ArrowBufferAppendInt32(ArrowArrayBuffer(array, 1), last_valid_offset));
+      NANOARROW_RETURN_NOT_OK(ArrowBufferAppendInt32(
+          ArrowArrayBuffer(array, 2), (int32_t)child_length - last_valid_offset));
+      private_data->list_view_offset = child_length;
+      break;
+    }
+    case NANOARROW_TYPE_LARGE_LIST_VIEW: {
+      child_length = array->children[0]->length;
+      const int64_t last_valid_offset = private_data->list_view_offset;
+      NANOARROW_RETURN_NOT_OK(
+          ArrowBufferAppendInt64(ArrowArrayBuffer(array, 1), last_valid_offset));
+      NANOARROW_RETURN_NOT_OK(ArrowBufferAppendInt64(ArrowArrayBuffer(array, 2),
+                                                     child_length - last_valid_offset));
+      private_data->list_view_offset = child_length;
+      break;
+    }
+
     case NANOARROW_TYPE_STRUCT:
       for (int64_t i = 0; i < array->n_children; i++) {
         child_length = array->children[i]->length;
@@ -1046,8 +1078,10 @@ static inline int64_t ArrowArrayViewListChildOffset(
     const struct ArrowArrayView* array_view, int64_t i) {
   switch (array_view->storage_type) {
     case NANOARROW_TYPE_LIST:
+    case NANOARROW_TYPE_LIST_VIEW:
       return array_view->buffer_views[1].data.as_int32[i];
     case NANOARROW_TYPE_LARGE_LIST:
+    case NANOARROW_TYPE_LARGE_LIST_VIEW:
       return array_view->buffer_views[1].data.as_int64[i];
     default:
       return -1;
