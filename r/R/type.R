@@ -373,6 +373,22 @@ na_large_list <- function(item_type, nullable = TRUE) {
 
 #' @rdname na_type
 #' @export
+na_list_view <- function(item_type, nullable = TRUE) {
+  schema <- .Call(nanoarrow_c_schema_init, NANOARROW_TYPE$LIST_VIEW, isTRUE(nullable))
+  schema$children[[1]] <- item_type
+  schema
+}
+
+#' @rdname na_type
+#' @export
+na_large_list_view <- function(item_type, nullable = TRUE) {
+  schema <- .Call(nanoarrow_c_schema_init, NANOARROW_TYPE$LARGE_LIST_VIEW, isTRUE(nullable))
+  schema$children[[1]] <- item_type
+  schema
+}
+
+#' @rdname na_type
+#' @export
 na_fixed_size_list <- function(item_type, list_size, nullable = TRUE) {
   schema <- .Call(
     nanoarrow_c_schema_init_fixed_size,
@@ -475,7 +491,11 @@ NANOARROW_TYPE <- list(
   INTERVAL_MONTH_DAY_NANO = 38L,
   RUN_END_ENCODED = 39L,
   BINARY_VIEW = 40L,
-  STRING_VIEW = 41L
+  STRING_VIEW = 41L,
+  DECIMAL32 = 42L,
+  DECIMAL64 = 43L,
+  LIST_VIEW = 44L,
+  LARGE_LIST_VIEW = 45L
 )
 
 ARROW_FLAG <- list(

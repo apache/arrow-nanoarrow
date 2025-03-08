@@ -127,6 +127,18 @@ test_that("list constructors assign the correct child type", {
   expect_identical(schema$children[[1]]$format, "i")
 })
 
+test_that("list_view constructors assign the correct child type", {
+  schema <- na_list_view(na_int32())
+  expect_identical(schema$format, "+vl")
+  expect_named(schema$children, "item")
+  expect_identical(schema$children[[1]]$format, "i")
+
+  schema <- na_large_list_view(na_int32())
+  expect_identical(schema$format, "+vL")
+  expect_named(schema$children, "item")
+  expect_identical(schema$children[[1]]$format, "i")
+})
+
 test_that("map constructor assigns the correct key and value types", {
   schema <- na_map(na_int32(nullable = FALSE), na_int64())
   expect_named(schema$children, "entries")
