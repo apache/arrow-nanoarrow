@@ -55,6 +55,10 @@ static void as_array_int(SEXP x_sexp, struct ArrowArray* array, SEXP schema_xptr
     case NANOARROW_TYPE_HALF_FLOAT:
     case NANOARROW_TYPE_INT64:
     case NANOARROW_TYPE_INT32:
+    case NANOARROW_TYPE_DECIMAL32:
+    case NANOARROW_TYPE_DECIMAL64:
+    case NANOARROW_TYPE_DECIMAL128:
+    case NANOARROW_TYPE_DECIMAL256:
       break;
     default:
       call_as_nanoarrow_array(x_sexp, array, schema_xptr, "as_nanoarrow_array_from_c");
@@ -75,6 +79,31 @@ static void as_array_int(SEXP x_sexp, struct ArrowArray* array, SEXP schema_xptr
   if (schema_view->type == NANOARROW_TYPE_INT32) {
     // Zero-copy create: just borrow the data buffer
     buffer_borrowed(ArrowArrayBuffer(array, 1), x_data, len * sizeof(int32_t), x_sexp);
+  } else if (schema_view->type == NANOARROW_TYPE_DECIMAL32 ||
+    schema_view->type == NANOARROW_TYPE_DECIMAL64 ||
+    schema_view->type == NANOARROW_TYPE_DECIMAL128 ||
+    schema_view->type == NANOARROW_TYPE_DECIMAL256) {
+    // Decimals need a bit of support since they need to use the decimal appender
+    struct ArrowDecimal item;
+    ArrowDecimalInit(&item, schema_view->decimal_bitwidth, schema_view->decimal_precision, schema_view->decimal_scale);
+
+    result = ArrowArrayStartAppending(array);
+    if (result != NANOARROW_OK) {
+      Rf_error("ArrowArrayStartAppending() failed");
+    }
+
+    result = ArrowArrayReserve(array, len);
+    if (result != NANOARROW_OK) {
+      Rf_error("ArrowArrayReserve() failed");
+    }
+
+    for (int64_t i = 0; i < len; i++) {
+      ArrowDecimalSetInt(&item, (int64_t)x_data[i] * schema_view->decimal_scale);
+      result = ArrowArrayAppendDecimal(array, &item);
+      if (result != NANOARROW_OK) {
+        Rf_error("ArrowArrayAppendInt() failed");
+      }
+    }
   } else {
     // Otherwise, use the integer appender
     result = ArrowArrayStartAppending(array);
