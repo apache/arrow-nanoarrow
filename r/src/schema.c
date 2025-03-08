@@ -289,7 +289,9 @@ SEXP nanoarrow_c_schema_parse(SEXP schema_xptr) {
     SET_VECTOR_ELT(result, 4, Rf_ScalarInteger(schema_view.fixed_size));
   }
 
-  if (schema_view.type == NANOARROW_TYPE_DECIMAL128 ||
+  if (schema_view.type == NANOARROW_TYPE_DECIMAL32 ||
+      schema_view.type == NANOARROW_TYPE_DECIMAL64 ||
+      schema_view.type == NANOARROW_TYPE_DECIMAL128 ||
       schema_view.type == NANOARROW_TYPE_DECIMAL256) {
     SET_VECTOR_ELT(result, 5, Rf_ScalarInteger(schema_view.decimal_bitwidth));
     SET_VECTOR_ELT(result, 6, Rf_ScalarInteger(schema_view.decimal_precision));

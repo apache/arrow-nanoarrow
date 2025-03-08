@@ -74,7 +74,18 @@ test_that("timestamp type passes along timezone parameter", {
 })
 
 test_that("decimal types pass along precision and scale", {
+  schema <- na_decimal32(12, 10)
+  expect_identical(nanoarrow_schema_parse(schema)$decimal_bitwidth, 32L)
+  expect_identical(nanoarrow_schema_parse(schema)$decimal_precision, 12L)
+  expect_identical(nanoarrow_schema_parse(schema)$decimal_scale, 10L)
+
+  schema <- na_decimal64(12, 10)
+  expect_identical(nanoarrow_schema_parse(schema)$decimal_bitwidth, 64L)
+  expect_identical(nanoarrow_schema_parse(schema)$decimal_precision, 12L)
+  expect_identical(nanoarrow_schema_parse(schema)$decimal_scale, 10L)
+
   schema <- na_decimal128(12, 10)
+  expect_identical(nanoarrow_schema_parse(schema)$decimal_bitwidth, 128L)
   expect_identical(nanoarrow_schema_parse(schema)$decimal_precision, 12L)
   expect_identical(nanoarrow_schema_parse(schema)$decimal_scale, 10L)
 
