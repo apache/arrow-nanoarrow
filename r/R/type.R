@@ -309,6 +309,30 @@ na_timestamp <- function(unit = c("us", "ns", "s", "ms"), timezone = "", nullabl
 
 #' @rdname na_type
 #' @export
+na_decimal32 <- function(precision, scale, nullable = TRUE) {
+  .Call(
+    nanoarrow_c_schema_init_decimal,
+    NANOARROW_TYPE$DECIMAL32,
+    as.integer(precision)[1],
+    as.integer(scale)[1],
+    isTRUE(nullable)
+  )
+}
+
+#' @rdname na_type
+#' @export
+na_decimal64 <- function(precision, scale, nullable = TRUE) {
+  .Call(
+    nanoarrow_c_schema_init_decimal,
+    NANOARROW_TYPE$DECIMAL64,
+    as.integer(precision)[1],
+    as.integer(scale)[1],
+    isTRUE(nullable)
+  )
+}
+
+#' @rdname na_type
+#' @export
 na_decimal128 <- function(precision, scale, nullable = TRUE) {
   .Call(
     nanoarrow_c_schema_init_decimal,
