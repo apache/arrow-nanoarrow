@@ -477,26 +477,20 @@ as_nanoarrow_array_from_c <- function(x, schema) {
 }
 
 # Helper to allow us to use nanoarrow's string parser, which parses integers
-# to set decimal storage but not anything else
-storage_integers_for_decimal(numbers, scale) {
+# to set decimal storage but not the slightly more useful case of parsing
+# things with decimal points yet.
+storage_integer_for_decimal <- function(numbers, scale) {
+  rounded_formatted <- storage_decimal_for_decimal(numbers, scale)
+  gsub(".", "", rounded_formatted, fixed = TRUE)
+}
+
+storage_decimal_for_decimal <- function(numbers, scale) {
   if (scale > 0) {
-    rounded_formatted <- format(
-      round(numbers, scale),
-      scientific = FALSE,
-      digits = scale,
-      drop0trailing = FALSE,
-      trim = TRUE
-    )
+    rounded_formatted <- sprintf("%0.*f", scale, numbers)
     rounded_formatted[is.na(numbers)] <- NA_character_
   } else {
     rounded_formatted <- as.character(round(numbers, scale))
   }
 
-  # Just a check to ensure we did what we thought we did above
-  # (either make an integer or make something with an exact number of
-  # decimal places, with the trailing zeroes being very important)
-  match_pattern <- paste0("-?[0-9]+(\\.[0-9]{", scale, "})?")
-  stopifnot(all(is.na(rounded_formatted) | grepl(match_pattern, rounded_formatted)))
-
-  gsub(".", "", rounded_formatted, fixed = TRUE)
+  rounded_formatted
 }
