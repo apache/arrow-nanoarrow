@@ -119,18 +119,18 @@ test_that("infer_nanoarrow_ptype() infers ptypes for nested types", {
   )
 })
 
-# test_that("infer_nanoarrow_ptype() errors for types it can't infer",  {
-#   unsupported_array <- nanoarrow_array_init(na_decimal256(3, 4))
-#   expect_error(
-#     infer_nanoarrow_ptype(as_nanoarrow_array(unsupported_array)),
-#     "Can't infer R vector type for <decimal256\\(3, 4\\)>"
-#   )
-#
-#   unsupported_struct <- nanoarrow_array_init(
-#     na_struct(list(col = na_decimal256(3, 4)))
-#   )
-#   expect_error(
-#     infer_nanoarrow_ptype(as_nanoarrow_array(unsupported_struct)),
-#     "Can't infer R vector type for `col` <decimal256\\(3, 4\\)>"
-#   )
-# })
+test_that("infer_nanoarrow_ptype() errors for types it can't infer",  {
+  unsupported_array <- nanoarrow_array_init(na_list_view(na_int32()))
+  expect_error(
+    infer_nanoarrow_ptype(as_nanoarrow_array(unsupported_array)),
+    "Can't infer R vector type for <list_view<item: int32>>"
+  )
+
+  unsupported_struct <- nanoarrow_array_init(
+    na_struct(list(col = na_list_view(na_int32())))
+  )
+  expect_error(
+    infer_nanoarrow_ptype(as_nanoarrow_array(unsupported_struct)),
+    "Can't infer R vector type for `col` <list_view<item: int32>>"
+  )
+})
