@@ -161,15 +161,16 @@ convert_array.double <- function(array, to, ...) {
   schema <- infer_nanoarrow_schema(array)
   parsed <- nanoarrow_schema_parse(schema)
   if (parsed$type == "decimal128") {
-    assert_arrow_installed(
-      sprintf(
-        "convert %s array to object of type double",
-        nanoarrow_schema_formatted(schema)
-      )
-    )
-
-    arrow_array <- as_arrow_array.nanoarrow_array(array)
-    arrow_array$as_vector()
+    # assert_arrow_installed(
+    #   sprintf(
+    #     "convert %s array to object of type double",
+    #     nanoarrow_schema_formatted(schema)
+    #   )
+    # )
+    #
+    # arrow_array <- as_arrow_array.nanoarrow_array(array)
+    # arrow_array$as_vector()
+    NextMethod()
   } else {
     NextMethod()
   }

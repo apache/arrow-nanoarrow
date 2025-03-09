@@ -488,9 +488,9 @@ storage_decimal_for_decimal <- function(numbers, scale) {
   if (scale > 0) {
     rounded_formatted <- sprintf("%0.*f", scale, numbers)
     rounded_formatted[is.na(numbers)] <- NA_character_
+    rounded_formatted
   } else {
     rounded_formatted <- as.character(round(numbers, scale))
+    gsub(paste0("0{", -scale, "}$"), "", rounded_formatted)
   }
-
-  rounded_formatted
 }
