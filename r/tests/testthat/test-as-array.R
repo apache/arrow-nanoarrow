@@ -116,6 +116,23 @@ test_that("as_nanoarrow_array() works for integer -> na_int64()", {
   expect_identical(convert_array(casted), as.double(1:10))
 })
 
+test_that("as_nanoarrow_array() works for integer -> na_decimal_xxx()", {
+  numbers <- c(1234L, 56L, NA, -10:10)
+  schemas <- list(
+    # na_decimal32(3, 3),
+    # na_decimal64(3, 3),
+    na_decimal128(3, 3)
+    # na_decimal256(3, 3)
+  )
+
+  for (schema in schemas) {
+    array <- as_nanoarrow_array(numbers, schema = schema)
+    actual_schema <- infer_nanoarrow_schema(array)
+    expect_true(nanoarrow_schema_identical(actual_schema, schema))
+    expect_identical(convert_array(array), as.double(numbers))
+  }
+})
+
 test_that("as_nanoarrow_array() works for double() -> na_double()", {
   # Without nulls
   array <- as_nanoarrow_array(as.double(1:10))
@@ -855,4 +872,80 @@ test_that("as_nanoarrow_array() for union type errors for unsupported objects", 
     as_nanoarrow_array(data.frame(), schema = na_dense_union()),
     "Can't convert data frame with 0 columns"
   )
+})
+
+test_that("storage_integer_for_decimal generates the correct string output", {
+  numbers <- c(
+    0, 1.23, 4, -1/3, .Machine$double.eps,
+    123.4567890, -123.4567890, NA
+  )
+
+  expect_identical(
+    storage_decimal_for_decimal(numbers, 4),
+    c(
+      "0.0000", "1.2300", "4.0000", "-0.3333", "0.0000",
+      "123.4568", "-123.4568", NA
+    )
+  )
+
+  expect_identical(
+    storage_decimal_for_decimal(numbers, 0),
+    c(
+      "0", "1", "4", "0", "0",
+      "123", "-123", NA
+    )
+  )
+
+  expect_identical(
+    storage_decimal_for_decimal(numbers, -1),
+    c(
+      "0", "0", "0", "0", "0",
+      "120", "-120", NA
+    )
+  )
+
+  expect_identical(
+    storage_integer_for_decimal(numbers, 4),
+    c(
+      "00000", "12300", "40000", "-03333", "00000",
+      "1234568", "-1234568", NA
+    )
+  )
+
+  # Check that we're generating the output we think we're generating
+  # with a random sample of numbers at full precision and a random sample
+  # of numbers at low precision.
+  withr::with_seed(4958, {
+    numbers <- runif(1000, -1000, 1000)
+    for (scale in 1:15) {
+      expect_match(
+        storage_decimal_for_decimal(numbers, scale),
+        paste0("-?[0-9]+\\.[0-9]{", scale, "}")
+      )
+    }
+
+    for (scale in -3:0) {
+      expect_match(
+        storage_decimal_for_decimal(numbers, scale),
+        paste0("-?[0-9]+")
+      )
+    }
+
+    # Also check that we have the required number of digits after the decimal
+    # when the numbers start out not having no digits after the decimal
+    numbers <- round(numbers)
+    for (scale in 1:15) {
+      expect_match(
+        storage_decimal_for_decimal(numbers, scale),
+        paste0("-?[0-9]+\\.[0-9]{", scale, "}")
+      )
+    }
+
+    for (scale in -3:0) {
+      expect_match(
+        storage_decimal_for_decimal(numbers, scale),
+        paste0("-?[0-9]+")
+      )
+    }
+  })
 })
