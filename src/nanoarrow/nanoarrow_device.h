@@ -261,7 +261,7 @@ struct ArrowDevice {
 };
 
 /// \brief Pointer to a statically-allocated CPU device singleton
-struct ArrowDevice* ArrowDeviceCpu(void);
+NANOARROW_DLL struct ArrowDevice* ArrowDeviceCpu(void);
 
 /// \brief Initialize a user-allocated device struct with a CPU device
 NANOARROW_DLL void ArrowDeviceInitCpu(struct ArrowDevice* device);

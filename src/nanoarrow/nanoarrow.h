@@ -176,19 +176,19 @@ extern "C" {
 /// @{
 
 /// \brief Allocate like malloc()
-void* ArrowMalloc(int64_t size);
+NANOARROW_DLL void* ArrowMalloc(int64_t size);
 
 /// \brief Reallocate like realloc()
-void* ArrowRealloc(void* ptr, int64_t size);
+NANOARROW_DLL void* ArrowRealloc(void* ptr, int64_t size);
 
 /// \brief Free a pointer allocated using ArrowMalloc() or ArrowRealloc().
-void ArrowFree(void* ptr);
+NANOARROW_DLL void ArrowFree(void* ptr);
 
 /// \brief Return the default allocator
 ///
 /// The default allocator uses ArrowMalloc(), ArrowRealloc(), and
 /// ArrowFree().
-struct ArrowBufferAllocator ArrowBufferAllocatorDefault(void);
+NANOARROW_DLL struct ArrowBufferAllocator ArrowBufferAllocatorDefault(void);
 
 /// \brief Create a custom deallocator
 ///
@@ -196,8 +196,8 @@ struct ArrowBufferAllocator ArrowBufferAllocatorDefault(void);
 /// attach a custom deallocator to an ArrowBuffer. This may be used to
 /// avoid copying an existing buffer that was not allocated using the
 /// infrastructure provided here (e.g., by an R or Python object).
-struct ArrowBufferAllocator ArrowBufferDeallocator(ArrowBufferDeallocatorCallback,
-                                                   void* private_data);
+NANOARROW_DLL struct ArrowBufferAllocator ArrowBufferDeallocator(
+    ArrowBufferDeallocatorCallback, void* private_data);
 
 /// @}
 
@@ -414,9 +414,10 @@ NANOARROW_DLL ArrowErrorCode ArrowSchemaSetTypeRunEndEncoded(struct ArrowSchema*
 /// NANOARROW_TYPE_TIMESTAMP, or NANOARROW_TYPE_DURATION. The
 /// timezone parameter must be NULL for a non-timestamp type. Schema must have been
 /// initialized using ArrowSchemaInit() or ArrowSchemaDeepCopy().
-ArrowErrorCode ArrowSchemaSetTypeDateTime(struct ArrowSchema* schema, enum ArrowType type,
-                                          enum ArrowTimeUnit time_unit,
-                                          const char* timezone);
+NANOARROW_DLL ArrowErrorCode ArrowSchemaSetTypeDateTime(struct ArrowSchema* schema,
+                                                        enum ArrowType type,
+                                                        enum ArrowTimeUnit time_unit,
+                                                        const char* timezone);
 
 /// \brief Set the format field of a union schema
 ///
@@ -1241,8 +1242,8 @@ NANOARROW_DLL ArrowErrorCode ArrowBasicArrayStreamInit(
 /// be greater than zero and less than the value of n_arrays passed in
 /// ArrowBasicArrayStreamInit(). Callers are not required to fill all
 /// n_arrays members (i.e., n_arrays is a maximum bound).
-void ArrowBasicArrayStreamSetArray(struct ArrowArrayStream* array_stream, int64_t i,
-                                   struct ArrowArray* array);
+NANOARROW_DLL void ArrowBasicArrayStreamSetArray(struct ArrowArrayStream* array_stream,
+                                                 int64_t i, struct ArrowArray* array);
 
 /// \brief Validate the contents of this ArrowArrayStream
 ///
