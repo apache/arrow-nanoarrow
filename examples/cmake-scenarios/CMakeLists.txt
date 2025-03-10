@@ -52,8 +52,17 @@ else()
 endif()
 
 add_executable(minimal_cpp_app src/app.cpp)
-target_link_libraries(minimal_cpp_app
-                      nanoarrow::nanoarrow
-                      nanoarrow::nanoarrow_device
-                      nanoarrow::nanoarrow_ipc
-                      nanoarrow::nanoarrow_testing)
+
+if(TEST_BUILD_TYPE STREQUAL "static")
+  target_link_libraries(minimal_cpp_app
+                        nanoarrow::nanoarrow
+                        nanoarrow::nanoarrow_device
+                        nanoarrow::nanoarrow_ipc
+                        nanoarrow::nanoarrow_testing)
+else()
+  target_link_libraries(minimal_cpp_app
+                        nanoarrow::nanoarrow_shared
+                        nanoarrow::nanoarrow_device_shared
+                        nanoarrow::nanoarrow_ipc_shared
+                        nanoarrow::nanoarrow_testing)
+endif()
