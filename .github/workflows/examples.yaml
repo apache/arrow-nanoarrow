@@ -113,6 +113,7 @@ jobs:
           ctest .
 
       - name: Comprehensive CMake example
+        shell: bash
         run: |
           cd examples/cmake-scenarios
           ./build.sh
