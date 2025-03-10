@@ -610,7 +610,6 @@ if(NANOARROW_BUILD_TESTS)
   gtest_discover_tests(hpp_view)
 
   if(NANOARROW_IPC)
-
     # zlib to decode gzipped integration testing JSON files
     # We don't use Arrow C++ for this because building Arrow C++ with zlib
     # is not trivial on Windows.
