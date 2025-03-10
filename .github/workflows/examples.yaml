@@ -29,12 +29,18 @@ on:
       - 'CMakeLists.txt'
       - '.github/workflows/examples.yaml'
       - 'src/nanoarrow/**'
-      - 'src/extensions/**'
 
 jobs:
   examples:
-
-    runs-on: ubuntu-latest
+    name: ${{ matrix.config.label }}
+    runs-on: ${{ matrix.config.label }}
+    strategy:
+      fail-fast: false
+      matrix:
+        config:
+          - {os: macOS-latest, label: macos}
+          - {os: windows-latest, label: windows}
+          - {os: ubuntu-latest, label: ubuntu}
     env:
       VERBOSE: 1
 
