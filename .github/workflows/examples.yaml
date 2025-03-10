@@ -130,8 +130,9 @@ jobs:
               echo "Trying ./${dir}/minimal_cpp_app"
               ./${dir}/minimal_cpp_app
             else
-              echo "Trying ./${dir}/Debug/minimal_cpp_app"
-              ./${dir}/Debug/minimal_cpp_app
+              echo "Trying ./${dir}/Debug/minimal_cpp_app.exe"
+              ls ${dir}
+              ./${dir}/Debug/minimal_cpp_app.exe
             fi
           done
 
