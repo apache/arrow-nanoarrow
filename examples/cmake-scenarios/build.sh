@@ -19,7 +19,7 @@
 
 set -exuo pipefail
 
-export CMAKE_CONFIGURATION_TYPES=Release
+export CMAKE_CONFIGURATION_TYPES="Release;Debug"
 
 # Build nanoarrow statically.
 cmake -S ../.. -B scratch/nanoarrow_build/ \
