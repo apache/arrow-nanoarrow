@@ -23,7 +23,6 @@
 
 #include "altrep.h"
 #include "array.h"
-#include "array_view.h"
 #include "convert.h"
 #include "util.h"
 

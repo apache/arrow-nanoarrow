@@ -309,6 +309,30 @@ na_timestamp <- function(unit = c("us", "ns", "s", "ms"), timezone = "", nullabl
 
 #' @rdname na_type
 #' @export
+na_decimal32 <- function(precision, scale, nullable = TRUE) {
+  .Call(
+    nanoarrow_c_schema_init_decimal,
+    NANOARROW_TYPE$DECIMAL32,
+    as.integer(precision)[1],
+    as.integer(scale)[1],
+    isTRUE(nullable)
+  )
+}
+
+#' @rdname na_type
+#' @export
+na_decimal64 <- function(precision, scale, nullable = TRUE) {
+  .Call(
+    nanoarrow_c_schema_init_decimal,
+    NANOARROW_TYPE$DECIMAL64,
+    as.integer(precision)[1],
+    as.integer(scale)[1],
+    isTRUE(nullable)
+  )
+}
+
+#' @rdname na_type
+#' @export
 na_decimal128 <- function(precision, scale, nullable = TRUE) {
   .Call(
     nanoarrow_c_schema_init_decimal,
@@ -367,6 +391,22 @@ na_list <- function(item_type, nullable = TRUE) {
 #' @export
 na_large_list <- function(item_type, nullable = TRUE) {
   schema <- .Call(nanoarrow_c_schema_init, NANOARROW_TYPE$LARGE_LIST, isTRUE(nullable))
+  schema$children[[1]] <- item_type
+  schema
+}
+
+#' @rdname na_type
+#' @export
+na_list_view <- function(item_type, nullable = TRUE) {
+  schema <- .Call(nanoarrow_c_schema_init, NANOARROW_TYPE$LIST_VIEW, isTRUE(nullable))
+  schema$children[[1]] <- item_type
+  schema
+}
+
+#' @rdname na_type
+#' @export
+na_large_list_view <- function(item_type, nullable = TRUE) {
+  schema <- .Call(nanoarrow_c_schema_init, NANOARROW_TYPE$LARGE_LIST_VIEW, isTRUE(nullable))
   schema$children[[1]] <- item_type
   schema
 }
@@ -475,7 +515,11 @@ NANOARROW_TYPE <- list(
   INTERVAL_MONTH_DAY_NANO = 38L,
   RUN_END_ENCODED = 39L,
   BINARY_VIEW = 40L,
-  STRING_VIEW = 41L
+  STRING_VIEW = 41L,
+  DECIMAL32 = 42L,
+  DECIMAL64 = 43L,
+  LIST_VIEW = 44L,
+  LARGE_LIST_VIEW = 45L
 )
 
 ARROW_FLAG <- list(

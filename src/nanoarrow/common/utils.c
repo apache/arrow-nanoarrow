@@ -382,6 +382,7 @@ ArrowErrorCode ArrowDecimalAppendDigitsToBuffer(const struct ArrowDecimal* decim
 
   uint64_t words_little_endian[4];
   if (decimal->n_words == 0) {
+    words_little_endian[0] = 0;
     memcpy(words_little_endian, decimal->words, sizeof(uint32_t));
   } else if (decimal->low_word_index == 0) {
     memcpy(words_little_endian, decimal->words, decimal->n_words * sizeof(uint64_t));
