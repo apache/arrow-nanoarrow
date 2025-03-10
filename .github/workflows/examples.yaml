@@ -58,7 +58,7 @@ jobs:
           cmake ..
           cmake --build .
 
-          ./example_cmake_minimal_app
+          ./example_cmake_minimal_app || ./Debug/example_cmake_minimal_app
 
       - name: Minimal Vendored Example
         shell: bash
@@ -71,7 +71,7 @@ jobs:
           ar rcs libexample_vendored_minimal_library.a library.o nanoarrow.o
           gcc -o example_vendored_minimal_app app.c libexample_vendored_minimal_library.a
 
-          ./example_vendored_minimal_app
+          ./example_vendored_minimal_app || ./Debug/example_vendored_minimal_app
 
       - name: Ipc CMake Example
         shell: bash
@@ -81,7 +81,8 @@ jobs:
           cmake ..
           cmake --build .
 
-          cat ../schema-valid.arrows | ./example_cmake_ipc_app
+          cat ../schema-valid.arrows | ./example_cmake_ipc_app || \
+            cat ../schema-valid.arrows | ./Debug/example_cmake_ipc_app
 
       - name: Ipc Vendored Example
         shell: bash
@@ -99,7 +100,8 @@ jobs:
           ar rcs libexample_vendored_ipc_library.a library.o nanoarrow.o nanoarrow_ipc.o flatcc.o
           gcc -o example_vendored_ipc_app app.c libexample_vendored_ipc_library.a
 
-          cat ../schema-valid.arrows | ./example_vendored_ipc_app
+          cat ../schema-valid.arrows | ./example_vendored_ipc_app || \
+            cat ../schema-valid.arrows | ./Debug/example_vendored_ipc_app
 
       - name: Getting Started Tutorial Example
         shell: bash
@@ -115,7 +117,7 @@ jobs:
           cd examples/cmake-scenarios
           ./build.sh
           for dir in scratch/build*; do
-            ./${dir}/minimal_cpp_app;
+            ./${dir}/minimal_cpp_app || ./${dir}/Debug/minimal_cpp_app ;
             echo ;
           done
 
