@@ -64,5 +64,5 @@ else()
                         nanoarrow::nanoarrow_shared
                         nanoarrow::nanoarrow_device_shared
                         nanoarrow::nanoarrow_ipc_shared
-                        nanoarrow::nanoarrow_testing)
+                        nanoarrow::nanoarrow_testing_shared)
 endif()

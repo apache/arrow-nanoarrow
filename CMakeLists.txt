@@ -42,7 +42,7 @@ option(NANOARROW_IPC_WITH_ZSTD "Build nanoarrow with ZSTD compression support bu
        OFF)
 
 option(NANOARROW_DEVICE "Build device extension" OFF)
-option(NANOARROW_TESTING "Build testng extension" OFF)
+option(NANOARROW_TESTING "Build testing extension" OFF)
 option(NANOARROW_DEVICE_WITH_METAL "Build Apple metal libraries" OFF)
 option(NANOARROW_DEVICE_WITH_CUDA "Build CUDA libraries" OFF)
 
