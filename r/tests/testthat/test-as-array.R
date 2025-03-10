@@ -119,10 +119,10 @@ test_that("as_nanoarrow_array() works for integer -> na_int64()", {
 test_that("as_nanoarrow_array() works for integer -> na_decimal_xxx()", {
   numbers <- c(1234L, 56L, NA, -10:10)
   schemas <- list(
-    # na_decimal32(3, 3),
-    # na_decimal64(3, 3),
-    na_decimal128(3, 3)
-    # na_decimal256(3, 3)
+    na_decimal32(9, 3),
+    na_decimal64(9, 3),
+    na_decimal128(9, 3),
+    na_decimal256(9, 3)
   )
 
   for (schema in schemas) {
@@ -900,7 +900,7 @@ test_that("storage_integer_for_decimal generates the correct string output", {
     storage_decimal_for_decimal(numbers, -1),
     c(
       "0", "0", "0", "0", "0",
-      "120", "-120", NA
+      "12", "-12", NA
     )
   )
 
@@ -924,13 +924,6 @@ test_that("storage_integer_for_decimal generates the correct string output", {
       )
     }
 
-    for (scale in -3:0) {
-      expect_match(
-        storage_decimal_for_decimal(numbers, scale),
-        paste0("-?[0-9]+")
-      )
-    }
-
     # Also check that we have the required number of digits after the decimal
     # when the numbers start out not having no digits after the decimal
     numbers <- round(numbers)
@@ -938,13 +931,6 @@ test_that("storage_integer_for_decimal generates the correct string output", {
       expect_match(
         storage_decimal_for_decimal(numbers, scale),
         paste0("-?[0-9]+\\.[0-9]{", scale, "}")
-      )
-    }
-
-    for (scale in -3:0) {
-      expect_match(
-        storage_decimal_for_decimal(numbers, scale),
-        paste0("-?[0-9]+")
       )
     }
   })

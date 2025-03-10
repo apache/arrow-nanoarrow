@@ -142,7 +142,7 @@ static inline int nanoarrow_materialize_dbl(struct RConverter* converter) {
           return status;
         }
 
-        SET_STRING_ELT(decimal_as_chr, i,
+        SET_STRING_ELT(decimal_as_chr, 0,
                        Rf_mkCharLen((char*)digits->data, (int)digits->size_bytes));
         result[dst->offset + i] = Rf_asReal(decimal_as_chr);
       }
@@ -170,7 +170,7 @@ static inline int nanoarrow_decimal_to_chr(struct ArrowDecimal* item,
   if (scale <= 0) {
     // e.g., digits are -12345 and scale is -2 -> -1234500
     // Just add zeros to the end
-    for (int i = scale; i <= 0; i++) {
+    for (int i = scale; i < 0; i++) {
       NANOARROW_RETURN_NOT_OK(ArrowBufferAppendInt8(buffer, '0'));
     }
     return NANOARROW_OK;
