@@ -33,7 +33,7 @@ on:
 jobs:
   examples:
     name: ${{ matrix.config.label }}
-    runs-on: ${{ matrix.config.label }}
+    runs-on: ${{ matrix.config.os }}
     strategy:
       fail-fast: false
       matrix:
