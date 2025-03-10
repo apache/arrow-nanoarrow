@@ -185,22 +185,22 @@ struct ArrowIpcSharedBuffer {
 ///
 /// If NANOARROW_OK is returned, the ArrowIpcSharedBuffer takes ownership of
 /// src.
-ArrowErrorCode ArrowIpcSharedBufferInit(struct ArrowIpcSharedBuffer* shared,
-                                        struct ArrowBuffer* src);
+NANOARROW_DLL ArrowErrorCode ArrowIpcSharedBufferInit(struct ArrowIpcSharedBuffer* shared,
+                                                      struct ArrowBuffer* src);
 
 /// \brief Release the caller's copy of the shared buffer
 ///
 /// When finished, the caller must relinquish its own copy of the shared data
 /// using this function. The original buffer will continue to exist until all
 /// ArrowArray objects that refer to it have also been released.
-void ArrowIpcSharedBufferReset(struct ArrowIpcSharedBuffer* shared);
+NANOARROW_DLL void ArrowIpcSharedBufferReset(struct ArrowIpcSharedBuffer* shared);
 
 /// \brief Check for shared buffer thread safety
 ///
 /// Thread-safe shared buffers require C11 and the stdatomic.h header.
 /// If either are unavailable, shared buffers are still possible but
 /// the resulting arrays must not be passed to other threads to be released.
-int ArrowIpcSharedBufferIsThreadSafe(void);
+NANOARROW_DLL int ArrowIpcSharedBufferIsThreadSafe(void);
 
 /// \brief A user-extensible decompressor
 ///
@@ -251,19 +251,20 @@ typedef ArrowErrorCode (*ArrowIpcDecompressFunction)(struct ArrowBufferView src,
 /// \brief Get the decompression function for ZSTD
 ///
 /// The result will be NULL if nanoarrow was not built with NANOARROW_IPC_WITH_ZSTD.
-ArrowIpcDecompressFunction ArrowIpcGetZstdDecompressionFunction(void);
+NANOARROW_DLL ArrowIpcDecompressFunction ArrowIpcGetZstdDecompressionFunction(void);
 
 /// \brief An ArrowIpcDecompressor implementation that performs decompression in serial
-ArrowErrorCode ArrowIpcSerialDecompressor(struct ArrowIpcDecompressor* decompressor);
+NANOARROW_DLL ArrowErrorCode
+ArrowIpcSerialDecompressor(struct ArrowIpcDecompressor* decompressor);
 
 /// \brief Override the ArrowIpcDecompressFunction used for a specific compression type
 ///
 /// This may be used to inject support for a particular type of decompression if used
 /// with a version of nanoarrow with unknown or minimal capabilities.
-ArrowErrorCode ArrowIpcSerialDecompressorSetFunction(
-    struct ArrowIpcDecompressor* decompressor,
-    enum ArrowIpcCompressionType compression_type,
-    ArrowIpcDecompressFunction decompress_function);
+NANOARROW_DLL ArrowErrorCode
+ArrowIpcSerialDecompressorSetFunction(struct ArrowIpcDecompressor* decompressor,
+                                      enum ArrowIpcCompressionType compression_type,
+                                      ArrowIpcDecompressFunction decompress_function);
 
 /// \brief Decoder for Arrow IPC messages
 ///
@@ -310,14 +311,14 @@ struct ArrowIpcDecoder {
 };
 
 /// \brief Initialize a decoder
-ArrowErrorCode ArrowIpcDecoderInit(struct ArrowIpcDecoder* decoder);
+NANOARROW_DLL ArrowErrorCode ArrowIpcDecoderInit(struct ArrowIpcDecoder* decoder);
 
 /// \brief Release all resources attached to a decoder
-void ArrowIpcDecoderReset(struct ArrowIpcDecoder* decoder);
+NANOARROW_DLL void ArrowIpcDecoderReset(struct ArrowIpcDecoder* decoder);
 
 /// \brief Set the decompressor implementation used by this decoder
-ArrowErrorCode ArrowIpcDecoderSetDecompressor(struct ArrowIpcDecoder* decoder,
-                                              struct ArrowIpcDecompressor* decompressor);
+NANOARROW_DLL ArrowErrorCode ArrowIpcDecoderSetDecompressor(
+    struct ArrowIpcDecoder* decoder, struct ArrowIpcDecompressor* decompressor);
 
 /// \brief Peek at a message header
 ///
@@ -330,10 +331,10 @@ ArrowErrorCode ArrowIpcDecoderSetDecompressor(struct ArrowIpcDecoder* decoder,
 /// Pre-1.0 messages were not prefixed with 0xFFFFFFFF. For these messages, a value
 /// of 4 will be placed into prefix_size_bytes; otherwise a value of 8 will be placed
 /// into prefix_size_bytes.
-ArrowErrorCode ArrowIpcDecoderPeekHeader(struct ArrowIpcDecoder* decoder,
-                                         struct ArrowBufferView data,
-                                         int32_t* prefix_size_bytes,
-                                         struct ArrowError* error);
+NANOARROW_DLL ArrowErrorCode ArrowIpcDecoderPeekHeader(struct ArrowIpcDecoder* decoder,
+                                                       struct ArrowBufferView data,
+                                                       int32_t* prefix_size_bytes,
+                                                       struct ArrowError* error);
 
 /// \brief Verify a message header
 ///
@@ -345,9 +346,9 @@ ArrowErrorCode ArrowIpcDecoderPeekHeader(struct ArrowIpcDecoder* decoder,
 ///
 /// Returns as ArrowIpcDecoderPeekHeader() and additionally will
 /// return EINVAL if flatbuffer verification fails.
-ArrowErrorCode ArrowIpcDecoderVerifyHeader(struct ArrowIpcDecoder* decoder,
-                                           struct ArrowBufferView data,
-                                           struct ArrowError* error);
+NANOARROW_DLL ArrowErrorCode ArrowIpcDecoderVerifyHeader(struct ArrowIpcDecoder* decoder,
+                                                         struct ArrowBufferView data,
+                                                         struct ArrowError* error);
 
 /// \brief Decode a message header
 ///
@@ -364,9 +365,9 @@ ArrowErrorCode ArrowIpcDecoderVerifyHeader(struct ArrowIpcDecoder* decoder,
 ///
 /// Returns EINVAL if the content of the message cannot be decoded or ENOTSUP if the
 /// content of the message uses features not supported by this library.
-ArrowErrorCode ArrowIpcDecoderDecodeHeader(struct ArrowIpcDecoder* decoder,
-                                           struct ArrowBufferView data,
-                                           struct ArrowError* error);
+NANOARROW_DLL ArrowErrorCode ArrowIpcDecoderDecodeHeader(struct ArrowIpcDecoder* decoder,
+                                                         struct ArrowBufferView data,
+                                                         struct ArrowError* error);
 
 /// \brief Decode an ArrowSchema
 ///
@@ -375,9 +376,9 @@ ArrowErrorCode ArrowIpcDecoderDecodeHeader(struct ArrowIpcDecoder* decoder,
 ///
 /// Returns EINVAL if the decoder did not just decode a schema message or
 /// NANOARROW_OK otherwise.
-ArrowErrorCode ArrowIpcDecoderDecodeSchema(struct ArrowIpcDecoder* decoder,
-                                           struct ArrowSchema* out,
-                                           struct ArrowError* error);
+NANOARROW_DLL ArrowErrorCode ArrowIpcDecoderDecodeSchema(struct ArrowIpcDecoder* decoder,
+                                                         struct ArrowSchema* out,
+                                                         struct ArrowError* error);
 
 /// \brief Set the ArrowSchema used to decode future record batch messages
 ///
@@ -388,9 +389,9 @@ ArrowErrorCode ArrowIpcDecoderDecodeSchema(struct ArrowIpcDecoder* decoder,
 /// schema message applies to future record batch messages).
 ///
 /// Returns EINVAL if schema validation fails or NANOARROW_OK otherwise.
-ArrowErrorCode ArrowIpcDecoderSetSchema(struct ArrowIpcDecoder* decoder,
-                                        struct ArrowSchema* schema,
-                                        struct ArrowError* error);
+NANOARROW_DLL ArrowErrorCode ArrowIpcDecoderSetSchema(struct ArrowIpcDecoder* decoder,
+                                                      struct ArrowSchema* schema,
+                                                      struct ArrowError* error);
 
 /// \brief Set the endianness used to decode future record batch messages
 ///
@@ -400,8 +401,8 @@ ArrowErrorCode ArrowIpcDecoderSetSchema(struct ArrowIpcDecoder* decoder,
 /// schema message applies to future record batch messages).
 ///
 /// Returns NANOARROW_OK on success.
-ArrowErrorCode ArrowIpcDecoderSetEndianness(struct ArrowIpcDecoder* decoder,
-                                            enum ArrowIpcEndianness endianness);
+NANOARROW_DLL ArrowErrorCode ArrowIpcDecoderSetEndianness(
+    struct ArrowIpcDecoder* decoder, enum ArrowIpcEndianness endianness);
 
 /// \brief Decode an ArrowArrayView
 ///
@@ -415,10 +416,9 @@ ArrowErrorCode ArrowIpcDecoderSetEndianness(struct ArrowIpcDecoder* decoder,
 /// will not perform any heap allocations; however, the buffers referred to by the
 /// returned ArrowArrayView are only valid as long as the buffer referred to by body stays
 /// valid.
-ArrowErrorCode ArrowIpcDecoderDecodeArrayView(struct ArrowIpcDecoder* decoder,
-                                              struct ArrowBufferView body, int64_t i,
-                                              struct ArrowArrayView** out,
-                                              struct ArrowError* error);
+NANOARROW_DLL ArrowErrorCode ArrowIpcDecoderDecodeArrayView(
+    struct ArrowIpcDecoder* decoder, struct ArrowBufferView body, int64_t i,
+    struct ArrowArrayView** out, struct ArrowError* error);
 
 /// \brief Decode an ArrowArray
 ///
@@ -431,11 +431,10 @@ ArrowErrorCode ArrowIpcDecoderDecodeArrayView(struct ArrowIpcDecoder* decoder,
 /// Returns EINVAL if the decoder did not just decode a record batch message, ENOTSUP
 /// if the message uses features not supported by this library, or or NANOARROW_OK
 /// otherwise.
-ArrowErrorCode ArrowIpcDecoderDecodeArray(struct ArrowIpcDecoder* decoder,
-                                          struct ArrowBufferView body, int64_t i,
-                                          struct ArrowArray* out,
-                                          enum ArrowValidationLevel validation_level,
-                                          struct ArrowError* error);
+NANOARROW_DLL ArrowErrorCode ArrowIpcDecoderDecodeArray(
+    struct ArrowIpcDecoder* decoder, struct ArrowBufferView body, int64_t i,
+    struct ArrowArray* out, enum ArrowValidationLevel validation_level,
+    struct ArrowError* error);
 
 /// \brief Decode an ArrowArray from an owned buffer
 ///
@@ -444,7 +443,7 @@ ArrowErrorCode ArrowIpcDecoderDecodeArray(struct ArrowIpcDecoder* decoder,
 /// more calls to ArrowIpcDecoderDecodeArrayFromShared(). If
 /// ArrowIpcSharedBufferIsThreadSafe() returns 0, out must not be released by another
 /// thread.
-ArrowErrorCode ArrowIpcDecoderDecodeArrayFromShared(
+NANOARROW_DLL ArrowErrorCode ArrowIpcDecoderDecodeArrayFromShared(
     struct ArrowIpcDecoder* decoder, struct ArrowIpcSharedBuffer* shared, int64_t i,
     struct ArrowArray* out, enum ArrowValidationLevel validation_level,
     struct ArrowError* error);
@@ -471,22 +470,22 @@ struct ArrowIpcInputStream {
 };
 
 /// \brief Transfer ownership of an ArrowIpcInputStream
-void ArrowIpcInputStreamMove(struct ArrowIpcInputStream* src,
-                             struct ArrowIpcInputStream* dst);
+NANOARROW_DLL void ArrowIpcInputStreamMove(struct ArrowIpcInputStream* src,
+                                           struct ArrowIpcInputStream* dst);
 
 /// \brief Create an input stream from an ArrowBuffer
 ///
 /// The stream takes ownership of the buffer and reads bytes from it.
-ArrowErrorCode ArrowIpcInputStreamInitBuffer(struct ArrowIpcInputStream* stream,
-                                             struct ArrowBuffer* input);
+NANOARROW_DLL ArrowErrorCode ArrowIpcInputStreamInitBuffer(
+    struct ArrowIpcInputStream* stream, struct ArrowBuffer* input);
 
 /// \brief Create an input stream from a C FILE* pointer
 ///
 /// Note that the ArrowIpcInputStream has no mechanism to communicate an error
 /// if file_ptr fails to close. If this behaviour is needed, pass false to
 /// close_on_release and handle closing the file independently from stream.
-ArrowErrorCode ArrowIpcInputStreamInitFile(struct ArrowIpcInputStream* stream,
-                                           void* file_ptr, int close_on_release);
+NANOARROW_DLL ArrowErrorCode ArrowIpcInputStreamInitFile(
+    struct ArrowIpcInputStream* stream, void* file_ptr, int close_on_release);
 
 /// \brief Options for ArrowIpcArrayStreamReaderInit()
 struct ArrowIpcArrayStreamReaderOptions {
@@ -513,7 +512,7 @@ struct ArrowIpcArrayStreamReaderOptions {
 /// format specification. Returns NANOARROW_OK on success. If NANOARROW_OK
 /// is returned, the ArrowArrayStream takes ownership of input_stream and
 /// the caller is responsible for releasing out.
-ArrowErrorCode ArrowIpcArrayStreamReaderInit(
+NANOARROW_DLL ArrowErrorCode ArrowIpcArrayStreamReaderInit(
     struct ArrowArrayStream* out, struct ArrowIpcInputStream* input_stream,
     struct ArrowIpcArrayStreamReaderOptions* options);
 
@@ -531,7 +530,7 @@ struct ArrowIpcEncoder {
 ///
 /// If NANOARROW_OK is returned, the caller must call ArrowIpcEncoderReset()
 /// to release resources allocated by this function.
-ArrowErrorCode ArrowIpcEncoderInit(struct ArrowIpcEncoder* encoder);
+NANOARROW_DLL ArrowErrorCode ArrowIpcEncoderInit(struct ArrowIpcEncoder* encoder);
 
 /// \brief Release all resources attached to an encoder
 void ArrowIpcEncoderReset(struct ArrowIpcEncoder* encoder);
@@ -542,15 +541,15 @@ void ArrowIpcEncoderReset(struct ArrowIpcEncoder* encoder);
 /// marker and the header size and 0-padded to a multiple of 8 bytes).
 ///
 /// The bytes of the encoded message will be appended to the provided buffer.
-ArrowErrorCode ArrowIpcEncoderFinalizeBuffer(struct ArrowIpcEncoder* encoder,
-                                             char encapsulate, struct ArrowBuffer* out);
+NANOARROW_DLL ArrowErrorCode ArrowIpcEncoderFinalizeBuffer(
+    struct ArrowIpcEncoder* encoder, char encapsulate, struct ArrowBuffer* out);
 
 /// \brief Encode an ArrowSchema
 ///
 /// Returns ENOMEM if allocation fails, NANOARROW_OK otherwise.
-ArrowErrorCode ArrowIpcEncoderEncodeSchema(struct ArrowIpcEncoder* encoder,
-                                           const struct ArrowSchema* schema,
-                                           struct ArrowError* error);
+NANOARROW_DLL ArrowErrorCode ArrowIpcEncoderEncodeSchema(struct ArrowIpcEncoder* encoder,
+                                                         const struct ArrowSchema* schema,
+                                                         struct ArrowError* error);
 
 /// \brief Encode a struct typed ArrayView to a flatbuffer RecordBatch, embedded in a
 /// Message.
@@ -558,7 +557,7 @@ ArrowErrorCode ArrowIpcEncoderEncodeSchema(struct ArrowIpcEncoder* encoder,
 /// Body buffers are concatenated into a contiguous, padded body_buffer.
 ///
 /// Returns ENOMEM if allocation fails, NANOARROW_OK otherwise.
-ArrowErrorCode ArrowIpcEncoderEncodeSimpleRecordBatch(
+NANOARROW_DLL ArrowErrorCode ArrowIpcEncoderEncodeSimpleRecordBatch(
     struct ArrowIpcEncoder* encoder, const struct ArrowArrayView* array_view,
     struct ArrowBuffer* body_buffer, struct ArrowError* error);
 
@@ -584,28 +583,28 @@ struct ArrowIpcOutputStream {
 };
 
 /// \brief Transfer ownership of an ArrowIpcOutputStream
-void ArrowIpcOutputStreamMove(struct ArrowIpcOutputStream* src,
-                              struct ArrowIpcOutputStream* dst);
+NANOARROW_DLL void ArrowIpcOutputStreamMove(struct ArrowIpcOutputStream* src,
+                                            struct ArrowIpcOutputStream* dst);
 
 /// \brief Create an output stream from an ArrowBuffer
 ///
 /// All bytes witten to the stream will be appended to the buffer.
 /// The stream does not take ownership of the buffer.
-ArrowErrorCode ArrowIpcOutputStreamInitBuffer(struct ArrowIpcOutputStream* stream,
-                                              struct ArrowBuffer* output);
+NANOARROW_DLL ArrowErrorCode ArrowIpcOutputStreamInitBuffer(
+    struct ArrowIpcOutputStream* stream, struct ArrowBuffer* output);
 
 /// \brief Create an output stream from a C FILE* pointer
 ///
 /// Note that the ArrowIpcOutputStream has no mechanism to communicate an error
 /// if file_ptr fails to close. If this behaviour is needed, pass false to
 /// close_on_release and handle closing the file independently from stream.
-ArrowErrorCode ArrowIpcOutputStreamInitFile(struct ArrowIpcOutputStream* stream,
-                                            void* file_ptr, int close_on_release);
+NANOARROW_DLL ArrowErrorCode ArrowIpcOutputStreamInitFile(
+    struct ArrowIpcOutputStream* stream, void* file_ptr, int close_on_release);
 
 /// \brief Write to a stream, trying again until all are written or the stream errors.
-ArrowErrorCode ArrowIpcOutputStreamWrite(struct ArrowIpcOutputStream* stream,
-                                         struct ArrowBufferView data,
-                                         struct ArrowError* error);
+NANOARROW_DLL ArrowErrorCode
+ArrowIpcOutputStreamWrite(struct ArrowIpcOutputStream* stream,
+                          struct ArrowBufferView data, struct ArrowError* error);
 
 /// \brief A stream writer which encodes Schemas and ArrowArrays into an IPC byte stream
 ///
@@ -622,18 +621,18 @@ struct ArrowIpcWriter {
 /// Returns NANOARROW_OK on success. If NANOARROW_OK is returned the writer
 /// takes ownership of the output byte stream, and the caller is
 /// responsible for releasing the writer by calling ArrowIpcWriterReset().
-ArrowErrorCode ArrowIpcWriterInit(struct ArrowIpcWriter* writer,
-                                  struct ArrowIpcOutputStream* output_stream);
+NANOARROW_DLL ArrowErrorCode ArrowIpcWriterInit(
+    struct ArrowIpcWriter* writer, struct ArrowIpcOutputStream* output_stream);
 
 /// \brief Release all resources attached to a writer
-void ArrowIpcWriterReset(struct ArrowIpcWriter* writer);
+NANOARROW_DLL void ArrowIpcWriterReset(struct ArrowIpcWriter* writer);
 
 /// \brief Write a schema to the output byte stream
 ///
 /// Errors are propagated from the underlying encoder and output byte stream.
-ArrowErrorCode ArrowIpcWriterWriteSchema(struct ArrowIpcWriter* writer,
-                                         const struct ArrowSchema* in,
-                                         struct ArrowError* error);
+NANOARROW_DLL ArrowErrorCode ArrowIpcWriterWriteSchema(struct ArrowIpcWriter* writer,
+                                                       const struct ArrowSchema* in,
+                                                       struct ArrowError* error);
 
 /// \brief Write an array view to the output byte stream
 ///
@@ -641,17 +640,17 @@ ArrowErrorCode ArrowIpcWriterWriteSchema(struct ArrowIpcWriter* writer,
 /// The writer does not check that a schema was already written.
 ///
 /// Errors are propagated from the underlying encoder and output byte stream,
-ArrowErrorCode ArrowIpcWriterWriteArrayView(struct ArrowIpcWriter* writer,
-                                            const struct ArrowArrayView* in,
-                                            struct ArrowError* error);
+NANOARROW_DLL ArrowErrorCode ArrowIpcWriterWriteArrayView(struct ArrowIpcWriter* writer,
+                                                          const struct ArrowArrayView* in,
+                                                          struct ArrowError* error);
 
 /// \brief Write an entire stream (including EOS) to the output byte stream
 ///
 /// Errors are propagated from the underlying encoder, array stream, and output byte
 /// stream.
-ArrowErrorCode ArrowIpcWriterWriteArrayStream(struct ArrowIpcWriter* writer,
-                                              struct ArrowArrayStream* in,
-                                              struct ArrowError* error);
+NANOARROW_DLL ArrowErrorCode ArrowIpcWriterWriteArrayStream(struct ArrowIpcWriter* writer,
+                                                            struct ArrowArrayStream* in,
+                                                            struct ArrowError* error);
 
 /// \brief Start writing an IPC file
 ///
@@ -662,8 +661,8 @@ ArrowErrorCode ArrowIpcWriterStartFile(struct ArrowIpcWriter* writer,
 /// \brief Finish writing an IPC file
 ///
 /// Writes the IPC file's footer, footer size, and ending magic.
-ArrowErrorCode ArrowIpcWriterFinalizeFile(struct ArrowIpcWriter* writer,
-                                          struct ArrowError* error);
+NANOARROW_DLL ArrowErrorCode ArrowIpcWriterFinalizeFile(struct ArrowIpcWriter* writer,
+                                                        struct ArrowError* error);
 /// @}
 
 // Internal APIs:
@@ -699,13 +698,13 @@ struct ArrowIpcFooter {
 ///
 /// \warning This API is currently only public for use in integration testing;
 ///          use at your own risk.
-void ArrowIpcFooterInit(struct ArrowIpcFooter* footer);
+NANOARROW_DLL void ArrowIpcFooterInit(struct ArrowIpcFooter* footer);
 
 /// \brief Release all resources attached to an footer
 ///
 /// \warning This API is currently only public for use in integration testing;
 ///          use at your own risk.
-void ArrowIpcFooterReset(struct ArrowIpcFooter* footer);
+NANOARROW_DLL void ArrowIpcFooterReset(struct ArrowIpcFooter* footer);
 
 /// \brief Encode a footer for use in an IPC file
 ///
@@ -713,9 +712,9 @@ void ArrowIpcFooterReset(struct ArrowIpcFooter* footer);
 ///          use at your own risk.
 ///
 /// Returns ENOMEM if allocation fails, NANOARROW_OK otherwise.
-ArrowErrorCode ArrowIpcEncoderEncodeFooter(struct ArrowIpcEncoder* encoder,
-                                           const struct ArrowIpcFooter* footer,
-                                           struct ArrowError* error);
+NANOARROW_DLL ArrowErrorCode ArrowIpcEncoderEncodeFooter(
+    struct ArrowIpcEncoder* encoder, const struct ArrowIpcFooter* footer,
+    struct ArrowError* error);
 
 /// \brief Peek at a footer
 ///
@@ -729,9 +728,9 @@ ArrowErrorCode ArrowIpcEncoderEncodeFooter(struct ArrowIpcEncoder* encoder,
 ///
 /// \warning This API is currently only public for use in integration testing;
 ///          use at your own risk.
-ArrowErrorCode ArrowIpcDecoderPeekFooter(struct ArrowIpcDecoder* decoder,
-                                         struct ArrowBufferView data,
-                                         struct ArrowError* error);
+NANOARROW_DLL ArrowErrorCode ArrowIpcDecoderPeekFooter(struct ArrowIpcDecoder* decoder,
+                                                       struct ArrowBufferView data,
+                                                       struct ArrowError* error);
 
 /// \brief Verify a footer
 ///
@@ -745,9 +744,9 @@ ArrowErrorCode ArrowIpcDecoderPeekFooter(struct ArrowIpcDecoder* decoder,
 ///
 /// \warning This API is currently only public for use in integration testing;
 ///          use at your own risk.
-ArrowErrorCode ArrowIpcDecoderVerifyFooter(struct ArrowIpcDecoder* decoder,
-                                           struct ArrowBufferView data,
-                                           struct ArrowError* error);
+NANOARROW_DLL ArrowErrorCode ArrowIpcDecoderVerifyFooter(struct ArrowIpcDecoder* decoder,
+                                                         struct ArrowBufferView data,
+                                                         struct ArrowError* error);
 
 /// \brief Decode a footer
 ///
@@ -762,9 +761,9 @@ ArrowErrorCode ArrowIpcDecoderVerifyFooter(struct ArrowIpcDecoder* decoder,
 ///
 /// \warning This API is currently only public for use in integration testing;
 ///          use at your own risk.
-ArrowErrorCode ArrowIpcDecoderDecodeFooter(struct ArrowIpcDecoder* decoder,
-                                           struct ArrowBufferView data,
-                                           struct ArrowError* error);
+NANOARROW_DLL ArrowErrorCode ArrowIpcDecoderDecodeFooter(struct ArrowIpcDecoder* decoder,
+                                                         struct ArrowBufferView data,
+                                                         struct ArrowError* error);
 
 #ifdef __cplusplus
 }

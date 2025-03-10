@@ -46,7 +46,7 @@ class DictionaryContext;
 /// @{
 
 /// \brief Writer for the Arrow integration testing JSON format
-class TestingJSONWriter {
+class NANOARROW_DLL TestingJSONWriter {
  public:
   TestingJSONWriter();
   ~TestingJSONWriter();
@@ -127,7 +127,7 @@ class TestingJSONWriter {
 };
 
 /// \brief Reader for the Arrow integration testing JSON format
-class TestingJSONReader {
+class NANOARROW_DLL TestingJSONReader {
  public:
   TestingJSONReader(ArrowBufferAllocator allocator);
   TestingJSONReader();
@@ -190,7 +190,7 @@ class TestingJSONReader {
 /// - Map types are considered equal regardless of the child names "entries",
 ///   "key", and "value".
 /// - Float32 and Float64 values are compared according to their JSON serialization.
-class TestingJSONComparison {
+class NANOARROW_DLL TestingJSONComparison {
  private:
   // Internal representation of a human-readable inequality
   struct Difference {
