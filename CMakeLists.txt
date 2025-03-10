@@ -200,6 +200,7 @@ if(NANOARROW_IPC)
     target_include_directories(flatccrt
                                PUBLIC $<BUILD_INTERFACE:${NANOARROW_FLATCC_INCLUDE_DIR}>
                                       $<INSTALL_INTERFACE:include>)
+    set_target_properties(flatccrt PROPERTIES POSITION_INDEPENDENT_CODE ON)
     install(TARGETS flatccrt
             EXPORT nanoarrow-exports
             RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
