@@ -41,6 +41,7 @@ fetchcontent_makeavailable(nanoarrow)
 add_library(linesplitter linesplitter.cc)
 target_link_libraries(linesplitter PRIVATE nanoarrow)
 
+set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 fetchcontent_declare(googletest
                      URL https://github.com/google/googletest/archive/refs/tags/v1.13.0.zip
 )
