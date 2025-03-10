@@ -167,7 +167,7 @@ static inline void ArrowDeviceArrayMove(struct ArrowDeviceArray* src,
 /// @{
 
 /// \brief Checks the nanoarrow runtime to make sure the run/build versions match
-ArrowErrorCode ArrowDeviceCheckRuntime(struct ArrowError* error);
+NANOARROW_DLL ArrowErrorCode ArrowDeviceCheckRuntime(struct ArrowError* error);
 
 struct ArrowDeviceArrayView {
   struct ArrowDevice* device;
@@ -264,7 +264,7 @@ struct ArrowDevice {
 struct ArrowDevice* ArrowDeviceCpu(void);
 
 /// \brief Initialize a user-allocated device struct with a CPU device
-void ArrowDeviceInitCpu(struct ArrowDevice* device);
+NANOARROW_DLL void ArrowDeviceInitCpu(struct ArrowDevice* device);
 
 /// \brief Resolve a device pointer from a type + identifier
 ///
@@ -272,7 +272,8 @@ void ArrowDeviceInitCpu(struct ArrowDevice* device);
 /// some device types may or may not be supported. The CPU type is always supported.
 /// Returns NULL for device that does not exist or cannot be returned as a singleton.
 /// Callers must not release the pointed-to device.
-struct ArrowDevice* ArrowDeviceResolve(ArrowDeviceType device_type, int64_t device_id);
+NANOARROW_DLL struct ArrowDevice* ArrowDeviceResolve(ArrowDeviceType device_type,
+                                                     int64_t device_id);
 
 /// \brief Initialize an ArrowDeviceArray
 ///
@@ -282,10 +283,9 @@ struct ArrowDevice* ArrowDeviceResolve(ArrowDeviceType device_type, int64_t devi
 /// it captures the work done on stream. If NANOARROW_OK is returned, ownership of array
 /// and sync_event is transferred to device_array. The caller retains ownership of
 /// stream.
-ArrowErrorCode ArrowDeviceArrayInitAsync(struct ArrowDevice* device,
-                                         struct ArrowDeviceArray* device_array,
-                                         struct ArrowArray* array, void* sync_event,
-                                         void* stream);
+NANOARROW_DLL ArrowErrorCode ArrowDeviceArrayInitAsync(
+    struct ArrowDevice* device, struct ArrowDeviceArray* device_array,
+    struct ArrowArray* array, void* sync_event, void* stream);
 
 /// \brief Initialize an ArrowDeviceArray without a stream
 ///
@@ -301,7 +301,7 @@ static inline ArrowErrorCode ArrowDeviceArrayInit(struct ArrowDevice* device,
 /// specified device as an ArrowDeviceArrayStream. This function moves the ownership
 /// of array_stream to the device_array_stream. If this function returns NANOARROW_OK,
 /// the caller is responsible for releasing the ArrowDeviceArrayStream.
-ArrowErrorCode ArrowDeviceBasicArrayStreamInit(
+NANOARROW_DLL ArrowErrorCode ArrowDeviceBasicArrayStreamInit(
     struct ArrowDeviceArrayStream* device_array_stream,
     struct ArrowArrayStream* array_stream, struct ArrowDevice* device);
 
@@ -310,16 +310,18 @@ ArrowErrorCode ArrowDeviceBasicArrayStreamInit(
 /// Zeroes memory for the device array view struct. Callers must initialize the
 /// array_view member using nanoarrow core functions that can initialize from
 /// a type identifier or schema.
-void ArrowDeviceArrayViewInit(struct ArrowDeviceArrayView* device_array_view);
+NANOARROW_DLL void ArrowDeviceArrayViewInit(
+    struct ArrowDeviceArrayView* device_array_view);
 
 /// \brief Release the underlying ArrowArrayView
-void ArrowDeviceArrayViewReset(struct ArrowDeviceArrayView* device_array_view);
+NANOARROW_DLL void ArrowDeviceArrayViewReset(
+    struct ArrowDeviceArrayView* device_array_view);
 
 /// \brief Set minimal ArrowArrayView buffer information from a device array
 ///
 /// A thin wrapper around ArrowArrayViewSetArrayMinimal() that does not attempt
 /// to resolve buffer sizes of variable-length buffers by copying data from the device.
-ArrowErrorCode ArrowDeviceArrayViewSetArrayMinimal(
+NANOARROW_DLL ArrowErrorCode ArrowDeviceArrayViewSetArrayMinimal(
     struct ArrowDeviceArrayView* device_array_view, struct ArrowDeviceArray* device_array,
     struct ArrowError* error);
 
@@ -328,7 +330,7 @@ ArrowErrorCode ArrowDeviceArrayViewSetArrayMinimal(
 /// Runs ArrowDeviceArrayViewSetArrayMinimal() but also sets buffer sizes for
 /// variable-length buffers by copying data from the device if needed. If stream
 /// is provided it will be used to do any copying required to resolve buffer sizes.
-ArrowErrorCode ArrowDeviceArrayViewSetArrayAsync(
+NANOARROW_DLL ArrowErrorCode ArrowDeviceArrayViewSetArrayAsync(
     struct ArrowDeviceArrayView* device_array_view, struct ArrowDeviceArray* device_array,
     void* stream, struct ArrowError* error);
 
@@ -344,9 +346,9 @@ static inline ArrowErrorCode ArrowDeviceArrayViewSetArray(
 /// If stream is provided, it will be used to launch copies asynchronously.
 /// Note that this implies that all pointers in src will remain valid until
 /// the stream is synchronized.
-ArrowErrorCode ArrowDeviceArrayViewCopyAsync(struct ArrowDeviceArrayView* src,
-                                             struct ArrowDevice* device_dst,
-                                             struct ArrowDeviceArray* dst, void* stream);
+NANOARROW_DLL ArrowErrorCode ArrowDeviceArrayViewCopyAsync(
+    struct ArrowDeviceArrayView* src, struct ArrowDevice* device_dst,
+    struct ArrowDeviceArray* dst, void* stream);
 
 /// \brief Copy an ArrowDeviceArrayView to a device without a stream
 ///
@@ -361,19 +363,20 @@ static inline ArrowErrorCode ArrowDeviceArrayViewCopy(struct ArrowDeviceArrayVie
 /// This may result in a device array with different performance charateristics
 /// than an array that was copied. Returns ENOTSUP if a zero-copy move between devices is
 /// not possible.
-ArrowErrorCode ArrowDeviceArrayMoveToDevice(struct ArrowDeviceArray* src,
-                                            struct ArrowDevice* device_dst,
-                                            struct ArrowDeviceArray* dst);
+NANOARROW_DLL ArrowErrorCode ArrowDeviceArrayMoveToDevice(struct ArrowDeviceArray* src,
+                                                          struct ArrowDevice* device_dst,
+                                                          struct ArrowDeviceArray* dst);
 
 /// \brief Allocate a device buffer and copying existing content
 ///
 /// If stream is provided, it will be used to launch copies asynchronously.
 /// Note that this implies that src will remain valid until the stream is
 /// synchronized.
-ArrowErrorCode ArrowDeviceBufferInitAsync(struct ArrowDevice* device_src,
-                                          struct ArrowBufferView src,
-                                          struct ArrowDevice* device_dst,
-                                          struct ArrowBuffer* dst, void* stream);
+NANOARROW_DLL ArrowErrorCode ArrowDeviceBufferInitAsync(struct ArrowDevice* device_src,
+                                                        struct ArrowBufferView src,
+                                                        struct ArrowDevice* device_dst,
+                                                        struct ArrowBuffer* dst,
+                                                        void* stream);
 
 /// \brief Allocate a device buffer and copying existing content without a stream
 ///
@@ -386,20 +389,21 @@ static inline ArrowErrorCode ArrowDeviceBufferInit(struct ArrowDevice* device_sr
 /// \brief Move a buffer to a device without copying if possible
 ///
 /// Returns ENOTSUP if a zero-copy move between devices is not possible.
-ArrowErrorCode ArrowDeviceBufferMove(struct ArrowDevice* device_src,
-                                     struct ArrowBuffer* src,
-                                     struct ArrowDevice* device_dst,
-                                     struct ArrowBuffer* dst);
+NANOARROW_DLL ArrowErrorCode ArrowDeviceBufferMove(struct ArrowDevice* device_src,
+                                                   struct ArrowBuffer* src,
+                                                   struct ArrowDevice* device_dst,
+                                                   struct ArrowBuffer* dst);
 
 /// \brief Copy a buffer into preallocated device memory
 ///
 /// If stream is provided, it will be used to launch copies asynchronously.
 /// Note that this implies that src will remain valid until the stream is
 /// synchronized.
-ArrowErrorCode ArrowDeviceBufferCopyAsync(struct ArrowDevice* device_src,
-                                          struct ArrowBufferView src,
-                                          struct ArrowDevice* device_dst,
-                                          struct ArrowBufferView dst, void* stream);
+NANOARROW_DLL ArrowErrorCode ArrowDeviceBufferCopyAsync(struct ArrowDevice* device_src,
+                                                        struct ArrowBufferView src,
+                                                        struct ArrowDevice* device_dst,
+                                                        struct ArrowBufferView dst,
+                                                        void* stream);
 
 /// \brief Copy a buffer into preallocated devie memory
 ///
@@ -421,7 +425,8 @@ static inline ArrowErrorCode ArrowDeviceBufferCopy(struct ArrowDevice* device_sr
 ///
 /// device_type must be one of ARROW_DEVICE_CUDA or ARROW_DEVICE_CUDA_HOST;
 /// device_id must be between 0 and cudaGetDeviceCount - 1.
-struct ArrowDevice* ArrowDeviceCuda(ArrowDeviceType device_type, int64_t device_id);
+NANOARROW_DLL struct ArrowDevice* ArrowDeviceCuda(ArrowDeviceType device_type,
+                                                  int64_t device_id);
 
 /// @}
 
@@ -440,11 +445,11 @@ struct ArrowDevice* ArrowDeviceCuda(ArrowDeviceType device_type, int64_t device_
 /// @{
 
 /// \brief A pointer to a default metal device singleton
-struct ArrowDevice* ArrowDeviceMetalDefaultDevice(void);
+NANOARROW_DLL struct ArrowDevice* ArrowDeviceMetalDefaultDevice(void);
 
 /// \brief Initialize a preallocated device struct with the default metal device
-ArrowErrorCode ArrowDeviceMetalInitDefaultDevice(struct ArrowDevice* device,
-                                                 struct ArrowError* error);
+NANOARROW_DLL ArrowErrorCode ArrowDeviceMetalInitDefaultDevice(struct ArrowDevice* device,
+                                                               struct ArrowError* error);
 
 /// \brief Initialize a buffer with the Metal allocator
 ///
@@ -453,7 +458,7 @@ ArrowErrorCode ArrowDeviceMetalInitDefaultDevice(struct ArrowDevice* device,
 /// This buffer's allocator uses the Metal API so that it is cheaper to send
 /// buffers to the GPU later. You can use, append to, or move this buffer just
 /// like a normal ArrowBuffer.
-ArrowErrorCode ArrowDeviceMetalInitBuffer(struct ArrowBuffer* buffer);
+NANOARROW_DLL ArrowErrorCode ArrowDeviceMetalInitBuffer(struct ArrowBuffer* buffer);
 
 /// \brief Convert an ArrowArray to buffers that use the Metal allocator
 ///
@@ -462,7 +467,7 @@ ArrowErrorCode ArrowDeviceMetalInitBuffer(struct ArrowBuffer* buffer);
 /// valid to use just like a normal ArrowArray that was initialized with
 /// ArrowArrayInitFromType() (i.e., it can be appended to and finished with
 /// validation).
-ArrowErrorCode ArrowDeviceMetalAlignArrayBuffers(struct ArrowArray* array);
+NANOARROW_DLL ArrowErrorCode ArrowDeviceMetalAlignArrayBuffers(struct ArrowArray* array);
 
 /// @}
 

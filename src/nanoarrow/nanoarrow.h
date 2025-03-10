@@ -139,7 +139,7 @@
 
 #endif
 
-#if (defined _WIN32 || defined __CYGWIN__) && defined(NANOARROW_SHARED_LIBS)
+#if (defined _WIN32 || defined __CYGWIN__) && defined(NANOARROW_BUILD_DLL)
 #if defined(NANOARROW_EXPORT_DLL)
 #define NANOARROW_DLL __declspec(dllexport)
 #else
@@ -1250,8 +1250,8 @@ void ArrowBasicArrayStreamSetArray(struct ArrowArrayStream* array_stream, int64_
 /// array_stream must have been initialized with ArrowBasicArrayStreamInit().
 /// This function uses ArrowArrayStreamInitFromSchema() and ArrowArrayStreamSetArray()
 /// to validate the contents of the arrays.
-ArrowErrorCode ArrowBasicArrayStreamValidate(const struct ArrowArrayStream* array_stream,
-                                             struct ArrowError* error);
+NANOARROW_DLL ArrowErrorCode ArrowBasicArrayStreamValidate(
+    const struct ArrowArrayStream* array_stream, struct ArrowError* error);
 
 /// @}
 
