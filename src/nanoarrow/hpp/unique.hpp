@@ -138,7 +138,7 @@ inline void release_pointer(struct ArrowArrayView* data) {
 /// \brief A unique_ptr-like base class for stack-allocatable objects
 /// \tparam T The object type
 template <typename T>
-class Unique {
+class NANOARROW_DLL Unique {
  public:
   /// \brief Construct an invalid instance of T holding no resources
   Unique() {
