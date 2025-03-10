@@ -31,6 +31,8 @@
 \alias{na_interval_day_time}
 \alias{na_interval_month_day_nano}
 \alias{na_timestamp}
+\alias{na_decimal32}
+\alias{na_decimal64}
 \alias{na_decimal128}
 \alias{na_decimal256}
 \alias{na_struct}
@@ -38,6 +40,8 @@
 \alias{na_dense_union}
 \alias{na_list}
 \alias{na_large_list}
+\alias{na_list_view}
+\alias{na_large_list_view}
 \alias{na_fixed_size_list}
 \alias{na_map}
 \alias{na_dictionary}
@@ -121,6 +125,10 @@ na_interval_month_day_nano(nullable = TRUE)
 
 na_timestamp(unit = c("us", "ns", "s", "ms"), timezone = "", nullable = TRUE)
 
+na_decimal32(precision, scale, nullable = TRUE)
+
+na_decimal64(precision, scale, nullable = TRUE)
+
 na_decimal128(precision, scale, nullable = TRUE)
 
 na_decimal256(precision, scale, nullable = TRUE)
@@ -134,6 +142,10 @@ na_dense_union(column_types = list())
 na_list(item_type, nullable = TRUE)
 
 na_large_list(item_type, nullable = TRUE)
+
+na_list_view(item_type, nullable = TRUE)
+
+na_large_list_view(item_type, nullable = TRUE)
 
 na_fixed_size_list(item_type, list_size, nullable = TRUE)
 

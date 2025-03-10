@@ -253,6 +253,27 @@ test_that("as_nanoarrow_array() works for double() -> na_half_float()", {
   expect_identical(convert_array(array), c(1:10, NA_real_))
 })
 
+
+test_that("as_nanoarrow_array() works for double() -> na_decimal128()", {
+  # Tricky to check the actual buffers here, so just check against arrow
+  skip_if_not_installed("arrow")
+
+  numbers <- round(c(pi, -pi, 123.4567, NA, -123.4567, 0, 123), 4)
+  numbers_neg_scale <- c(12300, -12300, 0, NA, 100)
+
+  array4 <- as_nanoarrow_array(numbers, schema = na_decimal128(9, 4))
+  array5 <- as_nanoarrow_array(numbers, schema = na_decimal128(9, 5))
+  array_neg2 <- as_nanoarrow_array(numbers_neg_scale, schema = na_decimal128(9, -2))
+
+  arrow_array4 <- arrow::as_arrow_array(numbers, type = arrow::decimal128(9, 4))
+  arrow_array5 <- arrow::as_arrow_array(numbers, type = arrow::decimal128(9, 5))
+  arrow_array_neg2 <- arrow::as_arrow_array(numbers_neg_scale, type = arrow::decimal128(9, -2))
+
+  expect_true(arrow_array4$Equals(arrow::as_arrow_array(array4)))
+  expect_true(arrow_array5$Equals(arrow::as_arrow_array(array5)))
+  expect_true(arrow_array_neg2$Equals(arrow::as_arrow_array(array_neg2)))
+})
+
 test_that("as_nanoarrow_array() works for integer64() -> na_int32()", {
   skip_if_not_installed("bit64")
 
