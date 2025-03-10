@@ -124,6 +124,11 @@ jobs:
           export PATH=${PATH}:$(pwd)/scratch/nanoarrow_install/bin
           echo "Using PATH=${PATH}"
 
+          echo "bin/"
+          ls $(pwd)/scratch/nanoarrow_install/bin
+          echo "lib/"
+          ls $(pwd)/scratch/nanoarrow_install/lib
+
           for dir in scratch/build*; do
             # Not sure why ./${dir}/minimal_cpp_app || ... does not work on Windows
             if [ -f ./${dir}/minimal_cpp_app ]; then
