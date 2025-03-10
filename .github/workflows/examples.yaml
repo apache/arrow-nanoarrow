@@ -115,7 +115,7 @@ jobs:
       - name: Comprehensive CMake example
         shell: bash
         env:
-          EXTRA_CMAKE_INSTALL: "--config=Debug"
+          EXTRA_CMAKE_INSTALL: ${{ matrix.config.label == 'windows' && '--config=Debug' || '' }}
         run: |
           cd examples/cmake-scenarios
           ./build.sh
