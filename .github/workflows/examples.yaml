@@ -120,7 +120,8 @@ jobs:
           cd examples/cmake-scenarios
           ./build.sh
           for dir in scratch/build*; do
-            ./$(find . -name "minimal_cpp_app*")
+            find ${dir} -name "minimal_cpp_app*"
+            ./${dir}/minimal_cpp_app || ./${dir}/Debug/minimal_cpp_app
           done
 
       - name: Meson example
