@@ -45,19 +45,13 @@ jobs:
       VERBOSE: 1
 
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
+      - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: '3.x'
 
-      - name: Install dependencies
-        run: |
-          sudo apt-get install -y cmake
-
       - name: Minimal CMake Example
+        shell: bash
         run: |
           cd examples/cmake-minimal
           mkdir build && cd build
@@ -67,6 +61,7 @@ jobs:
           ./example_cmake_minimal_app
 
       - name: Minimal Vendored Example
+        shell: bash
         run: |
           cd examples/vendored-minimal
           python3 ../../ci/scripts/bundle.py --source-output-dir=src --include-output-dir=src
@@ -79,6 +74,7 @@ jobs:
           ./example_vendored_minimal_app
 
       - name: Ipc CMake Example
+        shell: bash
         run: |
           cd examples/cmake-ipc
           mkdir build && cd build
@@ -88,6 +84,7 @@ jobs:
           cat ../schema-valid.arrows | ./example_cmake_ipc_app
 
       - name: Ipc Vendored Example
+        shell: bash
         run: |
           cd examples/vendored-ipc
           python3 ../../ci/scripts/bundle.py \
@@ -105,6 +102,7 @@ jobs:
           cat ../schema-valid.arrows | ./example_vendored_ipc_app
 
       - name: Getting Started Tutorial Example
+        shell: bash
         run: |
           cd examples/linesplitter
           mkdir build && cd build
@@ -122,6 +120,7 @@ jobs:
           done
 
       - name: Meson example
+        shell: bash
         run: |
           python3 -m pip install meson ninja
           cd examples/meson-minimal
@@ -131,6 +130,7 @@ jobs:
           ./builddir/example_meson_minimal_app
 
       - name: Python example
+        shell: bash
         run: |
           python3 -m pip install examples/python-package
           python3 -c "import schema_printer"
