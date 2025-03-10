@@ -22,7 +22,7 @@ set -exuo pipefail
 # Build nanoarrow statically.
 cmake -S ../.. -B scratch/nanoarrow_build/ \
     -DCMAKE_INSTALL_PREFIX=scratch/nanoarrow_install/ \
-    -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_CONFIGURATION_TYPES=Release \
     -DNANOARROW_IPC=ON -DNANOARROW_DEVICE=ON -DNANOARROW_TESTING=ON
 cmake --build scratch/nanoarrow_build/
 cmake --install scratch/nanoarrow_build/
