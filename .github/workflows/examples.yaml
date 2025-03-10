@@ -119,11 +119,18 @@ jobs:
         run: |
           cd examples/cmake-scenarios
           ./build.sh
+
+          # For Windows
+          export PATH=${PATH}:$(pwd)/scratch/nanoarrow_install/bin
+          echo "Using PATH=${PATH}"
+
           for dir in scratch/build*; do
             # Not sure why ./${dir}/minimal_cpp_app || ... does not work on Windows
             if [ -f ./${dir}/minimal_cpp_app ]; then
+              echo "Trying ./${dir}/minimal_cpp_app"
               ./${dir}/minimal_cpp_app
             else
+              echo "Trying ./${dir}/Debug/minimal_cpp_app"
               ./${dir}/Debug/minimal_cpp_app
             fi
           done
