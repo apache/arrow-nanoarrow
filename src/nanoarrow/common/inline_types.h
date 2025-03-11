@@ -149,14 +149,14 @@ struct ArrowArrayStream {
   NANOARROW_RETURN_NOT_OK((x_ <= max_) ? NANOARROW_OK : EINVAL)
 
 #if defined(NANOARROW_DEBUG)
-#define _NANOARROW_RETURN_NOT_OK_WITH_ERROR_IMPL(NAME, EXPR, ERROR_PTR_EXPR, EXPR_STR)  \
-  do {                                                                                  \
-    const int NAME = (EXPR);                                                            \
-    if (NAME) {                                                                         \
-      ArrowErrorSet((ERROR_PTR_EXPR), "%s failed with errno %d\n* %s:%d", EXPR_STR, \
-                    NAME, __FILE__, __LINE__);                          \
-      return NAME;                                                                      \
-    }                                                                                   \
+#define _NANOARROW_RETURN_NOT_OK_WITH_ERROR_IMPL(NAME, EXPR, ERROR_PTR_EXPR, EXPR_STR) \
+  do {                                                                                 \
+    const int NAME = (EXPR);                                                           \
+    if (NAME) {                                                                        \
+      ArrowErrorSet((ERROR_PTR_EXPR), "%s failed with errno %d\n* %s:%d", EXPR_STR,    \
+                    NAME, __FILE__, __LINE__);                                         \
+      return NAME;                                                                     \
+    }                                                                                  \
   } while (0)
 #else
 #define _NANOARROW_RETURN_NOT_OK_WITH_ERROR_IMPL(NAME, EXPR, ERROR_PTR_EXPR, EXPR_STR) \
