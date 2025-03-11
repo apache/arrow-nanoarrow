@@ -34,13 +34,14 @@ namespace internal {
 // Internal representation of the various structures needed to import and/or export
 // a dictionary array. We use a serialized version of the dictionary value because
 // nanoarrow doesn't currently have the ability to copy or reference count an Array.
-struct Dictionary {
+class Dictionary {
+public:
   nanoarrow::UniqueSchema schema;
   int64_t column_length;
   std::string column_json;
 };
 
-class NANOARROW_DLL DictionaryContext {
+class DictionaryContext {
  public:
   DictionaryContext() : next_id_(0) {}
 
