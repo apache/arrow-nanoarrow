@@ -153,8 +153,8 @@ struct ArrowArrayStream {
   do {                                                                                  \
     const int NAME = (EXPR);                                                            \
     if (NAME) {                                                                         \
-      ArrowErrorSet((ERROR_PTR_EXPR), "%s failed with errno %d(%s)\n* %s:%d", EXPR_STR, \
-                    NAME, strerror(NAME), __FILE__, __LINE__);                          \
+      ArrowErrorSet((ERROR_PTR_EXPR), "%s failed with errno %d\n* %s:%d", EXPR_STR, \
+                    NAME, __FILE__, __LINE__);                          \
       return NAME;                                                                      \
     }                                                                                   \
   } while (0)

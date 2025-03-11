@@ -1157,7 +1157,7 @@ ArrowErrorCode ArrowIpcDecoderVerifyFooter(struct ArrowIpcDecoder* decoder,
   // Check that data contains at least the entire footer (return ESPIPE to signal
   // that reading more data may help).
   int32_t footer_and_size_and_magic_size =
-      decoder->header_size_bytes + sizeof(int32_t) + strlen(NANOARROW_IPC_MAGIC);
+      decoder->header_size_bytes + sizeof(int32_t) + (int)strlen(NANOARROW_IPC_MAGIC);
   if (data.size_bytes < footer_and_size_and_magic_size) {
     ArrowErrorSet(error,
                   "Expected >= %d bytes of data but only %" PRId64
@@ -1316,7 +1316,7 @@ ArrowErrorCode ArrowIpcDecoderDecodeFooter(struct ArrowIpcDecoder* decoder,
       (struct ArrowIpcDecoderPrivate*)decoder->private_data;
 
   int32_t footer_and_size_and_magic_size =
-      decoder->header_size_bytes + sizeof(int32_t) + strlen(NANOARROW_IPC_MAGIC);
+      decoder->header_size_bytes + sizeof(int32_t) + (int)strlen(NANOARROW_IPC_MAGIC);
   const uint8_t* footer_data =
       data.data.as_uint8 + data.size_bytes - footer_and_size_and_magic_size;
   ns(Footer_table_t) footer = ns(Footer_as_root(footer_data));

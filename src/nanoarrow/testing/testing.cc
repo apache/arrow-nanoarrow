@@ -40,7 +40,7 @@ struct Dictionary {
   std::string column_json;
 };
 
-class DictionaryContext {
+class NANOARROW_DLL DictionaryContext {
  public:
   DictionaryContext() : next_id_(0) {}
 
