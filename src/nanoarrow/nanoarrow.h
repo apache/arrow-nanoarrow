@@ -50,7 +50,7 @@
 #define ArrowDecimalSetDigits NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowDecimalSetDigits)
 #define ArrowDecimalAppendDigitsToBuffer \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowDecimalAppendDigitsToBuffer)
-  #define ArrowDecimalAppendStringToBuffer \
+#define ArrowDecimalAppendStringToBuffer \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowDecimalAppendStringToBuffer)
 #define ArrowSchemaInit NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowSchemaInit)
 #define ArrowSchemaInitFromType \
