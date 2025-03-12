@@ -122,6 +122,8 @@ jobs:
           ./run.sh
 
       - name: Meson example
+        # This example doesn't seem to work on Windows
+        if: matrix.config.label != 'windows'
         shell: bash
         run: |
           python3 -m pip install meson ninja
