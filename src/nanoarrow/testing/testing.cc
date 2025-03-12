@@ -35,7 +35,7 @@ namespace internal {
 // a dictionary array. We use a serialized version of the dictionary value because
 // nanoarrow doesn't currently have the ability to copy or reference count an Array.
 class Dictionary {
-public:
+ public:
   nanoarrow::UniqueSchema schema;
   int64_t column_length;
   std::string column_json;
