@@ -50,6 +50,8 @@
 #define ArrowDecimalSetDigits NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowDecimalSetDigits)
 #define ArrowDecimalAppendDigitsToBuffer \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowDecimalAppendDigitsToBuffer)
+  #define ArrowDecimalAppendStringToBuffer \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowDecimalAppendStringToBuffer)
 #define ArrowSchemaInit NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowSchemaInit)
 #define ArrowSchemaInitFromType \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowSchemaInitFromType)
@@ -290,6 +292,10 @@ ArrowErrorCode ArrowDecimalSetDigits(struct ArrowDecimal* decimal,
 
 /// \brief Get the integer value of an ArrowDecimal as string
 ArrowErrorCode ArrowDecimalAppendDigitsToBuffer(const struct ArrowDecimal* decimal,
+                                                struct ArrowBuffer* buffer);
+
+/// \brief Get the decimal value of an ArrowDecimal as a string
+ArrowErrorCode ArrowDecimalAppendStringToBuffer(const struct ArrowDecimal* decimal,
                                                 struct ArrowBuffer* buffer);
 
 /// \brief Get the half float value of a float
