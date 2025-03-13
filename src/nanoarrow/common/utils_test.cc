@@ -493,7 +493,7 @@ TEST(DecimalTest, Decimal256Test) {
 #endif
 }
 
-TEST(DecimalTest, DecimalStringTestBasic) {
+TEST(DecimalTest, DecimalDigitsTestBasic) {
   using namespace nanoarrow::literals;
 
   struct ArrowDecimal decimal;
@@ -573,7 +573,7 @@ TEST(DecimalTest, DecimalStringTestBasic) {
   ArrowBufferReset(&buffer);
 }
 
-TEST(DecimalTest, DecimalStringTestInvalid) {
+TEST(DecimalTest, DecimalDigitsTestInvalid) {
   using namespace nanoarrow::literals;
 
   struct ArrowDecimal decimal;
@@ -659,6 +659,73 @@ TEST(DecimalTest, DecimalRoundtripBitshiftTest) {
   }
 
   ArrowBufferReset(&buffer);
+}
+
+TEST(DecimalTest, DecimalTestStringPositiveScale) {
+  using namespace nanoarrow::literals;
+
+  struct ArrowDecimal decimal;
+  ArrowDecimalInit(&decimal, 32, 9, 3);
+
+  nanoarrow::UniqueBuffer buffer;
+
+  std::vector<std::pair<struct ArrowStringView, std::string>> items = {
+      {"0"_asv, "0.000"},      {"12"_asv, "0.012"},    {"-12"_asv, "-0.012"},
+      {"123"_asv, "0.123"},    {"-123"_asv, "-0.123"}, {"1234"_asv, "1.234"},
+      {"-1234"_asv, "-1.234"},
+  };
+
+  for (const auto& int_and_string : items) {
+    buffer->size_bytes = 0;
+    ASSERT_EQ(ArrowDecimalSetDigits(&decimal, int_and_string.first), NANOARROW_OK);
+    ASSERT_EQ(ArrowDecimalAppendStringToBuffer(&decimal, buffer.get()), NANOARROW_OK);
+    EXPECT_EQ(std::string(reinterpret_cast<char*>(buffer->data), buffer->size_bytes),
+              int_and_string.second);
+  }
+}
+
+TEST(DecimalTest, DecimalTestStringZeroScale) {
+  using namespace nanoarrow::literals;
+
+  struct ArrowDecimal decimal;
+  ArrowDecimalInit(&decimal, 32, 9, 0);
+
+  nanoarrow::UniqueBuffer buffer;
+
+  std::vector<std::pair<struct ArrowStringView, std::string>> items = {
+      {"0"_asv, "0"},     {"12"_asv, "12"},     {"-12"_asv, "-12"},
+      {"123"_asv, "123"}, {"-123"_asv, "-123"},
+  };
+
+  for (const auto& int_and_string : items) {
+    buffer->size_bytes = 0;
+    ASSERT_EQ(ArrowDecimalSetDigits(&decimal, int_and_string.first), NANOARROW_OK);
+    ASSERT_EQ(ArrowDecimalAppendStringToBuffer(&decimal, buffer.get()), NANOARROW_OK);
+    EXPECT_EQ(std::string(reinterpret_cast<char*>(buffer->data), buffer->size_bytes),
+              int_and_string.second);
+  }
+}
+
+TEST(DecimalTest, DecimalTestStringNegativeScale) {
+  using namespace nanoarrow::literals;
+
+  struct ArrowDecimal decimal;
+  ArrowDecimalInit(&decimal, 32, 9, -3);
+
+  nanoarrow::UniqueBuffer buffer;
+
+  std::vector<std::pair<struct ArrowStringView, std::string>> items = {
+      {"0"_asv, "0000"},     {"12"_asv, "12000"},     {"-12"_asv, "-12000"},
+      {"123"_asv, "123000"}, {"-123"_asv, "-123000"},
+  };
+
+  for (const auto& int_and_string : items) {
+    buffer->size_bytes = 0;
+    ASSERT_EQ(ArrowDecimalSetDigits(&decimal, int_and_string.first), NANOARROW_OK);
+    ASSERT_EQ(ArrowDecimalAppendStringToBuffer(&decimal, buffer.get()), NANOARROW_OK);
+    EXPECT_EQ(std::string(reinterpret_cast<char*>(buffer->data), buffer->size_bytes),
+              int_and_string.second);
+  }
 }
 
 // test case adapted from

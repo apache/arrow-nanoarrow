@@ -382,6 +382,7 @@ ArrowErrorCode ArrowDecimalAppendDigitsToBuffer(const struct ArrowDecimal* decim
 
   uint64_t words_little_endian[4];
   if (decimal->n_words == 0) {
+    words_little_endian[0] = 0;
     memcpy(words_little_endian, decimal->words, sizeof(uint32_t));
   } else if (decimal->low_word_index == 0) {
     memcpy(words_little_endian, decimal->words, decimal->n_words * sizeof(uint64_t));
@@ -493,6 +494,50 @@ ArrowErrorCode ArrowDecimalAppendDigitsToBuffer(const struct ArrowDecimal* decim
                            (unsigned long)segments[i]);
     buffer->size_bytes += n_chars;
     NANOARROW_DCHECK(buffer->size_bytes <= buffer->capacity_bytes);
+  }
+
+  return NANOARROW_OK;
+}
+
+ArrowErrorCode ArrowDecimalAppendStringToBuffer(const struct ArrowDecimal* decimal,
+                                                struct ArrowBuffer* buffer) {
+  int64_t buffer_size = buffer->size_bytes;
+  NANOARROW_RETURN_NOT_OK(ArrowDecimalAppendDigitsToBuffer(decimal, buffer));
+  int64_t digits_size = buffer->size_bytes - buffer_size;
+
+  if (decimal->scale <= 0) {
+    // e.g., digits are -12345 and scale is -2 -> -1234500
+    // Just add zeros to the end
+    for (int i = decimal->scale; i < 0; i++) {
+      NANOARROW_RETURN_NOT_OK(ArrowBufferAppendInt8(buffer, '0'));
+    }
+    return NANOARROW_OK;
+  }
+
+  int is_negative = buffer->data[0] == '-';
+  int64_t num_digits = digits_size - is_negative;
+  if (num_digits <= decimal->scale) {
+    // e.g., digits are -12345 and scale is 6 -> -0.012345
+    // Insert "0.<some zeros>" between the (maybe) negative sign and the digits
+    int64_t num_zeros_after_decimal = decimal->scale - num_digits;
+    NANOARROW_RETURN_NOT_OK(
+        ArrowBufferResize(buffer, buffer->size_bytes + num_zeros_after_decimal + 2, 0));
+
+    uint8_t* digits_start = buffer->data + is_negative;
+    memmove(digits_start + num_zeros_after_decimal + 2, digits_start, num_digits);
+    *digits_start++ = '0';
+    *digits_start++ = '.';
+    for (int i = 0; i < num_zeros_after_decimal; i++) {
+      *digits_start++ = '0';
+    }
+
+  } else {
+    // e.g., digits are -12345 and scale is 4 -> -1.2345
+    // Insert a decimal point before scale digits of output
+    NANOARROW_RETURN_NOT_OK(ArrowBufferResize(buffer, buffer->size_bytes + 1, 0));
+    uint8_t* decimal_point_to_be = buffer->data + buffer->size_bytes - 1 - decimal->scale;
+    memmove(decimal_point_to_be + 1, decimal_point_to_be, decimal->scale);
+    *decimal_point_to_be = '.';
   }
 
   return NANOARROW_OK;
