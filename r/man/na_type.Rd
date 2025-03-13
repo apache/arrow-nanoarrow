@@ -53,6 +53,8 @@ na_type(
   byte_width = NULL,
   unit = NULL,
   timezone = NULL,
+  precision = NULL,
+  scale = NULL,
   column_types = NULL,
   item_type = NULL,
   key_type = NULL,
@@ -169,6 +171,10 @@ or 'ns' (nanoseconds).}
 represents a naive point in time (i.e., one that has no associated
 timezone).}
 
+\item{precision}{The total number of digits representable by the decimal type}
+
+\item{scale}{The number of digits after the decimal point in a decimal type}
+
 \item{column_types}{A \code{list()} of \link[=as_nanoarrow_schema]{nanoarrow_schema}s.}
 
 \item{item_type}{For \code{\link[=na_list]{na_list()}}, \code{\link[=na_large_list]{na_large_list()}}, \code{\link[=na_fixed_size_list]{na_fixed_size_list()}},
@@ -202,10 +208,6 @@ Most Arrow extension types define extension metadata as a JSON object.}
 
 \item{nullable}{Use \code{FALSE} to assert that this field cannot contain
 null values.}
-
-\item{precision}{The total number of digits representable by the decimal type}
-
-\item{scale}{The number of digits after the decimal point in a decimal type}
 }
 \value{
 A \link[=as_nanoarrow_schema]{nanoarrow_schema}

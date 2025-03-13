@@ -226,8 +226,15 @@ as_nanoarrow_array.nanoarrow_buffer <- function(x, ..., schema = NULL) {
       )
     )
   } else if (data_type %in% c("decimal32", "decimal64", "decimal128", "decimal256")) {
-    constructor <- asNamespace("nanoarrow")[[paste0("na_", data_type)]]
-    array <- nanoarrow_array_init(constructor(1, 0))
+    # Create an array with max precision and scale 0, which results in the
+    # decimal integer value getting displayed.
+    array <- nanoarrow_array_init(
+      na_type(
+        data_type,
+        precision = max_decimal_precision(data_type),
+        scale = 0
+      )
+    )
     nanoarrow_array_modify(
       array,
       list(

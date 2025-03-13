@@ -65,6 +65,7 @@
 #' na_struct(list(col1 = na_int32()))
 #'
 na_type <- function(type_name, byte_width = NULL, unit = NULL, timezone = NULL,
+                    precision = NULL, scale = NULL,
                     column_types = NULL, item_type = NULL, key_type = NULL,
                     value_type = NULL, index_type = NULL, ordered = NULL,
                     list_size = NULL, keys_sorted = NULL, storage_type = NULL,
@@ -76,6 +77,8 @@ na_type <- function(type_name, byte_width = NULL, unit = NULL, timezone = NULL,
     byte_width = byte_width,
     unit = unit,
     timezone = timezone,
+    precision = precision,
+    scale = scale,
     column_types = column_types,
     item_type = item_type,
     key_type = key_type,
@@ -468,6 +471,17 @@ na_extension <- function(storage_type, extension_name, extension_metadata = "") 
 
 time_unit_id <- function(time_unit) {
   match(time_unit, c("s", "ms", "us", "ns")) - 1L
+}
+
+max_decimal_precision <- function(type) {
+  switch(
+    type,
+    decimal32 = 9,
+    decimal64 = 18,
+    decimal128 = 38,
+    decimal256 = 76,
+    stop(sprintf("non-decimal type name: %s", type))
+  )
 }
 
 # These values aren't guaranteed to stay stable between nanoarrow versions,
