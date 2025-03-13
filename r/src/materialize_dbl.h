@@ -28,9 +28,6 @@
 // bit64::as.integer64(2^53)
 #define MAX_DBL_AS_INTEGER 9007199254740992
 
-static inline int nanoarrow_decimal_to_chr(struct ArrowDecimal* item,
-                                           struct ArrowBuffer* buffer, int scale);
-
 static inline int nanoarrow_materialize_dbl(struct RConverter* converter) {
   if (converter->src.array_view->array->dictionary != NULL) {
     return ENOTSUP;
