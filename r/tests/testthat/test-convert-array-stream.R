@@ -60,6 +60,8 @@ test_that("convert array stream with explicit size works", {
 })
 
 test_that("convert array stream with functional ptype works", {
+  skip_if_not_installed("tibble")
+
   tibble_or_bust <- function(array, ptype) {
     if (is.data.frame(ptype)) {
       ptype <- tibble::as_tibble(ptype)
@@ -80,6 +82,8 @@ test_that("convert array stream with functional ptype works", {
 })
 
 test_that("convert array stream works for nested data.frames", {
+  skip_if_not_installed("tibble")
+
   tbl_nested_df <- tibble::tibble(a = 1L, b = "two", c = data.frame(a = 3))
 
   stream_nested <- as_nanoarrow_array_stream(tbl_nested_df)

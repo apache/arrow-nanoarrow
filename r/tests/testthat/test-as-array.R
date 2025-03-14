@@ -605,6 +605,8 @@ test_that("as_nanoarrow_array() works for matrix -> na_fixed_size_list()", {
 })
 
 test_that("as_nanoarrow_array() works for blob::blob() -> na_fixed_size_binary()", {
+  skip_if_not_installed("blob")
+
   # Without nulls
   array <- as_nanoarrow_array(blob::as_blob(letters), schema = na_fixed_size_binary(1))
   expect_identical(infer_nanoarrow_schema(array)$format, "w:1")
@@ -634,6 +636,8 @@ test_that("as_nanoarrow_array() works for blob::blob() -> na_fixed_size_binary()
 })
 
 test_that("as_nanoarrow_array() works for blob::blob() -> na_large_binary()", {
+  skip_if_not_installed("blob")
+
   # Without nulls
   array <- as_nanoarrow_array(blob::as_blob(letters), schema = na_large_binary())
   expect_identical(infer_nanoarrow_schema(array)$format, "Z")
@@ -663,6 +667,8 @@ test_that("as_nanoarrow_array() works for blob::blob() -> na_large_binary()", {
 })
 
 test_that("as_nanoarrow_array() works for blob::blob() -> na_binary_view()", {
+  skip_if_not_installed("blob")
+
   # Without nulls
   array <- as_nanoarrow_array(blob::as_blob(letters), schema = na_binary_view())
   expect_identical(infer_nanoarrow_schema(array)$format, "vz")

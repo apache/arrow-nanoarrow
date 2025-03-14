@@ -72,6 +72,7 @@ test_that("vctrs extension type respects `to` in convert_array()", {
 
 test_that("serialize_ptype() can roundtrip R objects", {
   skip_if_not_installed("jsonlite")
+  skip_if_not_installed("tibble")
 
   vectors <- list(
     null = NULL,
