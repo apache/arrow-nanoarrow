@@ -80,6 +80,8 @@ test_that("convert to vector works for data.frame", {
 })
 
 test_that("convert to vector works for partial_frame", {
+  skip_if_not_installed("vctrs")
+
   array <- as_nanoarrow_array(
     data.frame(a = 1L, b = "two", stringsAsFactors = FALSE)
   )
@@ -115,6 +117,8 @@ test_that("convert to vector works for dictionary<struct> -> data.frame()", {
 })
 
 test_that("convert to vector works for function()", {
+  skip_if_not_installed("tibble")
+
   tibble_or_bust <- function(array, ptype) {
     if (is.data.frame(ptype)) {
       ptype <- tibble::as_tibble(ptype)
@@ -135,6 +139,8 @@ test_that("convert to vector works for function()", {
 })
 
 test_that("convert to vector works for tibble", {
+  skip_if_not_installed("tibble")
+
   array <- as_nanoarrow_array(
     data.frame(a = 1L, b = "two", stringsAsFactors = FALSE)
   )
@@ -293,6 +299,8 @@ test_that("convert to vector works for struct-style vectors", {
 })
 
 test_that("convert to vector works for unspecified()", {
+  skip_if_not_installed("vctrs")
+
   array <- nanoarrow_array_init(na_na())
   array$length <- 10
   array$null_count <- 10
@@ -925,6 +933,8 @@ test_that("convert to vector works for binary_view -> blob::blob()", {
 })
 
 test_that("convert to vector works for null -> blob::blob()", {
+  skip_if_not_installed("blob")
+
   array <- nanoarrow_array_init(na_na())
   array$length <- 10
   array$null_count <- 10
@@ -937,6 +947,7 @@ test_that("convert to vector works for null -> blob::blob()", {
 
 test_that("convert to vector works for list -> vctrs::list_of", {
   skip_if_not_installed("arrow")
+  skip_if_not_installed("vctrs")
 
   array_list <- as_nanoarrow_array(
     arrow::Array$create(
@@ -974,6 +985,7 @@ test_that("convert to vector works for list -> vctrs::list_of", {
 
 test_that("convert to vector works for large_list -> vctrs::list_of", {
   skip_if_not_installed("arrow")
+  skip_if_not_installed("vctrs")
 
   array_list <- as_nanoarrow_array(
     arrow::Array$create(
@@ -1003,6 +1015,7 @@ test_that("convert to vector works for large_list -> vctrs::list_of", {
 
 test_that("convert to vector works for fixed_size_list -> vctrs::list_of", {
   skip_if_not_installed("arrow")
+  skip_if_not_installed("vctrs")
 
   array_list <- as_nanoarrow_array(
     arrow::Array$create(
@@ -1031,6 +1044,8 @@ test_that("convert to vector works for fixed_size_list -> vctrs::list_of", {
 })
 
 test_that("convert to vector works for null -> vctrs::list_of()", {
+  skip_if_not_installed("vctrs")
+
   array <- nanoarrow_array_init(na_na())
   array$length <- 10
   array$null_count <- 10
@@ -1095,6 +1110,8 @@ test_that("convert to vector works for null -> Date", {
 })
 
 test_that("convert to vector works for hms", {
+  skip_if_not_installed("hms")
+
   array_time <- as_nanoarrow_array(hms::parse_hm("12:34"))
   expect_identical(
     convert_array(array_time),
@@ -1103,6 +1120,8 @@ test_that("convert to vector works for hms", {
 })
 
 test_that("convert to vector works for null -> hms", {
+  skip_if_not_installed("hms")
+
   array <- nanoarrow_array_init(na_na())
   array$length <- 10
   array$null_count <- 10
@@ -1217,6 +1236,7 @@ test_that("convert to vector works for null -> difftime", {
 
 test_that("convert to vector works for data frames nested inside lists", {
   skip_if_not_installed("arrow")
+  skip_if_not_installed("vctrs")
 
   df_in_list <- vctrs::list_of(
     data.frame(x = 1:5),
@@ -1233,6 +1253,7 @@ test_that("convert to vector works for data frames nested inside lists", {
 
 test_that("convert to vector works for lists nested in data frames", {
   skip_if_not_installed("arrow")
+  skip_if_not_installed("vctrs")
 
   df_in_list_in_df <- data.frame(
     x = vctrs::list_of(

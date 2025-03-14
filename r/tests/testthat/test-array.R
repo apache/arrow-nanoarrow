@@ -87,6 +87,8 @@ test_that("as.vector() and as.data.frame() work for array", {
 })
 
 test_that("as_tibble() works for array()", {
+  skip_if_not_installed("tibble")
+
   struct_array <- as_nanoarrow_array(data.frame(a = 1:10))
   expect_identical(tibble::as_tibble(struct_array), tibble::tibble(a = 1:10))
 })

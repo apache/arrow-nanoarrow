@@ -21,6 +21,8 @@ test_that("as_nanoarrow_buffer() works for nanoarrow_buffer", {
 })
 
 test_that("as_nanoarrow_buffer() works for R atomic types", {
+  skip_if_not_installed("blob")
+
   buffer_null <- as_nanoarrow_buffer(NULL)
   expect_identical(as.raw(buffer_null), raw(0))
   expect_identical(convert_buffer(buffer_null), blob::blob(raw(0)))
