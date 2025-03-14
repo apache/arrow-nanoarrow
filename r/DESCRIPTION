@@ -26,6 +26,7 @@ Suggests:
     arrow (>= 9.0.0),
     bit64,
     blob,
+    dplyr,
     hms,
     jsonlite,
     rlang,
