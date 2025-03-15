@@ -1,3 +1,31 @@
+# buffer printer works for decimal buffer types
+
+    Code
+      str(dec32_array$buffers[[2]])
+    Output
+      <nanoarrow_buffer data<decimal32>[21][84 b]> `-100 -90 -80 -70 -60 -50 -40 -...`
+
+---
+
+    Code
+      str(dec64_array$buffers[[2]])
+    Output
+      <nanoarrow_buffer data<decimal64>[21][168 b]> `-100 -90 -80 -70 -60 -50 -40 ...`
+
+---
+
+    Code
+      str(dec128_array$buffers[[2]])
+    Output
+      <nanoarrow_buffer data<decimal128>[21][336 b]> `-100 -90 -80 -70 -60 -50 -40...`
+
+---
+
+    Code
+      str(dec256_array$buffers[[2]])
+    Output
+      <nanoarrow_buffer data<decimal256>[21][672 b]> `-100 -90 -80 -70 -60 -50 -40...`
+
 # buffers can be printed
 
     Code

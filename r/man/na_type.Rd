@@ -31,6 +31,8 @@
 \alias{na_interval_day_time}
 \alias{na_interval_month_day_nano}
 \alias{na_timestamp}
+\alias{na_decimal32}
+\alias{na_decimal64}
 \alias{na_decimal128}
 \alias{na_decimal256}
 \alias{na_struct}
@@ -38,6 +40,8 @@
 \alias{na_dense_union}
 \alias{na_list}
 \alias{na_large_list}
+\alias{na_list_view}
+\alias{na_large_list_view}
 \alias{na_fixed_size_list}
 \alias{na_map}
 \alias{na_dictionary}
@@ -49,6 +53,8 @@ na_type(
   byte_width = NULL,
   unit = NULL,
   timezone = NULL,
+  precision = NULL,
+  scale = NULL,
   column_types = NULL,
   item_type = NULL,
   key_type = NULL,
@@ -121,6 +127,10 @@ na_interval_month_day_nano(nullable = TRUE)
 
 na_timestamp(unit = c("us", "ns", "s", "ms"), timezone = "", nullable = TRUE)
 
+na_decimal32(precision, scale, nullable = TRUE)
+
+na_decimal64(precision, scale, nullable = TRUE)
+
 na_decimal128(precision, scale, nullable = TRUE)
 
 na_decimal256(precision, scale, nullable = TRUE)
@@ -134,6 +144,10 @@ na_dense_union(column_types = list())
 na_list(item_type, nullable = TRUE)
 
 na_large_list(item_type, nullable = TRUE)
+
+na_list_view(item_type, nullable = TRUE)
+
+na_large_list_view(item_type, nullable = TRUE)
 
 na_fixed_size_list(item_type, list_size, nullable = TRUE)
 
@@ -156,6 +170,10 @@ or 'ns' (nanoseconds).}
 \item{timezone}{A string representing a timezone name. The empty string ""
 represents a naive point in time (i.e., one that has no associated
 timezone).}
+
+\item{precision}{The total number of digits representable by the decimal type}
+
+\item{scale}{The number of digits after the decimal point in a decimal type}
 
 \item{column_types}{A \code{list()} of \link[=as_nanoarrow_schema]{nanoarrow_schema}s.}
 
@@ -190,10 +208,6 @@ Most Arrow extension types define extension metadata as a JSON object.}
 
 \item{nullable}{Use \code{FALSE} to assert that this field cannot contain
 null values.}
-
-\item{precision}{The total number of digits representable by the decimal type}
-
-\item{scale}{The number of digits after the decimal point in a decimal type}
 }
 \value{
 A \link[=as_nanoarrow_schema]{nanoarrow_schema}

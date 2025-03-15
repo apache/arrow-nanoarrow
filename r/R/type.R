@@ -65,6 +65,7 @@
 #' na_struct(list(col1 = na_int32()))
 #'
 na_type <- function(type_name, byte_width = NULL, unit = NULL, timezone = NULL,
+                    precision = NULL, scale = NULL,
                     column_types = NULL, item_type = NULL, key_type = NULL,
                     value_type = NULL, index_type = NULL, ordered = NULL,
                     list_size = NULL, keys_sorted = NULL, storage_type = NULL,
@@ -76,6 +77,8 @@ na_type <- function(type_name, byte_width = NULL, unit = NULL, timezone = NULL,
     byte_width = byte_width,
     unit = unit,
     timezone = timezone,
+    precision = precision,
+    scale = scale,
     column_types = column_types,
     item_type = item_type,
     key_type = key_type,
@@ -309,6 +312,30 @@ na_timestamp <- function(unit = c("us", "ns", "s", "ms"), timezone = "", nullabl
 
 #' @rdname na_type
 #' @export
+na_decimal32 <- function(precision, scale, nullable = TRUE) {
+  .Call(
+    nanoarrow_c_schema_init_decimal,
+    NANOARROW_TYPE$DECIMAL32,
+    as.integer(precision)[1],
+    as.integer(scale)[1],
+    isTRUE(nullable)
+  )
+}
+
+#' @rdname na_type
+#' @export
+na_decimal64 <- function(precision, scale, nullable = TRUE) {
+  .Call(
+    nanoarrow_c_schema_init_decimal,
+    NANOARROW_TYPE$DECIMAL64,
+    as.integer(precision)[1],
+    as.integer(scale)[1],
+    isTRUE(nullable)
+  )
+}
+
+#' @rdname na_type
+#' @export
 na_decimal128 <- function(precision, scale, nullable = TRUE) {
   .Call(
     nanoarrow_c_schema_init_decimal,
@@ -373,6 +400,22 @@ na_large_list <- function(item_type, nullable = TRUE) {
 
 #' @rdname na_type
 #' @export
+na_list_view <- function(item_type, nullable = TRUE) {
+  schema <- .Call(nanoarrow_c_schema_init, NANOARROW_TYPE$LIST_VIEW, isTRUE(nullable))
+  schema$children[[1]] <- item_type
+  schema
+}
+
+#' @rdname na_type
+#' @export
+na_large_list_view <- function(item_type, nullable = TRUE) {
+  schema <- .Call(nanoarrow_c_schema_init, NANOARROW_TYPE$LARGE_LIST_VIEW, isTRUE(nullable))
+  schema$children[[1]] <- item_type
+  schema
+}
+
+#' @rdname na_type
+#' @export
 na_fixed_size_list <- function(item_type, list_size, nullable = TRUE) {
   schema <- .Call(
     nanoarrow_c_schema_init_fixed_size,
@@ -430,6 +473,17 @@ time_unit_id <- function(time_unit) {
   match(time_unit, c("s", "ms", "us", "ns")) - 1L
 }
 
+max_decimal_precision <- function(type) {
+  switch(
+    type,
+    decimal32 = 9,
+    decimal64 = 18,
+    decimal128 = 38,
+    decimal256 = 76,
+    stop(sprintf("non-decimal type name: %s", type))
+  )
+}
+
 # These values aren't guaranteed to stay stable between nanoarrow versions,
 # so we keep them internal but use them in these functions to simplify the
 # number of C functions we need to build all the types.
@@ -475,7 +529,11 @@ NANOARROW_TYPE <- list(
   INTERVAL_MONTH_DAY_NANO = 38L,
   RUN_END_ENCODED = 39L,
   BINARY_VIEW = 40L,
-  STRING_VIEW = 41L
+  STRING_VIEW = 41L,
+  DECIMAL32 = 42L,
+  DECIMAL64 = 43L,
+  LIST_VIEW = 44L,
+  LARGE_LIST_VIEW = 45L
 )
 
 ARROW_FLAG <- list(

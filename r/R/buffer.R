@@ -225,6 +225,24 @@ as_nanoarrow_array.nanoarrow_buffer <- function(x, ..., schema = NULL) {
         buffers = list(NULL, offsets, x)
       )
     )
+  } else if (data_type %in% c("decimal32", "decimal64", "decimal128", "decimal256")) {
+    # Create an array with max precision and scale 0, which results in the
+    # decimal integer value getting displayed.
+    array <- nanoarrow_array_init(
+      na_type(
+        data_type,
+        precision = max_decimal_precision(data_type),
+        scale = 0
+      )
+    )
+    nanoarrow_array_modify(
+      array,
+      list(
+        length = logical_length,
+        null_count = 0,
+        buffers = list(NULL, x)
+      )
+    )
   } else if (data_type %in% c("string_view", "binary_view")) {
     stop("Can't convert buffer of type string_view or binary_view to array")
   } else {
