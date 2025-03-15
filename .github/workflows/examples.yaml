@@ -29,38 +29,39 @@ on:
       - 'CMakeLists.txt'
       - '.github/workflows/examples.yaml'
       - 'src/nanoarrow/**'
-      - 'src/extensions/**'
 
 jobs:
   examples:
-
-    runs-on: ubuntu-latest
+    name: ${{ matrix.config.label }}
+    runs-on: ${{ matrix.config.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        config:
+          - {os: macOS-latest, label: macos}
+          - {os: windows-latest, label: windows}
+          - {os: ubuntu-latest, label: ubuntu}
     env:
       VERBOSE: 1
 
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
+      - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: '3.x'
 
-      - name: Install dependencies
-        run: |
-          sudo apt-get install -y cmake
-
       - name: Minimal CMake Example
+        shell: bash
         run: |
           cd examples/cmake-minimal
           mkdir build && cd build
           cmake ..
           cmake --build .
 
-          ./example_cmake_minimal_app
+          ./example_cmake_minimal_app || ./Debug/example_cmake_minimal_app
 
       - name: Minimal Vendored Example
+        shell: bash
         run: |
           cd examples/vendored-minimal
           python3 ../../ci/scripts/bundle.py --source-output-dir=src --include-output-dir=src
@@ -70,18 +71,21 @@ jobs:
           ar rcs libexample_vendored_minimal_library.a library.o nanoarrow.o
           gcc -o example_vendored_minimal_app app.c libexample_vendored_minimal_library.a
 
-          ./example_vendored_minimal_app
+          ./example_vendored_minimal_app || ./Debug/example_vendored_minimal_app
 
       - name: Ipc CMake Example
+        shell: bash
         run: |
           cd examples/cmake-ipc
           mkdir build && cd build
           cmake ..
           cmake --build .
 
-          cat ../schema-valid.arrows | ./example_cmake_ipc_app
+          cat ../schema-valid.arrows | ./example_cmake_ipc_app || \
+            cat ../schema-valid.arrows | ./Debug/example_cmake_ipc_app
 
       - name: Ipc Vendored Example
+        shell: bash
         run: |
           cd examples/vendored-ipc
           python3 ../../ci/scripts/bundle.py \
@@ -96,9 +100,11 @@ jobs:
           ar rcs libexample_vendored_ipc_library.a library.o nanoarrow.o nanoarrow_ipc.o flatcc.o
           gcc -o example_vendored_ipc_app app.c libexample_vendored_ipc_library.a
 
-          cat ../schema-valid.arrows | ./example_vendored_ipc_app
+          cat ../schema-valid.arrows | ./example_vendored_ipc_app || \
+            cat ../schema-valid.arrows | ./Debug/example_vendored_ipc_app
 
       - name: Getting Started Tutorial Example
+        shell: bash
         run: |
           cd examples/linesplitter
           mkdir build && cd build
@@ -107,15 +113,19 @@ jobs:
           ctest .
 
       - name: Comprehensive CMake example
+        shell: bash
+        env:
+          EXTRA_CMAKE_INSTALL: ${{ matrix.config.label == 'windows' && '--config=Debug' || '' }}
         run: |
           cd examples/cmake-scenarios
           ./build.sh
-          for dir in scratch/build*; do
-            ./${dir}/minimal_cpp_app;
-            echo ;
-          done
+          ./run.sh
 
       - name: Meson example
+        # This example doesn't seem to work on Windows
+        # https://github.com/apache/arrow-nanoarrow/issues/725
+        if: matrix.config.label != 'windows'
+        shell: bash
         run: |
           python3 -m pip install meson ninja
           cd examples/meson-minimal
@@ -125,6 +135,7 @@ jobs:
           ./builddir/example_meson_minimal_app
 
       - name: Python example
+        shell: bash
         run: |
           python3 -m pip install examples/python-package
           python3 -c "import schema_printer"

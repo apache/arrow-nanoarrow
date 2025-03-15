@@ -24,8 +24,8 @@
 
 class CudaTemporaryContext {
  public:
-  CudaTemporaryContext(int device_id) : initialized_(false) {
-    CUresult err = cuDeviceGet(&device_, device_id);
+  CudaTemporaryContext(int64_t device_id) : initialized_(false) {
+    CUresult err = cuDeviceGet(&device_, static_cast<int>(device_id));
     if (err != CUDA_SUCCESS) {
       return;
     }
