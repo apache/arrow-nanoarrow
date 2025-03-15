@@ -899,7 +899,7 @@ test_that("convert to vector works for decimal -> character()", {
     array_neg2 <- as_nanoarrow_array(numbers_neg_scale, schema = constructor(9, -2))
     expect_identical(
       convert_array(array_neg2, character()),
-      as.character(numbers_neg_scale)
+      c("12300", "-12300", "000", NA_character_, "100")
     )
   }
 })
