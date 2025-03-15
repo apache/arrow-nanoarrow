@@ -1484,7 +1484,7 @@ static int ArrowArrayViewValidateFull(struct ArrowArrayView* array_view,
     NANOARROW_RETURN_NOT_OK(ArrowArrayViewValidateFull(array_view->children[i], error));
   }
 
-  // Dictionary valiation not implemented
+  // Dictionary validation not implemented
   if (array_view->dictionary != NULL) {
     NANOARROW_RETURN_NOT_OK(ArrowArrayViewValidateFull(array_view->dictionary, error));
     // TODO: validate the indices
