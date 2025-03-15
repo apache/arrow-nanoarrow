@@ -453,7 +453,8 @@ foreach(target
     target_compile_definitions(${target} PUBLIC "$<$<CONFIG:Debug>:NANOARROW_DEBUG>")
 
     # Ensure NANOARROW_DLL is set when building and linking to the library
-    if(target MATCHES "_shared$")
+    get_target_property(target_type ${target} TYPE)
+    if(target_type STREQUAL "SHARED_LIBRARY")
       target_compile_definitions(${target} PUBLIC NANOARROW_BUILD_DLL)
       target_compile_definitions(${target} PRIVATE NANOARROW_BUILD_DLL
                                                    NANOARROW_EXPORT_DLL)
