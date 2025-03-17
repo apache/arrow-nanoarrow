@@ -51,7 +51,7 @@ fetchcontent_makeavailable(googletest)
 
 enable_testing()
 add_executable(linesplitter_test linesplitter_test.cc)
-target_link_libraries(linesplitter_test linesplitter nanoarrow GTest::gtest_main)
+target_link_libraries(linesplitter_test linesplitter nanoarrow_static GTest::gtest_main)
 
 include(GoogleTest)
 gtest_discover_tests(linesplitter_test)
