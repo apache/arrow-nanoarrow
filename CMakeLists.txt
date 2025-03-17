@@ -755,7 +755,7 @@ endif()
 if(NANOARROW_BUILD_APPS)
   if(NANOARROW_IPC)
     add_executable(dump_stream src/apps/dump_stream.c)
-    target_link_libraries(dump_stream nanoarrow_ipc_static nanoarrow)
+    target_link_libraries(dump_stream nanoarrow_ipc_static)
   endif()
 endif()
 

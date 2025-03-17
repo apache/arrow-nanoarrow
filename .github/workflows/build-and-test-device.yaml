@@ -107,10 +107,10 @@ jobs:
         if: matrix.config.label == 'namespaced-build'
         run: |
           # Dump all symbols
-          nm --extern-only build/libnanoarrow_device.a
+          nm --extern-only build/libnanoarrow_device_static.a
 
           # Check for non-namespaced ones
-          ARROW_SYMBOLS=`nm --extern-only build/libnanoarrow_device.a | grep "T Arrow" || true`
+          ARROW_SYMBOLS=`nm --extern-only build/libnanoarrow_device_static.a | grep "T Arrow" || true`
           if [ -z "$ARROW_SYMBOLS" ]; then
             exit 0
           fi

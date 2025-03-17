@@ -103,10 +103,10 @@ jobs:
           cd $SUBDIR
 
           # Dump all symbols
-          nm --extern-only build/libnanoarrow_ipc.a
+          nm --extern-only build/libnanoarrow_ipc_static.a
 
           # Check for non-namespaced ones
-          ARROW_SYMBOLS=`nm --extern-only build/libnanoarrow_ipc.a | grep "T Arrow" || true`
+          ARROW_SYMBOLS=`nm --extern-only build/libnanoarrow_ipc_static.a | grep "T Arrow" || true`
           if [ -z "$ARROW_SYMBOLS" ]; then
             exit 0
           fi
