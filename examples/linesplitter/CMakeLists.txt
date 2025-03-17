@@ -39,7 +39,7 @@ fetchcontent_declare(nanoarrow
 fetchcontent_makeavailable(nanoarrow)
 
 add_library(linesplitter linesplitter.cc)
-target_link_libraries(linesplitter PRIVATE nanoarrow)
+target_link_libraries(linesplitter PRIVATE nanoarrow_static)
 
 set(gtest_force_shared_crt
     ON

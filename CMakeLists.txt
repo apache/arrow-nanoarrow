@@ -162,11 +162,11 @@ if(NOT NANOARROW_BUNDLE)
 endif()
 
 # Add the nanoarrow library targets
-add_library(nanoarrow STATIC ${NANOARROW_BUILD_SOURCES})
+add_library(nanoarrow_static STATIC ${NANOARROW_BUILD_SOURCES})
 add_library(nanoarrow_shared SHARED ${NANOARROW_BUILD_SOURCES})
 install(FILES ${NANOARROW_INSTALL_HEADERS} DESTINATION include/nanoarrow)
 
-foreach(target nanoarrow nanoarrow_shared)
+foreach(target "nanoarrow_static" "nanoarrow_shared")
   target_include_directories(${target}
                              PUBLIC $<BUILD_INTERFACE:${NANOARROW_BUILD_INCLUDE_DIR}>
                                     $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/src>
@@ -247,10 +247,10 @@ if(NANOARROW_IPC)
         src/nanoarrow/ipc/writer.c)
   endif()
 
-  add_library(nanoarrow_ipc STATIC ${NANOARROW_IPC_BUILD_SOURCES})
-  target_link_libraries(nanoarrow_ipc
+  add_library(nanoarrow_ipc_static STATIC ${NANOARROW_IPC_BUILD_SOURCES})
+  target_link_libraries(nanoarrow_ipc_static
                         PRIVATE flatccrt ${NANOARROW_IPC_EXTRA_LIBS}
-                        PUBLIC nanoarrow nanoarrow_coverage_config)
+                        PUBLIC nanoarrow_static nanoarrow_coverage_config)
 
   add_library(nanoarrow_ipc_shared SHARED ${NANOARROW_IPC_BUILD_SOURCES})
   target_link_libraries(nanoarrow_ipc_shared
@@ -260,7 +260,7 @@ if(NANOARROW_IPC)
   install(FILES src/nanoarrow/nanoarrow_ipc.h src/nanoarrow/nanoarrow_ipc.hpp
                 src/nanoarrow/ipc/flatcc_generated.h DESTINATION include/nanoarrow)
 
-  foreach(target "nanoarrow_ipc" "nanoarrow_ipc_shared")
+  foreach(target "nanoarrow_ipc_static" "nanoarrow_ipc_shared")
     target_compile_definitions(${target} PRIVATE ${NANOARROW_IPC_EXTRA_FLAGS})
     target_include_directories(${target}
                                PUBLIC $<BUILD_INTERFACE:${NANOARROW_BUILD_INCLUDE_DIR}>
@@ -282,7 +282,7 @@ if(NANOARROW_IPC AND (NANOARROW_BUILD_INTEGRATION_TESTS OR NANOARROW_BUILD_TESTS
                                     $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/src>
                                     $<INSTALL_INTERFACE:include>)
   target_link_libraries(nanoarrow_ipc_integration
-                        PRIVATE nanoarrow_testing nanoarrow_ipc flatccrt
+                        PRIVATE nanoarrow_testing_static nanoarrow_ipc_static flatccrt
                                 nanoarrow_coverage_config)
 endif()
 
@@ -345,12 +345,12 @@ if(NANOARROW_DEVICE)
                                        ${NANOARROW_DEVICE_SOURCES_CUDA})
   endif()
 
-  add_library(nanoarrow_device STATIC ${NANOARROW_DEVICE_BUILD_SOURCES}
-                                      ${NANOARROW_DEVICE_SOURCES_METAL})
-  target_link_libraries(nanoarrow_device
+  add_library(nanoarrow_device_static STATIC ${NANOARROW_DEVICE_BUILD_SOURCES}
+                                             ${NANOARROW_DEVICE_SOURCES_METAL})
+  target_link_libraries(nanoarrow_device_static
                         PRIVATE ${NANOARROW_DEVICE_LIBS_CUDA}
                                 ${NANOARROW_DEVICE_LIBS_METAL}
-                        PUBLIC nanoarrow nanoarrow_coverage_config)
+                        PUBLIC nanoarrow_static nanoarrow_coverage_config)
 
   add_library(nanoarrow_device_shared SHARED ${NANOARROW_DEVICE_BUILD_SOURCES}
                                              ${NANOARROW_DEVICE_SOURCES_METAL})
@@ -362,7 +362,7 @@ if(NANOARROW_DEVICE)
   install(FILES src/nanoarrow/nanoarrow_device.h src/nanoarrow/nanoarrow_device.hpp
           DESTINATION include/nanoarrow)
 
-  foreach(target nanoarrow_device nanoarrow_device_shared)
+  foreach(target "nanoarrow_device_static" "nanoarrow_device_shared")
     target_include_directories(${target}
                                PUBLIC $<BUILD_INTERFACE:${NANOARROW_BUILD_INCLUDE_DIR}>
                                       $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/src>
@@ -395,10 +395,10 @@ if(NANOARROW_TESTING
           LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
           ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
 
-  add_library(nanoarrow_testing STATIC src/nanoarrow/testing/testing.cc)
-  target_link_libraries(nanoarrow_testing
+  add_library(nanoarrow_testing_static STATIC src/nanoarrow/testing/testing.cc)
+  target_link_libraries(nanoarrow_testing_static
                         PRIVATE nlohmann_json::nlohmann_json
-                        PUBLIC nanoarrow nanoarrow_coverage_config)
+                        PUBLIC nanoarrow_static nanoarrow_coverage_config)
 
   add_library(nanoarrow_testing_shared SHARED src/nanoarrow/testing/testing.cc)
   target_link_libraries(nanoarrow_testing_shared
@@ -407,7 +407,7 @@ if(NANOARROW_TESTING
 
   install(FILES src/nanoarrow/nanoarrow_testing.hpp DESTINATION include/nanoarrow)
 
-  foreach(target nanoarrow_testing nanoarrow_testing_shared)
+  foreach(target "nanoarrow_testing_static" "nanoarrow_testing_shared")
     target_include_directories(${target}
                                PUBLIC $<BUILD_INTERFACE:${NANOARROW_BUILD_INCLUDE_DIR}>
                                       $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/src>
@@ -419,7 +419,7 @@ endif()
 
 # Always build integration test if building tests
 if(NANOARROW_BUILD_TESTS OR NANOARROW_BUILD_INTEGRATION_TESTS)
-  set_target_properties(nanoarrow PROPERTIES POSITION_INDEPENDENT_CODE ON)
+  set_target_properties(nanoarrow_static PROPERTIES POSITION_INDEPENDENT_CODE ON)
   add_library(nanoarrow_c_data_integration SHARED
               src/nanoarrow/integration/c_data_integration.cc)
   target_compile_definitions(nanoarrow_c_data_integration PRIVATE NANOARROW_BUILD_DLL
@@ -430,18 +430,18 @@ if(NANOARROW_BUILD_TESTS OR NANOARROW_BUILD_INTEGRATION_TESTS)
                              PUBLIC $<BUILD_INTERFACE:${NANOARROW_BUILD_INCLUDE_DIR}>
                                     $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/src>
                                     $<INSTALL_INTERFACE:include>)
-  target_link_libraries(nanoarrow_c_data_integration PRIVATE nanoarrow_testing)
+  target_link_libraries(nanoarrow_c_data_integration PRIVATE nanoarrow_testing_static)
 endif()
 
 # Common configuration for all targets
 foreach(target
-        nanoarrow
+        nanoarrow_static
         nanoarrow_shared
-        nanoarrow_ipc
+        nanoarrow_ipc_static
         nanoarrow_ipc_shared
-        nanoarrow_device
+        nanoarrow_device_static
         nanoarrow_device_shared
-        nanoarrow_testing
+        nanoarrow_testing_static
         nanoarrow_testing_shared
         nanoarrow_c_data_integration
         nanoarrow_ipc_json_integration)
@@ -501,6 +501,18 @@ if(NANOARROW_BUILD_TESTS)
   )
   include(CTest)
 
+  if(NANOARROW_TEST_LINKAGE_SHARED)
+    set(NANOARROW_TEST_LIB nanoarrow_shared)
+    set(NANOARROW_TEST_IPC_LIB nanoarrow_ipc_shared)
+    set(NANOARROW_TEST_DEVICE_LIB nanoarrow_device_shared)
+    set(NANOARROW_TEST_TESTING_LIB nanoarrow_testing_shared)
+  else()
+    set(NANOARROW_TEST_LIB nanoarrow_static)
+    set(NANOARROW_TEST_IPC_LIB nanoarrow_ipc_static)
+    set(NANOARROW_TEST_DEVICE_LIB nanoarrow_device_static)
+    set(NANOARROW_TEST_TESTING_LIB nanoarrow_testing_static)
+  endif()
+
   if(NANOARROW_BUILD_TESTS_WITH_ARROW)
     find_package(Arrow REQUIRED)
     message(STATUS "Arrow version: ${ARROW_VERSION}")
@@ -543,57 +555,58 @@ if(NANOARROW_BUILD_TESTS)
   add_executable(hpp_view src/nanoarrow/hpp/view_test.cc)
 
   target_link_libraries(utils_test
-                        nanoarrow_testing
+                        ${NANOARROW_TEST_TESTING_LIB}
                         gtest_main
                         gmock_main
                         ${NANOARROW_ARROW_TARGET}
                         nanoarrow_coverage_config)
-  target_link_libraries(buffer_test nanoarrow gtest_main nanoarrow_coverage_config)
+  target_link_libraries(buffer_test ${NANOARROW_TEST_LIB} gtest_main
+                        nanoarrow_coverage_config)
   target_link_libraries(array_test
-                        nanoarrow
+                        ${NANOARROW_TEST_LIB}
                         gtest_main
                         gmock_main
                         ${NANOARROW_ARROW_TARGET}
                         nanoarrow_coverage_config)
   target_link_libraries(schema_test
-                        nanoarrow
+                        ${NANOARROW_TEST_LIB}
                         gtest_main
                         ${NANOARROW_ARROW_TARGET}
                         nanoarrow_coverage_config)
   target_link_libraries(array_stream_test
-                        nanoarrow
+                        ${NANOARROW_TEST_LIB}
                         gtest_main
                         gmock_main
                         nanoarrow_coverage_config)
-  target_link_libraries(nanoarrow_testing_test nanoarrow_testing gtest_main
+  target_link_libraries(nanoarrow_testing_test ${NANOARROW_TEST_TESTING_LIB} gtest_main
                         nanoarrow_coverage_config)
   target_link_libraries(c_data_integration_test
-                        nanoarrow
+                        ${NANOARROW_TEST_LIB}
                         nanoarrow_c_data_integration
                         gtest_main
                         nanoarrow_coverage_config)
   target_link_libraries(hpp_array_stream
-                        nanoarrow
+                        ${NANOARROW_TEST_LIB}
                         gtest_main
                         gmock_main
                         nanoarrow_coverage_config)
   target_link_libraries(hpp_buffer
-                        nanoarrow
+                        ${NANOARROW_TEST_LIB}
                         gtest_main
                         gmock_main
                         nanoarrow_coverage_config)
   target_link_libraries(hpp_exception
-                        nanoarrow
+                        ${NANOARROW_TEST_LIB}
                         gtest_main
                         gmock_main
                         nanoarrow_coverage_config)
   target_link_libraries(hpp_unique
-                        nanoarrow
+                        ${NANOARROW_TEST_LIB}
                         gtest_main
                         gmock_main
                         nanoarrow_coverage_config)
   target_link_libraries(hpp_view
-                        nanoarrow
+                        ${NANOARROW_TEST_LIB}
                         gtest_main
                         gmock_main
                         nanoarrow_coverage_config)
@@ -661,8 +674,7 @@ if(NANOARROW_BUILD_TESTS)
       add_executable(nanoarrow_ipc_${name}_test src/nanoarrow/ipc/${name}_test.cc)
 
       target_link_libraries(nanoarrow_ipc_${name}_test
-                            nanoarrow_ipc
-                            nanoarrow
+                            ${NANOARROW_TEST_IPC_LIB}
                             ${NANOARROW_ARROW_TARGET}
                             gtest_main
                             gmock_main
@@ -684,8 +696,8 @@ if(NANOARROW_BUILD_TESTS)
       gtest_discover_tests(nanoarrow_ipc_${name}_test)
     endforeach()
 
-    target_link_libraries(nanoarrow_ipc_files_test nanoarrow_testing ZLIB::ZLIB
-                          nanoarrow_coverage_config)
+    target_link_libraries(nanoarrow_ipc_files_test ${NANOARROW_TEST_TESTING_LIB}
+                          ZLIB::ZLIB nanoarrow_coverage_config)
   endif()
 
   if(NANOARROW_DEVICE)
@@ -693,16 +705,10 @@ if(NANOARROW_BUILD_TESTS)
     add_executable(nanoarrow_device_test src/nanoarrow/device/device_test.cc)
     add_executable(nanoarrow_device_hpp_test src/nanoarrow/device/device_hpp_test.cc)
 
-    target_link_libraries(nanoarrow_device_test
-                          nanoarrow_device
-                          nanoarrow
-                          gtest_main
+    target_link_libraries(nanoarrow_device_test ${NANOARROW_TEST_DEVICE_LIB} gtest_main
                           nanoarrow_coverage_config)
-    target_link_libraries(nanoarrow_device_hpp_test
-                          nanoarrow_device
-                          nanoarrow
-                          gtest_main
-                          nanoarrow_coverage_config)
+    target_link_libraries(nanoarrow_device_hpp_test ${NANOARROW_TEST_DEVICE_LIB}
+                          gtest_main nanoarrow_coverage_config)
 
     if(Arrow_FOUND)
       target_compile_definitions(nanoarrow_device_test

@@ -46,7 +46,7 @@ add_library(example_cmake_minimal_library src/library.c)
 
 # Always use PRIVATE when linking to nanoarrow to hide nanoarrow's headers from a
 # target that in turn uses your library.
-target_link_libraries(example_cmake_minimal_library PRIVATE nanoarrow)
+target_link_libraries(example_cmake_minimal_library PRIVATE nanoarrow_static)
 
 # Add the executable and link it against the library
 add_executable(example_cmake_minimal_app src/app.c)

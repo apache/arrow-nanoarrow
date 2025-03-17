@@ -303,7 +303,7 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(nanoarrow)
 
 add_library(linesplitter linesplitter.cc)
-target_link_libraries(linesplitter PRIVATE nanoarrow)
+target_link_libraries(linesplitter PRIVATE nanoarrow_static)
 ```
 
 After saving `CMakeLists.txt`, you may have to close and re-open the `linesplitter`
