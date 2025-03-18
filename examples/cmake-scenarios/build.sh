@@ -17,16 +17,25 @@
 # specific language governing permissions and limitations
 # under the License.
 
+if [ -z "${EXTRA_CMAKE_CONFIGURE}" ]; then
+    EXTRA_CMAKE_CONFIGURE=""
+fi
+
+if [ -z "${EXTRA_CMAKE_INSTALL}" ]; then
+    EXTRA_CMAKE_INSTALL=""
+fi
+
 set -exuo pipefail
 
-# Build nanoarrow statically.
+# Build nanoarrow
 cmake -S ../.. -B scratch/nanoarrow_build/ \
     -DCMAKE_INSTALL_PREFIX=scratch/nanoarrow_install/ \
-    -DNANOARROW_IPC=ON -DNANOARROW_DEVICE=ON -DNANOARROW_TESTING=ON
+    -DNANOARROW_IPC=ON -DNANOARROW_DEVICE=ON -DNANOARROW_TESTING=ON \
+    $EXTRA_CMAKE_CONFIGURE
 cmake --build scratch/nanoarrow_build/
 cmake --install scratch/nanoarrow_build/ $EXTRA_CMAKE_INSTALL
 
-for nanoarrow_build_type in static shared; do
+for nanoarrow_build_type in static shared auto; do
     # Build the project against the built nanoarrow.
     cmake -S . -B scratch/build_${nanoarrow_build_type}/ \
         -Dnanoarrow_ROOT=scratch/nanoarrow_build \

@@ -165,6 +165,11 @@ endif()
 add_library(nanoarrow_static STATIC ${NANOARROW_BUILD_SOURCES})
 add_library(nanoarrow_shared SHARED ${NANOARROW_BUILD_SOURCES})
 install(FILES ${NANOARROW_INSTALL_HEADERS} DESTINATION include/nanoarrow)
+if(BUILD_SHARED_LIBS)
+  add_library(nanoarrow::nanoarrow ALIAS nanoarrow_shared)
+else()
+  add_library(nanoarrow::nanoarrow ALIAS nanoarrow_static)
+endif()
 
 foreach(target "nanoarrow_static" "nanoarrow_shared")
   target_include_directories(${target}
@@ -259,6 +264,11 @@ if(NANOARROW_IPC)
 
   install(FILES src/nanoarrow/nanoarrow_ipc.h src/nanoarrow/nanoarrow_ipc.hpp
                 src/nanoarrow/ipc/flatcc_generated.h DESTINATION include/nanoarrow)
+  if(BUILD_SHARED_LIBS)
+    add_library(nanoarrow::nanoarrow_ipc ALIAS nanoarrow_ipc_shared)
+  else()
+    add_library(nanoarrow::nanoarrow_ipc ALIAS nanoarrow_ipc_static)
+  endif()
 
   foreach(target "nanoarrow_ipc_static" "nanoarrow_ipc_shared")
     target_compile_definitions(${target} PRIVATE ${NANOARROW_IPC_EXTRA_FLAGS})
@@ -361,6 +371,11 @@ if(NANOARROW_DEVICE)
 
   install(FILES src/nanoarrow/nanoarrow_device.h src/nanoarrow/nanoarrow_device.hpp
           DESTINATION include/nanoarrow)
+  if(BUILD_SHARED_LIBS)
+    add_library(nanoarrow::nanoarrow_device ALIAS nanoarrow_device_shared)
+  else()
+    add_library(nanoarrow::nanoarrow_device ALIAS nanoarrow_device_static)
+  endif()
 
   foreach(target "nanoarrow_device_static" "nanoarrow_device_shared")
     target_include_directories(${target}
@@ -406,6 +421,11 @@ if(NANOARROW_TESTING
                         PUBLIC nanoarrow_shared nanoarrow_coverage_config)
 
   install(FILES src/nanoarrow/nanoarrow_testing.hpp DESTINATION include/nanoarrow)
+  if(BUILD_SHARED_LIBS)
+    add_library(nanoarrow::nanoarrow_testing ALIAS nanoarrow_testing_shared)
+  else()
+    add_library(nanoarrow::nanoarrow_testing ALIAS nanoarrow_testing_static)
+  endif()
 
   foreach(target "nanoarrow_testing_static" "nanoarrow_testing_shared")
     target_include_directories(${target}
