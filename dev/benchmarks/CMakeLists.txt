@@ -72,8 +72,13 @@ elseif(NOT "${NANOARROW_BENCHMARK_SOURCE_URL}" STREQUAL "")
 endif()
 
 # nanoarrow >= 0.7 uses an alias target (or explicit _static/_shared)
-if(NOT TARGET nanoarrow::nanoarrow AND TARGET nanoarrow)
+if(NOT TARGET nanoarrow::nanoarrow)
+  message(STATUS "Adding nanoarrow::nanoarrow alias target")
   add_library(nanoarrow::nanoarrow ALIAS nanoarrow)
+endif()
+
+if(NOT TARGET nanoarrow::nanoarrow_ipc)
+  message(STATUS "Adding nanoarrow::nanoarrow_ipc alias target")
   add_library(nanoarrow::nanoarrow_ipc ALIAS nanoarrow_ipc)
 endif()
 
