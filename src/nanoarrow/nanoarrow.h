@@ -310,8 +310,8 @@ NANOARROW_DLL ArrowErrorCode ArrowDecimalAppendDigitsToBuffer(
     const struct ArrowDecimal* decimal, struct ArrowBuffer* buffer);
 
 /// \brief Get the decimal value of an ArrowDecimal as a string
-ArrowErrorCode ArrowDecimalAppendStringToBuffer(const struct ArrowDecimal* decimal,
-                                                struct ArrowBuffer* buffer);
+NANOARROW_DLL ArrowErrorCode ArrowDecimalAppendStringToBuffer(
+    const struct ArrowDecimal* decimal, struct ArrowBuffer* buffer);
 
 /// \brief Get the half float value of a float
 static inline uint16_t ArrowFloatToHalfFloat(float value);

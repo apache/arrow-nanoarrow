@@ -161,7 +161,7 @@ enum ArrowIpcCompressionType {
 #define NANOARROW_IPC_FEATURE_COMPRESSED_BODY 2
 
 /// \brief Checks the nanoarrow runtime to make sure the run/build versions match
-ArrowErrorCode ArrowIpcCheckRuntime(struct ArrowError* error);
+NANOARROW_DLL ArrowErrorCode ArrowIpcCheckRuntime(struct ArrowError* error);
 
 /// \brief Get the endianness of the current runtime
 static inline enum ArrowIpcEndianness ArrowIpcSystemEndianness(void) {
@@ -533,7 +533,7 @@ struct ArrowIpcEncoder {
 NANOARROW_DLL ArrowErrorCode ArrowIpcEncoderInit(struct ArrowIpcEncoder* encoder);
 
 /// \brief Release all resources attached to an encoder
-void ArrowIpcEncoderReset(struct ArrowIpcEncoder* encoder);
+NANOARROW_DLL void ArrowIpcEncoderReset(struct ArrowIpcEncoder* encoder);
 
 /// \brief Finalize the most recently encoded message into a buffer
 ///

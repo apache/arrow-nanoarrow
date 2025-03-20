@@ -30,12 +30,6 @@ project(
     ],
 )
 
-# This bit depends on proper symbol exporting which hasn't yet been implemented
-# generally for all of nanoarrow's libraries
-# if meson.get_compiler('cpp').get_id() == 'gcc' or meson.get_compiler('cpp').get_id() == 'clang'
-#   add_project_arguments(['-fvisibility=hidden'], language: 'cpp')
-# endif
-
 cc = meson.get_compiler('c')
 add_project_arguments(
     cc.get_supported_arguments(['-Wno-misleading-indentation']),
@@ -99,6 +93,7 @@ nanoarrow_lib = library(
     'src/nanoarrow/common/utils.c',
     include_directories: [incdir],
     install: true,
+    gnu_symbol_visibility: 'hidden',
 )
 
 nanoarrow_dep = declare_dependency(
@@ -134,6 +129,7 @@ if get_option('ipc')
         dependencies: ipc_lib_deps,
         install: true,
         c_args: ipc_lib_c_args,
+        gnu_symbol_visibility: 'hidden',
     )
     nanoarrow_ipc_dep = declare_dependency(
         include_directories: [incdir],
@@ -172,6 +168,7 @@ if needs_device
         dependencies: device_deps,
         install: true,
         cpp_args: device_defines,
+        gnu_symbol_visibility: 'hidden',
     )
 
     nanoarrow_device_dep = declare_dependency(
@@ -191,6 +188,7 @@ if needs_testing
         dependencies: [nanoarrow_dep, nlohmann_json_dep],
         include_directories: incdir,
         install: true,
+        gnu_symbol_visibility: 'hidden',
     )
 
     nanoarrow_testing_dep = declare_dependency(
@@ -206,6 +204,7 @@ if get_option('tests') or get_option('integration_tests')
         'src/nanoarrow/integration/c_data_integration.cc',
         dependencies: [nanoarrow_testing_dep, nanoarrow_dep],
         include_directories: incdir,
+        gnu_symbol_visibility: 'hidden',
     )
 
 endif
