@@ -47,10 +47,6 @@ RUN git clone https://github.com/apache/arrow.git /arrow-integration --recurse-s
 # Clone the arrow-rs repo
 RUN git clone https://github.com/apache/arrow-rs /arrow-integration/rust
 
-# Workaround: stable rust is not compatible with glibc provided by the
-# provided arrow docker image https://github.com/apache/arrow/issues/41637
-RUN cd /arrow-integration/rust && rustup override set 1.77
-
 # Build all the integrations except nanoarrow (since we'll do that ourselves on each run)
 RUN ARCHERY_INTEGRATION_WITH_NANOARROW="0" \
     conda run --no-capture-output \
