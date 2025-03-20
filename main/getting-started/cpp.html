@@ -660,7 +660,7 @@ integration.</p>
 <span class="nb">FetchContent_MakeAvailable</span><span class="p">(</span><span class="s">nanoarrow</span><span class="p">)</span>
 
 <span class="nb">add_library</span><span class="p">(</span><span class="s">linesplitter</span><span class="w"> </span><span class="s">linesplitter.cc</span><span class="p">)</span>
-<span class="nb">target_link_libraries</span><span class="p">(</span><span class="s">linesplitter</span><span class="w"> </span><span class="s">PRIVATE</span><span class="w"> </span><span class="s">nanoarrow</span><span class="p">)</span>
+<span class="nb">target_link_libraries</span><span class="p">(</span><span class="s">linesplitter</span><span class="w"> </span><span class="s">PRIVATE</span><span class="w"> </span><span class="s">nanoarrow_static</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>After saving <code class="docutils literal notranslate"><span class="pre">CMakeLists.txt</span></code>, you may have to close and re-open the
