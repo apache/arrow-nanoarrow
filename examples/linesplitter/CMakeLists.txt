@@ -39,8 +39,11 @@ fetchcontent_declare(nanoarrow
 fetchcontent_makeavailable(nanoarrow)
 
 add_library(linesplitter linesplitter.cc)
-target_link_libraries(linesplitter PRIVATE nanoarrow)
+target_link_libraries(linesplitter PRIVATE nanoarrow_static)
 
+set(gtest_force_shared_crt
+    ON
+    CACHE BOOL "" FORCE)
 fetchcontent_declare(googletest
                      URL https://github.com/google/googletest/archive/refs/tags/v1.13.0.zip
 )
@@ -48,7 +51,7 @@ fetchcontent_makeavailable(googletest)
 
 enable_testing()
 add_executable(linesplitter_test linesplitter_test.cc)
-target_link_libraries(linesplitter_test linesplitter nanoarrow GTest::gtest_main)
+target_link_libraries(linesplitter_test linesplitter nanoarrow_static GTest::gtest_main)
 
 include(GoogleTest)
 gtest_discover_tests(linesplitter_test)

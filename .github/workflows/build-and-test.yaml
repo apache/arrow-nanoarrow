@@ -46,6 +46,7 @@ jobs:
         config:
           - {label: default-build, cmake_args: "-DCMAKE_BUILD_TYPE=Debug"}
           - {label: release-build}
+          - {label: shared-test-linkage, cmake_args: "-DNANOARROW_TEST_LINKAGE_SHARED=ON"}
           - {label: namespaced-build, cmake_args: "-DNANOARROW_NAMESPACE=SomeUserNamespace"}
           - {label: bundled-build, cmake_args: "-DNANOARROW_BUNDLE=ON"}
           - {label: bundled-cpp-build, cmake_args: "-DNANOARROW_BUNDLE=ON -DNANOARROW_BUNDLE_AS_CPP=ON"}
@@ -91,10 +92,10 @@ jobs:
         if: matrix.config.label == 'namespaced-build'
         run: |
           # Dump all symbols
-          nm --extern-only build/libnanoarrow.a
+          nm --extern-only build/libnanoarrow_static.a
 
           # Check for non-namespaced ones
-          ARROW_SYMBOLS=`nm --extern-only build/libnanoarrow.a | grep "T Arrow" || true`
+          ARROW_SYMBOLS=`nm --extern-only build/libnanoarrow_static.a | grep "T Arrow" || true`
           if [ -z "$ARROW_SYMBOLS" ]; then
             exit 0
           fi

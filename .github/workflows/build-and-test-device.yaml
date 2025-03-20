@@ -48,9 +48,9 @@ jobs:
           - {runner: ubuntu-latest, label: default-build}
           - {runner: ubuntu-latest, label: namespaced-build, cmake_args: "-DNANOARROW_NAMESPACE=SomeUserNamespace"}
           - {runner: ubuntu-latest, label: bundled-build, cmake_args: "-DNANOARROW_DEVICE_BUNDLE=ON"}
+          - {label: shared-test-linkage, cmake_args: "-DNANOARROW_TEST_LINKAGE_SHARED=ON"}
           - {runner: macOS-latest, label: with-metal, cmake_args: "-DNANOARROW_DEVICE_WITH_METAL=ON"}
           - {runner: ["self-hosted", "cuda"], label: with-cuda, cmake_args: "-DNANOARROW_DEVICE_WITH_CUDA=ON"}
-
 
     steps:
       - uses: actions/checkout@v4
@@ -107,10 +107,10 @@ jobs:
         if: matrix.config.label == 'namespaced-build'
         run: |
           # Dump all symbols
-          nm --extern-only build/libnanoarrow_device.a
+          nm --extern-only build/libnanoarrow_device_static.a
 
           # Check for non-namespaced ones
-          ARROW_SYMBOLS=`nm --extern-only build/libnanoarrow_device.a | grep "T Arrow" || true`
+          ARROW_SYMBOLS=`nm --extern-only build/libnanoarrow_device_static.a | grep "T Arrow" || true`
           if [ -z "$ARROW_SYMBOLS" ]; then
             exit 0
           fi

@@ -92,7 +92,9 @@ TEST_P(BinaryViewTypeTestFixture, NanoarrowHppViewBinaryViewArrayAsBytesTest) {
   using namespace nanoarrow::literals;
 
   nanoarrow::UniqueArray array{};
-  const auto [offset, type] = GetParam();
+  const auto param = GetParam();
+  int64_t offset = std::get<0>(param);
+  enum ArrowType type = std::get<1>(param);
   ASSERT_EQ(ArrowArrayInitFromType(array.get(), type), NANOARROW_OK);
   ASSERT_EQ(ArrowArrayStartAppending(array.get()), NANOARROW_OK);
 
@@ -113,7 +115,7 @@ TEST_P(BinaryViewTypeTestFixture, NanoarrowHppViewBinaryViewArrayAsBytesTest) {
   ArrowArrayViewInitFromType(array_view.get(), type);
   ASSERT_EQ(ArrowArrayViewSetArray(array_view.get(), array.get(), nullptr), NANOARROW_OK);
 
-  int i = offset;
+  int64_t i = offset;
   for (auto slot : nanoarrow::ViewBinaryViewArrayAsBytes(array.get())) {
     if (i == 1 || i == 3) {
       EXPECT_EQ(slot, nanoarrow::NA);

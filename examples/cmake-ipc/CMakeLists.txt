@@ -33,7 +33,7 @@ fetchcontent_declare(# The name 'nanoarrow' is important here: it allows the IPC
                      # See examples/cmake-minimal for how to specify a GIT repository or URL
                      SOURCE_DIR ${CMAKE_CURRENT_LIST_DIR}/../..)
 fetchcontent_makeavailable(nanoarrow)
-target_compile_options(nanoarrow PUBLIC -DNANOARROW_IPC=ON)
+target_compile_options(nanoarrow_static PUBLIC -DNANOARROW_IPC=ON)
 unset(NANOARROW_IPC)
 
 # Add the library and link it against nanoarrow and nanoarrow_ipc
@@ -45,8 +45,8 @@ add_library(example_cmake_ipc_library src/library.c)
 # Always use PRIVATE to hide nanoarrow's headers from a
 # target that in turn uses your library.
 target_link_libraries(example_cmake_ipc_library
-                      PRIVATE nanoarrow_ipc
-                      PRIVATE nanoarrow)
+                      PRIVATE nanoarrow_ipc_static
+                      PRIVATE nanoarrow_static)
 
 # Add the executable and link it against the library
 add_executable(example_cmake_ipc_app src/app.c)
