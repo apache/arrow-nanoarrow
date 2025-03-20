@@ -71,8 +71,14 @@ elseif(NOT "${NANOARROW_BENCHMARK_SOURCE_URL}" STREQUAL "")
   endif()
 endif()
 
+# nanoarrow >= 0.7 uses an alias target (or explicit _static/_shared)
+if(NOT TARGET nanoarrow::nanoarrow AND TARGET nanoarrow)
+  add_library(nanoarrow::nanoarrow ALIAS nanoarrow)
+  add_library(nanoarrow::nanoarrow_ipc ALIAS nanoarrow_ipc)
+endif()
+
 # Check that either the parent scope or this CMakeLists.txt defines a nanoarrow target
-if(NOT TARGET nanoarrow OR NOT TARGET nanoarrow_ipc)
+if(NOT TARGET nanoarrow::nanoarrow OR NOT TARGET nanoarrow::nanoarrow_ipc)
   message(FATAL_ERROR "nanoarrow or nanoarrow_ipc target not found (missing -DNANOARROW_BENCHMARK_SOURCE_URL option?)"
   )
 endif()
@@ -92,7 +98,7 @@ enable_testing()
 
 foreach(ITEM schema;array;ipc)
   add_executable(${ITEM}_benchmark "c/${ITEM}_benchmark.cc")
-  target_link_libraries(${ITEM}_benchmark PRIVATE nanoarrow nanoarrow_ipc
+  target_link_libraries(${ITEM}_benchmark PRIVATE nanoarrow::nanoarrow nanoarrow::nanoarrow_ipc
                                                   benchmark::benchmark_main)
   add_test(NAME ${ITEM}_benchmark COMMAND ${ITEM}_benchmark
                                           --benchmark_out=${ITEM}_benchmark.json)
