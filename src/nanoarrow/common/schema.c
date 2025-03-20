@@ -278,18 +278,34 @@ ArrowErrorCode ArrowSchemaSetTypeDecimal(struct ArrowSchema* schema, enum ArrowT
   int n_chars;
   switch (type) {
     case NANOARROW_TYPE_DECIMAL32:
+      if (decimal_precision > 9) {
+        return EINVAL;
+      }
+
       n_chars = snprintf(buffer, sizeof(buffer), "d:%d,%d,32", decimal_precision,
                          decimal_scale);
       break;
     case NANOARROW_TYPE_DECIMAL64:
+      if (decimal_precision > 18) {
+        return EINVAL;
+      }
+
       n_chars = snprintf(buffer, sizeof(buffer), "d:%d,%d,64", decimal_precision,
                          decimal_scale);
       break;
     case NANOARROW_TYPE_DECIMAL128:
+      if (decimal_precision > 38) {
+        return EINVAL;
+      }
+
       n_chars =
           snprintf(buffer, sizeof(buffer), "d:%d,%d", decimal_precision, decimal_scale);
       break;
     case NANOARROW_TYPE_DECIMAL256:
+      if (decimal_precision > 76) {
+        return EINVAL;
+      }
+
       n_chars = snprintf(buffer, sizeof(buffer), "d:%d,%d,256", decimal_precision,
                          decimal_scale);
       break;

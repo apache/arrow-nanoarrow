@@ -52,7 +52,6 @@ test_that("nanoarrow_altrep_chr() works for string", {
 })
 
 test_that("nanoarrow_altrep_chr() works for large string", {
-  skip_if_not_installed("arrow")
   x <- as_nanoarrow_array(letters, schema = na_large_string())
   x_altrep <- nanoarrow_altrep_chr(x)
   expect_identical(x_altrep, letters)

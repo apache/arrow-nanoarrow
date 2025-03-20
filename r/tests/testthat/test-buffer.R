@@ -52,6 +52,41 @@ test_that("as_nanoarrow_buffer() works for R atomic types", {
   expect_identical(convert_buffer(buffer_chr), "1234")
 })
 
+test_that("as_nanoarrow_array() works for decimal buffer types", {
+  # Decimal buffers get converted at max precision and zero scale because we
+  # don't have access to the type. This best reflects the logical value of each
+  # buffer item for printing (an xx bit integer).
+  dec32_array <- as_nanoarrow_array(-10:10, schema = na_decimal32(9, 1))
+  dec32_buffer_array <- as_nanoarrow_array(dec32_array$buffers[[2]])
+  expect_identical(infer_nanoarrow_schema(dec32_buffer_array)$format, "d:9,0,32")
+
+  dec64_array <- as_nanoarrow_array(-10:10, schema = na_decimal64(9, 1))
+  dec64_buffer_array <- as_nanoarrow_array(dec64_array$buffers[[2]])
+  expect_identical(infer_nanoarrow_schema(dec64_buffer_array)$format, "d:18,0,64")
+
+  dec128_array <- as_nanoarrow_array(-10:10, schema = na_decimal128(9, 1))
+  dec128_buffer_array <- as_nanoarrow_array(dec128_array$buffers[[2]])
+  expect_identical(infer_nanoarrow_schema(dec128_buffer_array)$format, "d:38,0")
+
+  dec256_array <- as_nanoarrow_array(-10:10, schema = na_decimal256(9, 1))
+  dec256_buffer_array <- as_nanoarrow_array(dec256_array$buffers[[2]])
+  expect_identical(infer_nanoarrow_schema(dec256_buffer_array)$format, "d:76,0,256")
+})
+
+test_that("buffer printer works for decimal buffer types", {
+  dec32_array <- as_nanoarrow_array(-10:10, schema = na_decimal32(9, 1))
+  expect_snapshot(str(dec32_array$buffers[[2]]))
+
+  dec64_array <- as_nanoarrow_array(-10:10, schema = na_decimal64(9, 1))
+  expect_snapshot(str(dec64_array$buffers[[2]]))
+
+  dec128_array <- as_nanoarrow_array(-10:10, schema = na_decimal128(9, 1))
+  expect_snapshot(str(dec128_array$buffers[[2]]))
+
+  dec256_array <- as_nanoarrow_array(-10:10, schema = na_decimal256(9, 1))
+  expect_snapshot(str(dec256_array$buffers[[2]]))
+})
+
 test_that("buffers can be printed", {
   expect_snapshot(str(as_nanoarrow_buffer(1:10)))
   expect_snapshot(str(as_nanoarrow_buffer(1:10000)))

@@ -22,8 +22,8 @@
 #include <Rinternals.h>
 
 #include <inttypes.h>
-#include <stdint.h>
 
+#include "buffer.h"
 #include "materialize_common.h"
 #include "nanoarrow.h"
 
@@ -61,6 +61,39 @@ static inline int nanoarrow_materialize_chr(struct RConverter* converter) {
                          Rf_mkCharLenCE(buf, n_chars, CE_UTF8));
         }
       }
+      return NANOARROW_OK;
+    }
+
+    case NANOARROW_TYPE_DECIMAL32:
+    case NANOARROW_TYPE_DECIMAL64:
+    case NANOARROW_TYPE_DECIMAL128:
+    case NANOARROW_TYPE_DECIMAL256: {
+      struct ArrowDecimal item;
+      ArrowDecimalInit(&item, converter->schema_view.decimal_bitwidth,
+                       converter->schema_view.decimal_precision,
+                       converter->schema_view.decimal_scale);
+
+      // Buffer to manage the building of the digits output
+      SEXP buffer_xptr = PROTECT(buffer_owning_xptr());
+      struct ArrowBuffer* digits = (struct ArrowBuffer*)R_ExternalPtrAddr(buffer_xptr);
+
+      for (R_xlen_t i = 0; i < dst->length; i++) {
+        if (ArrowArrayViewIsNull(src->array_view, src->offset + i)) {
+          SET_STRING_ELT(dst->vec_sexp, dst->offset + i, NA_STRING);
+        } else {
+          ArrowArrayViewGetDecimalUnsafe(src->array_view, src->offset + i, &item);
+          digits->size_bytes = 0;
+          int status = ArrowDecimalAppendStringToBuffer(&item, digits);
+          if (status != NANOARROW_OK) {
+            UNPROTECT(1);
+            return status;
+          }
+
+          SET_STRING_ELT(dst->vec_sexp, dst->offset + i,
+                         Rf_mkCharLen((char*)digits->data, (int)digits->size_bytes));
+        }
+      }
+      UNPROTECT(1);
       return NANOARROW_OK;
     }
 

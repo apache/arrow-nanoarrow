@@ -613,22 +613,31 @@ test_that("convert to vector works for valid double()", {
   )
 })
 
-test_that("convert to vector works for decimal128 -> double()", {
+test_that("convert to vector works for decimal -> double()", {
+  constructors <- list(na_decimal32, na_decimal64, na_decimal256, na_decimal128)
+  for (constructor in constructors) {
+    numbers <- round(c(pi, -pi, 123.4567, NA, -123.4567, 0, 123), 4)
+
+    # Check scale of 4 (min required for lossless roundtrip)
+    array4 <- as_nanoarrow_array(numbers, schema = constructor(9, 4))
+    expect_identical(convert_array(array4), numbers)
+
+    # Check scale of 5 (requires adding some zeroes in C)
+    array5 <- as_nanoarrow_array(numbers, schema = constructor(9, 5))
+    expect_identical(convert_array(array5), numbers)
+
+    # Check negative scale (also requires adding some zeroes in C)
+    numbers_neg_scale <- c(12300, -12300, 0, NA, 100)
+    array_neg2 <- as_nanoarrow_array(numbers_neg_scale, schema = constructor(9, -2))
+    expect_identical(convert_array(array_neg2), numbers_neg_scale)
+  }
+
+  # Make sure we agree with arrow
   skip_if_not_installed("arrow")
 
-  array <- as_nanoarrow_array(arrow::Array$create(1:10)$cast(arrow::decimal128(20, 10)))
-
-  # Check via S3 dispatch
-  expect_equal(
-    convert_array(array, double()),
-    as.double(1:10)
-  )
-
-  # ...and via C -> S3 dispatch
-  expect_equal(
-    convert_array.default(array, double()),
-    as.double(1:10)
-  )
+  expect_identical(as.vector(arrow::as_arrow_array(array4)), numbers)
+  expect_identical(as.vector(arrow::as_arrow_array(array5)), numbers)
+  expect_identical(as.vector(arrow::as_arrow_array(array_neg2)), numbers_neg_scale)
 })
 
 test_that("convert to vector works for null -> double()", {
@@ -870,6 +879,37 @@ test_that("convert to vector works for dictionary<string> -> factor()", {
     convert_array(array, factor(levels = letters[-4])),
     "some levels in data do not exist"
   )
+})
+
+test_that("convert to vector works for decimal -> character()", {
+  constructors <- list(na_decimal32, na_decimal64, na_decimal256, na_decimal128)
+  for (constructor in constructors) {
+    numbers <- round(c(pi, -pi, 123.4567, NA, -123.4567, 0, 123), 4)
+
+    # Check scale of 4 (min required for lossless roundtrip)
+    array4 <- as_nanoarrow_array(numbers, schema = constructor(9, 4))
+    expect_identical(
+      convert_array(array4, character()),
+      c("3.1416", "-3.1416", "123.4567", NA_character_,
+        "-123.4567", "0.0000", "123.0000")
+    )
+
+    # Check scale of 5 (requires adding some zeroes in C)
+    array5 <- as_nanoarrow_array(numbers, schema = constructor(9, 5))
+    expect_identical(
+      convert_array(array5, character()),
+      c("3.14160", "-3.14160", "123.45670", NA_character_,
+        "-123.45670", "0.00000", "123.00000")
+    )
+
+    # Check negative scale (also requires adding some zeroes in C)
+    numbers_neg_scale <- c(12300, -12300, 0, NA, 100)
+    array_neg2 <- as_nanoarrow_array(numbers_neg_scale, schema = constructor(9, -2))
+    expect_identical(
+      convert_array(array_neg2, character()),
+      c("12300", "-12300", "000", NA_character_, "100")
+    )
+  }
 })
 
 test_that("batched convert to vector works for dictionary<string> -> factor()", {

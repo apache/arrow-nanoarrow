@@ -74,7 +74,18 @@ test_that("timestamp type passes along timezone parameter", {
 })
 
 test_that("decimal types pass along precision and scale", {
+  schema <- na_decimal32(9, 3)
+  expect_identical(nanoarrow_schema_parse(schema)$decimal_bitwidth, 32L)
+  expect_identical(nanoarrow_schema_parse(schema)$decimal_precision, 9L)
+  expect_identical(nanoarrow_schema_parse(schema)$decimal_scale, 3L)
+
+  schema <- na_decimal64(12, 10)
+  expect_identical(nanoarrow_schema_parse(schema)$decimal_bitwidth, 64L)
+  expect_identical(nanoarrow_schema_parse(schema)$decimal_precision, 12L)
+  expect_identical(nanoarrow_schema_parse(schema)$decimal_scale, 10L)
+
   schema <- na_decimal128(12, 10)
+  expect_identical(nanoarrow_schema_parse(schema)$decimal_bitwidth, 128L)
   expect_identical(nanoarrow_schema_parse(schema)$decimal_precision, 12L)
   expect_identical(nanoarrow_schema_parse(schema)$decimal_scale, 10L)
 
@@ -123,6 +134,18 @@ test_that("list constructors assign the correct child type", {
 
   schema <- na_fixed_size_list(na_int32(), 123)
   expect_identical(schema$format, "+w:123")
+  expect_named(schema$children, "item")
+  expect_identical(schema$children[[1]]$format, "i")
+})
+
+test_that("list_view constructors assign the correct child type", {
+  schema <- na_list_view(na_int32())
+  expect_identical(schema$format, "+vl")
+  expect_named(schema$children, "item")
+  expect_identical(schema$children[[1]]$format, "i")
+
+  schema <- na_large_list_view(na_int32())
+  expect_identical(schema$format, "+vL")
   expect_named(schema$children, "item")
   expect_identical(schema$children[[1]]$format, "i")
 })

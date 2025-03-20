@@ -265,48 +265,64 @@ TEST(SchemaTest, SchemaInitDecimal) {
   EXPECT_EQ(ArrowSchemaSetTypeDecimal(&schema, NANOARROW_TYPE_DECIMAL128, -1, 1), EINVAL);
   EXPECT_EQ(ArrowSchemaSetTypeDecimal(&schema, NANOARROW_TYPE_DOUBLE, 1, 2), EINVAL);
 
-  EXPECT_EQ(ArrowSchemaSetTypeDecimal(&schema, NANOARROW_TYPE_DECIMAL128, 1, 2),
+  ArrowSchemaInit(&schema);
+  EXPECT_EQ(ArrowSchemaSetTypeDecimal(&schema, NANOARROW_TYPE_DECIMAL32, 10, 3), EINVAL);
+  EXPECT_EQ(ArrowSchemaSetTypeDecimal(&schema, NANOARROW_TYPE_DECIMAL32, 9, 3),
             NANOARROW_OK);
-  EXPECT_STREQ(schema.format, "d:1,2");
+  EXPECT_STREQ(schema.format, "d:9,3,32");
+  ArrowSchemaRelease(&schema);
+
+  ArrowSchemaInit(&schema);
+  EXPECT_EQ(ArrowSchemaSetTypeDecimal(&schema, NANOARROW_TYPE_DECIMAL64, 19, 3), EINVAL);
+  EXPECT_EQ(ArrowSchemaSetTypeDecimal(&schema, NANOARROW_TYPE_DECIMAL64, 9, 3),
+            NANOARROW_OK);
+  EXPECT_STREQ(schema.format, "d:9,3,64");
+  ArrowSchemaRelease(&schema);
+
+  ArrowSchemaInit(&schema);
+  EXPECT_EQ(ArrowSchemaSetTypeDecimal(&schema, NANOARROW_TYPE_DECIMAL128, 39, 3), EINVAL);
+  EXPECT_EQ(ArrowSchemaSetTypeDecimal(&schema, NANOARROW_TYPE_DECIMAL128, 9, 3),
+            NANOARROW_OK);
+  EXPECT_STREQ(schema.format, "d:9,3");
+  ArrowSchemaRelease(&schema);
+
+  ArrowSchemaInit(&schema);
+  EXPECT_EQ(ArrowSchemaSetTypeDecimal(&schema, NANOARROW_TYPE_DECIMAL32, 77, 3), EINVAL);
+  EXPECT_EQ(ArrowSchemaSetTypeDecimal(&schema, NANOARROW_TYPE_DECIMAL256, 9, 3),
+            NANOARROW_OK);
+  EXPECT_STREQ(schema.format, "d:9,3,256");
+  ArrowSchemaRelease(&schema);
 
 #if defined(NANOARROW_BUILD_TESTS_WITH_ARROW)
+  ArrowSchemaInit(&schema);
+  EXPECT_EQ(ArrowSchemaSetTypeDecimal(&schema, NANOARROW_TYPE_DECIMAL128, 9, 3),
+            NANOARROW_OK);
   auto arrow_type = ImportType(&schema);
   ARROW_EXPECT_OK(arrow_type);
-  EXPECT_TRUE(arrow_type.ValueUnsafe()->Equals(decimal128(1, 2)));
+  EXPECT_TRUE(arrow_type.ValueUnsafe()->Equals(decimal128(9, 3)));
 
   ArrowSchemaInit(&schema);
-  EXPECT_EQ(ArrowSchemaSetTypeDecimal(&schema, NANOARROW_TYPE_DECIMAL256, 3, 4),
+  EXPECT_EQ(ArrowSchemaSetTypeDecimal(&schema, NANOARROW_TYPE_DECIMAL256, 9, 3),
             NANOARROW_OK);
-  EXPECT_STREQ(schema.format, "d:3,4,256");
   arrow_type = ImportType(&schema);
   ARROW_EXPECT_OK(arrow_type);
-  EXPECT_TRUE(arrow_type.ValueUnsafe()->Equals(decimal256(3, 4)));
+  EXPECT_TRUE(arrow_type.ValueUnsafe()->Equals(decimal256(9, 3)));
+
+#if ARROW_VERSION_MAJOR >= 18
+  ArrowSchemaInit(&schema);
+  EXPECT_EQ(ArrowSchemaSetTypeDecimal(&schema, NANOARROW_TYPE_DECIMAL32, 9, 3),
+            NANOARROW_OK);
+  arrow_type = ImportType(&schema);
+  ARROW_EXPECT_OK(arrow_type);
+  EXPECT_TRUE(arrow_type.ValueUnsafe()->Equals(decimal32(9, 3)));
 
   ArrowSchemaInit(&schema);
-  EXPECT_EQ(ArrowSchemaSetTypeDecimal(&schema, NANOARROW_TYPE_DECIMAL32, 3, 4),
+  EXPECT_EQ(ArrowSchemaSetTypeDecimal(&schema, NANOARROW_TYPE_DECIMAL64, 9, 3),
             NANOARROW_OK);
-  EXPECT_STREQ(schema.format, "d:3,4,32");
-#if ARROW_MAJOR_VERSION >= 18
   arrow_type = ImportType(&schema);
   ARROW_EXPECT_OK(arrow_type);
-  EXPECT_TRUE(arrow_type.ValueUnsafe()->Equals(decimal32(3, 4)));
-#else
-  ArrowSchemaRelease(&schema);
+  EXPECT_TRUE(arrow_type.ValueUnsafe()->Equals(decimal64(9, 3)));
 #endif
-
-  ArrowSchemaInit(&schema);
-  EXPECT_EQ(ArrowSchemaSetTypeDecimal(&schema, NANOARROW_TYPE_DECIMAL64, 3, 4),
-            NANOARROW_OK);
-  EXPECT_STREQ(schema.format, "d:3,4,64");
-#if ARROW_MAJOR_VERSION >= 18
-  arrow_type = ImportType(&schema);
-  ARROW_EXPECT_OK(arrow_type);
-  EXPECT_TRUE(arrow_type.ValueUnsafe()->Equals(decimal64(3, 4)));
-#else
-  ArrowSchemaRelease(&schema);
-#endif
-#else
-  ArrowSchemaRelease(&schema);
 #endif
 }
 

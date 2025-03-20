@@ -21,9 +21,7 @@
 
 #include "nanoarrow.h"
 
-#include "altrep.h"
 #include "array.h"
-#include "array_view.h"
 #include "materialize.h"
 #include "schema.h"
 #include "util.h"
@@ -52,7 +50,10 @@ enum VectorType nanoarrow_infer_vector_type(enum ArrowType type) {
     case NANOARROW_TYPE_HALF_FLOAT:
     case NANOARROW_TYPE_FLOAT:
     case NANOARROW_TYPE_DOUBLE:
+    case NANOARROW_TYPE_DECIMAL32:
+    case NANOARROW_TYPE_DECIMAL64:
     case NANOARROW_TYPE_DECIMAL128:
+    case NANOARROW_TYPE_DECIMAL256:
       return VECTOR_TYPE_DBL;
 
     case NANOARROW_TYPE_STRING:

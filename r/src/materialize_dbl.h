@@ -21,6 +21,7 @@
 #include <R.h>
 #include <Rinternals.h>
 
+#include "buffer.h"
 #include "materialize_common.h"
 #include "nanoarrow.h"
 
@@ -108,6 +109,44 @@ static inline int nanoarrow_materialize_dbl(struct RConverter* converter) {
         }
       }
       break;
+
+    case NANOARROW_TYPE_DECIMAL32:
+    case NANOARROW_TYPE_DECIMAL64:
+    case NANOARROW_TYPE_DECIMAL128:
+    case NANOARROW_TYPE_DECIMAL256: {
+      struct ArrowDecimal item;
+      ArrowDecimalInit(&item, converter->schema_view.decimal_bitwidth,
+                       converter->schema_view.decimal_precision,
+                       converter->schema_view.decimal_scale);
+
+      // Buffer to manage the building of the digits output
+      SEXP buffer_xptr = PROTECT(buffer_owning_xptr());
+      struct ArrowBuffer* digits = (struct ArrowBuffer*)R_ExternalPtrAddr(buffer_xptr);
+
+      // A length one character() we'll use as input to Rf_asReal()
+      SEXP decimal_as_chr = PROTECT(Rf_allocVector(STRSXP, 1));
+
+      for (R_xlen_t i = 0; i < dst->length; i++) {
+        if (is_valid != NULL && !ArrowBitGet(is_valid, raw_src_offset + i)) {
+          result[dst->offset + i] = NA_REAL;
+          continue;
+        }
+
+        ArrowArrayViewGetDecimalUnsafe(src->array_view, src->offset + i, &item);
+        digits->size_bytes = 0;
+        int status = ArrowDecimalAppendStringToBuffer(&item, digits);
+        if (status != NANOARROW_OK) {
+          UNPROTECT(2);
+          return status;
+        }
+
+        SET_STRING_ELT(decimal_as_chr, 0,
+                       Rf_mkCharLen((char*)digits->data, (int)digits->size_bytes));
+        result[dst->offset + i] = Rf_asReal(decimal_as_chr);
+      }
+      UNPROTECT(2);
+      return NANOARROW_OK;
+    }
 
     default:
       return EINVAL;
