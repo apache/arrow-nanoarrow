@@ -56,6 +56,8 @@ prints/is returned by <code><a href="as_nanoarrow_schema.html">nanoarrow_schema_
 <span>  byte_width <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  unit <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  timezone <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  precision <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  scale <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  column_types <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  item_type <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  key_type <span class="op">=</span> <span class="cn">NULL</span>,</span>
@@ -128,6 +130,10 @@ prints/is returned by <code><a href="as_nanoarrow_schema.html">nanoarrow_schema_
 <span></span>
 <span><span class="fu">na_timestamp</span><span class="op">(</span>unit <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"us"</span>, <span class="st">"ns"</span>, <span class="st">"s"</span>, <span class="st">"ms"</span><span class="op">)</span>, timezone <span class="op">=</span> <span class="st">""</span>, nullable <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
 <span></span>
+<span><span class="fu">na_decimal32</span><span class="op">(</span><span class="va">precision</span>, <span class="va">scale</span>, nullable <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu">na_decimal64</span><span class="op">(</span><span class="va">precision</span>, <span class="va">scale</span>, nullable <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
+<span></span>
 <span><span class="fu">na_decimal128</span><span class="op">(</span><span class="va">precision</span>, <span class="va">scale</span>, nullable <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu">na_decimal256</span><span class="op">(</span><span class="va">precision</span>, <span class="va">scale</span>, nullable <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
@@ -141,6 +147,10 @@ prints/is returned by <code><a href="as_nanoarrow_schema.html">nanoarrow_schema_
 <span><span class="fu">na_list</span><span class="op">(</span><span class="va">item_type</span>, nullable <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu">na_large_list</span><span class="op">(</span><span class="va">item_type</span>, nullable <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu">na_list_view</span><span class="op">(</span><span class="va">item_type</span>, nullable <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu">na_large_list_view</span><span class="op">(</span><span class="va">item_type</span>, nullable <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu">na_fixed_size_list</span><span class="op">(</span><span class="va">item_type</span>, <span class="va">list_size</span>, nullable <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
 <span></span>
@@ -174,6 +184,14 @@ or 'ns' (nanoseconds).</p></dd>
 <dd><p>A string representing a timezone name. The empty string ""
 represents a naive point in time (i.e., one that has no associated
 timezone).</p></dd>
+
+
+<dt id="arg-precision">precision<a class="anchor" aria-label="anchor" href="#arg-precision"></a></dt>
+<dd><p>The total number of digits representable by the decimal type</p></dd>
+
+
+<dt id="arg-scale">scale<a class="anchor" aria-label="anchor" href="#arg-scale"></a></dt>
+<dd><p>The number of digits after the decimal point in a decimal type</p></dd>
 
 
 <dt id="arg-column-types">column_types<a class="anchor" aria-label="anchor" href="#arg-column-types"></a></dt>
@@ -232,14 +250,6 @@ Most Arrow extension types define extension metadata as a JSON object.</p></dd>
 <dt id="arg-nullable">nullable<a class="anchor" aria-label="anchor" href="#arg-nullable"></a></dt>
 <dd><p>Use <code>FALSE</code> to assert that this field cannot contain
 null values.</p></dd>
-
-
-<dt id="arg-precision">precision<a class="anchor" aria-label="anchor" href="#arg-precision"></a></dt>
-<dd><p>The total number of digits representable by the decimal type</p></dd>
-
-
-<dt id="arg-scale">scale<a class="anchor" aria-label="anchor" href="#arg-scale"></a></dt>
-<dd><p>The number of digits after the decimal point in a decimal type</p></dd>
 
 </dl></div>
     <div class="section level2">
