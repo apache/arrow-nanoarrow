@@ -98,8 +98,9 @@ enable_testing()
 
 foreach(ITEM schema;array;ipc)
   add_executable(${ITEM}_benchmark "c/${ITEM}_benchmark.cc")
-  target_link_libraries(${ITEM}_benchmark PRIVATE nanoarrow::nanoarrow nanoarrow::nanoarrow_ipc
-                                                  benchmark::benchmark_main)
+  target_link_libraries(${ITEM}_benchmark
+                        PRIVATE nanoarrow::nanoarrow nanoarrow::nanoarrow_ipc
+                                benchmark::benchmark_main)
   add_test(NAME ${ITEM}_benchmark COMMAND ${ITEM}_benchmark
                                           --benchmark_out=${ITEM}_benchmark.json)
   set_tests_properties(${ITEM}_benchmark PROPERTIES WORKING_DIRECTORY
