@@ -603,6 +603,8 @@ enum ArrowCompareLevel {
   /// account potentially different content of null slots, arrays with a
   /// non-zero offset, and other considerations.
   NANOARROW_COMPARE_IDENTICAL,
+  NANOARROW_COMPARE_EQUAL,
+  NANOARROW_COMPARE_TYPE_EQUAL,
 };
 
 /// \brief Get a string value of an enum ArrowTimeUnit value
