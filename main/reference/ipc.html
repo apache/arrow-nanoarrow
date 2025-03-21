@@ -534,8 +534,8 @@
 <div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric" id="breathe-section-title-functions">Functions</p>
 <dl class="cpp function">
-<dt class="sig sig-object cpp" id="_CPPv420ArrowIpcCheckRuntimeP10ArrowError">
-<span id="_CPPv320ArrowIpcCheckRuntimeP10ArrowError"></span><span id="_CPPv220ArrowIpcCheckRuntimeP10ArrowError"></span><span id="ArrowIpcCheckRuntime__ArrowErrorP"></span><span class="target" id="group__nanoarrow__ipc_1ga15c2f5e02a100fdc951083a47c70f2be"></span><a class="reference internal" href="c.html#_CPPv414ArrowErrorCode" title="ArrowErrorCode"><span class="n"><span class="pre">ArrowErrorCode</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">ArrowIpcCheckRuntime</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="c.html#_CPPv410ArrowError" title="ArrowError"><span class="n"><span class="pre">ArrowError</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">error</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv420ArrowIpcCheckRuntimeP10ArrowError" title="Link to this definition">#</a><br /></dt>
+<dt class="sig sig-object cpp">
+<span class="target" id="group__nanoarrow__ipc_1ga7228d11cc56a1e2f16d286ede17431e8"></span><span class="sig-name descname"><span class="pre">NANOARROW_DLL</span> <span class="pre">ArrowErrorCode</span> <span class="pre">ArrowIpcCheckRuntime</span> <span class="pre">(struct</span> <span class="pre">ArrowError</span> <span class="pre">*error)</span></span></dt>
 <dd><p>Checks the nanoarrow runtime to make sure the run/build versions match. </p>
 </dd></dl>
 
@@ -707,12 +707,12 @@
 <dt class="sig sig-object cpp">
 <span class="target" id="group__nanoarrow__ipc_1gac9e2be50456703e6b849ee8b0f572ccb"></span><span class="sig-name descname"><span class="pre">NANOARROW_DLL</span> <span class="pre">ArrowErrorCode</span> <span class="pre">ArrowIpcEncoderInit</span> <span class="pre">(struct</span> <span class="pre">ArrowIpcEncoder</span> <span class="pre">*encoder)</span></span></dt>
 <dd><p>Initialize an encoder. </p>
-<p>If NANOARROW_OK is returned, the caller must call <a class="reference internal" href="#group__nanoarrow__ipc_1gac28252286237ba1b3a235a0345bbe3d1"><span class="std std-ref">ArrowIpcEncoderReset()</span></a> to release resources allocated by this function. </p>
+<p>If NANOARROW_OK is returned, the caller must call <a class="reference internal" href="#group__nanoarrow__ipc_1ga6d21b710edc00bae3e6fbf9319bd6b19"><span class="std std-ref">ArrowIpcEncoderReset()</span></a> to release resources allocated by this function. </p>
 </dd></dl>
 
 <dl class="cpp function">
-<dt class="sig sig-object cpp" id="_CPPv420ArrowIpcEncoderResetP15ArrowIpcEncoder">
-<span id="_CPPv320ArrowIpcEncoderResetP15ArrowIpcEncoder"></span><span id="_CPPv220ArrowIpcEncoderResetP15ArrowIpcEncoder"></span><span id="ArrowIpcEncoderReset__ArrowIpcEncoderP"></span><span class="target" id="group__nanoarrow__ipc_1gac28252286237ba1b3a235a0345bbe3d1"></span><span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">ArrowIpcEncoderReset</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv415ArrowIpcEncoder" title="ArrowIpcEncoder"><span class="n"><span class="pre">ArrowIpcEncoder</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">encoder</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv420ArrowIpcEncoderResetP15ArrowIpcEncoder" title="Link to this definition">#</a><br /></dt>
+<dt class="sig sig-object cpp">
+<span class="target" id="group__nanoarrow__ipc_1ga6d21b710edc00bae3e6fbf9319bd6b19"></span><span class="sig-name descname"><span class="pre">NANOARROW_DLL</span> <span class="pre">void</span> <span class="pre">ArrowIpcEncoderReset</span> <span class="pre">(struct</span> <span class="pre">ArrowIpcEncoder</span> <span class="pre">*encoder)</span></span></dt>
 <dd><p>Release all resources attached to an encoder. </p>
 </dd></dl>
 
@@ -995,7 +995,7 @@
 <dd><div class="docutils container">
 <em>#include &lt;nanoarrow_ipc.h&gt;</em></div>
 <p>Encoder for Arrow IPC messages. </p>
-<p>This structure is intended to be allocated by the caller, initialized using <a class="reference internal" href="#group__nanoarrow__ipc_1gac9e2be50456703e6b849ee8b0f572ccb"><span class="std std-ref">ArrowIpcEncoderInit()</span></a>, and released with <a class="reference internal" href="#group__nanoarrow__ipc_1gac28252286237ba1b3a235a0345bbe3d1"><span class="std std-ref">ArrowIpcEncoderReset()</span></a>. </p>
+<p>This structure is intended to be allocated by the caller, initialized using <a class="reference internal" href="#group__nanoarrow__ipc_1gac9e2be50456703e6b849ee8b0f572ccb"><span class="std std-ref">ArrowIpcEncoderInit()</span></a>, and released with <a class="reference internal" href="#group__nanoarrow__ipc_1ga6d21b710edc00bae3e6fbf9319bd6b19"><span class="std std-ref">ArrowIpcEncoderReset()</span></a>. </p>
 <div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric" id="breathe-section-title-public-members">Public Members</p>
 <dl class="cpp var">
@@ -1195,9 +1195,7 @@
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N23ArrowIpcCompressionType35NANOARROW_IPC_COMPRESSION_TYPE_ZSTDE"><code class="docutils literal notranslate"><span class="pre">NANOARROW_IPC_COMPRESSION_TYPE_ZSTD</span></code></a></li>
 </ul>
 </li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv420ArrowIpcCheckRuntimeP10ArrowError"><code class="docutils literal notranslate"><span class="pre">ArrowIpcCheckRuntime()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv424ArrowIpcSystemEndiannessv"><code class="docutils literal notranslate"><span class="pre">ArrowIpcSystemEndianness()</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv420ArrowIpcEncoderResetP15ArrowIpcEncoder"><code class="docutils literal notranslate"><span class="pre">ArrowIpcEncoderReset()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv423ArrowIpcWriterStartFileP14ArrowIpcWriterP10ArrowError"><code class="docutils literal notranslate"><span class="pre">ArrowIpcWriterStartFile()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv420ArrowIpcSharedBuffer"><code class="docutils literal notranslate"><span class="pre">ArrowIpcSharedBuffer</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv420ArrowIpcDecompressor"><code class="docutils literal notranslate"><span class="pre">ArrowIpcDecompressor</span></code></a><ul class="nav section-nav flex-column">
