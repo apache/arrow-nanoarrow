@@ -25,7 +25,6 @@
 #include <gtest/gtest.h>
 
 #include "nanoarrow/nanoarrow.hpp"
-#include "nanoarrow/nanoarrow_testing.hpp"
 
 #if defined(NANOARROW_BUILD_TESTS_WITH_ARROW)
 using namespace arrow;
@@ -582,37 +581,44 @@ TEST(DecimalTest, DecimalDigitsTestInvalid) {
 }
 
 TEST(DecimalTest, DecimalRoundtripPowerOfTenTest) {
-  struct ArrowDecimal decimal;
-  ArrowDecimalInit(&decimal, 256, 76, 0);
+  std::vector<std::pair<int, int>> bitwidth_and_max_precision = {
+      {32, 9}, {64, 18}, {128, 38}, {256, 76}};
 
-  struct ArrowBuffer buffer;
-  ArrowBufferInit(&buffer);
+  for (const auto item : bitwidth_and_max_precision) {
+    SCOPED_TRACE(item.first);
 
-  // Generate test strings with positive and negative powers of 10 and check
-  // roundtrip back to string.
-  std::stringstream ss;
+    struct ArrowDecimal decimal;
+    ArrowDecimalInit(&decimal, item.first, item.second, 0);
 
-  for (const auto& sign : {"", "-"}) {
-    for (int i = 0; i < 76; i++) {
-      ss.str("");
-      ss << sign;
-      ss << "1";
-      for (int j = 0; j < i; j++) {
-        ss << "0";
+    struct ArrowBuffer buffer;
+    ArrowBufferInit(&buffer);
+
+    // Generate test strings with positive and negative powers of 10 and check
+    // roundtrip back to string.
+    std::stringstream ss;
+
+    for (const auto& sign : {"", "-"}) {
+      for (int i = 0; i < item.second; i++) {
+        ss.str("");
+        ss << sign;
+        ss << "1";
+        for (int j = 0; j < i; j++) {
+          ss << "0";
+        }
+
+        SCOPED_TRACE(ss.str());
+        ASSERT_EQ(ArrowDecimalSetDigits(&decimal, ArrowCharView(ss.str().c_str())),
+                  NANOARROW_OK);
+
+        buffer.size_bytes = 0;
+        ASSERT_EQ(ArrowDecimalAppendDigitsToBuffer(&decimal, &buffer), NANOARROW_OK);
+        EXPECT_EQ(std::string(reinterpret_cast<char*>(buffer.data), buffer.size_bytes),
+                  ss.str());
       }
-
-      SCOPED_TRACE(ss.str());
-      ASSERT_EQ(ArrowDecimalSetDigits(&decimal, ArrowCharView(ss.str().c_str())),
-                NANOARROW_OK);
-
-      buffer.size_bytes = 0;
-      ASSERT_EQ(ArrowDecimalAppendDigitsToBuffer(&decimal, &buffer), NANOARROW_OK);
-      EXPECT_EQ(std::string(reinterpret_cast<char*>(buffer.data), buffer.size_bytes),
-                ss.str());
     }
-  }
 
-  ArrowBufferReset(&buffer);
+    ArrowBufferReset(&buffer);
+  }
 }
 
 TEST(DecimalTest, DecimalRoundtripBitshiftTest) {
@@ -665,7 +671,7 @@ TEST(DecimalTest, DecimalTestStringPositiveScale) {
   using namespace nanoarrow::literals;
 
   struct ArrowDecimal decimal;
-  ArrowDecimalInit(&decimal, 32, 9, 3);
+  ArrowDecimalInit(&decimal, 128, 9, 3);
 
   nanoarrow::UniqueBuffer buffer;
 
@@ -688,7 +694,7 @@ TEST(DecimalTest, DecimalTestStringZeroScale) {
   using namespace nanoarrow::literals;
 
   struct ArrowDecimal decimal;
-  ArrowDecimalInit(&decimal, 32, 9, 0);
+  ArrowDecimalInit(&decimal, 128, 9, 0);
 
   nanoarrow::UniqueBuffer buffer;
 
@@ -710,7 +716,7 @@ TEST(DecimalTest, DecimalTestStringNegativeScale) {
   using namespace nanoarrow::literals;
 
   struct ArrowDecimal decimal;
-  ArrowDecimalInit(&decimal, 32, 9, -3);
+  ArrowDecimalInit(&decimal, 128, 9, -3);
 
   nanoarrow::UniqueBuffer buffer;
 
