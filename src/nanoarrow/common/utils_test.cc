@@ -19,6 +19,7 @@
 #include <string>
 
 #if defined(NANOARROW_BUILD_TESTS_WITH_ARROW)
+#include <arrow/config.h>
 #include <arrow/util/decimal.h>
 #endif
 #include <gmock/gmock-matchers.h>
