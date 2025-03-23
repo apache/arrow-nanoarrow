@@ -50,6 +50,8 @@ concurrency:
   group: ${{ github.repository }}-${{ github.ref }}-${{ github.workflow }}
   cancel-in-progress: true
 
+# TODO: this is a quick way to get the big endian check to run on ci
+
 jobs:
   verify:
     name: "${{ matrix.config.label }}"
