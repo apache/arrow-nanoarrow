@@ -583,7 +583,7 @@ TEST(DecimalTest, DecimalRoundtripPowerOfTenTest) {
   std::vector<std::pair<int, int>> bitwidth_and_max_precision = {
       {32, 9}, {64, 18}, {128, 38}, {256, 76}};
 
-  for (const auto item : bitwidth_and_max_precision) {
+  for (const auto& item : bitwidth_and_max_precision) {
     SCOPED_TRACE(item.first);
 
     struct ArrowDecimal decimal;
