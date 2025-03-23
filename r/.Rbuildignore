@@ -12,5 +12,4 @@
 ^bootstrap\.R$
 ^\.cache$
 ^compile_commands\.json$
-^configure\.win$
-^configure$
+^src/Makevars$

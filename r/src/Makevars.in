@@ -19,4 +19,6 @@
 # that do not provide aligned_alloc. Allocating flatbuffers memory is not
 # performance-critical for what we do in the nanoarrow R package (and may not
 # occur at all until IPC write support is added)
-PKG_CPPFLAGS=-I../inst/include -I../src -DFLATCC_USE_GENERIC_ALIGNED_ALLOC
+
+PKG_CPPFLAGS=-I../inst/include -I../src -DFLATCC_USE_GENERIC_ALIGNED_ALLOC @cppflags@
+PKG_LIBS=@libs@
