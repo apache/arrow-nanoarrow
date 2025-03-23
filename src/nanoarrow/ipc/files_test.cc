@@ -526,14 +526,16 @@ TEST_P(TestFileFixture, NanoarrowIpcTestFileIPCCheckJSON) {
   param.TestIPCCheckJSON(dir_builder.str());
 }
 
+// At least one Windows MSVC version does not allow the #if defined()
+// to be within a macro invocation, so we define these two cases
+// with some repetition.
+#if defined(NANOARROW_IPC_WITH_ZSTD)
 INSTANTIATE_TEST_SUITE_P(
     NanoarrowIpcTest, TestFileFixture,
     ::testing::Values(
-// Testing of other files
-#if defined(NANOARROW_IPC_WITH_ZSTD)
+        // Testing of other files
         TestFile::OK("2.0.0-compression/generated_uncompressible_zstd.stream"),
         TestFile::OK("2.0.0-compression/generated_zstd.stream"),
-#endif
         TestFile::OK("0.17.1/generated_union.stream"),
         TestFile::OK("0.14.1/generated_datetime.stream"),
         TestFile::OK("0.14.1/generated_decimal.stream"),
@@ -545,5 +547,21 @@ INSTANTIATE_TEST_SUITE_P(
         TestFile::OK("0.14.1/generated_primitive_zerolength.stream")
         // Comment to keep line from wrapping
         ));
+#else
+INSTANTIATE_TEST_SUITE_P(NanoarrowIpcTest, TestFileFixture,
+                         ::testing::Values(
+                             // Testing of other files
+                             TestFile::OK("0.17.1/generated_union.stream"),
+                             TestFile::OK("0.14.1/generated_datetime.stream"),
+                             TestFile::OK("0.14.1/generated_decimal.stream"),
+                             TestFile::OK("0.14.1/generated_interval.stream"),
+                             TestFile::OK("0.14.1/generated_map.stream"),
+                             TestFile::OK("0.14.1/generated_nested.stream"),
+                             TestFile::OK("0.14.1/generated_primitive.stream"),
+                             TestFile::OK("0.14.1/generated_primitive_no_batches.stream"),
+                             TestFile::OK("0.14.1/generated_primitive_zerolength.stream")
+                             // Comment to keep line from wrapping
+                             ));
+#endif
 
 #endif
