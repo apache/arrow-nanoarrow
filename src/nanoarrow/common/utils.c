@@ -346,13 +346,14 @@ ArrowErrorCode ArrowDecimalSetDigits(struct ArrowDecimal* decimal,
 
   // Use 32-bit words for portability
   uint32_t words32[8];
+  memset(words32, 0, sizeof(words32));
   int n_words32 = decimal->n_words > 0 ? decimal->n_words * 2 : 1;
   NANOARROW_DCHECK(n_words32 <= 8);
   memset(words32, 0, sizeof(words32));
 
   ShiftAndAdd(value, words32, n_words32);
 
-  if (decimal->low_word_index == 0) {
+  if (_ArrowIsLittleEndian() || n_words32 == 1) {
     memcpy(decimal->words, words32, sizeof(uint32_t) * n_words32);
   } else {
     uint64_t lo;
@@ -378,6 +379,22 @@ ArrowErrorCode ArrowDecimalAppendDigitsToBuffer(const struct ArrowDecimal* decim
                                                 struct ArrowBuffer* buffer) {
   NANOARROW_DCHECK(decimal->n_words == 0 || decimal->n_words == 1 ||
                    decimal->n_words == 2 || decimal->n_words == 4);
+
+  // For the 32-bit case, just use snprintf()
+  if (decimal->n_words == 0) {
+    int32_t value;
+    memcpy(&value, decimal->words, sizeof(int32_t));
+    NANOARROW_RETURN_NOT_OK(ArrowBufferReserve(buffer, 16));
+    int n_chars = snprintf((char*)buffer->data + buffer->size_bytes,
+                           (buffer->capacity_bytes - buffer->size_bytes), "%d", value);
+    if (n_chars <= 0) {
+      return EINVAL;
+    }
+
+    buffer->size_bytes += n_chars;
+    return NANOARROW_OK;
+  }
+
   int is_negative = ArrowDecimalSign(decimal) < 0;
 
   uint64_t words_little_endian[4];

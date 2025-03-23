@@ -402,7 +402,7 @@ TEST(DecimalTest, DecimalNegateTest) {
     } else if (bitwidth == 64) {
       decimal.words[decimal.low_word_index] = std::numeric_limits<int64_t>::max();
     } else {
-      decimal.words[decimal.low_word_index] = std::numeric_limits<int32_t>::max();
+      ArrowDecimalSetInt(&decimal, std::numeric_limits<int32_t>::max());
     }
     ASSERT_EQ(ArrowDecimalSign(&decimal), 1);
     ArrowDecimalNegate(&decimal);
@@ -416,8 +416,7 @@ TEST(DecimalTest, DecimalNegateTest) {
       EXPECT_EQ(decimal.words[decimal.low_word_index],
                 std::numeric_limits<int64_t>::max());
     } else {
-      EXPECT_EQ(decimal.words[decimal.low_word_index],
-                std::numeric_limits<int32_t>::max());
+      EXPECT_EQ(ArrowDecimalGetIntUnsafe(&decimal), std::numeric_limits<int32_t>::max());
     }
 
     if (bitwidth > 64) {
@@ -612,7 +611,7 @@ TEST(DecimalTest, DecimalRoundtripPowerOfTenTest) {
 
         buffer.size_bytes = 0;
         ASSERT_EQ(ArrowDecimalAppendDigitsToBuffer(&decimal, &buffer), NANOARROW_OK);
-        EXPECT_EQ(std::string(reinterpret_cast<char*>(buffer.data), buffer.size_bytes),
+        ASSERT_EQ(std::string(reinterpret_cast<char*>(buffer.data), buffer.size_bytes),
                   ss.str());
       }
     }

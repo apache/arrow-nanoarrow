@@ -954,8 +954,11 @@ static inline void ArrowDecimalInit(struct ArrowDecimal* decimal, int32_t bitwid
 /// to 18 is sufficiently small).
 static inline int64_t ArrowDecimalGetIntUnsafe(const struct ArrowDecimal* decimal) {
   if (decimal->n_words == 0) {
-    return (int32_t)decimal->words[0];
+    int32_t value;
+    memcpy(&value, decimal->words, sizeof(int32_t));
+    return value;
   }
+
   return (int64_t)decimal->words[decimal->low_word_index];
 }
 
@@ -963,25 +966,29 @@ static inline int64_t ArrowDecimalGetIntUnsafe(const struct ArrowDecimal* decima
 /// \ingroup nanoarrow-utils
 static inline void ArrowDecimalGetBytes(const struct ArrowDecimal* decimal,
                                         uint8_t* out) {
-  memcpy(out, decimal->words,
-         (decimal->n_words > 0 ? decimal->n_words : 1) * sizeof(uint64_t));
+  if (decimal->n_words == 0) {
+    memcpy(out, decimal->words, sizeof(int32_t));
+  } else {
+    memcpy(out, decimal->words, decimal->n_words * sizeof(uint64_t));
+  }
 }
 
 /// \brief Returns 1 if the value represented by decimal is >= 0 or -1 otherwise
 /// \ingroup nanoarrow-utils
 static inline int64_t ArrowDecimalSign(const struct ArrowDecimal* decimal) {
   if (decimal->n_words == 0) {
-    return 1 | ((int32_t)(decimal->words[0]) >> 31);
+    return ArrowDecimalGetIntUnsafe(decimal) >= 0 ? 1 : -1;
+  } else {
+    return 1 | ((int64_t)(decimal->words[decimal->high_word_index]) >> 63);
   }
-
-  return 1 | ((int64_t)(decimal->words[decimal->high_word_index]) >> 63);
 }
 
 /// \brief Sets the integer value of this decimal
 /// \ingroup nanoarrow-utils
 static inline void ArrowDecimalSetInt(struct ArrowDecimal* decimal, int64_t value) {
   if (decimal->n_words == 0) {
-    decimal->words[0] = (int32_t)value;
+    int32_t value32 = (int32_t)value;
+    memcpy(decimal->words, &value32, sizeof(int32_t));
     return;
   }
 
@@ -998,9 +1005,10 @@ static inline void ArrowDecimalSetInt(struct ArrowDecimal* decimal, int64_t valu
 /// \ingroup nanoarrow-utils
 static inline void ArrowDecimalNegate(struct ArrowDecimal* decimal) {
   if (decimal->n_words == 0) {
-    uint32_t elem = (uint32_t)decimal->words[0];
-    elem = ~elem + 1;
-    decimal->words[0] = (int32_t)elem;
+    int32_t value;
+    memcpy(&value, decimal->words, sizeof(int32_t));
+    value = -value;
+    memcpy(decimal->words, &value, sizeof(int32_t));
     return;
   }
 
