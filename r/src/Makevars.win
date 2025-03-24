@@ -19,8 +19,13 @@ ifeq (,$(shell pkg-config libzstd --libs 2>/dev/null))
   ZSTD_CFLAGS =
   ZSTD_LIB_FLAGS =
 else
-  ZSTD_CFLAGS = $(shell pkg-config --cflags libzstd) -DNANOARROW_IPC_WITH_ZSTD
-  ZSTD_LIB_FLAGS = $(shell pkg-config --libs libzstd)
+  ifeq "$(WIN)" "64"
+    ZSTD_CFLAGS = $(shell pkg-config --cflags libzstd) -DNANOARROW_IPC_WITH_ZSTD
+    ZSTD_LIB_FLAGS = $(shell pkg-config --libs libzstd)
+  else
+    ZSTD_CFLAGS =
+    ZSTD_LIB_FLAGS =
+  endif
 endif
 
 PKG_CPPFLAGS = -I../inst/include -I../src -DFLATCC_USE_GENERIC_ALIGNED_ALLOC $(ZSTD_CFLAGS)
