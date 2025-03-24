@@ -372,6 +372,8 @@ void TestDecodeInt32Batch(const uint8_t* batch, size_t batch_len,
 
   ASSERT_EQ(ArrowIpcDecoderInit(decoder.get()), NANOARROW_OK);
   ASSERT_EQ(ArrowIpcDecoderSetSchema(decoder.get(), schema.get(), &error), NANOARROW_OK);
+  ASSERT_EQ(ArrowIpcDecoderSetEndianness(decoder.get(), NANOARROW_IPC_ENDIANNESS_LITTLE),
+            NANOARROW_OK);
 
   ASSERT_EQ(ArrowIpcDecoderDecodeHeader(decoder.get(), data, &error), NANOARROW_OK);
   struct ArrowBufferView body;
