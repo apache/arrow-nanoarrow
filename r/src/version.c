@@ -24,3 +24,11 @@
 SEXP nanoarrow_c_version(void) { return Rf_mkString(NANOARROW_VERSION); }
 
 SEXP nanoarrow_c_version_runtime(void) { return Rf_mkString(ArrowNanoarrowVersion()); }
+
+SEXP nanoarrow_c_with_zstd(void) {
+#if defined(NANOARROW_IPC_WITH_ZSTD)
+  return Rf_ScalarLogical(1);
+#else
+  return Rf_ScalarLogical(0);
+#endif
+}
