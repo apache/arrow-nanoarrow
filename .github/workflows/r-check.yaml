@@ -84,3 +84,8 @@ jobs:
         with:
           upload-snapshots: true
           working-directory: r
+
+      - name: Show install output
+        if: always()
+        run: find r/check -name '00install.out*' -exec cat '{}' \; || true
+        shell: bash

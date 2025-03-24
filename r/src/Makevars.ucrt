@@ -15,21 +15,14 @@
 # specific language governing permissions and limitations
 # under the License.
 
-# This Makevars handles R 4.0 and 4.1 on Windows. These packages are no longer built
-# by CRAN, but on GitHub Actions pkg-config seems to be able to resolve and link a
-# zstd that works on 64-bit (but not 32-bit).
+# This Makevars handles R >= 4.2 on Windows (pkg-config is available on all such versions)
 
 ifeq (,$(shell pkg-config libzstd --libs 2>/dev/null))
   ZSTD_CFLAGS =
   ZSTD_LIB_FLAGS =
 else
-  ifeq "$(WIN)" "64"
-    ZSTD_CFLAGS = $(shell pkg-config --cflags libzstd) -DNANOARROW_IPC_WITH_ZSTD
-    ZSTD_LIB_FLAGS = $(shell pkg-config --libs libzstd)
-  else
-    ZSTD_CFLAGS =
-    ZSTD_LIB_FLAGS =
-  endif
+  ZSTD_CFLAGS = $(shell pkg-config --cflags libzstd) -DNANOARROW_IPC_WITH_ZSTD
+  ZSTD_LIB_FLAGS = $(shell pkg-config --libs libzstd)
 endif
 
 PKG_CPPFLAGS = -I../inst/include -I../src -DFLATCC_USE_GENERIC_ALIGNED_ALLOC $(ZSTD_CFLAGS)
