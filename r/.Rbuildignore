@@ -13,3 +13,4 @@
 ^\.cache$
 ^compile_commands\.json$
 ^src/Makevars$
+^configure\.win$
