@@ -15,12 +15,15 @@
 # specific language governing permissions and limitations
 # under the License.
 
-*.o
-*.so
-*.dll
-nanoarrow.c
-nanoarrow.h
-nanoarrow_ipc.h
-nanoarrow_ipc.c
-flatcc*
-Makevars
+# This Makevars handles R >= 4.2 on Windows (pkg-config is available on all such versions)
+
+ifeq (,$(shell pkg-config libzstd --libs 2>/dev/null))
+  ZSTD_CFLAGS =
+  ZSTD_LIB_FLAGS =
+else
+  ZSTD_CFLAGS = $(shell pkg-config --cflags libzstd) -DNANOARROW_IPC_WITH_ZSTD
+  ZSTD_LIB_FLAGS = $(shell pkg-config --libs libzstd)
+endif
+
+PKG_CPPFLAGS = -I../inst/include -I../src -DFLATCC_USE_GENERIC_ALIGNED_ALLOC $(ZSTD_CFLAGS)
+PKG_LIBS = $(ZSTD_LIB_FLAGS)

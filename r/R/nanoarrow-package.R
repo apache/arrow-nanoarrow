@@ -35,11 +35,17 @@ NULL
 #'
 #' @examples
 #' nanoarrow_version()
-#'
+#' nanoarrow_with_zstd()
 nanoarrow_version <- function(runtime = TRUE) {
   if (runtime) {
     .Call(nanoarrow_c_version_runtime)
   } else {
     .Call(nanoarrow_c_version)
   }
+}
+
+#' @rdname nanoarrow_version
+#' @export
+nanoarrow_with_zstd <- function() {
+  .Call(nanoarrow_c_with_zstd)
 }

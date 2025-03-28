@@ -23,9 +23,37 @@ fi
 
 if [ -f "src/nanoarrow.h" ] && [ -f "src/nanoarrow.c" ]; then
   echo "Found vendored nanoarrow"
-  exit 0
+else
+  echo "Vendored src/nanoarrow.h and/or src/nanoarrow.c are missing"
+  echo "This source tarball was built incorrectly."
+  exit 1
 fi
 
-echo "Vendored src/nanoarrow.h and/or src/nanoarrow.c are missing"
-echo "This source tarball was built incorrectly."
-exit 1
+# Check to see if a zstd test file compiles and links without any help from pkg-config
+ZSTD_FOUND=""
+PKG_CPPFLAGS="$PKG_CPPFLAGS" PKG_LIBS="$PKG_LIBS -lzstd" \
+  $R_HOME/bin/R CMD SHLIB tools/test_zstd.c -o test_zstd >test_zstd.log 2>&1
+if [ $? -eq 0 ]; then
+  echo "tools/test_zstd.c compiled without error"
+  PKG_CPPFLAGS="$PKG_CPPFLAGS -DNANOARROW_IPC_WITH_ZSTD"
+  PKG_LIBS="$PKG_LIBS -lzstd"
+  ZSTD_FOUND="yes"
+fi
+
+# Add pkg-config for libzstd if possible
+if [ -z "$ZSTD_FOUND" ] && pkg-config libzstd --exists >/dev/null 2>&1; then
+  PKG_CPPFLAGS="`pkg-config libzstd --cflags` -DNANOARROW_IPC_WITH_ZSTD $PKG_CPPFLAGS"
+  PKG_LIBS="`pkg-config libzstd --libs` $PKG_LIBS"
+  echo "Using pkg-config libzstd"
+  ZSTD_FOUND="yes"
+fi
+
+rm -f tools/test_zstd.o test_zstd test_zstd.log || true
+
+echo "Using PKG_CPPFLAGS=$PKG_CPPFLAGS"
+echo "Using PKG_LIBS=$PKG_LIBS"
+
+sed \
+  -e "s|@cppflags@|$PKG_CPPFLAGS|" \
+  -e "s|@libs@|$PKG_LIBS|" \
+  src/Makevars.in > src/Makevars

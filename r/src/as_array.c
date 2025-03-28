@@ -406,12 +406,14 @@ static void as_decimal_array(SEXP x_sexp, struct ArrowArray* array, SEXP schema_
     } else {
       item_digits_view.data = CHAR(item_sexp);
       item_digits_view.size_bytes = Rf_length(item_sexp);
-      ArrowDecimalSetDigits(&item, item_digits_view);
-      result = ArrowArrayAppendDecimal(array, &item);
+      result = ArrowDecimalSetDigits(&item, item_digits_view);
+      if (result == NANOARROW_OK) {
+        result = ArrowArrayAppendDecimal(array, &item);
+      }
     }
 
     if (result != NANOARROW_OK) {
-      Rf_error("ArrowArrayAppendDecimal() failed");
+      Rf_error("ArrowArrayAppendDecimal() or ArrowDecimalSetDigits() failed");
     }
   }
 

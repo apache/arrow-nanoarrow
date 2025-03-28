@@ -15,20 +15,14 @@
 // specific language governing permissions and limitations
 // under the License.
 
-#define R_NO_REMAP
-#include <R.h>
-#include <Rinternals.h>
+#include <stdint.h>
+#include <string.h>
+#include <zstd.h>
 
-#include "nanoarrow.h"
-
-SEXP nanoarrow_c_version(void) { return Rf_mkString(NANOARROW_VERSION); }
-
-SEXP nanoarrow_c_version_runtime(void) { return Rf_mkString(ArrowNanoarrowVersion()); }
-
-SEXP nanoarrow_c_with_zstd(void) {
-#if defined(NANOARROW_IPC_WITH_ZSTD)
-  return Rf_ScalarLogical(1);
-#else
-  return Rf_ScalarLogical(0);
-#endif
+// Function that requires at least one symbol from zstd.h
+size_t test_zstd(void) {
+  uint8_t src[128];
+  memset(src, 0, sizeof(src));
+  uint8_t dst[128];
+  return ZSTD_compress(dst, sizeof(dst), src, sizeof(src), ZSTD_CLEVEL_DEFAULT);
 }

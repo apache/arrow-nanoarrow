@@ -2,9 +2,12 @@
 % Please edit documentation in R/nanoarrow-package.R
 \name{nanoarrow_version}
 \alias{nanoarrow_version}
+\alias{nanoarrow_with_zstd}
 \title{Underlying 'nanoarrow' C library build}
 \usage{
 nanoarrow_version(runtime = TRUE)
+
+nanoarrow_with_zstd()
 }
 \arguments{
 \item{runtime}{Compare TRUE and FALSE values to detect a
@@ -19,5 +22,5 @@ Underlying 'nanoarrow' C library build
 }
 \examples{
 nanoarrow_version()
-
+nanoarrow_with_zstd()
 }
