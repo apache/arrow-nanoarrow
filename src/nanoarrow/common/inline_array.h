@@ -1218,7 +1218,7 @@ static inline struct ArrowStringView ArrowArrayViewGetStringUnsafe(
     case NANOARROW_TYPE_BINARY:
       view.data = data_view + offsets_view->data.as_int32[i];
       view.size_bytes =
-          offsets_view->data.as_int32[i + 1] - offsets_view->data.as_int32[i];
+          (int64_t)offsets_view->data.as_int32[i + 1] - offsets_view->data.as_int32[i];
       break;
     case NANOARROW_TYPE_LARGE_STRING:
     case NANOARROW_TYPE_LARGE_BINARY:
@@ -1258,7 +1258,7 @@ static inline struct ArrowBufferView ArrowArrayViewGetBytesUnsafe(
     case NANOARROW_TYPE_STRING:
     case NANOARROW_TYPE_BINARY:
       view.size_bytes =
-          offsets_view->data.as_int32[i + 1] - offsets_view->data.as_int32[i];
+          (int64_t)offsets_view->data.as_int32[i + 1] - offsets_view->data.as_int32[i];
       view.data.as_uint8 = data_view + offsets_view->data.as_int32[i];
       break;
     case NANOARROW_TYPE_LARGE_STRING:

@@ -1081,7 +1081,7 @@ ArrowErrorCode ArrowIpcDecoderVerifyHeader(struct ArrowIpcDecoder* decoder,
 
   // Check that data contains at least the entire header (return ESPIPE to signal
   // that reading more data may help).
-  if (data.size_bytes < decoder->header_size_bytes - prefix_size_bytes) {
+  if (data.size_bytes < (int64_t)decoder->header_size_bytes - prefix_size_bytes) {
     ArrowErrorSet(error,
                   "Expected >= %d bytes of remaining data but found %" PRId64
                   " bytes in buffer",
@@ -1203,7 +1203,7 @@ ArrowErrorCode ArrowIpcDecoderDecodeHeader(struct ArrowIpcDecoder* decoder,
 
   // Check that data contains at least the entire header (return ESPIPE to signal
   // that reading more data may help).
-  if (data.size_bytes < decoder->header_size_bytes - prefix_size_bytes) {
+  if (data.size_bytes < (int64_t)decoder->header_size_bytes - prefix_size_bytes) {
     ArrowErrorSet(error,
                   "Expected >= %d bytes of remaining data but found %" PRId64
                   " bytes in buffer",
