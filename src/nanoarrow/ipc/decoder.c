@@ -95,6 +95,8 @@ struct ArrowIpcDecoderPrivate {
   int64_t n_union_fields;
   // A pointer to the last flatbuffers message.
   const void* last_message;
+  // Storage for a Dictionary
+  struct ArrowIpcDictionary dictionary;
   // Storage for a Footer
   struct ArrowIpcFooter footer;
   // Decompressor for compression support
@@ -930,6 +932,19 @@ static int ArrowIpcDecoderDecodeSchemaHeader(struct ArrowIpcDecoder* decoder,
   return NANOARROW_OK;
 }
 
+static int ArrowIpcDecoderDecodeDictionaryBatchHeader(
+    struct ArrowIpcDecoder* decoder, flatbuffers_generic_t message_header) {
+  struct ArrowIpcDecoderPrivate* private_data =
+      (struct ArrowIpcDecoderPrivate*)decoder->private_data;
+
+  ns(DictionaryBatch_table_t) dictionary = (ns(DictionaryBatch_table_t))message_header;
+  private_data->dictionary.id = ns(DictionaryBatch_id(dictionary));
+  private_data->dictionary.is_delta = ns(DictionaryBatch_isDelta(dictionary));
+
+  decoder->dictionary = &private_data->dictionary;
+  return NANOARROW_OK;
+}
+
 static int ArrowIpcDecoderDecodeRecordBatchHeader(struct ArrowIpcDecoder* decoder,
                                                   flatbuffers_generic_t message_header,
                                                   struct ArrowError* error) {
@@ -1000,6 +1015,8 @@ static inline void ArrowIpcDecoderResetHeaderInfo(struct ArrowIpcDecoder* decode
   decoder->codec = 0;
   decoder->header_size_bytes = 0;
   decoder->body_size_bytes = 0;
+  decoder->dictionary = NULL;
+  memset(&private_data->dictionary, 0, sizeof(struct ArrowIpcDictionary));
   decoder->footer = NULL;
   ArrowIpcFooterReset(&private_data->footer);
   private_data->last_message = NULL;
@@ -1242,11 +1259,14 @@ ArrowErrorCode ArrowIpcDecoderDecodeHeader(struct ArrowIpcDecoder* decoder,
       NANOARROW_RETURN_NOT_OK(
           ArrowIpcDecoderDecodeSchemaHeader(decoder, message_header, error));
       break;
+    case ns(MessageHeader_DictionaryBatch):
+      NANOARROW_RETURN_NOT_OK(
+          ArrowIpcDecoderDecodeDictionaryBatchHeader(decoder, message_header));
+      break;
     case ns(MessageHeader_RecordBatch):
       NANOARROW_RETURN_NOT_OK(
           ArrowIpcDecoderDecodeRecordBatchHeader(decoder, message_header, error));
       break;
-    case ns(MessageHeader_DictionaryBatch):
     case ns(MessageHeader_Tensor):
     case ns(MessageHeader_SparseTensor):
       ArrowErrorSet(error, "Unsupported message type: '%s'",
