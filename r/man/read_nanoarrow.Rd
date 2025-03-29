@@ -3,14 +3,11 @@
 \name{read_nanoarrow}
 \alias{read_nanoarrow}
 \alias{write_nanoarrow}
-\alias{example_ipc_stream}
 \title{Read/write serialized streams of Arrow data}
 \usage{
 read_nanoarrow(x, ..., lazy = FALSE)
 
 write_nanoarrow(data, x, ...)
-
-example_ipc_stream()
 }
 \arguments{
 \item{x}{A \code{raw()} vector, connection, or file path from which to read

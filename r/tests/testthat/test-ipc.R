@@ -20,7 +20,7 @@ test_that("read_nanoarrow() works for raw vectors", {
   expect_s3_class(stream, "nanoarrow_array_stream")
   expect_identical(
     as.data.frame(stream),
-    data.frame(some_col = c(1L, 2L, 3L))
+    data.frame(some_col = c(0L, 1L, 2L))
   )
 })
 
@@ -32,7 +32,7 @@ test_that("read_nanoarrow() works for open connections", {
   expect_s3_class(stream, "nanoarrow_array_stream")
   expect_identical(
     as.data.frame(stream),
-    data.frame(some_col = c(1L, 2L, 3L))
+    data.frame(some_col = c(0L, 1L, 2L))
   )
 })
 
@@ -95,7 +95,7 @@ test_that("read_nanoarrow() works for file paths", {
   stream <- read_nanoarrow(tf)
   expect_identical(
     as.data.frame(stream),
-    data.frame(some_col = c(1L, 2L, 3L))
+    data.frame(some_col = c(0L, 1L, 2L))
   )
 })
 
@@ -119,7 +119,18 @@ test_that("read_nanoarrow() works for URLs", {
   stream <- read_nanoarrow(paste0("file://", tf))
   expect_identical(
     as.data.frame(stream),
-    data.frame(some_col = c(1L, 2L, 3L))
+    data.frame(some_col = c(0L, 1L, 2L))
+  )
+})
+
+test_that("read_nanoarrow() works with buffer compression", {
+  skip_if_not(nanoarrow_with_zstd())
+
+  stream <- read_nanoarrow(example_ipc_stream(compression = "zstd"))
+  expect_s3_class(stream, "nanoarrow_array_stream")
+  expect_identical(
+    as.data.frame(stream),
+    data.frame(some_col = c(0L, 1L, 2L))
   )
 })
 
@@ -143,7 +154,7 @@ test_that("read_nanoarrow() works for compressed .gz file paths", {
   stream <- read_nanoarrow(tf)
   expect_identical(
     as.data.frame(stream),
-    data.frame(some_col = c(1L, 2L, 3L))
+    data.frame(some_col = c(0L, 1L, 2L))
   )
 })
 
@@ -167,7 +178,7 @@ test_that("read_nanoarrow() works for compressed .bz2 file paths", {
   stream <- read_nanoarrow(tf)
   expect_identical(
     as.data.frame(stream),
-    data.frame(some_col = c(1L, 2L, 3L))
+    data.frame(some_col = c(0L, 1L, 2L))
   )
 })
 
@@ -204,7 +215,7 @@ test_that("read_nanoarrow() works for compressed .zip file paths", {
   stream <- read_nanoarrow(tf)
   expect_identical(
     as.data.frame(stream),
-    data.frame(some_col = c(1L, 2L, 3L))
+    data.frame(some_col = c(0L, 1L, 2L))
   )
 })
 

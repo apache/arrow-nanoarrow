@@ -34,5 +34,6 @@ Suggests:
     tibble,
     vctrs,
     withr
+SystemRequirements: libzstd (optional)
 Config/testthat/edition: 3
 Config/build/bootstrap: TRUE
