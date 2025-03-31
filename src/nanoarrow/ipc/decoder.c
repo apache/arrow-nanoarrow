@@ -95,8 +95,8 @@ struct ArrowIpcDecoderPrivate {
   int64_t n_union_fields;
   // A pointer to the last flatbuffers message.
   const void* last_message;
-  // Storage for a Dictionary
-  struct ArrowIpcDictionary dictionary;
+  // Storage for a DictionaryBatch
+  struct ArrowIpcDictionaryBatch dictionary;
   // Storage for a Footer
   struct ArrowIpcFooter footer;
   // Decompressor for compression support
@@ -825,17 +825,56 @@ static int ArrowIpcDecoderSetType(struct ArrowSchema* schema, ns(Field_table_t) 
   }
 }
 
+static int ArrowIpcSetDictionaryEncoding(
+    struct ArrowSchema* schema, ns(DictionaryEncoding_table_t dictionary_encoding),
+    struct ArrowError* error) {
+  switch (
+      org_apache_arrow_flatbuf_DictionaryEncoding_dictionaryKind(dictionary_encoding)) {
+    case ns(DictionaryKind_DenseArray):
+      break;
+    default:
+      ArrowErrorSet(error, "Uexpected value for DictionaryKind");
+      return EINVAL;
+  }
+
+  struct ArrowSchema tmp;
+  ArrowSchemaMove(schema, &tmp);
+
+  ArrowSchemaInit(schema);
+  int result = ArrowSchemaAllocateDictionary(schema);
+  if (result != NANOARROW_OK) {
+    ArrowSchemaRelease(&tmp);
+    ArrowErrorSet(error, "ArrowSchemaAllocateDictionary() failed");
+    return result;
+  }
+
+  ArrowSchemaMove(&tmp, schema->dictionary);
+
+  NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowSchemaSetName(schema, schema->dictionary->name),
+                                     error);
+  NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowSchemaSetName(schema->dictionary, ""), error);
+
+  NANOARROW_RETURN_NOT_OK(ArrowIpcDecoderSetTypeInt(
+      schema, ns(DictionaryEncoding_indexType_get(dictionary_encoding)), error));
+
+  if (ns(DictionaryEncoding_isOrdered_get(dictionary_encoding))) {
+    schema->flags |= ARROW_FLAG_DICTIONARY_ORDERED;
+  }
+
+  // TODO: should the non extension-type field metadata get moved back to the
+  // parent field?
+
+  // TODO: Record the dictionary id in Schema metadata? (Or keep track of it
+  // some other way?)
+
+  return NANOARROW_OK;
+}
+
 static int ArrowIpcDecoderSetChildren(struct ArrowSchema* schema, ns(Field_vec_t) fields,
                                       struct ArrowError* error);
 
 static int ArrowIpcDecoderSetField(struct ArrowSchema* schema, ns(Field_table_t) field,
                                    struct ArrowError* error) {
-  // No dictionary support yet
-  if (ns(Field_dictionary_is_present(field))) {
-    ArrowErrorSet(error, "Schema message field with DictionaryEncoding not supported");
-    return ENOTSUP;
-  }
-
   int result;
   if (ns(Field_name_is_present(field))) {
     result = ArrowSchemaSetName(schema, ns(Field_name_get(field)));
@@ -876,7 +915,16 @@ static int ArrowIpcDecoderSetField(struct ArrowSchema* schema, ns(Field_table_t)
   }
 
   NANOARROW_RETURN_NOT_OK(ArrowIpcDecoderSetChildren(schema, children, error));
-  return ArrowIpcDecoderSetMetadata(schema, ns(Field_custom_metadata(field)), error);
+  NANOARROW_RETURN_NOT_OK(
+      ArrowIpcDecoderSetMetadata(schema, ns(Field_custom_metadata(field)), error));
+
+  // If this is a dictionary encoded field, set the dictionary encoding
+  if (ns(Field_dictionary_is_present(field))) {
+    NANOARROW_RETURN_NOT_OK(
+        ArrowIpcSetDictionaryEncoding(schema, ns(Field_dictionary(field)), error));
+  }
+
+  return NANOARROW_OK;
 }
 
 static int ArrowIpcDecoderSetChildren(struct ArrowSchema* schema, ns(Field_vec_t) fields,
@@ -1016,7 +1064,7 @@ static inline void ArrowIpcDecoderResetHeaderInfo(struct ArrowIpcDecoder* decode
   decoder->header_size_bytes = 0;
   decoder->body_size_bytes = 0;
   decoder->dictionary = NULL;
-  memset(&private_data->dictionary, 0, sizeof(struct ArrowIpcDictionary));
+  memset(&private_data->dictionary, 0, sizeof(struct ArrowIpcDictionaryBatch));
   decoder->footer = NULL;
   ArrowIpcFooterReset(&private_data->footer);
   private_data->last_message = NULL;

@@ -163,7 +163,7 @@ enum ArrowIpcCompressionType {
 #define NANOARROW_IPC_FEATURE_COMPRESSED_BODY 2
 
 /// \brief Description of an Arrow IPC DictionaryBatch message
-struct ArrowIpcDictionary {
+struct ArrowIpcDictionaryBatch {
   /// \brief The identifier for this dictionary
   int64_t id;
   /// \brief If non-zero, values should be appended to the existing dictionary.
@@ -316,8 +316,8 @@ struct ArrowIpcDecoder {
   /// \brief The number of bytes in the forthcoming body message.
   int64_t body_size_bytes;
 
-  /// \brief The last decoded Dictionary
-  struct ArrowIpcDictionary* dictionary;
+  /// \brief The last decoded DictionaryBatch
+  struct ArrowIpcDictionaryBatch* dictionary;
 
   /// \brief The last decoded Footer
   ///

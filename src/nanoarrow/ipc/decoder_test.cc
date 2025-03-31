@@ -596,6 +596,33 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDecodeSimpleRecordBatchErrors) {
   ArrowIpcDecoderReset(&decoder);
 }
 
+TEST(NanoarrowIpcTest, NanoarrowIpcDecodeDictionarySchema) {
+  struct ArrowIpcDecoder decoder;
+  struct ArrowError error;
+  struct ArrowSchema schema;
+
+  struct ArrowBufferView data;
+  data.data.as_uint8 = kDictionarySchema;
+  data.size_bytes = sizeof(kDictionarySchema);
+
+  ASSERT_EQ(ArrowIpcDecoderInit(&decoder), NANOARROW_OK);
+
+  EXPECT_EQ(ArrowIpcDecoderDecodeHeader(&decoder, data, &error), NANOARROW_OK);
+  ASSERT_EQ(decoder.message_type, NANOARROW_IPC_MESSAGE_TYPE_SCHEMA);
+
+  ASSERT_EQ(ArrowIpcDecoderDecodeSchema(&decoder, &schema, &error), NANOARROW_OK);
+  ASSERT_EQ(schema.n_children, 1);
+  EXPECT_STREQ(schema.children[0]->name, "some_col");
+  EXPECT_EQ(schema.children[0]->flags, ARROW_FLAG_NULLABLE);
+  EXPECT_STREQ(schema.children[0]->format, "c");
+
+  ASSERT_NE(schema.children[0]->dictionary, nullptr);
+  EXPECT_STREQ(schema.children[0]->dictionary->format, "u");
+
+  ArrowSchemaRelease(&schema);
+  ArrowIpcDecoderReset(&decoder);
+}
+
 TEST(NanoarrowIpcTest, NanoarrowIpcSetSchema) {
   struct ArrowIpcDecoder decoder;
   struct ArrowSchema schema;
