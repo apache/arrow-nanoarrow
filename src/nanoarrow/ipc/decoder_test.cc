@@ -626,7 +626,6 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDecodeDictionarySchema) {
 TEST(NanoarrowIpcTest, NanoarrowIpcDecodeDictionaryBatch) {
   struct ArrowIpcDecoder decoder;
   struct ArrowError error;
-  struct ArrowSchema schema;
 
   struct ArrowBufferView data;
   data.data.as_uint8 = kDictionaryBatch;
