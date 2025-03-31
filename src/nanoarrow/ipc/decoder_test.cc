@@ -623,6 +623,48 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDecodeDictionarySchema) {
   ArrowIpcDecoderReset(&decoder);
 }
 
+TEST(NanoarrowIpcTest, NanoarrowIpcDecodeDictionaryBatch) {
+  struct ArrowIpcDecoder decoder;
+  struct ArrowError error;
+  struct ArrowSchema schema;
+
+  struct ArrowBufferView data;
+  data.data.as_uint8 = kDictionaryBatch;
+  data.size_bytes = sizeof(kDictionaryBatch);
+
+  ASSERT_EQ(ArrowIpcDecoderInit(&decoder), NANOARROW_OK);
+
+  EXPECT_EQ(ArrowIpcDecoderDecodeHeader(&decoder, data, &error), NANOARROW_OK);
+  ASSERT_EQ(decoder.message_type, NANOARROW_IPC_MESSAGE_TYPE_DICTIONARY_BATCH);
+
+  ASSERT_NE(decoder.dictionary, nullptr);
+  EXPECT_EQ(decoder.dictionary->id, 0);
+  EXPECT_FALSE(decoder.dictionary->is_delta);
+
+  // TODO: Access RecordBatch content
+
+  ArrowIpcDecoderReset(&decoder);
+}
+
+TEST(NanoarrowIpcTest, NanoarrowIpcDecodeDictionaryRecordBatch) {
+  struct ArrowIpcDecoder decoder;
+  struct ArrowError error;
+  struct ArrowSchema schema;
+
+  struct ArrowBufferView data;
+  data.data.as_uint8 = kDictionaryRecordBatch;
+  data.size_bytes = sizeof(kDictionaryRecordBatch);
+
+  ASSERT_EQ(ArrowIpcDecoderInit(&decoder), NANOARROW_OK);
+
+  EXPECT_EQ(ArrowIpcDecoderVerifyHeader(&decoder, data, &error), NANOARROW_OK);
+  ASSERT_EQ(decoder.message_type, NANOARROW_IPC_MESSAGE_TYPE_RECORD_BATCH);
+
+  // TODO: Decode RecordBatch content populating dictionary array member
+
+  ArrowIpcDecoderReset(&decoder);
+}
+
 TEST(NanoarrowIpcTest, NanoarrowIpcSetSchema) {
   struct ArrowIpcDecoder decoder;
   struct ArrowSchema schema;
