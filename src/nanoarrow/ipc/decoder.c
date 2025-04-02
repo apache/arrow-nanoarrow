@@ -66,6 +66,8 @@ struct ArrowIpcField {
   struct ArrowArray* array;
   // The cumulative number of buffers preceding this node.
   int64_t buffer_offset;
+  // Dictionary information for dictionary-encoded fields
+  struct ArrowIpcDictionary* dictionary;
 };
 
 // Internal data specific to the read/decode process
@@ -1426,6 +1428,7 @@ static void ArrowIpcDecoderInitFields(struct ArrowIpcField* fields,
   field->array_view = array_view;
   field->array = array;
   field->buffer_offset = *n_buffers;
+  field->dictionary = NULL;
 
   for (int i = 0; i < NANOARROW_MAX_FIXED_BUFFERS; i++) {
     *n_buffers += array_view->layout.buffer_type[i] != NANOARROW_BUFFER_TYPE_NONE;
@@ -2114,5 +2117,63 @@ ArrowErrorCode ArrowIpcDecoderDecodeArrayFromShared(
   }
 
   ArrowArrayMove(&temp, out);
+  return NANOARROW_OK;
+}
+
+void ArrowIpcDictionaryInit(struct ArrowIpcDictionary* dictionary) {
+  NANOARROW_DCHECK(dictionary != NULL);
+
+  memset(dictionary, 0, sizeof(struct ArrowIpcDictionary));
+}
+
+void ArrowIpcDictionaryReset(struct ArrowIpcDictionary* dictionary) {
+  NANOARROW_DCHECK(dictionary != NULL);
+
+  if (dictionary->schema.release != NULL) {
+    ArrowSchemaRelease(&dictionary->schema);
+  }
+
+  if (dictionary->array.release != NULL) {
+    ArrowArrayRelease(&dictionary->array);
+  }
+}
+
+void ArrowIpcDictionariesInit(struct ArrowIpcDictionaries* dictionaries) {
+  NANOARROW_DCHECK(dictionaries != NULL);
+  memset(dictionaries, 0, sizeof(struct ArrowIpcDictionaries));
+}
+
+void ArrowIpcDictionariesReset(struct ArrowIpcDictionaries* dictionaries) {
+  NANOARROW_DCHECK(dictionaries != NULL);
+
+  for (int64_t i = 0; i < dictionaries->n_dictionaries; i++) {
+    ArrowIpcDictionaryReset(dictionaries->dictionaries + i);
+  }
+
+  if (dictionaries->dictionaries != NULL) {
+    ArrowFree(dictionaries->dictionaries);
+  }
+}
+
+ArrowErrorCode ArrowIpcDictionariesAppend(struct ArrowIpcDictionaries* dictionaries,
+                                          int64_t id, struct ArrowSchema* schema) {
+  if ((dictionaries->n_dictionaries + 1) > dictionaries->capacity) {
+    int64_t new_capacity =
+        1 ? dictionaries->n_dictionaries == 0 : dictionaries->n_dictionaries * 2;
+    struct ArrowIpcDictionaries* new_dictionaries = realloc(
+        dictionaries->dictionaries, new_capacity * sizeof(struct ArrowIpcDictionary));
+    if (new_dictionaries == NULL) {
+      return ENOMEM;
+    }
+
+    dictionaries->capacity = new_capacity;
+  }
+
+  struct ArrowIpcDictionary* dictionary =
+      dictionaries->dictionaries + dictionaries->n_dictionaries;
+  ArrowIpcDictionaryInit(dictionary);
+  dictionary->id = id;
+  ArrowSchemaMove(schema, &dictionary->schema);
+  dictionaries->n_dictionaries++;
   return NANOARROW_OK;
 }
