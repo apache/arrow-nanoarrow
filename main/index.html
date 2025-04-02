@@ -481,11 +481,11 @@ the Meson backend is an experimental feature you may also wish to try.</p>
 </pre></div>
 </div>
 <p>After setting up your project, be sure to enable the options you want:</p>
-<div class="highlight-sh notranslate"><div class="highlight"><pre><span></span>meson<span class="w"> </span>configure<span class="w"> </span>-Dtests<span class="o">=</span><span class="nb">true</span><span class="w"> </span>-Dbenchmarks<span class="o">=</span><span class="nb">true</span>
+<div class="highlight-sh notranslate"><div class="highlight"><pre><span></span>meson<span class="w"> </span>configure<span class="w"> </span>-Dtests<span class="o">=</span>enabled<span class="w"> </span>-Dbenchmarks<span class="o">=</span>enabled
 </pre></div>
 </div>
 <p>You can enable better test coverage if Apache Arrow is installed on your
-system with <code class="docutils literal notranslate"><span class="pre">-Dtest_with_arrow=true</span></code>. Depending on how you have
+system with <code class="docutils literal notranslate"><span class="pre">-Dtest_with_arrow=enabled</span></code>. Depending on how you have
 installed Apache Arrow, you may also need to pass
 <code class="docutils literal notranslate"><span class="pre">--pkg-config-path</span> <span class="pre">&lt;path</span> <span class="pre">to</span> <span class="pre">directory</span> <span class="pre">with</span> <span class="pre">arrow.pc&gt;</span></code>.</p>
 <p>With the above out of the way, the <code class="docutils literal notranslate"><span class="pre">compile</span></code> command should take care
