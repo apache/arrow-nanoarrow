@@ -102,12 +102,12 @@ nanoarrow_dep = declare_dependency(
     compile_args: nanoarrow_dep_args,
 )
 
-if get_option('ipc')
+if get_option('ipc').enabled()
     flatcc_dep = dependency('flatcc')
     ipc_lib_deps = [nanoarrow_dep, flatcc_dep]
     ipc_lib_c_args = []
 
-    if get_option('ipc_with_zstd')
+    if get_option('ipc_with_zstd').enabled()
         zstd_dep = dependency('libzstd')
         ipc_lib_deps += zstd_dep
         ipc_lib_c_args += '-DNANOARROW_IPC_WITH_ZSTD'
@@ -138,13 +138,15 @@ if get_option('ipc')
     )
 endif
 
-needs_device = get_option('device') or get_option('metal') or get_option('cuda')
+needs_device = get_option('device').enabled() or get_option('metal').enabled() or get_option(
+    'cuda',
+).enabled()
 if needs_device
     device_deps = [nanoarrow_dep]
     device_srcs = ['src/nanoarrow/device/device.c']
     device_defines = []
 
-    if get_option('metal')
+    if get_option('metal').enabled()
         metal_dep = dependency(
             'appleframeworks',
             modules: ['Foundation', 'Metal'],
@@ -156,7 +158,7 @@ if needs_device
         device_defines += '-DNANOARROW_DEVICE_WITH_METAL'
     endif
 
-    if get_option('cuda')
+    if get_option('cuda').enabled()
         error('CUDA support with the Meson build system is not implemented')
     endif
 
@@ -178,7 +180,7 @@ if needs_device
     )
 endif
 
-needs_testing = get_option('testing') or get_option('tests')
+needs_testing = get_option('testing').enabled() or get_option('tests').enabled()
 if needs_testing
     nlohmann_json_dep = dependency('nlohmann_json')
 
@@ -198,7 +200,7 @@ if needs_testing
     )
 endif
 
-if get_option('tests') or get_option('integration_tests')
+if get_option('tests').enabled() or get_option('integration_tests').enabled()
     c_data_integration_lib = library(
         'nanoarrow_c_data_integration',
         'src/nanoarrow/integration/c_data_integration.cc',
@@ -209,7 +211,7 @@ if get_option('tests') or get_option('integration_tests')
 
 endif
 
-if get_option('tests')
+if get_option('tests').enabled()
     # CMake configuration sets MEMORYCHECK_COMMAND_OPTIONS but with meson you instead
     # wrap the tests with valgrind via `meson test --wrap=valgrind`. See
     # https://mesonbuild.com/Unit-tests.html
@@ -218,12 +220,12 @@ if get_option('tests')
     # https://mesonbuild.com/Unit-tests.html#coverage
 
     arrow_dep = dependency('arrow', include_type: 'system', required: false)
-    if get_option('tests_with_arrow') and not arrow_dep.found()
+    if get_option('tests_with_arrow').enabled() and not arrow_dep.found()
         error('tests_with_arrow=true but could not find Arrow')
     endif
 
     test_cpp_args = []
-    if get_option('tests_with_arrow')
+    if get_option('tests_with_arrow').enabled()
         test_cpp_args += ['-DNANOARROW_BUILD_TESTS_WITH_ARROW']
     endif
 
@@ -282,7 +284,7 @@ if get_option('tests')
     )
     test('c-data-integration', c_data_integration_test)
 
-    if get_option('ipc')
+    if get_option('ipc').enabled()
         zlib_dep = dependency('zlib')
         ipc_test_files = {
             'ipc-decoder': {
@@ -344,7 +346,7 @@ if get_option('tests')
             test(device_test.replace('_', '-'), exc)
         endforeach
 
-        if get_option('metal')
+        if get_option('metal').enabled()
             exc = executable(
                 'nanoarrow-device-metal-test',
                 'src/nanoarrow/device/metal_test.cc',
@@ -357,13 +359,13 @@ if get_option('tests')
 endif
 
 
-if get_option('benchmarks')
+if get_option('benchmarks').enabled()
     subdir('dev/benchmarks')
 endif
 
 
-if get_option('apps')
-    if get_option('ipc')
+if get_option('apps').enabled()
+    if get_option('ipc').enabled()
         executable(
             'dump_stream',
             'src/apps/dump_stream.c',
