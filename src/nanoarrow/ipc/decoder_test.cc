@@ -43,6 +43,7 @@ struct ArrowIpcField {
   struct ArrowArrayView* array_view;
   struct ArrowArray* array;
   int64_t buffer_offset;
+  int64_t dictionary_id;
 };
 
 struct ArrowIpcDecoderPrivate {
@@ -54,6 +55,7 @@ struct ArrowIpcDecoderPrivate {
   struct ArrowIpcField* fields;
   int64_t n_buffers;
   const void* last_message;
+  struct ArrowIpcDictionaryBatch dictionary;
   struct ArrowIpcFooter footer;
   struct ArrowIpcDecompressor decompressor;
 };

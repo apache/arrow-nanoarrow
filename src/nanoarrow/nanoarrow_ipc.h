@@ -467,6 +467,30 @@ NANOARROW_DLL ArrowErrorCode ArrowIpcDecoderDecodeArrayFromShared(
     struct ArrowArray* out, enum ArrowValidationLevel validation_level,
     struct ArrowError* error);
 
+struct ArrowIpcDictionary {
+  int64_t id;
+  struct ArrowSchema schema;
+  struct ArrowArray array;
+};
+
+void ArrowIpcDictionaryInit(struct ArrowIpcDictionary* dictionary);
+
+void ArrowIpcDictionaryReset(struct ArrowIpcDictionary* dictionary);
+
+struct ArrowIpcDictionaries {
+  struct ArrowIpcDictionary* dictionaries;
+  int64_t n_dictionaries;
+  int64_t capacity;
+  void* private_data;
+};
+
+void ArrowIpcDictionariesInit(struct ArrowIpcDictionaries* dictionaries);
+
+ArrowErrorCode ArrowIpcDictionariesAppend(struct ArrowIpcDictionaries* dictionaries,
+                                          int64_t id, struct ArrowSchema* schema);
+
+void ArrowIpcDictionariesReset(struct ArrowIpcDictionaries* dictionaries);
+
 /// \brief An user-extensible input data source
 struct ArrowIpcInputStream {
   /// \brief Read up to buf_size_bytes from stream into buf
