@@ -159,11 +159,11 @@ cd builddir
 After setting up your project, be sure to enable the options you want:
 
 ```sh
-meson configure -Dtests=true -Dbenchmarks=true
+meson configure -Dtests=enabled -Dbenchmarks=enabled
 ```
 
 You can enable better test coverage if Apache Arrow is installed on your system
-with `-Dtest_with_arrow=true`. Depending on how you have installed Apache Arrow,
+with `-Dtest_with_arrow=enabled`. Depending on how you have installed Apache Arrow,
 you may also need to pass `--pkg-config-path <path to directory with arrow.pc>`.
 
 With the above out of the way, the `compile` command should take care of the rest:

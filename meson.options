@@ -15,19 +15,19 @@
 # specific language governing permissions and limitations
 # under the License.
 
-option('tests', type: 'boolean', description: 'Build tests', value: false)
-option('tests_with_arrow', type: 'boolean', description: 'Build tests with Arrow', value: false)
-option('benchmarks', type: 'boolean', description: 'Build benchmarks', value: false)
-option('apps', type: 'boolean', description: 'Build utility applications', value: false)
-option('ipc', type: 'boolean', description: 'Build IPC libraries', value: false)
-option('ipc_with_zstd', type: 'boolean', description: 'Build IPC libraries with ZSTD compression support', value: false)
-option('integration_tests', type: 'boolean',
-       description: 'Build cross-implementation Arrow integration tests',
-       value: false)
+option('tests', type: 'feature', description: 'Build tests')
+option('tests_with_arrow', type: 'feature', description: 'Build tests with Arrow')
+option('benchmarks', type: 'feature', description: 'Build benchmarks')
+option('apps', type: 'feature', description: 'Build utility applications')
+option('ipc', type: 'feature', description: 'Build IPC libraries')
+option('ipc_with_zstd', type: 'feature', description: 'Build IPC libraries with ZSTD compression support')
+option(
+    'integration_tests', type: 'feature',
+    description: 'Build cross-implementation Arrow integration tests',
+)
 option('namespace', type: 'string',
        description: 'A prefix for exported symbols')
-option('device', type: 'boolean', description: 'Build device libraries', value: false)
-option('testing', type: 'boolean', description: 'Build testing libraries', value: false)
-option('metal', type: 'boolean', description: 'Build Apple metal libraries',
-       value: false)
-option('cuda', type: 'boolean', description: 'Build CUDA libraries', value: false)
+option('device', type: 'feature', description: 'Build device libraries')
+option('testing', type: 'feature', description: 'Build testing libraries')
+option('metal', type: 'feature', description: 'Build Apple metal libraries')
+option('cuda', type: 'feature', description: 'Build CUDA libraries')

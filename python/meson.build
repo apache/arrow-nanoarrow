@@ -29,9 +29,9 @@ project(
         'force_fallback_for=zstd',
         # We need to set these options at the project default_option level
         # due to https://github.com/mesonbuild/meson/issues/6728
-        'arrow-nanoarrow:ipc=true',
-        'arrow-nanoarrow:ipc_with_zstd=true',
-        'arrow-nanoarrow:device=true',
+        'arrow-nanoarrow:ipc=enabled',
+        'arrow-nanoarrow:ipc_with_zstd=enabled',
+        'arrow-nanoarrow:device=enabled',
         'arrow-nanoarrow:namespace=PythonPkg',
         'zstd:bin_programs=false',
     ],
