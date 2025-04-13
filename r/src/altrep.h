@@ -18,15 +18,14 @@
 #ifndef R_ALTREP_H_INCLUDED
 #define R_ALTREP_H_INCLUDED
 
-#include "Rversion.h"
+#include <R.h>
+#include <Rinternals.h>
+#include <Rversion.h>
+
+// Needs to be at the end of the R include list
+#include <R_ext/Altrep.h>
 
 #include <string.h>
-
-// ALTREP available in R >= 3.5
-#if defined(R_VERSION) && R_VERSION >= R_Version(3, 5, 0)
-
-#define HAS_ALTREP
-#include <R_ext/Altrep.h>
 
 // Returns the ALTREP class name or NULL if x is not an altrep
 // object.
@@ -38,12 +37,6 @@ static inline const char* nanoarrow_altrep_class(SEXP x) {
     return NULL;
   }
 }
-
-#else
-
-static inline const char* nanoarrow_altrep_class(SEXP x) { return NULL; }
-
-#endif
 
 // Performs the ALTREP type registration and should be called on package load
 void register_nanoarrow_altrep(DllInfo* info);
