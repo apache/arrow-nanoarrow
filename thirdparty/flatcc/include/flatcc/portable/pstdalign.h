@@ -140,12 +140,17 @@ extern "C" {
 
 #endif /* __STDC__ */
 
+// For C23, alignas/alignof are keywords and will warn (-Wkeyword-macro) when #defined here
+#if !(defined(__STDC__) && __STDC__ && defined(__STDC_VERSION__) && __STDC_VERSION__ >= 202311L)
+
 #ifndef alignas
 #define alignas _Alignas
 #endif
 
 #ifndef alignof
 #define alignof _Alignof
+#endif
+
 #endif
 
 #define __alignas_is_defined 1
