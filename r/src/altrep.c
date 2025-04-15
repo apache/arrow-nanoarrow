@@ -28,8 +28,6 @@
 #include "nanoarrow.h"
 #include "util.h"
 
-#ifdef HAS_ALTREP
-
 // This file defines all ALTREP classes used to speed up conversion
 // from an arrow_array to an R vector. Currently only string and
 // large string arrays are converted to ALTREP.
@@ -102,7 +100,10 @@ static SEXP nanoarrow_altstring_materialize(SEXP altrep_sexp) {
 }
 
 static void* nanoarrow_altrep_dataptr(SEXP altrep_sexp, Rboolean writable) {
-  return DATAPTR(nanoarrow_altstring_materialize(altrep_sexp));
+  // DATAPTR() can't be called in R >= 4.5.0 without a check NOTE, but
+  // there doesn't appear to be an alternative to support an ALTREP string
+  // class that can materialize.
+  return (void*)DATAPTR_RO(nanoarrow_altstring_materialize(altrep_sexp));
 }
 
 static const void* nanoarrow_altrep_dataptr_or_null(SEXP altrep_sexp) {
@@ -116,10 +117,7 @@ static const void* nanoarrow_altrep_dataptr_or_null(SEXP altrep_sexp) {
 
 static R_altrep_class_t nanoarrow_altrep_chr_cls;
 
-#endif
-
 static void register_nanoarrow_altstring(DllInfo* info) {
-#ifdef HAS_ALTREP
   nanoarrow_altrep_chr_cls =
       R_make_altstring_class("nanoarrow::altrep_chr", "nanoarrow", info);
   R_set_altrep_Length_method(nanoarrow_altrep_chr_cls, &nanoarrow_altrep_length);
@@ -143,13 +141,11 @@ static void register_nanoarrow_altstring(DllInfo* info) {
   //   indices.
   // - The duplicate method may be useful because it's used when setting attributes
   //   or unclassing the vector.
-#endif
 }
 
 void register_nanoarrow_altrep(DllInfo* info) { register_nanoarrow_altstring(info); }
 
 SEXP nanoarrow_c_make_altrep_chr(SEXP array_xptr) {
-#ifdef HAS_ALTREP
   SEXP schema_xptr = array_xptr_get_schema(array_xptr);
 
   // Create the converter
@@ -184,9 +180,6 @@ SEXP nanoarrow_c_make_altrep_chr(SEXP array_xptr) {
   MARK_NOT_MUTABLE(out);
   UNPROTECT(3);
   return out;
-#else
-  return R_NilValue;
-#endif
 }
 
 SEXP nanoarrow_c_is_altrep(SEXP x_sexp) {
