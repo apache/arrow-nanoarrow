@@ -103,7 +103,9 @@ TEST(NanoarrowIpcReader, InputStreamBuffer) {
 // if an assertion fails
 struct FileCloser {
   FileCloser(FILE* file) : file_(file) {}
-  ~FileCloser() { if (file_) fclose(file_); }
+  ~FileCloser() {
+    if (file_) fclose(file_);
+  }
   FILE* file_{};
 };
 
