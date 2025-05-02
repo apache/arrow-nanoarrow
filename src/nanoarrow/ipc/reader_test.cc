@@ -103,7 +103,7 @@ TEST(NanoarrowIpcReader, InputStreamBuffer) {
 // if an assertion fails
 struct FileCloser {
   FileCloser(FILE* file) : file_(file) {}
-  ~FileCloser() { fclose(file_); }
+  ~FileCloser() { if (file_) fclose(file_); }
   FILE* file_{};
 };
 
@@ -122,7 +122,9 @@ TEST(NanoarrowIpcReader, InputStreamFile) {
   uint8_t output_data[] = {0xff, 0xff, 0xff, 0xff, 0xff};
   int64_t size_read_bytes;
 
-  ASSERT_EQ(ArrowIpcInputStreamInitFile(&stream, file_ptr, 0), NANOARROW_OK);
+  ASSERT_EQ(ArrowIpcInputStreamInitFile(&stream, file_ptr, /*close_on_release=*/1),
+            NANOARROW_OK);
+  closer.file_ = nullptr;
 
   EXPECT_EQ(stream.read(&stream, output_data, 2, &size_read_bytes, nullptr),
             NANOARROW_OK);
