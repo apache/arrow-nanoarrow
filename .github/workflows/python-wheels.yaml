@@ -45,7 +45,7 @@ concurrency:
 
 jobs:
   sdist:
-    runs-on: "ubuntu-20.04"
+    runs-on: "ubuntu-latest"
     steps:
     - uses: actions/checkout@v4
       with:
@@ -98,8 +98,8 @@ jobs:
     strategy:
       matrix:
         config:
-          - {os: "ubuntu-20.04", label: "pyodide", platform: "pyodide", arch: "auto"}
-          - {os: "ubuntu-20.04", label: "linux", platform: "auto", arch: "auto"}
+          - {os: "ubuntu-latest", label: "pyodide", platform: "pyodide", arch: "auto"}
+          - {os: "ubuntu-latest", label: "linux", platform: "auto", arch: "auto"}
           - {os: "windows-2019", label: "windows-x86", platform: "auto", arch: "x86"}
           - {os: "windows-2019", label: "windows-amd64", platform: "auto", arch: "AMD64"}
           - {os: "macOS-13", label: "macOS", platform: "auto", arch: "auto"}
@@ -161,7 +161,7 @@ jobs:
   upload_nightly:
     needs: ["sdist", "wheels"]
     name: Upload nightly packages
-    runs-on: "ubuntu-20.04"
+    runs-on: "ubuntu-latest"
     if: github.repository == 'apache/arrow-nanoarrow' && github.ref == 'refs/heads/main'
     steps:
       - uses: actions/download-artifact@v4
