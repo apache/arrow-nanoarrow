@@ -43,8 +43,13 @@ class Maybe {
   const T& operator*() const { return something_; }
 
   friend inline bool operator==(Maybe l, Maybe r) {
-    if (l.is_something_ != r.is_something_) return false;
-    return l.is_something_ ? l.something_ == r.something_ : true;
+    if (l.is_something_) {
+      return r.is_something_ && l.something_ == r.something_;
+    } else if (r.is_something_) {
+      return l.is_something_ && l.something_ == r.something_;
+    } else {
+      return l.is_something_ == r.is_something_;
+    }
   }
   friend inline bool operator!=(Maybe l, Maybe r) { return !(l == r); }
 
