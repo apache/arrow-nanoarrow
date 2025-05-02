@@ -32,11 +32,11 @@ struct Nothing {};
 template <typename T>
 class Maybe {
  public:
-  Maybe() : nothing_(Nothing()), is_something_(false) {}
+  Maybe() : is_something_(false) {}
   Maybe(Nothing) : Maybe() {}
 
   Maybe(T something)  // NOLINT(google-explicit-constructor)
-      : something_(something), is_something_(true) {}
+      : is_something_(true), something_(something) {}
 
   explicit constexpr operator bool() const { return is_something_; }
 
@@ -60,11 +60,8 @@ class Maybe {
   // is_trivially_copyable<T>::value
   static_assert(std::is_trivially_destructible<T>::value, "");
 
-  union {
-    Nothing nothing_;
-    T something_;
-  };
-  bool is_something_;
+  bool is_something_{};
+  T something_{};
 };
 
 template <typename Get>
