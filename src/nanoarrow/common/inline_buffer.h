@@ -624,6 +624,9 @@ static inline void ArrowBitmapAppendInt8Unsafe(struct ArrowBitmap* bitmap,
     return;
   }
 
+  NANOARROW_DCHECK(bitmap->buffer.data != NULL);
+  NANOARROW_DCHECK(values != NULL);
+
   const int8_t* values_cursor = values;
   int64_t n_remaining = n_values;
   int64_t out_i_cursor = bitmap->size_bits;
@@ -670,6 +673,9 @@ static inline void ArrowBitmapAppendInt32Unsafe(struct ArrowBitmap* bitmap,
   if (n_values == 0) {
     return;
   }
+
+  NANOARROW_DCHECK(bitmap->buffer.data != NULL);
+  NANOARROW_DCHECK(values != NULL);
 
   const int32_t* values_cursor = values;
   int64_t n_remaining = n_values;
