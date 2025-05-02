@@ -31,8 +31,8 @@ TEST(NanoarrowIpcHppTest, NanoarrowIpcHppTestUniqueSharedBuffer) {
 
   nanoarrow::ipc::UniqueSharedBuffer shared_buffer2 = std::move(shared_buffer);
   EXPECT_NE(shared_buffer2->private_src.data, nullptr);
-  EXPECT_EQ(shared_buffer->private_src.data,
-            nullptr);  // NOLINT(clang-analyzer-cplusplus.Move)
+  EXPECT_EQ(shared_buffer->private_src.data,  // NOLINT(clang-analyzer-cplusplus.Move)
+            nullptr);
 }
 
 TEST(NanoarrowIpcHppTest, NanoarrowIpcHppTestUniqueDecoder) {
