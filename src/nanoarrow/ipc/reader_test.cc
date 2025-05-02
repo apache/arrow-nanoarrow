@@ -99,6 +99,14 @@ TEST(NanoarrowIpcReader, InputStreamBuffer) {
   stream.release(&stream);
 }
 
+// clang-tidy helpfully reminds us that file_ptr might not be released
+// if an assertion fails
+struct FileCloser {
+  FileCloser(FILE* file) : file_(file) {}
+  ~FileCloser() { fclose(file_); }
+  FILE* file_{};
+};
+
 TEST(NanoarrowIpcReader, InputStreamFile) {
   struct ArrowIpcInputStream stream;
   errno = EINVAL;
@@ -106,6 +114,7 @@ TEST(NanoarrowIpcReader, InputStreamFile) {
 
   uint8_t input_data[] = {0x01, 0x02, 0x03, 0x04, 0x05};
   FILE* file_ptr = tmpfile();
+  FileCloser closer{file_ptr};
   ASSERT_NE(file_ptr, nullptr);
   ASSERT_EQ(fwrite(input_data, 1, sizeof(input_data), file_ptr), sizeof(input_data));
   fseek(file_ptr, 0, SEEK_SET);
@@ -113,7 +122,7 @@ TEST(NanoarrowIpcReader, InputStreamFile) {
   uint8_t output_data[] = {0xff, 0xff, 0xff, 0xff, 0xff};
   int64_t size_read_bytes;
 
-  ASSERT_EQ(ArrowIpcInputStreamInitFile(&stream, file_ptr, 1), NANOARROW_OK);
+  ASSERT_EQ(ArrowIpcInputStreamInitFile(&stream, file_ptr, 0), NANOARROW_OK);
 
   EXPECT_EQ(stream.read(&stream, output_data, 2, &size_read_bytes, nullptr),
             NANOARROW_OK);

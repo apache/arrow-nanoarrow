@@ -51,8 +51,17 @@ TEST(NanoarrowIpcWriter, OutputStreamBuffer) {
             header + message + message + message + message);
 }
 
+// clang-tidy helpfully reminds us that file_ptr might not be released
+// if an assertion fails
+struct FileCloser {
+  FileCloser(FILE* file) : file_(file) {}
+  ~FileCloser() { fclose(file_); }
+  FILE* file_{};
+};
+
 TEST(NanoarrowIpcWriter, OutputStreamFile) {
   FILE* file_ptr = tmpfile();
+  FileCloser closer{file_ptr};
   ASSERT_NE(file_ptr, nullptr);
 
   // Start by writing some header
@@ -98,6 +107,7 @@ TEST(NanoarrowIpcWriter, OutputStreamFileError) {
 
   auto phony_path = __FILE__ + std::string(".phony");
   FILE* file_ptr = fopen(phony_path.c_str(), "rb");
+  FileCloser closer{file_ptr};
   ASSERT_EQ(file_ptr, nullptr);
   EXPECT_EQ(ArrowIpcOutputStreamInitFile(stream.get(), file_ptr, /*close_on_release=*/1),
             ENOENT);
