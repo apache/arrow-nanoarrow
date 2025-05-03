@@ -17,7 +17,7 @@
 
 #' Register Arrow extension types
 #'
-#' @param extension_name An Arrow extension type name (e.g., arrow.r.vctrs)
+#' @param extension_name An Arrow extension type name (e.g., nanoarrow.r.vctrs)
 #' @param extension_spec An extension specification inheriting from
 #'   'nanoarrow_extension_spec'.
 #' @param data Optional data to include in the extension type specification

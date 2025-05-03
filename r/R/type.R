@@ -49,7 +49,7 @@
 #' @param keys_sorted Use `TRUE` to assert that keys are sorted.
 #' @param storage_type For [na_extension()], the underlying value type.
 #' @param extension_name For [na_extension()], the extension name. This is
-#'   typically namespaced separated by dots (e.g., arrow.r.vctrs).
+#'   typically namespaced separated by dots (e.g., nanoarrow.r.vctrs).
 #' @param extension_metadata A string or raw vector defining extension metadata.
 #'   Most Arrow extension types define extension metadata as a JSON object.
 #' @param nullable Use `FALSE` to assert that this field cannot contain
