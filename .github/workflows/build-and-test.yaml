@@ -126,10 +126,9 @@ jobs:
           name: nanoarrow-memcheck
           path: build/Testing/Temporary/MemoryChecker.*.log
 
-  verify-meson:
-    name: meson-build
-    # Workaround until https://github.com/apache/arrow-nanoarrow/issues/663 is solved
-    # (after which we can use ubuntu-latest)
+  meson-build:
+    # Can't quite be ubuntu-latest yet
+    # https://github.com/apache/arrow-nanoarrow/issues/753
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
@@ -142,8 +141,10 @@ jobs:
           sudo apt-get update && sudo apt-get install -y gcovr ninja-build valgrind
 
       - name: Install meson
+        # Meson 1.8.0 breaks build
+        # https://github.com/apache/arrow-nanoarrow/issues/753
         run: |
-          python3 -m pip install meson
+          python3 -m pip install "meson<1.8.0"
 
       - name: Cache Arrow C++ Build
         id: cache-arrow-build
