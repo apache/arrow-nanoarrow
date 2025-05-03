@@ -200,10 +200,8 @@ ArrowErrorCode ArrowIpcSharedBufferInit(struct ArrowIpcSharedBuffer* shared,
 
 static void ArrowIpcSharedBufferClone(struct ArrowIpcSharedBuffer* shared,
                                       struct ArrowBuffer* shared_out) {
-  if (shared->private_src.data == NULL) {
+  if (shared->private_src.size_bytes == 0) {
     ArrowBufferInit(shared_out);
-    shared_out->size_bytes = shared_out->size_bytes;
-    shared_out->capacity_bytes = shared_out->capacity_bytes;
     return;
   }
 
