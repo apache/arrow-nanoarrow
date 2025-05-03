@@ -127,9 +127,7 @@ jobs:
           path: build/Testing/Temporary/MemoryChecker.*.log
 
   meson-build:
-    # Workaround until https://github.com/apache/arrow-nanoarrow/issues/663 is solved
-    # (after which we can use ubuntu-latest)
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
