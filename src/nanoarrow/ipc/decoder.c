@@ -262,6 +262,7 @@ ArrowErrorCode ArrowIpcDecoderSetDecompressor(struct ArrowIpcDecoder* decoder,
   }
 
   memcpy(&private_data->decompressor, decompressor, sizeof(struct ArrowIpcDecompressor));
+  decompressor->release = NULL;
   return NANOARROW_OK;
 }
 

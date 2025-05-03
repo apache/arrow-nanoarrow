@@ -558,6 +558,20 @@ TEST(NanoarrowIpcTest, NanoarrowIpcSetSchemaErrors) {
   ArrowIpcDecoderReset(&decoder);
 }
 
+TEST(NanoarrowIpcTest, NanoarrowIpcSetDecompressor) {
+  struct ArrowIpcDecoder decoder;
+  ASSERT_EQ(ArrowIpcDecoderInit(&decoder), NANOARROW_OK);
+
+  struct ArrowIpcDecompressor decompressor;
+  ASSERT_EQ(ArrowIpcSerialDecompressor(&decompressor), NANOARROW_OK);
+  EXPECT_NE(decompressor.release, nullptr);
+
+  ASSERT_EQ(ArrowIpcDecoderSetDecompressor(&decoder, &decompressor), NANOARROW_OK);
+  ASSERT_EQ(decompressor.release, nullptr);
+
+  ArrowIpcDecoderReset(&decoder);
+}
+
 #if defined(NANOARROW_BUILD_TESTS_WITH_ARROW)
 class ArrowTypeParameterizedTestFixture
     : public ::testing::TestWithParam<std::shared_ptr<arrow::DataType>> {
