@@ -21,7 +21,7 @@
 
 library(tidyverse)
 
-src_files <- list.files("src", "\\.(c|cpp)$", full.names = TRUE) %>%
+src_files <- list.files("src", "\\.(c|cc)$", full.names = TRUE) %>%
   setdiff("src/init.c")
 src_sources <- src_files %>% set_names() %>% map_chr(readr::read_file)
 
