@@ -1288,23 +1288,25 @@ static inline struct ArrowBufferView ArrowArrayViewGetBytesUnsafe(
 static inline void ArrowArrayViewGetIntervalUnsafe(
     const struct ArrowArrayView* array_view, int64_t i, struct ArrowInterval* out) {
   const uint8_t* data_view = array_view->buffer_views[1].data.as_uint8;
+  const int64_t offset = array_view->offset;
+  const int64_t index = offset + i;
   switch (array_view->storage_type) {
     case NANOARROW_TYPE_INTERVAL_MONTHS: {
       const size_t size = sizeof(int32_t);
-      memcpy(&out->months, data_view + i * size, sizeof(int32_t));
+      memcpy(&out->months, data_view + index * size, sizeof(int32_t));
       break;
     }
     case NANOARROW_TYPE_INTERVAL_DAY_TIME: {
       const size_t size = sizeof(int32_t) + sizeof(int32_t);
-      memcpy(&out->days, data_view + i * size, sizeof(int32_t));
-      memcpy(&out->ms, data_view + i * size + 4, sizeof(int32_t));
+      memcpy(&out->days, data_view + index * size, sizeof(int32_t));
+      memcpy(&out->ms, data_view + index * size + 4, sizeof(int32_t));
       break;
     }
     case NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO: {
       const size_t size = sizeof(int32_t) + sizeof(int32_t) + sizeof(int64_t);
-      memcpy(&out->months, data_view + i * size, sizeof(int32_t));
-      memcpy(&out->days, data_view + i * size + 4, sizeof(int32_t));
-      memcpy(&out->ns, data_view + i * size + 8, sizeof(int64_t));
+      memcpy(&out->months, data_view + index * size, sizeof(int32_t));
+      memcpy(&out->days, data_view + index * size + 4, sizeof(int32_t));
+      memcpy(&out->ns, data_view + index * size + 8, sizeof(int64_t));
       break;
     }
     default:
