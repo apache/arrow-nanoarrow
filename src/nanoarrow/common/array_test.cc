@@ -4353,6 +4353,10 @@ TEST(ArrayViewTest, ArrayViewTestGetIntervalYearMonth) {
   ArrowArrayViewGetIntervalUnsafe(&array_view, 3, &interval);
   EXPECT_EQ(interval.months, -42);
 
+  array_view.offset = 2;
+  ArrowArrayViewGetIntervalUnsafe(&array_view, 1, &interval);
+  EXPECT_EQ(interval.months, -42);
+
   ArrowArrayViewReset(&array_view);
   ArrowSchemaRelease(&schema);
   ArrowArrayRelease(&array);
@@ -4390,6 +4394,11 @@ TEST(ArrayViewTest, ArrayViewTestGetIntervalDayTime) {
   EXPECT_EQ(interval.days, -42);
   EXPECT_EQ(interval.ms, -42);
 
+  array_view.offset = 2;
+  ArrowArrayViewGetIntervalUnsafe(&array_view, 1, &interval);
+  EXPECT_EQ(interval.days, -42);
+  EXPECT_EQ(interval.ms, -42);
+
   ArrowArrayViewReset(&array_view);
   ArrowSchemaRelease(&schema);
   ArrowArrayRelease(&array);
@@ -4424,6 +4433,12 @@ TEST(ArrayViewTest, ArrayViewTestGetIntervalMonthDayNano) {
   EXPECT_EQ(interval.ns, 42);
 
   ArrowArrayViewGetIntervalUnsafe(&array_view, 3, &interval);
+  EXPECT_EQ(interval.months, -5);
+  EXPECT_EQ(interval.days, -12);
+  EXPECT_EQ(interval.ns, -42);
+
+  array_view.offset = 2;
+  ArrowArrayViewGetIntervalUnsafe(&array_view, 1, &interval);
   EXPECT_EQ(interval.months, -5);
   EXPECT_EQ(interval.days, -12);
   EXPECT_EQ(interval.ns, -42);
