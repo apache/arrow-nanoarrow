@@ -21,7 +21,7 @@ resolve_nanoarrow_extension(extension_name)
 \item{subclass}{A subclass for the extension type specification. Extension
 methods will dispatch on this object.}
 
-\item{extension_name}{An Arrow extension type name (e.g., arrow.r.vctrs)}
+\item{extension_name}{An Arrow extension type name (e.g., nanoarrow.r.vctrs)}
 
 \item{extension_spec}{An extension specification inheriting from
 'nanoarrow_extension_spec'.}

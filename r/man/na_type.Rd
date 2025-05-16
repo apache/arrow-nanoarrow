@@ -201,7 +201,7 @@ dictionary are meaningful.}
 \item{storage_type}{For \code{\link[=na_extension]{na_extension()}}, the underlying value type.}
 
 \item{extension_name}{For \code{\link[=na_extension]{na_extension()}}, the extension name. This is
-typically namespaced separated by dots (e.g., arrow.r.vctrs).}
+typically namespaced separated by dots (e.g., nanoarrow.r.vctrs).}
 
 \item{extension_metadata}{A string or raw vector defining extension metadata.
 Most Arrow extension types define extension metadata as a JSON object.}

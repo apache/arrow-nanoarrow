@@ -44,12 +44,12 @@ na_vctrs <- function(ptype, storage_type = NULL) {
     storage_type <- infer_nanoarrow_schema(vctrs::vec_data(ptype))
   }
 
-  na_extension(storage_type, "arrow.r.vctrs", serialize_ptype(ptype))
+  na_extension(storage_type, "nanoarrow.r.vctrs", serialize_ptype(ptype))
 }
 
 register_vctrs_extension <- function() {
   register_nanoarrow_extension(
-    "arrow.r.vctrs",
+    "nanoarrow.r.vctrs",
     nanoarrow_extension_spec(subclass = "nanoarrow_extension_spec_vctrs")
   )
 }
@@ -93,7 +93,7 @@ as_nanoarrow_array_extension.nanoarrow_extension_spec_vctrs <- function(
 
   nanoarrow_extension_array(
     storage_array,
-    "arrow.r.vctrs",
+    "nanoarrow.r.vctrs",
     schema$metadata[["ARROW:extension:metadata"]]
   )
 }
