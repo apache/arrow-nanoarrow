@@ -69,12 +69,8 @@ function main() {
     meson configure \
           -Dbuildtype=debugoptimized \
           -Db_sanitize="address,undefined" \
-          -Dtests=enabled \
-          -Dipc=enabled \
-          -Ddevice=enabled \
-          -Dbenchmarks=disabled \
-          -Db_coverage=false
-
+          -Db_coverage=false \
+          -Dauto_features=enabled
     meson compile
     meson test --print-errorlogs
 
@@ -82,11 +78,8 @@ function main() {
     meson configure \
           -Dbuildtype=debugoptimized \
           -Db_sanitize=none \
-          -Dtests=enabled \
-          -Dipc=enabled \
-          -Ddevice=enabled \
-          -Dbenchmarks=disabled \
-          -Db_coverage=false
+          -Db_coverage=false \
+          -Dauto_features=enabled
     meson compile
     meson test --wrap='valgrind --track-origins=yes --leak-check=full' --print-errorlog
 
@@ -94,11 +87,8 @@ function main() {
     meson configure \
           -Dbuildtype=release \
           -Db_sanitize=none \
-          -Dtests=disabled \
-          -Dipc=enabled \
-          -Ddevice=enabled \
-          -Dbenchmarks=enabled \
-          -Db_coverage=false
+          -Db_coverage=false \
+          -Dauto_features=enabled
     meson compile
     meson test --benchmark --print-errorlogs
 
@@ -106,11 +96,8 @@ function main() {
     meson configure \
           -Dbuildtype=release \
           -Db_sanitize=none \
-          -Dtests=enabled \
-          -Dipc=enabled \
-          -Ddevice=enabled \
-          -Dbenchmarks=disabled \
-          -Db_coverage=true
+          -Db_coverage=true \
+          -Dauto_features=enabled
 
     meson compile
     meson test --print-errorlogs
