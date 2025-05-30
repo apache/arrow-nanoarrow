@@ -24,6 +24,11 @@ from struct import calcsize
 from sys import byteorder as sys_byteorder
 
 
+# The default changed in Cython 3.1.0 such that the member of an
+# enum are no longer automatically copied to the parent module.
+globals().update(getattr(CArrowType, '__members__'))
+
+
 cdef equal(int type_id1, int type_id2):
     """Check if two type identifiers are equal
 
