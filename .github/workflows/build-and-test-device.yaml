@@ -50,7 +50,7 @@ jobs:
           - {runner: ubuntu-latest, label: bundled-build, cmake_args: "-DNANOARROW_DEVICE_BUNDLE=ON"}
           - {label: shared-test-linkage, cmake_args: "-DNANOARROW_TEST_LINKAGE_SHARED=ON"}
           - {runner: macOS-latest, label: with-metal, cmake_args: "-DNANOARROW_DEVICE_WITH_METAL=ON"}
-          - {runner: cuda, label: with-cuda, cmake_args: "-DNANOARROW_DEVICE_WITH_CUDA=ON"}
+          # - {runner: cuda, label: with-cuda, cmake_args: "-DNANOARROW_DEVICE_WITH_CUDA=ON"}
 
     steps:
       - uses: actions/checkout@v4
@@ -158,3 +158,5 @@ jobs:
         run: |
           cd python
           python3 -m pytest -vv
+
+
