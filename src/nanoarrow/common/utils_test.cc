@@ -260,9 +260,9 @@ TEST(DecimalTest, Decimal32Test) {
   struct ArrowDecimal decimal;
   ArrowDecimalInit(&decimal, 32, 8, 3);
 
-  EXPECT_EQ(decimal.n_words, 0);
-  EXPECT_EQ(decimal.precision, 8);
-  EXPECT_EQ(decimal.scale, 3);
+  ASSERT_EQ(decimal.n_words, 0);
+  ASSERT_EQ(decimal.precision, 8);
+  ASSERT_EQ(decimal.scale, 3);
 
 #if defined(NANOARROW_BUILD_TESTS_WITH_ARROW) && ARROW_VERSION_MAJOR >= 18
   auto dec_pos = *Decimal32::FromString("12.345");
@@ -279,6 +279,7 @@ TEST(DecimalTest, Decimal32Test) {
   EXPECT_EQ(ArrowDecimalSign(&decimal), 1);
 #if defined(NANOARROW_BUILD_TESTS_WITH_ARROW) && ARROW_VERSION_MAJOR >= 18
   EXPECT_EQ(memcmp(decimal.words, bytes_pos, sizeof(bytes_pos)), 0);
+  assert(decimal.n_words == 0);
   ArrowDecimalSetBytes(&decimal, bytes_pos);
   EXPECT_EQ(memcmp(decimal.words, bytes_pos, sizeof(bytes_pos)), 0);
 #endif
@@ -288,6 +289,7 @@ TEST(DecimalTest, Decimal32Test) {
   EXPECT_EQ(ArrowDecimalSign(&decimal), -1);
 #if defined(NANOARROW_BUILD_TESTS_WITH_ARROW) && ARROW_VERSION_MAJOR >= 18
   EXPECT_EQ(memcmp(decimal.words, bytes_neg, sizeof(bytes_neg)), 0);
+  assert(decimal.n_words == 0);
   ArrowDecimalSetBytes(&decimal, bytes_neg);
   EXPECT_EQ(memcmp(decimal.words, bytes_neg, sizeof(bytes_neg)), 0);
 #endif
