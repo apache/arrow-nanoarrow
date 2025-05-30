@@ -152,20 +152,30 @@ else
     zlib_dep = disabler()
 endif
 
-needs_device = get_option('device').enabled() or get_option('metal').enabled() or get_option(
-    'cuda',
-).enabled()
-if needs_device
-    device_deps = [nanoarrow_dep]
-    device_srcs = ['src/nanoarrow/device/device.c']
-    device_defines = []
-
-    if get_option('metal').enabled()
+needs_metal = false
+metal_dep = disabler()
+metal_cpp_dep = disabler()
+if get_option('metal').enabled()
+    if host_machine.system() == 'darwin'
+        needs_metal = true
         metal_dep = dependency(
             'appleframeworks',
             modules: ['Foundation', 'Metal'],
         )
         metal_cpp_dep = dependency('metal-cpp')
+    else
+        warning('metal option enabled on a non-darwin platform - ignored!')
+    endif
+endif
+
+needs_device = get_option('device').enabled() or get_option('cuda').enabled() or needs_metal
+
+if needs_device
+    device_deps = [nanoarrow_dep]
+    device_srcs = ['src/nanoarrow/device/device.c']
+    device_defines = []
+
+    if needs_metal
         device_deps += metal_dep
         device_deps += metal_cpp_dep
         device_srcs += 'src/nanoarrow/device/metal.cc'
@@ -173,7 +183,7 @@ if needs_device
     endif
 
     if get_option('cuda').enabled()
-        error('CUDA support with the Meson build system is not implemented')
+        warning('cuda option enabled but not implemented in Meson config!')
     endif
 
     install_headers('src/nanoarrow/nanoarrow_device.h', subdir: 'nanoarrow')
@@ -244,12 +254,12 @@ if get_option('tests').enabled()
     # https://mesonbuild.com/Unit-tests.html#coverage
 
     arrow_dep = dependency('arrow', include_type: 'system', required: false)
-    if get_option('tests_with_arrow').enabled() and not arrow_dep.found()
-        error('tests_with_arrow=true but could not find Arrow')
-    endif
-
     if get_option('tests_with_arrow').enabled()
-        test_cpp_args += ['-DNANOARROW_BUILD_TESTS_WITH_ARROW']
+        if arrow_dep.found()
+            test_cpp_args += ['-DNANOARROW_BUILD_TESTS_WITH_ARROW']
+        else
+            warning('tests_with_arrow option enabled but could not find Arrow')
+        endif
     endif
 
     gtest_dep = dependency('gtest_main')
@@ -356,19 +366,17 @@ foreach device_test : device_tests
     test(device_test.replace('_', '-'), exc)
 endforeach
 
-if get_option('metal').enabled()
-    exc = executable(
-        'nanoarrow-device-metal-test',
-        'src/nanoarrow/device/metal_test.cc',
-        dependencies: [
-            nanoarrow_device_dep,
-            nanoarrow_testing_dep,
-            gtest_dep,
-            metal_cpp_dep,
-        ],
-    )
-    test('nanoarrow-device-metal', exc)
-endif
+exc = executable(
+    'nanoarrow-device-metal-test',
+    'src/nanoarrow/device/metal_test.cc',
+    dependencies: [
+        nanoarrow_device_dep,
+        nanoarrow_testing_dep,
+        gtest_dep,
+        metal_cpp_dep,
+    ],
+)
+test('nanoarrow-device-metal', exc)
 
 if get_option('benchmarks').enabled()
     subdir('dev/benchmarks')
