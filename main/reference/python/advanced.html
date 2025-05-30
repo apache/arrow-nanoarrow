@@ -386,14 +386,388 @@
                   
   <section id="low-level-helpers">
 <h1>Low-level Helpers<a class="headerlink" href="#low-level-helpers" title="Link to this heading">#</a></h1>
-<section id="c-schema-utilities">
-<h2>C Schema Utilities<a class="headerlink" href="#c-schema-utilities" title="Link to this heading">#</a></h2>
+<section id="module-nanoarrow.c_schema">
+<span id="c-schema-utilities"></span><h2>C Schema Utilities<a class="headerlink" href="#module-nanoarrow.c_schema" title="Link to this heading">#</a></h2>
+<p>Arrow and nanoarrow C structure wrappers</p>
+<p>These classes and their constructors wrap Arrow C Data/Stream interface structures
+(i.e., <code class="docutils literal notranslate"><span class="pre">ArrowArray</span></code>, <code class="docutils literal notranslate"><span class="pre">ArrowSchema</span></code>, and <code class="docutils literal notranslate"><span class="pre">ArrowArrayStream</span></code>) and the
+nanoarrow C library structures that help deserialize their content (i.e., the
+<code class="docutils literal notranslate"><span class="pre">ArrowSchemaView</span></code> and <code class="docutils literal notranslate"><span class="pre">ArrowArrayView</span></code>). These wrappers are currently implemented
+in Cython and their scope is limited to lifecycle management and member access as
+Python objects.</p>
+<dl class="py function">
+<dt class="sig sig-object py" id="nanoarrow.c_schema.allocate_c_schema">
+<span class="sig-name descname"><span class="pre">allocate_c_schema</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">CSchema</span></span></span><a class="headerlink" href="#nanoarrow.c_schema.allocate_c_schema" title="Link to this definition">#</a></dt>
+<dd><p>Allocate an uninitialized ArrowSchema wrapper</p>
+<section id="examples">
+<h3>Examples<a class="headerlink" href="#examples" title="Link to this heading">#</a></h3>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span><span class="w"> </span><span class="nn">pyarrow</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pa</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">nanoarrow.c_schema</span><span class="w"> </span><span class="kn">import</span> <span class="n">allocate_c_schema</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">schema</span> <span class="o">=</span> <span class="n">allocate_c_schema</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">pa</span><span class="o">.</span><span class="n">int32</span><span class="p">()</span><span class="o">.</span><span class="n">_export_to_c</span><span class="p">(</span><span class="n">schema</span><span class="o">.</span><span class="n">_addr</span><span class="p">())</span>
+</pre></div>
+</div>
 </section>
-<section id="c-array-utilities">
-<h2>C Array Utilities<a class="headerlink" href="#c-array-utilities" title="Link to this heading">#</a></h2>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="nanoarrow.c_schema.c_schema">
+<span class="sig-name descname"><span class="pre">c_schema</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">obj</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">CSchema</span></span></span><a class="headerlink" href="#nanoarrow.c_schema.c_schema" title="Link to this definition">#</a></dt>
+<dd><p>ArrowSchema wrapper</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">CSchema</span></code> class provides a Python-friendly interface to access the fields
+of an <code class="docutils literal notranslate"><span class="pre">ArrowSchema</span></code> as defined in the Arrow C Data interface. These objects
+are created using <cite>nanoarrow.c_schema()</cite>, which accepts any schema or
+data type-like object according to the Arrow PyCapsule interface.</p>
+<p>This Python wrapper allows access to schema struct members but does not
+automatically deserialize their content: use <a class="reference internal" href="#nanoarrow.c_schema.c_schema_view" title="nanoarrow.c_schema.c_schema_view"><code class="xref py py-func docutils literal notranslate"><span class="pre">c_schema_view()</span></code></a> to validate
+and deserialize the content into a more easily inspectable object.</p>
+<p>Note that the <code class="xref py py-class docutils literal notranslate"><span class="pre">CSchema</span></code> objects returned by <code class="docutils literal notranslate"><span class="pre">.child()</span></code> hold strong
+references to the original <cite>ArrowSchema</cite> to avoid copies while inspecting an
+imported structure.</p>
+<section id="id1">
+<h3>Examples<a class="headerlink" href="#id1" title="Link to this heading">#</a></h3>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span><span class="w"> </span><span class="nn">pyarrow</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pa</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span><span class="w"> </span><span class="nn">nanoarrow</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">na</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">schema</span> <span class="o">=</span> <span class="n">na</span><span class="o">.</span><span class="n">c_schema</span><span class="p">(</span><span class="n">pa</span><span class="o">.</span><span class="n">int32</span><span class="p">())</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">schema</span><span class="o">.</span><span class="n">is_valid</span><span class="p">()</span>
+<span class="go">True</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">schema</span><span class="o">.</span><span class="n">format</span>
+<span class="go">&#39;i&#39;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">schema</span><span class="o">.</span><span class="n">name</span>
+<span class="go">&#39;&#39;</span>
+</pre></div>
+</div>
 </section>
-<section id="c-arraystream-utilities">
-<h2>C ArrayStream Utilities<a class="headerlink" href="#c-arraystream-utilities" title="Link to this heading">#</a></h2>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="nanoarrow.c_schema.c_schema_view">
+<span class="sig-name descname"><span class="pre">c_schema_view</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">obj</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">CSchemaView</span></span></span><a class="headerlink" href="#nanoarrow.c_schema.c_schema_view" title="Link to this definition">#</a></dt>
+<dd><p>ArrowSchemaView wrapper</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">ArrowSchemaView</span></code> is a nanoarrow C library structure that facilitates
+access to the deserialized content of an <code class="docutils literal notranslate"><span class="pre">ArrowSchema</span></code> (e.g., parameter values for
+parameterized types). This wrapper extends that facility to Python.</p>
+<section id="id2">
+<h3>Examples<a class="headerlink" href="#id2" title="Link to this heading">#</a></h3>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span><span class="w"> </span><span class="nn">pyarrow</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pa</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span><span class="w"> </span><span class="nn">nanoarrow</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">na</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">nanoarrow.c_schema</span><span class="w"> </span><span class="kn">import</span> <span class="n">c_schema_view</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">schema</span> <span class="o">=</span> <span class="n">na</span><span class="o">.</span><span class="n">c_schema</span><span class="p">(</span><span class="n">pa</span><span class="o">.</span><span class="n">decimal128</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">3</span><span class="p">))</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">schema_view</span> <span class="o">=</span> <span class="n">c_schema_view</span><span class="p">(</span><span class="n">schema</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">schema_view</span><span class="o">.</span><span class="n">type</span>
+<span class="go">&#39;decimal128&#39;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">schema_view</span><span class="o">.</span><span class="n">decimal_bitwidth</span>
+<span class="go">128</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">schema_view</span><span class="o">.</span><span class="n">decimal_precision</span>
+<span class="go">10</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">schema_view</span><span class="o">.</span><span class="n">decimal_scale</span>
+<span class="go">3</span>
+</pre></div>
+</div>
+</section>
+</dd></dl>
+
+</section>
+<section id="module-nanoarrow.c_array">
+<span id="c-array-utilities"></span><h2>C Array Utilities<a class="headerlink" href="#module-nanoarrow.c_array" title="Link to this heading">#</a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="nanoarrow.c_array.ArrayBuilder">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">ArrayBuilder</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">schema</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#nanoarrow.c_array.ArrayBuilder" title="Link to this definition">#</a></dt>
+<dd><p>Internal utility to build CArrays from various types of input</p>
+<p>This class and its subclasses are designed to help separate the code
+that actually builds a CArray from the code that chooses the strategy
+used to do the building.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="nanoarrow.c_array.ArrayBuilder.infer_schema">
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">infer_schema</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">obj</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">CSchema</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#nanoarrow.c_array.ArrayBuilder.infer_schema" title="Link to this definition">#</a></dt>
+<dd><p>Infer the Arrow data type from a target object</p>
+<p>Returns the type as a <code class="xref py py-class docutils literal notranslate"><span class="pre">CSchema</span></code> and an object that can be
+consumed in the same way by append() in the event it had to be
+modified to infer its type (e.g., for an iterable, it would be
+necessary to consume the first element from the original iterator).</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="nanoarrow.c_array.ArrayFromIterableBuilder">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">ArrayFromIterableBuilder</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">schema</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#nanoarrow.c_array.ArrayFromIterableBuilder" title="Link to this definition">#</a></dt>
+<dd><p>Build a CArray from an iterable of scalar objects</p>
+<p>This builder converts an iterable to a CArray using some heuristics to pick
+the fastest available method for converting to a particular type of array.
+Briefly, the methods are (1) ArrowArrayAppendXXX() functions from the C
+library (string, binary), (2) array.array() (integer/float except float16),
+(3) CBufferBuilder.write_elements() (everything else).</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="nanoarrow.c_array.ArrayFromIterableBuilder.infer_schema">
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">infer_schema</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">obj</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">CBuffer</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">CSchema</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#nanoarrow.c_array.ArrayFromIterableBuilder.infer_schema" title="Link to this definition">#</a></dt>
+<dd><p>Infer the Arrow data type from a target object</p>
+<p>Returns the type as a <code class="xref py py-class docutils literal notranslate"><span class="pre">CSchema</span></code> and an object that can be
+consumed in the same way by append() in the event it had to be
+modified to infer its type (e.g., for an iterable, it would be
+necessary to consume the first element from the original iterator).</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="nanoarrow.c_array.ArrayFromPyBufferBuilder">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">ArrayFromPyBufferBuilder</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">schema</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#nanoarrow.c_array.ArrayFromPyBufferBuilder" title="Link to this definition">#</a></dt>
+<dd><p>Build a CArray from a Python Buffer</p>
+<p>This builder converts a Python buffer (e.g., numpy array, bytes, array.array)
+to a CArray (without copying the contents of the buffer).</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="nanoarrow.c_array.ArrayFromPyBufferBuilder.infer_schema">
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">infer_schema</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">obj</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">CBuffer</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">CSchema</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#nanoarrow.c_array.ArrayFromPyBufferBuilder.infer_schema" title="Link to this definition">#</a></dt>
+<dd><p>Infer the Arrow data type from a target object</p>
+<p>Returns the type as a <code class="xref py py-class docutils literal notranslate"><span class="pre">CSchema</span></code> and an object that can be
+consumed in the same way by append() in the event it had to be
+modified to infer its type (e.g., for an iterable, it would be
+necessary to consume the first element from the original iterator).</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="nanoarrow.c_array.EmptyArrayBuilder">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">EmptyArrayBuilder</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">schema</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#nanoarrow.c_array.EmptyArrayBuilder" title="Link to this definition">#</a></dt>
+<dd><p>Build an empty CArray of any type</p>
+<p>This builder accepts any empty input and produces a valid length zero
+array as output.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="nanoarrow.c_array.EmptyArrayBuilder.infer_schema">
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">infer_schema</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">obj</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">CSchema</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#nanoarrow.c_array.EmptyArrayBuilder.infer_schema" title="Link to this definition">#</a></dt>
+<dd><p>Infer the Arrow data type from a target object</p>
+<p>Returns the type as a <code class="xref py py-class docutils literal notranslate"><span class="pre">CSchema</span></code> and an object that can be
+consumed in the same way by append() in the event it had to be
+modified to infer its type (e.g., for an iterable, it would be
+necessary to consume the first element from the original iterator).</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="nanoarrow.c_array.allocate_c_array">
+<span class="sig-name descname"><span class="pre">allocate_c_array</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">schema</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">CArray</span></span></span><a class="headerlink" href="#nanoarrow.c_array.allocate_c_array" title="Link to this definition">#</a></dt>
+<dd><p>Allocate an uninitialized ArrowArray</p>
+<section id="id3">
+<h3>Examples<a class="headerlink" href="#id3" title="Link to this heading">#</a></h3>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span><span class="w"> </span><span class="nn">pyarrow</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pa</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">nanoarrow.c_array</span><span class="w"> </span><span class="kn">import</span> <span class="n">allocate_c_array</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">array</span> <span class="o">=</span> <span class="n">allocate_c_array</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">pa</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">])</span><span class="o">.</span><span class="n">_export_to_c</span><span class="p">(</span><span class="n">array</span><span class="o">.</span><span class="n">_addr</span><span class="p">())</span>
+</pre></div>
+</div>
+</section>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="nanoarrow.c_array.c_array">
+<span class="sig-name descname"><span class="pre">c_array</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">obj</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">schema</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">CArray</span></span></span><a class="headerlink" href="#nanoarrow.c_array.c_array" title="Link to this definition">#</a></dt>
+<dd><p>ArrowArray wrapper</p>
+<p>This class provides a user-facing interface to access the fields of an ArrowArray
+as defined in the Arrow C Data interface, holding an optional reference to a
+<code class="xref py py-class docutils literal notranslate"><span class="pre">CSchema</span></code> that can be used to safely deserialize the content.</p>
+<p>These objects are created using <a class="reference internal" href="#nanoarrow.c_array.c_array" title="nanoarrow.c_array.c_array"><code class="xref py py-func docutils literal notranslate"><span class="pre">c_array()</span></code></a>, which accepts any array-like
+object according to the Arrow PyCapsule interface, Python buffer protocol,
+or iterable of Python objects.</p>
+<p>This Python wrapper allows access to array fields but does not automatically
+deserialize their content: use <a class="reference internal" href="#nanoarrow.c_array.c_array_view" title="nanoarrow.c_array.c_array_view"><code class="xref py py-func docutils literal notranslate"><span class="pre">c_array_view()</span></code></a> to validate and deserialize
+the content into a more easily inspectable object.</p>
+<p>Note that the <code class="xref py py-class docutils literal notranslate"><span class="pre">CArray</span></code> objects returned by <code class="docutils literal notranslate"><span class="pre">.child()</span></code> hold strong
+references to the original <code class="docutils literal notranslate"><span class="pre">ArrowArray</span></code> to avoid copies while inspecting an
+imported structure.</p>
+<section id="parameters">
+<h3>Parameters<a class="headerlink" href="#parameters" title="Link to this heading">#</a></h3>
+<dl class="simple">
+<dt>obj<span class="classifier">array-like</span></dt><dd><p>An object supporting the Arrow PyCapsule interface, the Python buffer
+protocol, or an iterable of Python objects.</p>
+</dd>
+<dt>schema<span class="classifier">schema-like or None</span></dt><dd><p>A schema-like object as sanitized by <code class="xref py py-func docutils literal notranslate"><span class="pre">c_schema()</span></code> or None. This value
+will be used to request a data type from <code class="docutils literal notranslate"><span class="pre">obj</span></code>; however, the conversion
+is best-effort (i.e., the data type of the returned <code class="docutils literal notranslate"><span class="pre">CArray</span></code> may be
+different than <code class="docutils literal notranslate"><span class="pre">schema</span></code>).</p>
+</dd>
+</dl>
+</section>
+<section id="id4">
+<h3>Examples<a class="headerlink" href="#id4" title="Link to this heading">#</a></h3>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span><span class="w"> </span><span class="nn">nanoarrow</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">na</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># Create from iterable</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">array</span> <span class="o">=</span> <span class="n">na</span><span class="o">.</span><span class="n">c_array</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span> <span class="n">na</span><span class="o">.</span><span class="n">int32</span><span class="p">())</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># Create from Python buffer (e.g., numpy array)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">array</span> <span class="o">=</span> <span class="n">na</span><span class="o">.</span><span class="n">c_array</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">]))</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># Create from Arrow PyCapsule (e.g., pyarrow array)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span><span class="w"> </span><span class="nn">pyarrow</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pa</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">array</span> <span class="o">=</span> <span class="n">na</span><span class="o">.</span><span class="n">c_array</span><span class="p">(</span><span class="n">pa</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">]))</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="c1"># Access array fields</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">array</span><span class="o">.</span><span class="n">length</span>
+<span class="go">3</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">array</span><span class="o">.</span><span class="n">null_count</span>
+<span class="go">0</span>
+</pre></div>
+</div>
+</section>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="nanoarrow.c_array.c_array_from_buffers">
+<span class="sig-name descname"><span class="pre">c_array_from_buffers</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">schema</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">length</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">buffers</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Iterable</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">null_count</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">-1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">offset</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">children</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Iterable</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">()</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">validation_level</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Literal</span><span class="p"><span class="pre">[</span></span><span class="pre">None</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'full'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'default'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'minimal'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'none'</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">move</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Device</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">CArray</span></span></span><a class="headerlink" href="#nanoarrow.c_array.c_array_from_buffers" title="Link to this definition">#</a></dt>
+<dd><p>Create an ArrowArray wrapper from components</p>
+<p>Given a schema, build an ArrowArray buffer-wise. This allows almost any array
+to be assembled; however, requires some knowledge of the Arrow Columnar
+specification. This function will do its best to validate the sizes and
+content of buffers according to <code class="docutils literal notranslate"><span class="pre">validation_level</span></code>; however, not all
+types of arrays can currently be validated when constructed in this way.</p>
+<section id="id5">
+<h3>Parameters<a class="headerlink" href="#id5" title="Link to this heading">#</a></h3>
+<dl class="simple">
+<dt>schema<span class="classifier">schema-like</span></dt><dd><p>The data type of the desired array as sanitized by <code class="xref py py-func docutils literal notranslate"><span class="pre">c_schema()</span></code>.</p>
+</dd>
+<dt>length<span class="classifier">int</span></dt><dd><p>The length of the output array.</p>
+</dd>
+<dt>buffers<span class="classifier">Iterable of buffer-like or None</span></dt><dd><p>An iterable of buffers as sanitized by <code class="xref py py-func docutils literal notranslate"><span class="pre">c_buffer()</span></code>. Any object
+supporting the Python Buffer protocol is accepted. Buffer data types
+are not checked. A buffer value of <code class="docutils literal notranslate"><span class="pre">None</span></code> will skip setting a buffer
+(i.e., that buffer will be of length zero and its pointer will
+be <code class="docutils literal notranslate"><span class="pre">NULL</span></code>).</p>
+</dd>
+<dt>null_count<span class="classifier">int, optional</span></dt><dd><p>The number of null values, if known in advance. If -1 (the default),
+the null count will be calculated based on the validity bitmap. If
+the validity bitmap was set to <code class="docutils literal notranslate"><span class="pre">None</span></code>, the calculated null count
+will be zero.</p>
+</dd>
+<dt>offset<span class="classifier">int, optional</span></dt><dd><p>The logical offset from the start of the array.</p>
+</dd>
+<dt>children<span class="classifier">Iterable of array-like</span></dt><dd><p>An iterable of arrays used to set child fields of the array. Can contain
+any object accepted by <a class="reference internal" href="#nanoarrow.c_array.c_array" title="nanoarrow.c_array.c_array"><code class="xref py py-func docutils literal notranslate"><span class="pre">c_array()</span></code></a>. Must contain the exact number of
+required children as specifed by <code class="docutils literal notranslate"><span class="pre">schema</span></code>.</p>
+</dd>
+<dt>validation_level: None or str, optional</dt><dd><p>One of “none” (no check), “minimal” (check buffer sizes that do not require
+dereferencing buffer content), “default” (check all buffer sizes), or “full”
+(check all buffer sizes and all buffer content). The default, <code class="docutils literal notranslate"><span class="pre">None</span></code>,
+will validate at the “default” level where possible.</p>
+</dd>
+<dt>move<span class="classifier">bool, optional</span></dt><dd><p>Use <code class="docutils literal notranslate"><span class="pre">True</span></code> to move ownership of any input buffers or children to the
+output array.</p>
+</dd>
+<dt>device<span class="classifier">Device, optional</span></dt><dd><p>An explicit device to use when constructing this array. If specified,
+this function will construct a <code class="xref py py-class docutils literal notranslate"><span class="pre">CDeviceArray</span></code>; if unspecified,
+this function will construct a <code class="xref py py-class docutils literal notranslate"><span class="pre">CArray</span></code> on the CPU device.</p>
+</dd>
+</dl>
+</section>
+<section id="id6">
+<h3>Examples<a class="headerlink" href="#id6" title="Link to this heading">#</a></h3>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span><span class="w"> </span><span class="nn">nanoarrow</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">na</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">c_array</span> <span class="o">=</span> <span class="n">na</span><span class="o">.</span><span class="n">c_array_from_buffers</span><span class="p">(</span><span class="n">na</span><span class="o">.</span><span class="n">uint8</span><span class="p">(),</span> <span class="mi">5</span><span class="p">,</span> <span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="sa">b</span><span class="s2">&quot;12345&quot;</span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">na</span><span class="o">.</span><span class="n">Array</span><span class="p">(</span><span class="n">c_array</span><span class="p">)</span><span class="o">.</span><span class="n">inspect</span><span class="p">()</span>
+<span class="go">&lt;ArrowArray uint8&gt;</span>
+<span class="go">- length: 5</span>
+<span class="go">- offset: 0</span>
+<span class="go">- null_count: 0</span>
+<span class="go">- buffers[2]:</span>
+<span class="go">  - validity &lt;bool[0 b] &gt;</span>
+<span class="go">  - data &lt;uint8[5 b] 49 50 51 52 53&gt;</span>
+<span class="go">- dictionary: NULL</span>
+<span class="go">- children[0]:</span>
+</pre></div>
+</div>
+</section>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="nanoarrow.c_array.c_array_view">
+<span class="sig-name descname"><span class="pre">c_array_view</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">obj</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">schema</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">CArrayView</span></span></span><a class="headerlink" href="#nanoarrow.c_array.c_array_view" title="Link to this definition">#</a></dt>
+<dd><p>ArrowArrayView wrapper</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">ArrowArrayView</span></code> is a nanoarrow C library structure that provides
+structured access to buffers addresses, buffer sizes, and buffer
+data types. The buffer data is usually propagated from an ArrowArray
+but can also be propagated from other types of objects (e.g., serialized
+IPC). The offset and length of this view are independent of its parent
+(i.e., this object can also represent a slice of its parent).</p>
+<section id="id7">
+<h3>Examples<a class="headerlink" href="#id7" title="Link to this heading">#</a></h3>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span><span class="w"> </span><span class="nn">pyarrow</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pa</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span><span class="w"> </span><span class="nn">nanoarrow</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">na</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">nanoarrow.c_array</span><span class="w"> </span><span class="kn">import</span> <span class="n">c_array_view</span>
+<span class="gp">&gt;&gt;&gt;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">array</span> <span class="o">=</span> <span class="n">na</span><span class="o">.</span><span class="n">c_array</span><span class="p">(</span><span class="n">pa</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="s2">&quot;one&quot;</span><span class="p">,</span> <span class="s2">&quot;two&quot;</span><span class="p">,</span> <span class="s2">&quot;three&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">]))</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">array_view</span> <span class="o">=</span> <span class="n">c_array_view</span><span class="p">(</span><span class="n">array</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">array_view</span><span class="o">.</span><span class="n">buffer</span><span class="p">(</span><span class="mi">1</span><span class="p">))</span>
+<span class="go">array([ 0,  3,  6, 11, 11], dtype=int32)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">array_view</span><span class="o">.</span><span class="n">buffer</span><span class="p">(</span><span class="mi">2</span><span class="p">))</span>
+<span class="go">array([b&#39;o&#39;, b&#39;n&#39;, b&#39;e&#39;, b&#39;t&#39;, b&#39;w&#39;, b&#39;o&#39;, b&#39;t&#39;, b&#39;h&#39;, b&#39;r&#39;, b&#39;e&#39;, b&#39;e&#39;],</span>
+<span class="go">      dtype=&#39;|S1&#39;)</span>
+</pre></div>
+</div>
+</section>
+</dd></dl>
+
+</section>
+<section id="module-nanoarrow.c_array_stream">
+<span id="c-arraystream-utilities"></span><h2>C ArrayStream Utilities<a class="headerlink" href="#module-nanoarrow.c_array_stream" title="Link to this heading">#</a></h2>
+<dl class="py function">
+<dt class="sig sig-object py" id="nanoarrow.c_array_stream.allocate_c_array_stream">
+<span class="sig-name descname"><span class="pre">allocate_c_array_stream</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">CArrayStream</span></span></span><a class="headerlink" href="#nanoarrow.c_array_stream.allocate_c_array_stream" title="Link to this definition">#</a></dt>
+<dd><p>Allocate an uninitialized ArrowArrayStream wrapper</p>
+<section id="id8">
+<h3>Examples<a class="headerlink" href="#id8" title="Link to this heading">#</a></h3>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span><span class="w"> </span><span class="nn">pyarrow</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pa</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">nanoarrow.c_array_stream</span><span class="w"> </span><span class="kn">import</span> <span class="n">allocate_c_array_stream</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">pa_column</span> <span class="o">=</span> <span class="n">pa</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span> <span class="n">pa</span><span class="o">.</span><span class="n">int32</span><span class="p">())</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">pa_batch</span> <span class="o">=</span> <span class="n">pa</span><span class="o">.</span><span class="n">record_batch</span><span class="p">([</span><span class="n">pa_column</span><span class="p">],</span> <span class="n">names</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;col1&quot;</span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">pa_reader</span> <span class="o">=</span> <span class="n">pa</span><span class="o">.</span><span class="n">RecordBatchReader</span><span class="o">.</span><span class="n">from_batches</span><span class="p">(</span><span class="n">pa_batch</span><span class="o">.</span><span class="n">schema</span><span class="p">,</span> <span class="p">[</span><span class="n">pa_batch</span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">array_stream</span> <span class="o">=</span> <span class="n">allocate_c_array_stream</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">pa_reader</span><span class="o">.</span><span class="n">_export_to_c</span><span class="p">(</span><span class="n">array_stream</span><span class="o">.</span><span class="n">_addr</span><span class="p">())</span>
+</pre></div>
+</div>
+</section>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="nanoarrow.c_array_stream.c_array_stream">
+<span class="sig-name descname"><span class="pre">c_array_stream</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">obj</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">schema</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">CArrayStream</span></span></span><a class="headerlink" href="#nanoarrow.c_array_stream.c_array_stream" title="Link to this definition">#</a></dt>
+<dd><p>ArrowArrayStream wrapper</p>
+<p>This class provides a user-facing interface to access the fields of
+an ArrowArrayStream as defined in the Arrow C Stream interface.
+These objects are usually created using <cite>nanoarrow.c_array_stream()</cite>.</p>
+<section id="id9">
+<h3>Examples<a class="headerlink" href="#id9" title="Link to this heading">#</a></h3>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span><span class="w"> </span><span class="nn">pyarrow</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pa</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span><span class="w"> </span><span class="nn">nanoarrow</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">na</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">pa_column</span> <span class="o">=</span> <span class="n">pa</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span> <span class="n">pa</span><span class="o">.</span><span class="n">int32</span><span class="p">())</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">pa_batch</span> <span class="o">=</span> <span class="n">pa</span><span class="o">.</span><span class="n">record_batch</span><span class="p">([</span><span class="n">pa_column</span><span class="p">],</span> <span class="n">names</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;col1&quot;</span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">pa_reader</span> <span class="o">=</span> <span class="n">pa</span><span class="o">.</span><span class="n">RecordBatchReader</span><span class="o">.</span><span class="n">from_batches</span><span class="p">(</span><span class="n">pa_batch</span><span class="o">.</span><span class="n">schema</span><span class="p">,</span> <span class="p">[</span><span class="n">pa_batch</span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">array_stream</span> <span class="o">=</span> <span class="n">na</span><span class="o">.</span><span class="n">c_array_stream</span><span class="p">(</span><span class="n">pa_reader</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">array_stream</span><span class="o">.</span><span class="n">get_schema</span><span class="p">()</span>
+<span class="go">&lt;nanoarrow.c_schema.CSchema struct&gt;</span>
+<span class="go">- format: &#39;+s&#39;</span>
+<span class="go">- name: &#39;&#39;</span>
+<span class="go">- flags: 0</span>
+<span class="go">- metadata: NULL</span>
+<span class="go">- dictionary: NULL</span>
+<span class="go">- children[1]:</span>
+<span class="go">  &#39;col1&#39;: &lt;nanoarrow.c_schema.CSchema int32&gt;</span>
+<span class="go">    - format: &#39;i&#39;</span>
+<span class="go">    - name: &#39;col1&#39;</span>
+<span class="go">    - flags: 2</span>
+<span class="go">    - metadata: NULL</span>
+<span class="go">    - dictionary: NULL</span>
+<span class="go">    - children[0]:</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">array_stream</span><span class="o">.</span><span class="n">get_next</span><span class="p">()</span><span class="o">.</span><span class="n">length</span>
+<span class="go">3</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">array_stream</span><span class="o">.</span><span class="n">get_next</span><span class="p">()</span> <span class="ow">is</span> <span class="kc">None</span>
+<span class="gt">Traceback (most recent call last):</span>
+<span class="w">  </span><span class="c">...</span>
+<span class="gr">StopIteration</span>
+</pre></div>
+</div>
+</section>
+</dd></dl>
+
 </section>
 </section>
 
@@ -444,9 +818,40 @@
   </div>
   <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="visible nav section-nav flex-column">
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#c-schema-utilities">C Schema Utilities</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#c-array-utilities">C Array Utilities</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#c-arraystream-utilities">C ArrayStream Utilities</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#module-nanoarrow.c_schema">C Schema Utilities</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#nanoarrow.c_schema.allocate_c_schema"><code class="docutils literal notranslate"><span class="pre">allocate_c_schema()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#nanoarrow.c_schema.c_schema"><code class="docutils literal notranslate"><span class="pre">c_schema()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#nanoarrow.c_schema.c_schema_view"><code class="docutils literal notranslate"><span class="pre">c_schema_view()</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#module-nanoarrow.c_array">C Array Utilities</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#nanoarrow.c_array.ArrayBuilder"><code class="docutils literal notranslate"><span class="pre">ArrayBuilder</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#nanoarrow.c_array.ArrayBuilder.infer_schema"><code class="docutils literal notranslate"><span class="pre">ArrayBuilder.infer_schema()</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#nanoarrow.c_array.ArrayFromIterableBuilder"><code class="docutils literal notranslate"><span class="pre">ArrayFromIterableBuilder</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#nanoarrow.c_array.ArrayFromIterableBuilder.infer_schema"><code class="docutils literal notranslate"><span class="pre">ArrayFromIterableBuilder.infer_schema()</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#nanoarrow.c_array.ArrayFromPyBufferBuilder"><code class="docutils literal notranslate"><span class="pre">ArrayFromPyBufferBuilder</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#nanoarrow.c_array.ArrayFromPyBufferBuilder.infer_schema"><code class="docutils literal notranslate"><span class="pre">ArrayFromPyBufferBuilder.infer_schema()</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#nanoarrow.c_array.EmptyArrayBuilder"><code class="docutils literal notranslate"><span class="pre">EmptyArrayBuilder</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#nanoarrow.c_array.EmptyArrayBuilder.infer_schema"><code class="docutils literal notranslate"><span class="pre">EmptyArrayBuilder.infer_schema()</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#nanoarrow.c_array.allocate_c_array"><code class="docutils literal notranslate"><span class="pre">allocate_c_array()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#nanoarrow.c_array.c_array"><code class="docutils literal notranslate"><span class="pre">c_array()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#nanoarrow.c_array.c_array_from_buffers"><code class="docutils literal notranslate"><span class="pre">c_array_from_buffers()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#nanoarrow.c_array.c_array_view"><code class="docutils literal notranslate"><span class="pre">c_array_view()</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#module-nanoarrow.c_array_stream">C ArrayStream Utilities</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#nanoarrow.c_array_stream.allocate_c_array_stream"><code class="docutils literal notranslate"><span class="pre">allocate_c_array_stream()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#nanoarrow.c_array_stream.c_array_stream"><code class="docutils literal notranslate"><span class="pre">c_array_stream()</span></code></a></li>
+</ul>
+</li>
 </ul>
   </nav></div>
 

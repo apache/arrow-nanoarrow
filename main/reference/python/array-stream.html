@@ -384,8 +384,249 @@
 <div id="searchbox"></div>
                 <article class="bd-article">
                   
-  <section id="high-level-arraystream-implementation">
-<h1>High-level ArrayStream Implementation<a class="headerlink" href="#high-level-arraystream-implementation" title="Link to this heading">#</a></h1>
+  <section id="module-nanoarrow.array_stream">
+<span id="high-level-arraystream-implementation"></span><h1>High-level ArrayStream Implementation<a class="headerlink" href="#module-nanoarrow.array_stream" title="Link to this heading">#</a></h1>
+<dl class="py class">
+<dt class="sig sig-object py" id="nanoarrow.array_stream.ArrayStream">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">ArrayStream</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">obj</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">schema</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#nanoarrow.array_stream.ArrayStream" title="Link to this definition">#</a></dt>
+<dd><p>High-level ArrayStream representation</p>
+<p>The ArrayStream is nanoarrow’s high-level representation of zero
+or more contiguous arrays that have not neccessarily been materialized.
+This is in constrast to the nanoarrow <code class="xref py py-class docutils literal notranslate"><span class="pre">Array</span></code>, which consists
+of zero or more contiguous arrays but is always fully-materialized.</p>
+<p>The <a class="reference internal" href="#nanoarrow.array_stream.ArrayStream" title="nanoarrow.array_stream.ArrayStream"><code class="xref py py-class docutils literal notranslate"><span class="pre">ArrayStream</span></code></a> is similar to pyarrow’s <code class="docutils literal notranslate"><span class="pre">RecordBatchReader</span></code>
+except it can also represent streams of non-struct arrays. Its scope
+maps to that of an``ArrowArrayStream`` as represented by the Arrow C
+Stream interface.</p>
+<section id="parameters">
+<h2>Parameters<a class="headerlink" href="#parameters" title="Link to this heading">#</a></h2>
+<dl class="simple">
+<dt>obj<span class="classifier">array or array stream-like</span></dt><dd><p>An array-like or array stream-like object as sanitized by
+<code class="xref py py-func docutils literal notranslate"><span class="pre">c_array_stream()</span></code>.</p>
+</dd>
+<dt>schema<span class="classifier">schema-like, optional</span></dt><dd><p>An optional schema, passed to <code class="xref py py-func docutils literal notranslate"><span class="pre">c_array_stream()</span></code>.</p>
+</dd>
+</dl>
+</section>
+<section id="examples">
+<h2>Examples<a class="headerlink" href="#examples" title="Link to this heading">#</a></h2>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span><span class="w"> </span><span class="nn">nanoarrow</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">na</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">na</span><span class="o">.</span><span class="n">ArrayStream</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span> <span class="n">na</span><span class="o">.</span><span class="n">int32</span><span class="p">())</span>
+<span class="go">nanoarrow.ArrayStream&lt;int32&gt;</span>
+</pre></div>
+</div>
+<dl class="py method">
+<dt class="sig sig-object py" id="nanoarrow.array_stream.ArrayStream.close">
+<span class="sig-name descname"><span class="pre">close</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#nanoarrow.array_stream.ArrayStream.close" title="Link to this definition">#</a></dt>
+<dd><p>Release resources associated with this stream</p>
+<p>Note that it is usually preferred to use the context manager to ensure
+prompt release of resources (e.g., open files) associated with
+this stream.</p>
+<section id="id1">
+<h3>Examples<a class="headerlink" href="#id1" title="Link to this heading">#</a></h3>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span><span class="w"> </span><span class="nn">nanoarrow</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">na</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">stream</span> <span class="o">=</span> <span class="n">na</span><span class="o">.</span><span class="n">ArrayStream</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span> <span class="n">na</span><span class="o">.</span><span class="n">int32</span><span class="p">())</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">with</span> <span class="n">stream</span><span class="p">:</span>
+<span class="gp">... </span>    <span class="k">pass</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">stream</span><span class="o">.</span><span class="n">read_all</span><span class="p">()</span>
+<span class="gt">Traceback (most recent call last):</span>
+<span class="c">...</span>
+<span class="gr">RuntimeError</span>: <span class="n">array stream is released</span>
+</pre></div>
+</div>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">stream</span> <span class="o">=</span> <span class="n">na</span><span class="o">.</span><span class="n">ArrayStream</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span> <span class="n">na</span><span class="o">.</span><span class="n">int32</span><span class="p">())</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">stream</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">stream</span><span class="o">.</span><span class="n">read_all</span><span class="p">()</span>
+<span class="gt">Traceback (most recent call last):</span>
+<span class="c">...</span>
+<span class="gr">RuntimeError</span>: <span class="n">array stream is released</span>
+</pre></div>
+</div>
+</section>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="nanoarrow.array_stream.ArrayStream.from_path">
+<em class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">from_path</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">obj</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#nanoarrow.array_stream.ArrayStream.from_path" title="Link to this definition">#</a></dt>
+<dd><p>Create an ArrayStream from an IPC stream at a local file path</p>
+<section id="id2">
+<h3>Examples<a class="headerlink" href="#id2" title="Link to this heading">#</a></h3>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span><span class="w"> </span><span class="nn">tempfile</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span><span class="w"> </span><span class="nn">nanoarrow</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">na</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">nanoarrow.ipc</span><span class="w"> </span><span class="kn">import</span> <span class="n">InputStream</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">with</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">TemporaryDirectory</span><span class="p">()</span> <span class="k">as</span> <span class="n">td</span><span class="p">:</span>
+<span class="gp">... </span>    <span class="n">path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">td</span><span class="p">,</span> <span class="s2">&quot;test.arrows&quot;</span><span class="p">)</span>
+<span class="gp">... </span>    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="s2">&quot;wb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+<span class="gp">... </span>        <span class="n">nbytes</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">InputStream</span><span class="o">.</span><span class="n">example_bytes</span><span class="p">())</span>
+<span class="gp">...</span>
+<span class="gp">... </span>    <span class="k">with</span> <span class="n">na</span><span class="o">.</span><span class="n">ArrayStream</span><span class="o">.</span><span class="n">from_path</span><span class="p">(</span><span class="n">path</span><span class="p">)</span> <span class="k">as</span> <span class="n">stream</span><span class="p">:</span>
+<span class="gp">... </span>        <span class="n">stream</span><span class="o">.</span><span class="n">read_all</span><span class="p">()</span>
+<span class="go">nanoarrow.Array&lt;non-nullable struct&lt;some_col: int32&gt;&gt;[3]</span>
+<span class="go">{&#39;some_col&#39;: 1}</span>
+<span class="go">{&#39;some_col&#39;: 2}</span>
+<span class="go">{&#39;some_col&#39;: 3}</span>
+</pre></div>
+</div>
+</section>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="nanoarrow.array_stream.ArrayStream.from_readable">
+<em class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">from_readable</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">obj</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#nanoarrow.array_stream.ArrayStream.from_readable" title="Link to this definition">#</a></dt>
+<dd><p>Create an ArrayStream from an IPC stream in a readable file or buffer</p>
+<section id="id3">
+<h3>Examples<a class="headerlink" href="#id3" title="Link to this heading">#</a></h3>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span><span class="w"> </span><span class="nn">nanoarrow</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">na</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">nanoarrow.ipc</span><span class="w"> </span><span class="kn">import</span> <span class="n">InputStream</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">with</span> <span class="n">na</span><span class="o">.</span><span class="n">ArrayStream</span><span class="o">.</span><span class="n">from_readable</span><span class="p">(</span><span class="n">InputStream</span><span class="o">.</span><span class="n">example_bytes</span><span class="p">())</span> <span class="k">as</span> <span class="n">stream</span><span class="p">:</span>
+<span class="gp">... </span>    <span class="n">stream</span><span class="o">.</span><span class="n">read_all</span><span class="p">()</span>
+<span class="go">nanoarrow.Array&lt;non-nullable struct&lt;some_col: int32&gt;&gt;[3]</span>
+<span class="go">{&#39;some_col&#39;: 1}</span>
+<span class="go">{&#39;some_col&#39;: 2}</span>
+<span class="go">{&#39;some_col&#39;: 3}</span>
+</pre></div>
+</div>
+</section>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="nanoarrow.array_stream.ArrayStream.from_url">
+<em class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">from_url</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">obj</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#nanoarrow.array_stream.ArrayStream.from_url" title="Link to this definition">#</a></dt>
+<dd><p>Create an ArrayStream from an IPC stream at a URL</p>
+<section id="id4">
+<h3>Examples<a class="headerlink" href="#id4" title="Link to this heading">#</a></h3>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span><span class="w"> </span><span class="nn">pathlib</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span><span class="w"> </span><span class="nn">tempfile</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span><span class="w"> </span><span class="nn">nanoarrow</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">na</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">nanoarrow.ipc</span><span class="w"> </span><span class="kn">import</span> <span class="n">InputStream</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">with</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">TemporaryDirectory</span><span class="p">()</span> <span class="k">as</span> <span class="n">td</span><span class="p">:</span>
+<span class="gp">... </span>    <span class="n">path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">td</span><span class="p">,</span> <span class="s2">&quot;test.arrows&quot;</span><span class="p">)</span>
+<span class="gp">... </span>    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="s2">&quot;wb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+<span class="gp">... </span>        <span class="n">nbytes</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">InputStream</span><span class="o">.</span><span class="n">example_bytes</span><span class="p">())</span>
+<span class="gp">...</span>
+<span class="gp">... </span>    <span class="n">uri</span> <span class="o">=</span> <span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span><span class="p">(</span><span class="n">path</span><span class="p">)</span><span class="o">.</span><span class="n">as_uri</span><span class="p">()</span>
+<span class="gp">... </span>    <span class="k">with</span> <span class="n">na</span><span class="o">.</span><span class="n">ArrayStream</span><span class="o">.</span><span class="n">from_url</span><span class="p">(</span><span class="n">uri</span><span class="p">)</span> <span class="k">as</span> <span class="n">stream</span><span class="p">:</span>
+<span class="gp">... </span>        <span class="n">stream</span><span class="o">.</span><span class="n">read_all</span><span class="p">()</span>
+<span class="go">nanoarrow.Array&lt;non-nullable struct&lt;some_col: int32&gt;&gt;[3]</span>
+<span class="go">{&#39;some_col&#39;: 1}</span>
+<span class="go">{&#39;some_col&#39;: 2}</span>
+<span class="go">{&#39;some_col&#39;: 3}</span>
+</pre></div>
+</div>
+</section>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="nanoarrow.array_stream.ArrayStream.iter_chunks">
+<span class="sig-name descname"><span class="pre">iter_chunks</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Iterable</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="array.html#nanoarrow.array.Array" title="nanoarrow.array.Array"><span class="pre">Array</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#nanoarrow.array_stream.ArrayStream.iter_chunks" title="Link to this definition">#</a></dt>
+<dd><p>Iterate over contiguous Arrays in this stream</p>
+<p>For the <a class="reference internal" href="#nanoarrow.array_stream.ArrayStream" title="nanoarrow.array_stream.ArrayStream"><code class="xref py py-class docutils literal notranslate"><span class="pre">ArrayStream</span></code></a>, this is the same as iterating over
+the stream itself.</p>
+<section id="id5">
+<h3>Examples<a class="headerlink" href="#id5" title="Link to this heading">#</a></h3>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span><span class="w"> </span><span class="nn">nanoarrow</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">na</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">stream</span> <span class="o">=</span> <span class="n">na</span><span class="o">.</span><span class="n">ArrayStream</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span> <span class="n">na</span><span class="o">.</span><span class="n">int32</span><span class="p">())</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">for</span> <span class="n">chunk</span> <span class="ow">in</span> <span class="n">stream</span><span class="p">:</span>
+<span class="gp">... </span>    <span class="nb">print</span><span class="p">(</span><span class="n">chunk</span><span class="p">)</span>
+<span class="go">nanoarrow.Array&lt;int32&gt;[3]</span>
+<span class="go">1</span>
+<span class="go">2</span>
+<span class="go">3</span>
+</pre></div>
+</div>
+</section>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="nanoarrow.array_stream.ArrayStream.iter_py">
+<span class="sig-name descname"><span class="pre">iter_py</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Iterable</span></span></span><a class="headerlink" href="#nanoarrow.array_stream.ArrayStream.iter_py" title="Link to this definition">#</a></dt>
+<dd><p>Iterate over the default Python representation of each element.</p>
+<section id="id6">
+<h3>Examples<a class="headerlink" href="#id6" title="Link to this heading">#</a></h3>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span><span class="w"> </span><span class="nn">nanoarrow</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">na</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">stream</span> <span class="o">=</span> <span class="n">na</span><span class="o">.</span><span class="n">ArrayStream</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span> <span class="n">na</span><span class="o">.</span><span class="n">int32</span><span class="p">())</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">stream</span><span class="o">.</span><span class="n">iter_py</span><span class="p">():</span>
+<span class="gp">... </span>    <span class="nb">print</span><span class="p">(</span><span class="n">item</span><span class="p">)</span>
+<span class="go">1</span>
+<span class="go">2</span>
+<span class="go">3</span>
+</pre></div>
+</div>
+</section>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="nanoarrow.array_stream.ArrayStream.iter_tuples">
+<span class="sig-name descname"><span class="pre">iter_tuples</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Iterable</span><span class="p"><span class="pre">[</span></span><span class="pre">Tuple</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#nanoarrow.array_stream.ArrayStream.iter_tuples" title="Link to this definition">#</a></dt>
+<dd><p>Iterate over rows of a struct stream as tuples</p>
+<section id="id7">
+<h3>Examples<a class="headerlink" href="#id7" title="Link to this heading">#</a></h3>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span><span class="w"> </span><span class="nn">nanoarrow</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">na</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span><span class="w"> </span><span class="nn">pyarrow</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pa</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">batch</span> <span class="o">=</span> <span class="n">pa</span><span class="o">.</span><span class="n">record_batch</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="p">[</span><span class="n">pa</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">]),</span> <span class="n">pa</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="s2">&quot;a&quot;</span><span class="p">,</span> <span class="s2">&quot;b&quot;</span><span class="p">,</span> <span class="s2">&quot;c&quot;</span><span class="p">])],</span>
+<span class="gp">... </span>    <span class="n">names</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;col1&quot;</span><span class="p">,</span> <span class="s2">&quot;col2&quot;</span><span class="p">]</span>
+<span class="gp">... </span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">stream</span> <span class="o">=</span> <span class="n">na</span><span class="o">.</span><span class="n">ArrayStream</span><span class="p">(</span><span class="n">batch</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">stream</span><span class="o">.</span><span class="n">iter_tuples</span><span class="p">():</span>
+<span class="gp">... </span>    <span class="nb">print</span><span class="p">(</span><span class="n">item</span><span class="p">)</span>
+<span class="go">(1, &#39;a&#39;)</span>
+<span class="go">(2, &#39;b&#39;)</span>
+<span class="go">(3, &#39;c&#39;)</span>
+</pre></div>
+</div>
+</section>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="nanoarrow.array_stream.ArrayStream.read_all">
+<span class="sig-name descname"><span class="pre">read_all</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="array.html#nanoarrow.array.Array" title="nanoarrow.array.Array"><span class="pre">Array</span></a></span></span><a class="headerlink" href="#nanoarrow.array_stream.ArrayStream.read_all" title="Link to this definition">#</a></dt>
+<dd><p>Materialize the entire stream into an <code class="xref py py-class docutils literal notranslate"><span class="pre">Array</span></code></p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span><span class="w"> </span><span class="nn">nanoarrow</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">na</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">stream</span> <span class="o">=</span> <span class="n">na</span><span class="o">.</span><span class="n">ArrayStream</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span> <span class="n">na</span><span class="o">.</span><span class="n">int32</span><span class="p">())</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">stream</span><span class="o">.</span><span class="n">read_all</span><span class="p">()</span>
+<span class="go">nanoarrow.Array&lt;int32&gt;[3]</span>
+<span class="go">1</span>
+<span class="go">2</span>
+<span class="go">3</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="nanoarrow.array_stream.ArrayStream.read_next">
+<span class="sig-name descname"><span class="pre">read_next</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="array.html#nanoarrow.array.Array" title="nanoarrow.array.Array"><span class="pre">Array</span></a></span></span><a class="headerlink" href="#nanoarrow.array_stream.ArrayStream.read_next" title="Link to this definition">#</a></dt>
+<dd><p>Materialize the next contiguous <code class="xref py py-class docutils literal notranslate"><span class="pre">Array</span></code> in this stream</p>
+<p>This method raises <code class="docutils literal notranslate"><span class="pre">StopIteration</span></code> if there are no more arrays
+in this stream.</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span><span class="w"> </span><span class="nn">nanoarrow</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">na</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">stream</span> <span class="o">=</span> <span class="n">na</span><span class="o">.</span><span class="n">ArrayStream</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span> <span class="n">na</span><span class="o">.</span><span class="n">int32</span><span class="p">())</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">stream</span><span class="o">.</span><span class="n">read_next</span><span class="p">()</span>
+<span class="go">nanoarrow.Array&lt;int32&gt;[3]</span>
+<span class="go">1</span>
+<span class="go">2</span>
+<span class="go">3</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="nanoarrow.array_stream.ArrayStream.schema">
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">schema</span></span><a class="headerlink" href="#nanoarrow.array_stream.ArrayStream.schema" title="Link to this definition">#</a></dt>
+<dd><p>The <code class="xref py py-class docutils literal notranslate"><span class="pre">Schema</span></code> associated with this stream</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span><span class="w"> </span><span class="nn">nanoarrow</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">na</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">stream</span> <span class="o">=</span> <span class="n">na</span><span class="o">.</span><span class="n">ArrayStream</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span> <span class="n">na</span><span class="o">.</span><span class="n">int32</span><span class="p">())</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">stream</span><span class="o">.</span><span class="n">schema</span>
+<span class="go">&lt;Schema&gt; int32</span>
+</pre></div>
+</div>
+</dd></dl>
+
+</section>
+</dd></dl>
+
 </section>
 
 
@@ -426,6 +667,30 @@
                 <dialog id="pst-secondary-sidebar-modal"></dialog>
                 <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
 
+
+  <div class="sidebar-secondary-item">
+<div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#nanoarrow.array_stream.ArrayStream"><code class="docutils literal notranslate"><span class="pre">ArrayStream</span></code></a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#nanoarrow.array_stream.ArrayStream.close"><code class="docutils literal notranslate"><span class="pre">ArrayStream.close()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#nanoarrow.array_stream.ArrayStream.from_path"><code class="docutils literal notranslate"><span class="pre">ArrayStream.from_path()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#nanoarrow.array_stream.ArrayStream.from_readable"><code class="docutils literal notranslate"><span class="pre">ArrayStream.from_readable()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#nanoarrow.array_stream.ArrayStream.from_url"><code class="docutils literal notranslate"><span class="pre">ArrayStream.from_url()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#nanoarrow.array_stream.ArrayStream.iter_chunks"><code class="docutils literal notranslate"><span class="pre">ArrayStream.iter_chunks()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#nanoarrow.array_stream.ArrayStream.iter_py"><code class="docutils literal notranslate"><span class="pre">ArrayStream.iter_py()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#nanoarrow.array_stream.ArrayStream.iter_tuples"><code class="docutils literal notranslate"><span class="pre">ArrayStream.iter_tuples()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#nanoarrow.array_stream.ArrayStream.read_all"><code class="docutils literal notranslate"><span class="pre">ArrayStream.read_all()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#nanoarrow.array_stream.ArrayStream.read_next"><code class="docutils literal notranslate"><span class="pre">ArrayStream.read_next()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#nanoarrow.array_stream.ArrayStream.schema"><code class="docutils literal notranslate"><span class="pre">ArrayStream.schema</span></code></a></li>
+</ul>
+</li>
+</ul>
+  </nav></div>
 
   <div class="sidebar-secondary-item">
 
