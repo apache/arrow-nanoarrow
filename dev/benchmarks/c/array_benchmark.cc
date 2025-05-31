@@ -19,6 +19,12 @@
 
 #include <nanoarrow/nanoarrow.hpp>
 
+#if NANOARROW_VERSION_MINOR >= 5
+#include "util.h"
+using nanoarrow::Enumerate;
+using nanoarrow::Zip;
+#endif
+
 // The length of most arrays used in these benchmarks. Just big enough so
 // that the benchmark takes a non-trivial amount of time to run.
 static const int64_t kNumItemsPrettyBig = 1000000;
@@ -92,6 +98,37 @@ ArrowErrorCode InitArrayViewFromBuffers(ArrowType type, ArrowArray* array,
   return NANOARROW_OK;
 }
 
+#if NANOARROW_VERSION_MINOR >= 5
+
+template <typename CType, ArrowType type>
+static void BaseArrayViewGetInt(benchmark::State& state) {
+  nanoarrow::UniqueArray array;
+  nanoarrow::UniqueArrayView array_view;
+
+  int64_t n_values = kNumItemsPrettyBig;
+
+  std::vector<CType> values(n_values);
+  for (auto [i, value] : Zip(Enumerate, values)) {
+    value = i % std::numeric_limits<CType>::max();
+  }
+
+  NANOARROW_THROW_NOT_OK(
+      InitArrayViewFromBuffers(type, array.get(), array_view.get(), {}, values));
+
+  std::vector<CType> values_out(n_values);
+  for (auto _ : state) {
+    for (auto [i, array_slot, value_out] :
+         Zip(Enumerate, nanoarrow::ViewArrayAs<CType>(array_view.get()), values_out)) {
+      value_out = *array_slot;
+    }
+    benchmark::DoNotOptimize(values_out);
+  }
+
+  state.SetItemsProcessed(n_values * state.iterations());
+}
+
+#else
+
 template <typename CType, ArrowType type>
 static void BaseArrayViewGetInt(benchmark::State& state) {
   nanoarrow::UniqueArray array;
@@ -117,6 +154,7 @@ static void BaseArrayViewGetInt(benchmark::State& state) {
 
   state.SetItemsProcessed(n_values * state.iterations());
 }
+#endif
 
 /// \brief Use ArrowArrayViewGet() to consume an int8 array
 static void BenchmarkArrayViewGetInt8(benchmark::State& state) {
