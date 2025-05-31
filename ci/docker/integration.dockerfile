@@ -24,9 +24,9 @@ ENV ARROW_USE_CCACHE=OFF \
     BUILD_DOCS_CPP=OFF \
     ARROW_INTEGRATION_CPP=ON \
     ARROW_INTEGRATION_CSHARP=ON \
-    ARROW_INTEGRATION_GO=ON \
-    ARROW_INTEGRATION_JAVA=ON \
-    ARROW_INTEGRATION_JS=ON \
+    ARCHERY_INTEGRATION_WITH_GO=1 \
+    ARCHERY_INTEGRATION_WITH_JAVA=1 \
+    ARCHERY_INTEGRATION_WITH_JS=1 \
     ARCHERY_INTEGRATION_WITH_NANOARROW="1" \
     ARCHERY_INTEGRATION_WITH_RUST="1"
 
@@ -44,8 +44,19 @@ ENV BUILD_DOCS_CPP=OFF
 # Clone the arrow monorepo
 RUN git clone https://github.com/apache/arrow.git /arrow-integration --recurse-submodules
 
+# Clone the arrow-go repo
+RUN git clone https://github.com/apache/arrow-go.git /arrow-integration/go
+
+# Clone the arrow-java repo
+RUN git clone https://github.com/apache/arrow-java.git /arrow-integration/java
+
+# Clone the arrow-js repo.
+# We can remove the "rm -rf ..." part when we remove js/ in apache/arrow.
+RUN rm -rf /arrow-integration/js && \
+    git clone https://github.com/apache/arrow-js.git /arrow-integration/js
+
 # Clone the arrow-rs repo
-RUN git clone https://github.com/apache/arrow-rs /arrow-integration/rust
+RUN git clone https://github.com/apache/arrow-rs.git /arrow-integration/rust
 
 # Build all the integrations except nanoarrow (since we'll do that ourselves on each run)
 RUN ARCHERY_INTEGRATION_WITH_NANOARROW="0" \
