@@ -129,7 +129,7 @@ jobs:
   meson-build:
     # Can't quite be ubuntu-latest yet
     # https://github.com/apache/arrow-nanoarrow/issues/753
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5

@@ -116,7 +116,14 @@ function main() {
     meson test --print-errorlogs
 
     show_header "Generate coverage reports"
-    ninja coverage
+    mkdir -p meson-logs
+    gcovr . \
+          --root .. \
+          --exclude ../subprojects \
+          --txt meson-logs/coverage.txt \
+          --xml meson-logs/coverage.xml \
+          --html meson-logs/coverage.html \
+          --gcov-ignore-parse-errors
     cat meson-logs/coverage.txt
     popd
 
