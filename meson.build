@@ -143,30 +143,34 @@ else
     zlib_dep = disabler()
 endif
 
+needs_metal = false
+metal_dep = disabler()
 metal_cpp_dep = disabler()
-needs_device = get_option('device').enabled() or get_option('metal').enabled() or get_option(
-    'cuda',
-).enabled()
+if get_option('metal').enabled()
+    if host_machine.system() == 'darwin'
+        needs_metal = true
+        metal_dep = dependency(
+            'appleframeworks',
+            modules: ['Foundation', 'Metal'],
+        )
+        metal_cpp_dep = dependency('metal-cpp')
+    else
+        warning('metal option enabled on a non-darwin platform - ignored!')
+    endif
+endif
+
+needs_device = get_option('device').enabled() or get_option('cuda').enabled() or needs_metal
 
 if needs_device
     device_deps = [nanoarrow_dep]
     device_srcs = ['src/nanoarrow/device/device.c']
     device_defines = []
 
-    if get_option('metal').enabled()
-        if host_machine.system() == 'darwin'
-            metal_dep = dependency(
-                'appleframeworks',
-                modules: ['Foundation', 'Metal'],
-            )
-            metal_cpp_dep = dependency('metal-cpp')
-            device_deps += metal_dep
-            device_deps += metal_cpp_dep
-            device_srcs += 'src/nanoarrow/device/metal.cc'
-            device_defines += '-DNANOARROW_DEVICE_WITH_METAL'
-        else
-            warning('metal option enabled on a non-darwin platform - ignored!')
-        endif
+    if needs_metal
+        device_deps += metal_dep
+        device_deps += metal_cpp_dep
+        device_srcs += 'src/nanoarrow/device/metal.cc'
+        device_defines += '-DNANOARROW_DEVICE_WITH_METAL'
     endif
 
     if get_option('cuda').enabled()
