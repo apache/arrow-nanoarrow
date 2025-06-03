@@ -72,7 +72,7 @@ function main() {
           -Db_coverage=false \
           -Dauto_features=enabled
     meson compile
-    meson test --print-errorlogs
+    meson test --suite nanoarrow --print-errorlogs
 
     show_header "Run valgrind test suite"
     meson configure \
@@ -81,7 +81,8 @@ function main() {
           -Db_coverage=false \
           -Dauto_features=enabled
     meson compile
-    meson test --wrap='valgrind --track-origins=yes --leak-check=full' --print-errorlog
+    meson test --suite nanoarrow --print-errorlog \
+          --wrap='valgrind --track-origins=yes --leak-check=full'
 
     show_header "Run benchmarks"
     meson configure \
@@ -90,7 +91,7 @@ function main() {
           -Db_coverage=false \
           -Dauto_features=enabled
     meson compile
-    meson test --benchmark --print-errorlogs
+    meson test --suite nanoarrow --print-errorlogs --benchmark
 
     show_header "Run coverage test suite"
     meson configure \
@@ -100,7 +101,7 @@ function main() {
           -Dauto_features=enabled
 
     meson compile
-    meson test --print-errorlogs
+    meson test --suite nanoarrow --print-errorlogs
 
     show_header "Generate coverage reports"
     ninja coverage
