@@ -129,7 +129,7 @@ jobs:
   meson-build:
     # Can't quite be ubuntu-latest yet
     # https://github.com/apache/arrow-nanoarrow/issues/753
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -138,7 +138,18 @@ jobs:
 
       - name: Install system dependencies
         run: |
-          sudo apt-get update && sudo apt-get install -y gcovr ninja-build valgrind
+          sudo apt-get update && sudo apt-get install -y ninja-build valgrind
+
+      # the gcovr shipped with 24.04 does not work with source files over 10k lines
+      # so we use Python to install a newer version. See also
+      # https://github.com/gcovr/gcovr/issues/1103
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+      - name: Install gcovr
+        run: |
+          pip install --upgrade pip
+          pip install gcovr
 
       - name: Install meson
         # Meson 1.8.0 breaks build
