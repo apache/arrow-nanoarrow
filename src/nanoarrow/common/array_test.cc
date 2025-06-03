@@ -218,9 +218,9 @@ TEST(ArrayTest, ArrayTestSetBuffer) {
 
 TEST(ArrayTest, ArrayTestBuildByBuffer) {
   // the array ["a", null, "bc", null, "def", null, "ghij"]
-  uint8_t validity_bitmap[] = {0x55};
-  int8_t validity_array[] = {1, 0, 1, 0, 1, 0, 1};
-  int32_t offsets[] = {0, 1, 1, 3, 3, 6, 6, 10, 10};
+  uint8_t validity_bitmap[1] = {0x55};
+  int8_t validity_array[7] = {1, 0, 1, 0, 1, 0, 1};
+  int32_t offsets[9] = {0, 1, 1, 3, 3, 6, 6, 10, 10};
   const char* data = "abcdefghij";
 
   struct ArrowArray array;
