@@ -748,6 +748,9 @@ if(NANOARROW_BUILD_TESTS)
                             nanoarrow
                             gtest_main
                             nanoarrow_coverage_config)
+      target_include_directories(nanoarrow_device_metal_test
+                                 PRIVATE ${NANOARROW_DEVICE_INCLUDE_METAL})
+
       if(Arrow_FOUND)
         target_compile_definitions(nanoarrow_device_metal_test
                                    PRIVATE -DNANOARROW_BUILD_TESTS_WITH_ARROW)
