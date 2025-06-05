@@ -744,8 +744,8 @@ if(NANOARROW_BUILD_TESTS)
     if(NANOARROW_DEVICE_WITH_METAL)
       add_executable(nanoarrow_device_metal_test src/nanoarrow/device/metal_test.cc)
       target_link_libraries(nanoarrow_device_metal_test
-                            nanoarrow_device
-                            nanoarrow
+                            ${NANOARROW_TEST_DEVICE_LIB}
+                            ${NANOARROW_TEST_LIB}
                             gtest_main
                             nanoarrow_coverage_config)
       target_include_directories(nanoarrow_device_metal_test
@@ -761,8 +761,8 @@ if(NANOARROW_BUILD_TESTS)
     if(NANOARROW_DEVICE_WITH_CUDA)
       add_executable(nanoarrow_device_cuda_test src/nanoarrow/device/cuda_test.cc)
       target_link_libraries(nanoarrow_device_cuda_test
-                            nanoarrow_device
-                            nanoarrow
+                            ${NANOARROW_TEST_DEVICE_LIB}
+                            ${NANOARROW_TEST_LIB}
                             CUDA::cuda_driver
                             gtest_main
                             nanoarrow_coverage_config)
