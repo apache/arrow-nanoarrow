@@ -60,6 +60,13 @@ jobs:
         run: |
           sudo apt-get update && sudo apt-get install -y valgrind
 
+      - name: Set up Python
+        if: matrix.config.label == 'with-cuda'
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+          cache: 'pip'
+
       # The self-hosted runner for CUDA needs a number of packages installed that
       # are already installed on the GitHub runner
       - name: Install build dependencies
@@ -67,6 +74,10 @@ jobs:
         run: |
           sudo apt-get update && \
             sudo apt-get install -y cmake build-essential cuda-toolkit tzdata
+
+          # Install newer cmake for building Arrow C++
+          pip install cmake
+
           # Debug install location of cuda toolkit
           ldconfig -p | grep libcuda
 
@@ -82,7 +93,7 @@ jobs:
         if: steps.cache-arrow-build.outputs.cache-hit != 'true'
         shell: bash
         run: |
-          ci/scripts/build-arrow-cpp-minimal.sh 20.0.0 arrow
+          ci/scripts/build-arrow-cpp-minimal.sh 19.0.0 arrow
 
       - name: Build
         run: |
@@ -133,13 +144,6 @@ jobs:
         with:
           name: nanoarrow-device-memcheck
           path: build/Testing/Temporary/MemoryChecker.*.log
-
-      - name: Set up Python
-        if: matrix.config.label == 'with-cuda'
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-          cache: 'pip'
 
       - name: Build Python bindings with CUDA
         if: matrix.config.label == 'with-cuda'
