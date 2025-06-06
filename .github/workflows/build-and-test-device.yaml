@@ -48,7 +48,7 @@ jobs:
           - {runner: ubuntu-latest, label: default-build}
           - {runner: ubuntu-latest, label: namespaced-build, cmake_args: "-DNANOARROW_NAMESPACE=SomeUserNamespace"}
           - {runner: ubuntu-latest, label: bundled-build, cmake_args: "-DNANOARROW_DEVICE_BUNDLE=ON"}
-          - {label: shared-test-linkage, cmake_args: "-DNANOARROW_TEST_LINKAGE_SHARED=ON"}
+          - {runner: ubuntu-latest, label: shared-test-linkage, cmake_args: "-DNANOARROW_TEST_LINKAGE_SHARED=ON"}
           - {runner: macOS-latest, label: with-metal, cmake_args: "-DNANOARROW_DEVICE_WITH_METAL=ON"}
           - {runner: ["self-hosted", "cuda"], label: with-cuda, cmake_args: "-DNANOARROW_DEVICE_WITH_CUDA=ON"}
 
@@ -60,6 +60,13 @@ jobs:
         run: |
           sudo apt-get update && sudo apt-get install -y valgrind
 
+      - name: Set up Python
+        if: matrix.config.label == 'with-cuda'
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+          cache: 'pip'
+
       # The self-hosted runner for CUDA needs a number of packages installed that
       # are already installed on the GitHub runner
       - name: Install build dependencies
@@ -67,6 +74,10 @@ jobs:
         run: |
           sudo apt-get update && \
             sudo apt-get install -y cmake build-essential cuda-toolkit tzdata
+
+          # Install newer cmake for building Arrow C++
+          pip install cmake
+
           # Debug install location of cuda toolkit
           ldconfig -p | grep libcuda
 
@@ -76,16 +87,13 @@ jobs:
         with:
           path: arrow
           # Bump the number at the end of this line to force a new Arrow C++ build
-          # The self-hosted runner needs its own Arrow build since it is running
-          # a much older linux distribution. When the Arrow C++ requirement for tests is
-          # dropped, we don't have to use this at all as part of the CI configuration.
-          key: arrow-device-${{ runner.os }}-${{ runner.arch }}-${{ matrix.config.label }}-2
+          key: arrow-device-${{ runner.os }}-${{ runner.arch }}-${{ matrix.config.label }}-3
 
       - name: Build Arrow C++
         if: steps.cache-arrow-build.outputs.cache-hit != 'true'
         shell: bash
         run: |
-          ci/scripts/build-arrow-cpp-minimal.sh 18.0.0 arrow
+          ci/scripts/build-arrow-cpp-minimal.sh 20.0.0 arrow
 
       - name: Build
         run: |
@@ -136,13 +144,6 @@ jobs:
         with:
           name: nanoarrow-device-memcheck
           path: build/Testing/Temporary/MemoryChecker.*.log
-
-      - name: Set up Python
-        if: matrix.config.label == 'with-cuda'
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-          cache: 'pip'
 
       - name: Build Python bindings with CUDA
         if: matrix.config.label == 'with-cuda'
