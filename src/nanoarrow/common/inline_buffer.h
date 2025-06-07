@@ -644,6 +644,10 @@ static inline void ArrowBitmapAppendInt8Unsafe(struct ArrowBitmap* bitmap,
     n_remaining -= n_partial_bits;
   }
 
+  if (n_values < 8) {
+    return;
+  }
+
   // Middle bytes
   int64_t n_full_bytes = n_remaining / 8;
   for (int64_t i = 0; i < n_full_bytes; i++) {
