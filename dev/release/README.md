@@ -33,27 +33,19 @@ cd arrow-nanoarrow/dev/release
 ./verify-release-candidate.sh 0.7.0 0
 ```
 
-Full verification requires [CMake](https://cmake.org/download/) to build and run the test
-suite. The test suite currently depends on an Arrow C++ installation that is discoverable
-by CMake (e.g., using one of the methods described in the
-[Arrow installation instructions](https://arrow.apache.org/install/)). For environments
-where binary packages are not provided, building and installing Arrow C++ from source
-may be required. You can provide the `NANOARROW_CMAKE_OPTIONS` environment variable to
-pass extra arguments to `cmake` (e.g., `-DArrow_DIR=<path/to/arrow>/lib/cmake/Arrow` or
-`-DCMAKE_TOOLCHAIN_FILE=[path to vcpkg]/scripts/buildsystems/vcpkg.cmake`).
-
-Verification of the R package requires an
-[R installation](https://cloud.r-project.org/) and a C/C++ compiler (e.g.,
-[RTools](https://cloud.r-project.org/bin/windows/Rtools/) on Windows or XCode Command
-Line Tools). You can set the `R_HOME` environment variable or
-`export PATH="$PATH:/path/to/R"` (where `$R_HOME/bin/R` is the R executable)
-to point to a specific R installation.
-
 The verification script itself is written in `bash` and requires the `curl`, `gpg`, and
 `shasum`/`sha512sum` commands. These are typically available from a package
-manager except on Windows (see below).
+manager except on Windows (see below). [CMake](https://cmake.org/download/),
+Python (>=3.8), and  a C/C++ compiler are required to verify the C libraries;
+Python (>=3.8) is required to verify the Python bindings; and R (>= 4.0) is
+required to verify the R bindings. See below for platform-specific direction
+for how to obtain verification dependencies.
 
 To run only C library verification (requires CMake and Arrow C++ but not R or Python):
+Options are passed to the verification script using environment variables.
+For example, to run only C library verification (requires CMake and Python but not R):
+
+To run only C library verification (requires CMake but not R or Python):
 
 ```bash
 TEST_DEFAULT=0 TEST_C=1 TEST_C_BUNDLED=1 ./verify-release-candidate.sh 0.7.0 0
@@ -73,17 +65,21 @@ TEST_DEFAULT=0 TEST_PYTHON=1 ./verify-release-candidate.sh 0.7.0 0
 
 ### MacOS
 
-On MacOS you can install all requirements except R using [Homebrew](https://brew.sh):
+On MacOS you can install a modern C/C++ toolchain via the XCode Command Line Tools (i.e.,
+`xcode-select --install`). Other dependencies are available via [Homebrew](https://brew.sh):
 
 ```bash
-brew install cmake gnupg apache-arrow
+brew install cmake gnupg
 ```
 
 You can install R using the instructions provided on the
-[R Project Download page](https://cloud.r-project.org/bin/macosx/).
-
-The system `python3` provided by MacOS is sufficient to verify the release
+[R Project Download page](https://cloud.r-project.org/bin/macosx/);
+the system `python3` provided by MacOS is sufficient to verify the release
 candidate.
+
+For older MacOS or MacOS without Homebrew, you can
+[install GnuPG](https://gnupg.org/download/) and
+[install CMake](https://cmake.org/download/) separately.
 
 ### Conda (Linux and MacOS)
 
@@ -97,7 +93,7 @@ conda create --name nanoarrow-verify-rc
 conda activate nanoarrow-verify-rc
 conda config --set channel_priority strict
 
-conda install -c conda-forge compilers git cmake libarrow
+conda install -c conda-forge compilers git cmake
 # For R (see below about potential interactions with system R
 # before installing via conda on MacOS)
 conda install -c conda-forge r-testthat r-hms r-blob r-pkgbuild r-bit64
@@ -108,30 +104,17 @@ on MacOS is unlikely to work.
 
 ### Windows
 
-On Windows, prerequisites can be installed using officially provided
-installers:
+On Windows, prerequisites can be installed using officially provided installers:
 [Visual Studio](https://visualstudio.microsoft.com/vs/),
 [CMake](https://cmake.org/download/), and
 [Git](https://git-scm.com/downloads) should provide the prerequisties
 to verify the C library; R and Rtools can be installed using the
 [official R-project installer](https://cloud.r-project.org/bin/windows/).
-Arrow C++ can be built from source. The version of bash provided with
-Git for Windows can be used to execute the Arrow C++ build commands and
-the verification script.
 
 ```bash
-# Build Arrow C++ from source
-curl -L https://github.com/apache/arrow/archive/refs/tags/apache-arrow-20.0.0.tar.gz | \
-  tar -zxf -
-mkdir arrow-build && cd arrow-build
-cmake ../apache-arrow-20.0.0/cpp -DCMAKE_INSTALL_PREFIX=../arrow-minimal
-cmake --build .
-cmake --install . --prefix=../arrow-minimal --config=Debug
-cd ..
-
-# Pass location of Arrow and R to the verification script
-export NANOARROW_CMAKE_OPTIONS="-DCMAKE_PREFIX_PATH=$(pwd -W)/arrow-minimal -Dgtest_force_shared_crt=ON -DNANOARROW_ARROW_STATIC=ON"
-export R_HOME="/c/Program Files/R/R-4.4.1"
+# Pass location of R to the verification script
+export NANOARROW_CMAKE_OPTIONS="-Dgtest_force_shared_crt=ON -DNANOARROW_ARROW_STATIC=ON"
+export R_HOME="/c/Program Files/R/R-4.5.0"
 ```
 
 ### Debian/Ubuntu
@@ -140,13 +123,6 @@ On Debian/Ubuntu (e.g., `docker run --rm -it ubuntu:latest`) you can install pre
 
 ```bash
 apt-get update && apt-get install -y git g++ cmake r-base gnupg curl python3-dev python3-venv
-
-# For Arrow C++
-apt-get install -y -V ca-certificates lsb-release wget
-wget https://apache.jfrog.io/artifactory/arrow/$(lsb_release --id --short | tr 'A-Z' 'a-z')/apache-arrow-apt-source-latest-$(lsb_release --codename --short).deb
-apt-get install -y -V ./apache-arrow-apt-source-latest-$(lsb_release --codename --short).deb
-apt-get update
-apt-get install -y -V libarrow-dev
 ```
 
 If you have never installed an R package before, R verification will fail when it
@@ -160,7 +136,7 @@ On recent Fedora (e.g., `docker run --rm -it fedora:latest`), you can install al
 using `dnf`:
 
 ```bash
-dnf install -y git cmake R gnupg curl libarrow-devel python3-devel python3-virtualenv
+dnf install -y git cmake R gnupg curl python3-devel python3-virtualenv
 ```
 
 ### Arch Linux
@@ -169,35 +145,24 @@ On Arch Linux (e.g., `docker run --rm -it archlinux:latest`, you can install all
 using `pacman`):
 
 ```bash
-pacman -Sy git gcc make cmake r-base gnupg curl arrow python
+pacman -Sy git gcc make cmake r-base gnupg curl python
 ```
 
 ### Alpine Linux
 
-On Alpine Linux (e.g., `docker run --rm -it alpine:latest`), most prerequisites are available using `apk add` except for Arrow C++ which requires enabling the
+On Alpine Linux (e.g., `docker run --rm -it alpine:latest`), all prerequisites are available using `apk add` except for Arrow C++ which requires enabling the
 community repository.
 
 ```bash
-# Enable community repository for Arrow C++. Alternatively, you can build Arrow C++
-# from source and pass its location via NANOARROW_CMAKE_OPTIONS="-DArrow_DIR=...".
-cat > /etc/apk/repositories << EOF; $(echo)
 
-https://dl-cdn.alpinelinux.org/alpine/v$(cut -d'.' -f1,2 /etc/alpine-release)/main/
-https://dl-cdn.alpinelinux.org/alpine/v$(cut -d'.' -f1,2 /etc/alpine-release)/community/
-https://dl-cdn.alpinelinux.org/alpine/edge/testing/
-
-EOF
-apk update
-
-apk add bash linux-headers git cmake R R-dev g++ gnupg curl apache-arrow-dev \
-  python3-dev
+apk add bash linux-headers git cmake R R-dev g++ gnupg curl python3-dev
 ```
 
 ### Big endian
 
 One can verify a nanoarrow release candidate on big endian by setting
 `DOCKER_DEFAULT_PLATFORM=linux/s390x` and following the instructions for
-[Alpine Linux](#alpine-linux) or [Fedora](#fedora).
+[Alpine Linux](#alpine-linux), [Fedora](#fedora), or [Debian/Ubuntu](#debianubuntu).
 
 ## Creating a release candidate
 
