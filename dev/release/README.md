@@ -79,29 +79,6 @@ On MacOS you can install all requirements except R using [Homebrew](https://brew
 brew install cmake gnupg apache-arrow
 ```
 
-For older MacOS or MacOS without Homebrew, you will have to install the XCode
-Command Line Tools (i.e., `xcode-select --install`),
-[install GnuPG](https://gnupg.org/download/),
-[install CMake](https://cmake.org/download/), and build Arrow C++ from source.
-
-```bash
-# Download + build Arrow C++
-curl https://github.com/apache/arrow/archive/refs/tags/apache-arrow-14.0.2.tar.gz | \
-  tar -zxf -
-mkdir arrow-build && cd arrow-build
-cmake ../apache-arrow-14.0.2/cpp \
-    -DARROW_JEMALLOC=OFF -DARROW_SIMD_LEVEL=NONE \
-    # Required for Arrow on old MacOS
-    -DCMAKE_CXX_FLAGS="-D_LIBCPP_DISABLE_AVAILABILITY" \
-    -DCMAKE_INSTALL_PREFIX=../arrow
-cmake --build .
-cmake --install . --prefix=../arrow
-cd ..
-
-# Pass location of install to the release verification script
-export NANOARROW_CMAKE_OPTIONS="-DArrow_DIR=$(pwd)/arrow/lib/cmake/Arrow -DCMAKE_CXX_FLAGS=-D_LIBCPP_DISABLE_AVAILABILITY"
-```
-
 You can install R using the instructions provided on the
 [R Project Download page](https://cloud.r-project.org/bin/macosx/).
 
@@ -129,10 +106,6 @@ conda install -c conda-forge r-testthat r-hms r-blob r-pkgbuild r-bit64
 Note that using conda-provided R when there is also a system install of R
 on MacOS is unlikely to work.
 
-Linux users that have built and installed a custom build of Arrow C++ may
-have to `export LD_LIBRARY_PATH=${CONDA_PREFIX}/lib` before running the
-verification script.
-
 ### Windows
 
 On Windows, prerequisites can be installed using officially provided
@@ -148,10 +121,10 @@ the verification script.
 
 ```bash
 # Build Arrow C++ from source
-curl -L https://github.com/apache/arrow/archive/refs/tags/apache-arrow-17.0.0.tar.gz | \
+curl -L https://github.com/apache/arrow/archive/refs/tags/apache-arrow-20.0.0.tar.gz | \
   tar -zxf -
 mkdir arrow-build && cd arrow-build
-cmake ../apache-arrow-17.0.0/cpp -DCMAKE_INSTALL_PREFIX=../arrow-minimal
+cmake ../apache-arrow-20.0.0/cpp -DCMAKE_INSTALL_PREFIX=../arrow-minimal
 cmake --build .
 cmake --install . --prefix=../arrow-minimal --config=Debug
 cd ..
