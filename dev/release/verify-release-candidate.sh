@@ -20,8 +20,9 @@
 # Requirements
 # - cmake >= 3.14
 # - R >= 3.5.0
-# - Arrow C++ >= 9.0.0
-# - Python >= 3.9
+# - Python >= 3.8
+# - gpg (for key verification)
+# - shasum or sha512sum
 #
 # Environment Variables
 # - CMAKE_BIN: Command to use for cmake (e.g., cmake3 on Centos7)
