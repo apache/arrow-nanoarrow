@@ -22,6 +22,7 @@
 #include <Rinternals.h>
 
 #include "nanoarrow.h"
+#include "preserve.h"
 #include "util.h"
 
 void finalize_buffer_xptr(SEXP buffer_xptr);
