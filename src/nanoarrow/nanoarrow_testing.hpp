@@ -192,7 +192,7 @@ class NANOARROW_DLL TestingJSONReader {
 class NANOARROW_DLL TestingJSONComparison {
  private:
   // Internal representation of a human-readable inequality
-  struct Difference {
+  struct NANOARROW_DLL Difference {
     std::string path;
     std::string actual;
     std::string expected;
