@@ -191,12 +191,13 @@ needs_testing = get_option('testing').enabled() or get_option('tests').enabled()
 if needs_testing
     nlohmann_json_dep = dependency('nlohmann_json')
 
-    nanoarrow_testing_lib = static_library(
+    nanoarrow_testing_lib = library(
         'nanoarrow_testing',
         sources: ['src/nanoarrow/testing/testing.cc'],
         dependencies: [nanoarrow_dep, nlohmann_json_dep],
         include_directories: incdir,
         install: true,
+        gnu_symbol_visibility: 'hidden',
     )
 
     nanoarrow_testing_dep = declare_dependency(
