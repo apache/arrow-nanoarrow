@@ -611,7 +611,7 @@ TestingJSONWriter::TestingJSONWriter()
       include_metadata_(true),
       dictionaries_(new internal::DictionaryContext()) {}
 
-TestingJSONWriter::~TestingJSONWriter() = default;
+TestingJSONWriter::~TestingJSONWriter() { delete dictionaries_; };
 
 void TestingJSONWriter::ResetDictionaries() { dictionaries_->clear(); }
 
@@ -2269,7 +2269,7 @@ TestingJSONReader::TestingJSONReader(ArrowBufferAllocator allocator)
 TestingJSONReader::TestingJSONReader()
     : TestingJSONReader(ArrowBufferAllocatorDefault()) {}
 
-TestingJSONReader::~TestingJSONReader() = default;
+TestingJSONReader::~TestingJSONReader() { delete dictionaries_; };
 
 ArrowErrorCode TestingJSONReader::ReadDataFile(const std::string& data_file_json,
                                                ArrowArrayStream* out, int num_batch,
@@ -2498,7 +2498,22 @@ ArrowErrorCode ForceMapNamesCanonical(ArrowSchema* schema) {
 
 }  // namespace
 
-TestingJSONComparison::~TestingJSONComparison() {}
+TestingJSONComparison::TestingJSONComparison()
+    : compare_batch_flags_(true), compare_metadata_order_(true) {
+  // We do our own metadata comparison
+  writer_actual_.set_include_metadata(false);
+  writer_expected_.set_include_metadata(false);
+
+  nanoarrow::internal::init_pointer(&schema_);
+  nanoarrow::internal::init_pointer(&actual_);
+  nanoarrow::internal::init_pointer(&expected_);
+}
+
+TestingJSONComparison::~TestingJSONComparison() {
+  nanoarrow::internal::release_pointer(&schema_);
+  nanoarrow::internal::release_pointer(&actual_);
+  nanoarrow::internal::release_pointer(&expected_);
+}
 
 void TestingJSONComparison::WriteDifferences(std::ostream& out) {
   for (const auto& difference : differences_) {
@@ -2621,17 +2636,15 @@ ArrowErrorCode TestingJSONComparison::CompareSchema(const ArrowSchema* actual,
 
 ArrowErrorCode TestingJSONComparison::SetSchema(const ArrowSchema* schema,
                                                 ArrowError* error) {
-  schema_.reset();
-  NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowSchemaDeepCopy(schema, schema_.get()), error);
-  actual_.reset();
-  expected_.reset();
+  nanoarrow::internal::release_pointer(&schema_);
+  nanoarrow::internal::release_pointer(&actual_);
+  nanoarrow::internal::release_pointer(&expected_);
+  NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowSchemaDeepCopy(schema, &schema_), error);
 
-  NANOARROW_RETURN_NOT_OK(
-      ArrowArrayViewInitFromSchema(actual_.get(), schema_.get(), error));
-  NANOARROW_RETURN_NOT_OK(
-      ArrowArrayViewInitFromSchema(expected_.get(), schema_.get(), error));
+  NANOARROW_RETURN_NOT_OK(ArrowArrayViewInitFromSchema(&actual_, &schema_, error));
+  NANOARROW_RETURN_NOT_OK(ArrowArrayViewInitFromSchema(&expected_, &schema_, error));
 
-  if (actual_->storage_type != NANOARROW_TYPE_STRUCT) {
+  if (actual_.storage_type != NANOARROW_TYPE_STRUCT) {
     ArrowErrorSet(error, "Can't SetSchema() with non-struct");
     return EINVAL;
   }
@@ -2641,8 +2654,8 @@ ArrowErrorCode TestingJSONComparison::SetSchema(const ArrowSchema* schema,
   std::stringstream ss;
   writer_actual_.ResetDictionaries();
   writer_expected_.ResetDictionaries();
-  writer_actual_.WriteSchema(ss, schema_.get());
-  writer_expected_.WriteSchema(ss, schema_.get());
+  writer_actual_.WriteSchema(ss, &schema_);
+  writer_expected_.WriteSchema(ss, &schema_);
 
   return NANOARROW_OK;
 }
@@ -2651,8 +2664,8 @@ ArrowErrorCode TestingJSONComparison::CompareBatch(const ArrowArray* actual,
                                                    const ArrowArray* expected,
                                                    ArrowError* error,
                                                    const std::string& path) {
-  NANOARROW_RETURN_NOT_OK(ArrowArrayViewSetArray(expected_.get(), expected, error));
-  NANOARROW_RETURN_NOT_OK(ArrowArrayViewSetArray(actual_.get(), actual, error));
+  NANOARROW_RETURN_NOT_OK(ArrowArrayViewSetArray(&expected_, expected, error));
+  NANOARROW_RETURN_NOT_OK(ArrowArrayViewSetArray(&actual_, actual, error));
 
   if (actual->offset != expected->offset) {
     differences_.push_back({path, ".offset: " + std::to_string(actual->offset),
@@ -2665,9 +2678,9 @@ ArrowErrorCode TestingJSONComparison::CompareBatch(const ArrowArray* actual,
   }
 
   // ArrowArrayViewSetArray() ensured that number of children of both match schema
-  for (int64_t i = 0; i < expected_->n_children; i++) {
+  for (int64_t i = 0; i < expected_.n_children; i++) {
     NANOARROW_RETURN_NOT_OK(
-        CompareColumn(schema_->children[i], actual_->children[i], expected_->children[i],
+        CompareColumn(schema_.children[i], actual_.children[i], expected_.children[i],
                       error, path + std::string(".children[") + std::to_string(i) + "]"));
   }
 

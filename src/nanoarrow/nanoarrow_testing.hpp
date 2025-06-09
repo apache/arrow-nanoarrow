@@ -19,7 +19,6 @@
 #define NANOARROW_TESTING_HPP_INCLUDED
 
 #include <iostream>
-#include <memory>
 #include <string>
 
 #include "nanoarrow/nanoarrow.hpp"
@@ -108,7 +107,7 @@ class NANOARROW_DLL TestingJSONWriter {
  private:
   int float_precision_;
   bool include_metadata_;
-  std::unique_ptr<internal::DictionaryContext> dictionaries_;
+  internal::DictionaryContext* dictionaries_;
 
   bool ShouldWriteMetadata(const char* metadata) {
     return metadata != nullptr && include_metadata_;
@@ -175,7 +174,7 @@ class NANOARROW_DLL TestingJSONReader {
 
  private:
   ArrowBufferAllocator allocator_;
-  std::unique_ptr<internal::DictionaryContext> dictionaries_;
+  internal::DictionaryContext* dictionaries_;
 
   void SetArrayAllocatorRecursive(ArrowArray* array);
 };
@@ -200,12 +199,7 @@ class NANOARROW_DLL TestingJSONComparison {
   };
 
  public:
-  TestingJSONComparison() : compare_batch_flags_(true), compare_metadata_order_(true) {
-    // We do our own metadata comparison
-    writer_actual_.set_include_metadata(false);
-    writer_expected_.set_include_metadata(false);
-  }
-
+  TestingJSONComparison();
   virtual ~TestingJSONComparison();
 
   /// \brief Compare top-level RecordBatch flags (e.g., nullability)
@@ -274,9 +268,9 @@ class NANOARROW_DLL TestingJSONComparison {
   TestingJSONWriter writer_actual_;
   TestingJSONWriter writer_expected_;
   std::vector<Difference> differences_;
-  nanoarrow::UniqueSchema schema_;
-  nanoarrow::UniqueArrayView actual_;
-  nanoarrow::UniqueArrayView expected_;
+  struct ArrowSchema schema_;
+  struct ArrowArrayView actual_;
+  struct ArrowArrayView expected_;
 
   // Comparison options
   bool compare_batch_flags_;
