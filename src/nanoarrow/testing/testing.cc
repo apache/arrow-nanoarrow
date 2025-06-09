@@ -2504,6 +2504,8 @@ TestingJSONComparison::TestingJSONComparison()
   writer_actual_.set_include_metadata(false);
   writer_expected_.set_include_metadata(false);
 
+  // We can't use nanoarrow::UniqueXXX in the public header because it doesn't export
+  // a DLL interface, so we initialize and delete them here as part of the class.
   nanoarrow::internal::init_pointer(&schema_);
   nanoarrow::internal::init_pointer(&actual_);
   nanoarrow::internal::init_pointer(&expected_);
