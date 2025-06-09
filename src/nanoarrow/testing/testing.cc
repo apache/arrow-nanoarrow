@@ -611,7 +611,12 @@ TestingJSONWriter::TestingJSONWriter()
       include_metadata_(true),
       dictionaries_(new internal::DictionaryContext()) {}
 
-TestingJSONWriter::~TestingJSONWriter() { delete dictionaries_; };
+TestingJSONWriter::~TestingJSONWriter() {
+  // We can't use a unique_ptr to manage dictionaries_ because shared linking on
+  // Windows requires that DictionaryContext also implements a dll interface and
+  // just manually managing the pointer is easier.
+  delete dictionaries_;
+};
 
 void TestingJSONWriter::ResetDictionaries() { dictionaries_->clear(); }
 
