@@ -49,7 +49,7 @@ class DictionaryContext;
 class NANOARROW_DLL TestingJSONWriter {
  public:
   TestingJSONWriter();
-  ~TestingJSONWriter();
+  virtual ~TestingJSONWriter();
 
   /// \brief Set the floating point precision of the writer
   ///
@@ -131,7 +131,7 @@ class NANOARROW_DLL TestingJSONReader {
  public:
   TestingJSONReader(ArrowBufferAllocator allocator);
   TestingJSONReader();
-  ~TestingJSONReader();
+  virtual ~TestingJSONReader();
 
   static const int kNumBatchOnlySchema = -2;
   static const int kNumBatchReadAll = -1;
@@ -205,6 +205,8 @@ class NANOARROW_DLL TestingJSONComparison {
     writer_actual_.set_include_metadata(false);
     writer_expected_.set_include_metadata(false);
   }
+
+  virtual ~TestingJSONComparison();
 
   /// \brief Compare top-level RecordBatch flags (e.g., nullability)
   ///

@@ -2498,6 +2498,8 @@ ArrowErrorCode ForceMapNamesCanonical(ArrowSchema* schema) {
 
 }  // namespace
 
+TestingJSONComparison::~TestingJSONComparison() {}
+
 void TestingJSONComparison::WriteDifferences(std::ostream& out) {
   for (const auto& difference : differences_) {
     out << "Path: " << difference.path << "\n";
@@ -2808,5 +2810,6 @@ ArrowErrorCode TestingJSONComparison::MetadataEqualKeyValue(const char* actual,
   *out = true;
   return NANOARROW_OK;
 }
+
 }  // namespace testing
 }  // namespace nanoarrow
