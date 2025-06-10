@@ -103,7 +103,16 @@ nanoarrow_dep = declare_dependency(
 )
 
 if get_option('ipc').enabled()
-    flatcc_dep = dependency('flatcc')
+    # flatcc does not export symbols in a way that works with
+    # MSVC compilers, so we force static linkage
+    if host_machine.system() == 'windows'
+        flatcc_dep = dependency(
+            'flatcc',
+            default_options: ['default_library=static'],
+        )
+    else
+        flatcc_dep = dependency('flatcc')
+    endif
     ipc_lib_deps = [nanoarrow_dep, flatcc_dep]
     ipc_lib_c_args = []
 
