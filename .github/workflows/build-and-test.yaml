@@ -179,7 +179,7 @@ jobs:
       - name: Install dependencies
         run: |
           python3 -m pip install --upgrade pip
-          python3 -m pip install "meson<1.8.0" ninja
+          python3 -m pip install "meson<1.8.0"
 
       - name: Run meson
         run: |
