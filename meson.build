@@ -46,16 +46,10 @@ if get_option('buildtype') in ['debug', 'debugoptimized']
     add_project_arguments('-DNANOARROW_DEBUG', language: 'cpp')
 endif
 
+nanoarrow_shared_args = []
 nanoarrow_dep_args = []
 if host_machine.system() == 'windows' and get_option('default_library') == 'shared'
-    add_project_arguments(
-        ['-DNANOARROW_BUILD_DLL', '-DNANOARROW_EXPORT_DLL'],
-        language: 'c',
-    )
-    add_project_arguments(
-        ['-DNANOARROW_BUILD_DLL', '-DNANOARROW_EXPORT_DLL'],
-        language: 'cpp',
-    )
+    nanoarrow_shared_args += ['-DNANOARROW_BUILD_DLL', '-DNANOARROW_EXPORT_DLL']
     nanoarrow_dep_args += ['-DNANOARROW_BUILD_DLL']
 endif
 
@@ -94,6 +88,7 @@ nanoarrow_lib = library(
     include_directories: [incdir],
     install: true,
     gnu_symbol_visibility: 'hidden',
+    c_shared_args: nanoarrow_shared_args,
 )
 
 nanoarrow_dep = declare_dependency(
@@ -139,6 +134,7 @@ if get_option('ipc').enabled()
         install: true,
         c_args: ipc_lib_c_args,
         gnu_symbol_visibility: 'hidden',
+        c_shared_args: nanoarrow_shared_args,
     )
     nanoarrow_ipc_dep = declare_dependency(
         include_directories: [incdir],
@@ -185,6 +181,8 @@ if needs_device
         install: true,
         cpp_args: device_defines,
         gnu_symbol_visibility: 'hidden',
+        c_shared_args: nanoarrow_shared_args,
+        cpp_shared_args: nanoarrow_shared_args,
     )
 
     nanoarrow_device_dep = declare_dependency(
@@ -200,7 +198,7 @@ needs_testing = get_option('testing').enabled() or get_option('tests').enabled()
 if needs_testing
     nlohmann_json_dep = dependency('nlohmann_json')
 
-    nanoarrow_testing_lib = library(
+    nanoarrow_testing_lib = static_library(
         'nanoarrow_testing',
         sources: ['src/nanoarrow/testing/testing.cc'],
         dependencies: [nanoarrow_dep, nlohmann_json_dep],
@@ -225,6 +223,7 @@ if get_option('tests').enabled() or get_option('integration_tests').enabled()
         dependencies: [nanoarrow_testing_dep, nanoarrow_dep],
         include_directories: incdir,
         gnu_symbol_visibility: 'hidden',
+        cpp_shared_args: nanoarrow_shared_args,
     )
 
     c_data_integration_dep = declare_dependency(
