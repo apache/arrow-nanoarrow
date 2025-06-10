@@ -127,8 +127,6 @@ jobs:
           path: build/Testing/Temporary/MemoryChecker.*.log
 
   meson-build:
-    # Can't quite be ubuntu-latest yet
-    # https://github.com/apache/arrow-nanoarrow/issues/753
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -136,26 +134,19 @@ jobs:
         with:
           python-version: '3.x'
 
-      - name: Install system dependencies
+      - name: Install valgrind
         run: |
-          sudo apt-get update && sudo apt-get install -y ninja-build valgrind
+          sudo apt-get update && sudo apt-get install -y valgrind
 
       # the gcovr shipped with 24.04 does not work with source files over 10k lines
       # so we use Python to install a newer version. See also
       # https://github.com/gcovr/gcovr/issues/1103
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.x'
-      - name: Install gcovr
+      # Meson 1.8.0 breaks build
+      # https://github.com/apache/arrow-nanoarrow/issues/753
+      - name: Install build dependencies
         run: |
-          pip install --upgrade pip
-          pip install gcovr
-
-      - name: Install meson
-        # Meson 1.8.0 breaks build
-        # https://github.com/apache/arrow-nanoarrow/issues/753
-        run: |
-          python3 -m pip install "meson<1.8.0"
+          python3 -m pip install --upgrade pip
+          python3 -m pip install gcovr "meson<1.8.0" ninja
 
       - name: Cache Arrow C++ Build
         id: cache-arrow-build
@@ -174,6 +165,30 @@ jobs:
       - name: Run meson testing script
         run: |
           PKG_CONFIG_PATH="$(pwd)/arrow/lib/pkgconfig" ci/scripts/build-with-meson.sh
+
+  meson-build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      # Meson 1.8.0 breaks build
+      # https://github.com/apache/arrow-nanoarrow/issues/753
+      - name: Install dependencies
+        run: |
+          python3 -m pip install --upgrade pip
+          python3 -m pip install "meson<1.8.0"
+
+      - name: Run meson
+        run: |
+          meson setup builddir `
+              --vsenv `
+              -Dipc=enabled `
+              -Dtests=enabled
+          meson compile -C builddir
+          meson test -C builddir --print-errorlogs
 
   test-no-arrow:
     name: test-no-arrow
