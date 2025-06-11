@@ -2503,14 +2503,32 @@ ArrowErrorCode ForceMapNamesCanonical(ArrowSchema* schema) {
 
 }  // namespace
 
+// Internal representation of a human-readable inequality
+struct Difference {
+  std::string path;
+  std::string actual;
+  std::string expected;
+};
+
+namespace internal {
+// A wrapper to keep std::string out of the header, which Windows complains
+// about in a dynamic linking scenario.
+struct Differences {
+  std::vector<Difference> inner;
+};
+}  // namespace internal
+
 TestingJSONComparison::TestingJSONComparison()
-    : compare_batch_flags_(true), compare_metadata_order_(true) {
+    : differences_(new internal::Differences()),
+      compare_batch_flags_(true),
+      compare_metadata_order_(true) {
   // We do our own metadata comparison
   writer_actual_.set_include_metadata(false);
   writer_expected_.set_include_metadata(false);
 
-  // We can't use nanoarrow::UniqueXXX in the public header because it doesn't export
-  // a DLL interface, so we initialize and delete them here as part of the class.
+  // We can't use nanoarrow::UniqueXXX or std::vector<Difference> in the public
+  // header because it doesn't export a DLL interface, so we initialize and
+  // delete them here as part of the class.
   nanoarrow::internal::init_pointer(&schema_);
   nanoarrow::internal::init_pointer(&actual_);
   nanoarrow::internal::init_pointer(&expected_);
@@ -2520,10 +2538,17 @@ TestingJSONComparison::~TestingJSONComparison() {
   nanoarrow::internal::release_pointer(&schema_);
   nanoarrow::internal::release_pointer(&actual_);
   nanoarrow::internal::release_pointer(&expected_);
+  delete differences_;
+}
+
+void TestingJSONComparison::ClearDifferences() { differences_->inner.clear(); }
+
+int64_t TestingJSONComparison::num_differences() const {
+  return differences_->inner.size();
 }
 
 void TestingJSONComparison::WriteDifferences(std::ostream& out) {
-  for (const auto& difference : differences_) {
+  for (const auto& difference : differences_->inner) {
     out << "Path: " << difference.path << "\n";
     out << "- " << difference.actual << "\n";
     out << "+ " << difference.expected << "\n";
@@ -2567,12 +2592,14 @@ ArrowErrorCode TestingJSONComparison::CompareArrayStream(ArrowArrayStream* actua
 
     // Check the finished/unfinished status of both streams
     if (actual_array->release == nullptr && expected_array->release != nullptr) {
-      differences_.push_back({batch_label, "finished stream", "unfinished stream"});
+      differences_->inner.push_back(
+          {batch_label, "finished stream", "unfinished stream"});
       return NANOARROW_OK;
     }
 
     if (actual_array->release != nullptr && expected_array->release == nullptr) {
-      differences_.push_back({batch_label, "unfinished stream", "finished stream"});
+      differences_->inner.push_back(
+          {batch_label, "unfinished stream", "finished stream"});
       return NANOARROW_OK;
     }
 
@@ -2617,13 +2644,14 @@ ArrowErrorCode TestingJSONComparison::CompareSchema(const ArrowSchema* actual,
 
   // Compare flags
   if (compare_batch_flags_ && actual->flags != expected->flags) {
-    differences_.push_back({path, std::string(".flags: ") + std::to_string(actual->flags),
-                            std::string(".flags: ") + std::to_string(expected->flags)});
+    differences_->inner.push_back(
+        {path, std::string(".flags: ") + std::to_string(actual->flags),
+         std::string(".flags: ") + std::to_string(expected->flags)});
   }
 
   // Compare children
   if (actual->n_children != expected->n_children) {
-    differences_.push_back(
+    differences_->inner.push_back(
         {path, std::string(".n_children: ") + std::to_string(actual->n_children),
          std::string(".n_children: ") + std::to_string(expected->n_children)});
   } else {
@@ -2675,13 +2703,13 @@ ArrowErrorCode TestingJSONComparison::CompareBatch(const ArrowArray* actual,
   NANOARROW_RETURN_NOT_OK(ArrowArrayViewSetArray(&actual_, actual, error));
 
   if (actual->offset != expected->offset) {
-    differences_.push_back({path, ".offset: " + std::to_string(actual->offset),
-                            ".offset: " + std::to_string(expected->offset)});
+    differences_->inner.push_back({path, ".offset: " + std::to_string(actual->offset),
+                                   ".offset: " + std::to_string(expected->offset)});
   }
 
   if (actual->length != expected->length) {
-    differences_.push_back({path, ".length: " + std::to_string(actual->length),
-                            ".length: " + std::to_string(expected->length)});
+    differences_->inner.push_back({path, ".length: " + std::to_string(actual->length),
+                                   ".length: " + std::to_string(expected->length)});
   }
 
   // ArrowArrayViewSetArray() ensured that number of children of both match schema
@@ -2725,7 +2753,7 @@ ArrowErrorCode TestingJSONComparison::CompareFieldBase(ArrowSchema* actual,
   std::string actual_json = ss.str();
 
   if (actual_json != expected_json) {
-    differences_.push_back({path, actual_json, expected_json});
+    differences_->inner.push_back({path, actual_json, expected_json});
   }
 
   NANOARROW_RETURN_NOT_OK(CompareMetadata(actual->metadata, expected->metadata, error,
@@ -2757,7 +2785,7 @@ ArrowErrorCode TestingJSONComparison::CompareMetadata(const char* actual,
 
   // If we still have an inequality, add a difference.
   if (!metadata_equal) {
-    differences_.push_back({path, actual_json, expected_json});
+    differences_->inner.push_back({path, actual_json, expected_json});
   }
 
   return NANOARROW_OK;
@@ -2796,7 +2824,7 @@ ArrowErrorCode TestingJSONComparison::CompareColumn(ArrowSchema* schema,
   std::string actual_json = ss.str();
 
   if (actual_json != expected_json) {
-    differences_.push_back({path, actual_json, expected_json});
+    differences_->inner.push_back({path, actual_json, expected_json});
   }
 
   return NANOARROW_OK;
