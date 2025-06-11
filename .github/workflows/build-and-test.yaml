@@ -185,6 +185,7 @@ jobs:
         run: |
           meson setup builddir `
               --vsenv `
+              -Dwerror=true `
               -Dipc=enabled `
               -Dtests=enabled
           meson compile -C builddir
