@@ -1,0 +1,9 @@
+[wrap-file]
+directory = arrow-94e3b3e98fe75a7498f2ee6edaeb006146d5cbe3
+source_url = https://github.com/apache/arrow/archive/94e3b3e98fe75a7498f2ee6edaeb006146d5cbe3.tar.gz
+source_filename = arrow-94e3b3e98fe75a7498f2ee6edaeb006146d5cbe3.tar.gz
+source_hash = b13a2fab6f9acd8266af2db7ffcfc9e0fbc8583bada4a0814d13155c8ee918ae
+patch_directory = arrow-cpp
+
+[provide]
+arrow-cpp = arrow_dep

@@ -243,14 +243,14 @@ if get_option('tests').enabled()
     # Similarly code coverage has a built in option users should use instead
     # https://mesonbuild.com/Unit-tests.html#coverage
 
-    arrow_dep = dependency('arrow', include_type: 'system', required: false)
-    if get_option('tests_with_arrow').enabled() and not arrow_dep.found()
-        error('tests_with_arrow=true but could not find Arrow')
-    endif
-
-    if get_option('tests_with_arrow').enabled()
-        test_cpp_args += ['-DNANOARROW_BUILD_TESTS_WITH_ARROW']
-    endif
+    gflags_dep = dependency('gflags', default_options: ['werror=false'])
+    arrow_dep = dependency(
+        'arrow',
+        fallback: ['arrow-cpp', 'arrow_dep'],
+        include_type: 'system',
+        default_options: ['werror=false'],
+    )
+    test_cpp_args += ['-DNANOARROW_BUILD_TESTS_WITH_ARROW']
 
     gtest_dep = dependency('gtest_main')
     gmock_dep = dependency('gmock')
