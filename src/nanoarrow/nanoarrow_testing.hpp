@@ -34,7 +34,8 @@ namespace testing {
 // Forward-declaration of internal types
 namespace internal {
 class DictionaryContext;
-}
+struct Differences;
+}  // namespace internal
 
 /// \defgroup nanoarrow_testing-json Integration test helpers
 ///
@@ -190,14 +191,6 @@ class NANOARROW_DLL TestingJSONReader {
 ///   "key", and "value".
 /// - Float32 and Float64 values are compared according to their JSON serialization.
 class NANOARROW_DLL TestingJSONComparison {
- private:
-  // Internal representation of a human-readable inequality
-  struct NANOARROW_DLL Difference {
-    std::string path;
-    std::string actual;
-    std::string expected;
-  };
-
  public:
   TestingJSONComparison();
   virtual ~TestingJSONComparison();
@@ -226,13 +219,13 @@ class NANOARROW_DLL TestingJSONComparison {
   }
 
   /// \brief Returns the number of differences found by the previous call
-  int64_t num_differences() const { return differences_.size(); }
+  int64_t num_differences() const;
 
   /// \brief Dump a human-readable summary of differences to out
   void WriteDifferences(std::ostream& out);
 
   /// \brief Clear any existing differences
-  void ClearDifferences() { differences_.clear(); }
+  void ClearDifferences();
 
   /// \brief Compare a stream of record batches
   ///
@@ -267,7 +260,7 @@ class NANOARROW_DLL TestingJSONComparison {
  private:
   TestingJSONWriter writer_actual_;
   TestingJSONWriter writer_expected_;
-  std::vector<Difference> differences_;
+  internal::Differences* differences_;
   struct ArrowSchema schema_;
   struct ArrowArrayView actual_;
   struct ArrowArrayView expected_;
