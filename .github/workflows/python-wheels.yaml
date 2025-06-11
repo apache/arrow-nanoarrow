@@ -54,11 +54,7 @@ jobs:
 
     - uses: actions/setup-python@v5
       with:
-        python-version: '3.9'
-
-    - name: Check that cmake is installed
-      run: |
-        cmake --version
+        python-version: '3.x'
 
     - name: Install packaging tools
       run: |
@@ -152,6 +148,7 @@ jobs:
           CIBW_TEST_COMMAND: pytest {package}/tests -vv
           CIBW_PLATFORM: ${{ matrix.config.platform }}
           CIBW_ARCHS: ${{ matrix.config.arch }}
+          CIBW_ENABLE: cpython-freethreading
 
       - uses: actions/upload-artifact@v4
         with:
