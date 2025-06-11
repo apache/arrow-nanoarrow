@@ -159,8 +159,7 @@ jobs:
   upload_nightly:
     needs: ["sdist", "wheels"]
     name: Upload nightly packages
-    runs-on: "ubuntu-latest"
-    if: github.repository == 'apache/arrow-nanoarrow' && github.ref == 'refs/heads/main'
+    runs-on: "macos-latest"
     steps:
       - uses: actions/download-artifact@v4
         with:
@@ -168,16 +167,14 @@ jobs:
           merge-multiple: true
           path: dist
 
-      - name: Set up Ruby
-        uses: ruby/setup-ruby@v1
-        with:
-          ruby-version: "ruby"
-
       - name: Install gemfury client
         run: |
-          gem install gemfury
+          brew tap gemfury/tap
+          brew install fury-cli
+          fury --version
 
       - name: Upload packages to Gemfury
+        if: github.repository == 'apache/arrow-nanoarrow' && github.ref == 'refs/heads/main'
         shell: bash
         run: |
           fury push \
