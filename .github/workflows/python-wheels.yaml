@@ -54,11 +54,7 @@ jobs:
 
     - uses: actions/setup-python@v5
       with:
-        python-version: '3.9'
-
-    - name: Check that cmake is installed
-      run: |
-        cmake --version
+        python-version: '3.x'
 
     - name: Install packaging tools
       run: |
@@ -137,7 +133,7 @@ jobs:
           arch: x86
 
       - name: Install cibuildwheel
-        run: python -m pip install cibuildwheel==2.21.1
+        run: python -m pip install cibuildwheel==2.23.3
 
       - name: Set nanoarrow Python dev version
         if: github.ref == 'refs/heads/main'
@@ -152,6 +148,7 @@ jobs:
           CIBW_TEST_COMMAND: pytest {package}/tests -vv
           CIBW_PLATFORM: ${{ matrix.config.platform }}
           CIBW_ARCHS: ${{ matrix.config.arch }}
+          CIBW_ENABLE: cpython-freethreading
 
       - uses: actions/upload-artifact@v4
         with:
@@ -162,8 +159,7 @@ jobs:
   upload_nightly:
     needs: ["sdist", "wheels"]
     name: Upload nightly packages
-    runs-on: "ubuntu-latest"
-    if: github.repository == 'apache/arrow-nanoarrow' && github.ref == 'refs/heads/main'
+    runs-on: "macos-latest"
     steps:
       - uses: actions/download-artifact@v4
         with:
@@ -171,16 +167,14 @@ jobs:
           merge-multiple: true
           path: dist
 
-      - name: Set up Ruby
-        uses: ruby/setup-ruby@v1
-        with:
-          ruby-version: "ruby"
-
       - name: Install gemfury client
         run: |
-          gem install gemfury
+          brew tap gemfury/tap
+          brew install fury-cli
+          fury --version
 
       - name: Upload packages to Gemfury
+        if: github.repository == 'apache/arrow-nanoarrow' && github.ref == 'refs/heads/main'
         shell: bash
         run: |
           fury push \
