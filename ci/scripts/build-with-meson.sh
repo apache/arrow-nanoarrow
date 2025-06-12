@@ -69,55 +69,39 @@ function main() {
     meson configure \
           -Dbuildtype=debugoptimized \
           -Db_sanitize="address,undefined" \
-          -Dtests=enabled \
-          -Dtests_with_arrow=enabled \
-          -Dipc=enabled \
-          -Ddevice=enabled \
-          -Dbenchmarks=disabled \
-          -Db_coverage=false
-
+          -Db_coverage=false \
+          -Dauto_features=enabled
     meson compile
-    meson test --print-errorlogs
+    meson test --suite nanoarrow --print-errorlogs
 
     show_header "Run valgrind test suite"
     meson configure \
           -Dbuildtype=debugoptimized \
           -Db_sanitize=none \
-          -Dtests=enabled \
-          -Dtests_with_arrow=enabled \
-          -Dipc=enabled \
-          -Ddevice=enabled \
-          -Dbenchmarks=disabled \
-          -Db_coverage=false
+          -Db_coverage=false \
+          -Dauto_features=enabled
     meson compile
-    meson test --wrap='valgrind --track-origins=yes --leak-check=full' --print-errorlog
+    meson test --suite nanoarrow --print-errorlog \
+          --wrap='valgrind --track-origins=yes --leak-check=full'
 
     show_header "Run benchmarks"
     meson configure \
           -Dbuildtype=release \
           -Db_sanitize=none \
-          -Dtests=disabled \
-          -Dtests_with_arrow=enabled \
-          -Dipc=enabled \
-          -Ddevice=enabled \
-          -Dbenchmarks=enabled \
-          -Db_coverage=false
+          -Db_coverage=false \
+          -Dauto_features=enabled
     meson compile
-    meson test --benchmark --print-errorlogs
+    meson test --suite nanoarrow --print-errorlogs --benchmark
 
     show_header "Run coverage test suite"
     meson configure \
           -Dbuildtype=release \
           -Db_sanitize=none \
-          -Dtests=enabled \
-          -Dtests_with_arrow=enabled \
-          -Dipc=enabled \
-          -Ddevice=enabled \
-          -Dbenchmarks=disabled \
-          -Db_coverage=true
+          -Db_coverage=true \
+          -Dauto_features=enabled
 
     meson compile
-    meson test --print-errorlogs
+    meson test --suite nanoarrow --print-errorlogs
 
     show_header "Generate coverage reports"
     ninja coverage
