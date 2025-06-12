@@ -70,6 +70,7 @@ function main() {
           -Dbuildtype=debugoptimized \
           -Db_sanitize="address,undefined" \
           -Dtests=enabled \
+          -Dtests_with_arrow=enabled \
           -Dipc=enabled \
           -Ddevice=enabled \
           -Dbenchmarks=disabled \
@@ -83,6 +84,7 @@ function main() {
           -Dbuildtype=debugoptimized \
           -Db_sanitize=none \
           -Dtests=enabled \
+          -Dtests_with_arrow=enabled \
           -Dipc=enabled \
           -Ddevice=enabled \
           -Dbenchmarks=disabled \
@@ -95,6 +97,7 @@ function main() {
           -Dbuildtype=release \
           -Db_sanitize=none \
           -Dtests=disabled \
+          -Dtests_with_arrow=enabled \
           -Dipc=enabled \
           -Ddevice=enabled \
           -Dbenchmarks=enabled \
@@ -107,6 +110,7 @@ function main() {
           -Dbuildtype=release \
           -Db_sanitize=none \
           -Dtests=enabled \
+          -Dtests_with_arrow=enabled \
           -Dipc=enabled \
           -Ddevice=enabled \
           -Dbenchmarks=disabled \
