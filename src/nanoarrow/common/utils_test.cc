@@ -279,6 +279,9 @@ TEST(DecimalTest, Decimal32Test) {
   EXPECT_EQ(ArrowDecimalSign(&decimal), 1);
 #if defined(NANOARROW_BUILD_TESTS_WITH_ARROW) && ARROW_VERSION_MAJOR >= 18
   EXPECT_EQ(memcmp(decimal.words, bytes_pos, sizeof(bytes_pos)), 0);
+  ASSERT_EQ(decimal.n_words, 0);
+  // This duplicative assert suppresses array-bounds warnings with release builds
+  assert(decimal.n_words == 0);
   ArrowDecimalSetBytes(&decimal, bytes_pos);
   EXPECT_EQ(memcmp(decimal.words, bytes_pos, sizeof(bytes_pos)), 0);
 #endif
@@ -288,6 +291,9 @@ TEST(DecimalTest, Decimal32Test) {
   EXPECT_EQ(ArrowDecimalSign(&decimal), -1);
 #if defined(NANOARROW_BUILD_TESTS_WITH_ARROW) && ARROW_VERSION_MAJOR >= 18
   EXPECT_EQ(memcmp(decimal.words, bytes_neg, sizeof(bytes_neg)), 0);
+  ASSERT_EQ(decimal.n_words, 0);
+  // This duplicative assert suppresses array-bounds warnings with release builds
+  assert(decimal.n_words == 0);
   ArrowDecimalSetBytes(&decimal, bytes_neg);
   EXPECT_EQ(memcmp(decimal.words, bytes_neg, sizeof(bytes_neg)), 0);
 #endif

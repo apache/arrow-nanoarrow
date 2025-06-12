@@ -228,6 +228,11 @@ TEST(ArrayTest, ArrayTestBuildByBuffer) {
   ASSERT_EQ(ArrowArrayInitFromType(&array, NANOARROW_TYPE_STRING), NANOARROW_OK);
 
   ASSERT_EQ(ArrowBitmapReserve(ArrowArrayValidityBitmap(&array), 100), NANOARROW_OK);
+
+  ASSERT_EQ(ArrowArrayValidityBitmap(&array)->size_bits % 8, 0);
+  // This duplicative assert suppresses maybe-uninitialized warnings with release builds
+  assert(ArrowArrayValidityBitmap(&array)->size_bits % 8 == 0);
+
   ArrowBitmapAppendInt8Unsafe(ArrowArrayValidityBitmap(&array), validity_array, 7);
 
   ASSERT_EQ(ArrowBufferReserve(ArrowArrayBuffer(&array, 1), 100), NANOARROW_OK);
