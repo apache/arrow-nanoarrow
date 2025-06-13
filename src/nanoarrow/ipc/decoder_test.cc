@@ -280,7 +280,7 @@ TEST(NanoarrowIpcTest, NanoarrowIpcVerifySimpleRecordBatch) {
   struct ArrowError error;
 
   std::vector<uint8_t> data_aligned(sizeof(kSimpleRecordBatch));
-  std::memcpy(data_aligned.data(), kSimpleRecordBatch, data_aligned.size());
+  std::memcpy(data_aligned.data(), kSimpleRecordBatch, sizeof(kSimpleRecordBatch));
 
   struct ArrowBufferView data;
   data.data.as_uint8 = data_aligned.data();
