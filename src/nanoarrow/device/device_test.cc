@@ -45,7 +45,9 @@ TEST(NanoarrowDevice, ArrowDeviceCpuBuffer) {
   struct ArrowDevice* cpu = ArrowDeviceCpu();
   struct ArrowBuffer buffer;
   uint8_t data[] = {0x01, 0x02, 0x03, 0x04, 0x05};
-  struct ArrowBufferView view = {data, sizeof(data)};
+  struct ArrowBufferView view;
+  view.data.as_uint8 = data;
+  view.size_bytes = sizeof(data);
 
   ASSERT_EQ(ArrowDeviceBufferInit(cpu, view, cpu, &buffer), NANOARROW_OK);
   EXPECT_EQ(buffer.size_bytes, 5);
@@ -58,7 +60,9 @@ TEST(NanoarrowDevice, ArrowDeviceCpuBuffer) {
   EXPECT_EQ(buffer.data, nullptr);
 
   uint8_t dest[5];
-  struct ArrowBufferView dest_view = {dest, sizeof(dest)};
+  struct ArrowBufferView dest_view;
+  dest_view.data.as_uint8 = dest;
+  dest_view.size_bytes = sizeof(dest);
   ASSERT_EQ(ArrowDeviceBufferCopy(cpu, view, cpu, dest_view), NANOARROW_OK);
   EXPECT_EQ(memcmp(dest, view.data.data, sizeof(data)), 0);
 
