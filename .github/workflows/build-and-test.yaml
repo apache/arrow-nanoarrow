@@ -146,7 +146,7 @@ jobs:
       - name: Install build dependencies
         run: |
           python3 -m pip install --upgrade pip
-          python3 -m pip install gcovr "meson<1.8.0" ninja
+          python3 -m pip install gcovr meson ninja
 
       - name: Cache Arrow C++ Build
         id: cache-arrow-build
@@ -179,7 +179,7 @@ jobs:
       - name: Install dependencies
         run: |
           python3 -m pip install --upgrade pip
-          python3 -m pip install "meson<1.8.0"
+          python3 -m pip install meson
 
       - name: Run meson
         run: |
@@ -187,7 +187,7 @@ jobs:
               --vsenv `
               -Dipc=enabled `
               -Dtests=enabled
-          meson compile -C builddir
+          meson compile -C builddir --verbose
           meson test -C builddir --print-errorlogs
 
   test-no-arrow:
