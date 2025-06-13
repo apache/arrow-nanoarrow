@@ -279,9 +279,12 @@ TEST(NanoarrowIpcTest, NanoarrowIpcVerifySimpleRecordBatch) {
   struct ArrowIpcDecoder decoder;
   struct ArrowError error;
 
+  std::vector<uint8_t> data_aligned(sizeof(kSimpleRecordBatch));
+  std::memcpy(data_aligned.data(), kSimpleRecordBatch, data_aligned.size());
+
   struct ArrowBufferView data;
-  data.data.as_uint8 = kSimpleRecordBatch;
-  data.size_bytes = sizeof(kSimpleRecordBatch);
+  data.data.as_uint8 = data_aligned.data();
+  data.size_bytes = data_aligned.size();
 
   ArrowIpcDecoderInit(&decoder);
   ASSERT_EQ(ArrowIpcDecoderVerifyHeader(&decoder, data, &error), NANOARROW_OK)
