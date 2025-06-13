@@ -284,7 +284,7 @@ TEST(NanoarrowIpcTest, NanoarrowIpcVerifySimpleRecordBatch) {
   data.size_bytes = sizeof(kSimpleRecordBatch);
 
   ArrowIpcDecoderInit(&decoder);
-  EXPECT_EQ(ArrowIpcDecoderVerifyHeader(&decoder, data, &error), NANOARROW_OK);
+  ASSERT_EQ(ArrowIpcDecoderVerifyHeader(&decoder, data, &error), NANOARROW_OK) << error;
   EXPECT_EQ(decoder.message_type, NANOARROW_IPC_MESSAGE_TYPE_RECORD_BATCH);
   EXPECT_EQ(decoder.header_size_bytes,
             sizeof(kSimpleRecordBatch) - decoder.body_size_bytes);
