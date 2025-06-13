@@ -145,7 +145,7 @@ if get_option('ipc').enabled()
         link_with: nanoarrow_ipc_lib,
         dependencies: [nanoarrow_dep],
     )
-    zlib_dep = dependency('zlib')
+    zlib_dep = dependency('zlib', default_options: ['tests=disabled'])
 else
     flatcc_dep = disabler()
     nanoarrow_ipc_dep = disabler()

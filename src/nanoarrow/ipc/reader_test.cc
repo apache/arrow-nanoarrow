@@ -115,7 +115,15 @@ TEST(NanoarrowIpcReader, InputStreamFile) {
   ASSERT_EQ(ArrowIpcInputStreamInitFile(&stream, nullptr, 1), EINVAL);
 
   uint8_t input_data[] = {0x01, 0x02, 0x03, 0x04, 0x05};
+#ifdef _MSC_VER
+  // This macro suppresses warnings when using tmpfile and the MSVC compiler
+  // warning C4996: 'tmpfile': This function or variable may be unsafe. Consider
+  // using tmpfile_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS
+  FILE* file_ptr;
+  ASSERT_EQ(tmpfile_s(&file_ptr), 0);
+#else
   FILE* file_ptr = tmpfile();
+#endif
   FileCloser closer{file_ptr};
   ASSERT_NE(file_ptr, nullptr);
   ASSERT_EQ(fwrite(input_data, 1, sizeof(input_data), file_ptr), sizeof(input_data));
