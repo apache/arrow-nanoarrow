@@ -184,6 +184,7 @@ jobs:
       - name: Run meson
         run: |
           meson setup builddir `
+              -Dbuildtype=release `
               --vsenv `
               -Dwerror=true `
               -Dipc=enabled `
