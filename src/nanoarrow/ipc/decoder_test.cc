@@ -15,6 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
+#include <cstring>
 #include <thread>
 
 #if defined(NANOARROW_BUILD_TESTS_WITH_ARROW)
