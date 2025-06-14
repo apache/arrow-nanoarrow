@@ -61,7 +61,10 @@ function main() {
     mkdir "${SANDBOX_DIR}"
 
     show_header "Compile project with meson"
-    meson setup "${SANDBOX_DIR}" --pkg-config-path $PKG_CONFIG_PATH -Dwerror=true
+    meson setup "${SANDBOX_DIR}" \
+          --pkg-config-path $PKG_CONFIG_PATH \
+          -Dwerror=true \
+          -Dbuildtype=release
 
     pushd "${SANDBOX_DIR}"
 
