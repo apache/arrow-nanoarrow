@@ -178,6 +178,7 @@ This is a good time to run other final checks such as:
 - Manually dispatch the [Verification workflow](https://github.com/apache/arrow-nanoarrow/actions/workflows/verify.yaml).
 - Manually dispatch the [Python wheels workflow](https://github.com/apache/arrow-nanoarrow/actions/workflows/python-wheels.yaml).
 - Create a draft [PR into WrapDB](#update-the-wrapdb-entry) to make sure tests pass in their CI
+- Create a draft [PR into vcpkg](#update-the-vcpkg-entry) to make sure tests pass in their CI
 - Draft a release blog post and make a draft PR into [arrow-site](https://github.com/apache/arrow-site).
 - Review [nanoarrow dev documentation](https://arrow.apache.org/nanoarrow/main/) for obvious holes/typos.
 
@@ -354,6 +355,10 @@ The [conda-forge feedstock](https://github.com/conda-forge/nanoarrow-feedstock) 
 ### Update the WrapDB Entry
 
 The nanoarrow C library is available for users of the [Meson build system](https://mesonbuild.com/) via [WrapDB](https://mesonbuild.com/Wrapdb-projects.html). When a new release is added, PR into the [WrapDB repository](https://github.com/mesonbuild/wrapdb) is required to make the new version available to users. See https://github.com/mesonbuild/wrapdb/pull/1536 for a template PR. It is also a good idea to do this step before the release candidate is cut to catch packaging issues before finalizing the content of the version.
+
+### Update the vcpkg Entry
+
+The nanoarrow C library is available on [vcpkg](https://github.com/microsoft/vcpkg). When a new release is added, PR into the vcpkg repository to make the new version available to users. See https://github.com/microsoft/vcpkg/pull/46029 for a template PR. It is a good idea to do this step before merging a release to catch packaging issues before finalizing the content of the version.
 
 ### Update release documentation
 
