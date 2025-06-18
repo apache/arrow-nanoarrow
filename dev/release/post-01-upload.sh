@@ -38,9 +38,9 @@ main() {
 
     rc_id="apache-arrow-nanoarrow-${version}-rc${rc_number}"
     release_id="apache-arrow-nanoarrow-${version}"
-    echo "Copying dev/ to release/"
+    echo "Moving dev/ to release/"
     svn \
-        cp \
+        mv \
         --username=$APACHE_USERNAME \
         -m "Apache Arrow nanoarrow ${version}" \
         https://dist.apache.org/repos/dist/dev/arrow/${rc_id} \
