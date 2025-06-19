@@ -58,6 +58,7 @@ option(NANOARROW_BUNDLE_AS_CPP "Bundle nanoarrow source file as nanoarrow.cc" OF
 option(NANOARROW_CODE_COVERAGE "Enable coverage reporting" OFF)
 option(NANOARROW_ARROW_STATIC
        "Use a statically-linked Arrow C++ build when linking tests" OFF)
+option(NANOARROW_DEBUG_EXTRA_WARNINGS "Use extra warnings when compiling in debug mode" ON)
 
 if(NOT DEFINED CMAKE_C_STANDARD)
   if(NANOARROW_IPC)
@@ -489,28 +490,30 @@ foreach(target
 
     # For debug builds, ensure we aggressively set compiler warning flags and
     # error for any compiler warnings
-    if(CMAKE_C_COMPILER_ID STREQUAL "GNU")
-      target_compile_options(${target}
-                             PRIVATE $<$<CONFIG:Debug>:-Wall
-                                     -Werror
-                                     -Wextra
-                                     -Wpedantic
-                                     -Wno-type-limits
-                                     -Wmaybe-uninitialized
-                                     -Wunused-result
-                                     -Wconversion
-                                     -Wno-sign-conversion>)
-      target_compile_options(${target} PRIVATE -Wno-misleading-indentation)
-    elseif(CMAKE_C_COMPILER_ID STREQUAL "AppleClang" OR CMAKE_C_COMPILER_ID STREQUAL
-                                                        "Clang")
-      target_compile_options(${target}
-                             PRIVATE $<$<CONFIG:Debug>:-Wall
-                                     -Werror
-                                     -Wextra
-                                     -Wpedantic
-                                     -Wdocumentation
-                                     -Wconversion
-                                     -Wno-sign-conversion>)
+    if(NANOARROW_DEBUG_EXTRA_WARNINGS)
+      if(CMAKE_C_COMPILER_ID STREQUAL "GNU")
+        target_compile_options(${target}
+                              PRIVATE $<$<CONFIG:Debug>:-Wall
+                                      -Werror
+                                      -Wextra
+                                      -Wpedantic
+                                      -Wno-type-limits
+                                      -Wmaybe-uninitialized
+                                      -Wunused-result
+                                      -Wconversion
+                                      -Wno-sign-conversion>)
+        target_compile_options(${target} PRIVATE -Wno-misleading-indentation)
+      elseif(CMAKE_C_COMPILER_ID STREQUAL "AppleClang" OR CMAKE_C_COMPILER_ID STREQUAL
+                                                          "Clang")
+        target_compile_options(${target}
+                              PRIVATE $<$<CONFIG:Debug>:-Wall
+                                      -Werror
+                                      -Wextra
+                                      -Wpedantic
+                                      -Wdocumentation
+                                      -Wconversion
+                                      -Wno-sign-conversion>)
+      endif()
     endif()
   endif()
 endforeach()
