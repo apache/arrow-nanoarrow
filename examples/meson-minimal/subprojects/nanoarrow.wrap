@@ -15,8 +15,9 @@
 # specific language governing permissions and limitations
 # under the License.
 
+# Normally you should meson wrap install nanoarrow to populate this file; however
+# we use wrap-git to ensure this example is testing the latest version in our CI.
 [wrap-git]
-# url should point to the project root with the top-level meson.build file
 url = ../../..
 revision = head
 
