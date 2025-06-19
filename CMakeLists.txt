@@ -58,7 +58,10 @@ option(NANOARROW_BUNDLE_AS_CPP "Bundle nanoarrow source file as nanoarrow.cc" OF
 option(NANOARROW_CODE_COVERAGE "Enable coverage reporting" OFF)
 option(NANOARROW_ARROW_STATIC
        "Use a statically-linked Arrow C++ build when linking tests" OFF)
-option(NANOARROW_DEBUG_EXTRA_WARNINGS "Use extra warnings when compiling in debug mode" ON)
+option(NANOARROW_DEBUG_EXTRA_WARNINGS "Use extra warnings when compiling in debug mode"
+       ON)
+# For vcpkg, where there's a check that fails if .dlls are present for static linkage
+option(NANOARROW_INSTALL_SHARED "Install shared libraries" ON)
 
 if(NOT DEFINED CMAKE_C_STANDARD)
   if(NANOARROW_IPC)
@@ -482,37 +485,40 @@ foreach(target
     endif()
 
     # Ensure target is added to nanoarrow-exports
-    install(TARGETS ${target}
-            EXPORT nanoarrow-exports
-            RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
-            LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
-            ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
+    if(((target_type STREQUAL "SHARED_LIBRARY") AND NANOARROW_INSTALL_SHARED)
+       OR NOT (target_type STREQUAL "SHARED_LIBRARY"))
+      install(TARGETS ${target}
+              EXPORT nanoarrow-exports
+              RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+              LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+              ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
+    endif()
 
     # For debug builds, ensure we aggressively set compiler warning flags and
     # error for any compiler warnings
     if(NANOARROW_DEBUG_EXTRA_WARNINGS)
       if(CMAKE_C_COMPILER_ID STREQUAL "GNU")
         target_compile_options(${target}
-                              PRIVATE $<$<CONFIG:Debug>:-Wall
-                                      -Werror
-                                      -Wextra
-                                      -Wpedantic
-                                      -Wno-type-limits
-                                      -Wmaybe-uninitialized
-                                      -Wunused-result
-                                      -Wconversion
-                                      -Wno-sign-conversion>)
+                               PRIVATE $<$<CONFIG:Debug>:-Wall
+                                       -Werror
+                                       -Wextra
+                                       -Wpedantic
+                                       -Wno-type-limits
+                                       -Wmaybe-uninitialized
+                                       -Wunused-result
+                                       -Wconversion
+                                       -Wno-sign-conversion>)
         target_compile_options(${target} PRIVATE -Wno-misleading-indentation)
       elseif(CMAKE_C_COMPILER_ID STREQUAL "AppleClang" OR CMAKE_C_COMPILER_ID STREQUAL
                                                           "Clang")
         target_compile_options(${target}
-                              PRIVATE $<$<CONFIG:Debug>:-Wall
-                                      -Werror
-                                      -Wextra
-                                      -Wpedantic
-                                      -Wdocumentation
-                                      -Wconversion
-                                      -Wno-sign-conversion>)
+                               PRIVATE $<$<CONFIG:Debug>:-Wall
+                                       -Werror
+                                       -Wextra
+                                       -Wpedantic
+                                       -Wdocumentation
+                                       -Wconversion
+                                       -Wno-sign-conversion>)
       endif()
     endif()
   endif()
