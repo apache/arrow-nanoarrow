@@ -66,7 +66,7 @@ cython_args = [
     '--include-dir',
     meson.current_build_dir(),
 ]
-if get_option('buildtype') in ['debug', 'debugoptimized']
+if get_option('debug')
     cython_args += ['--gdb']
 endif
 

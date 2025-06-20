@@ -36,7 +36,7 @@ add_project_arguments(
     language: 'cpp',
 )
 
-if get_option('buildtype') in ['debug', 'debugoptimized']
+if get_option('debug')
     add_project_arguments('-DNANOARROW_DEBUG', language: 'c')
     add_project_arguments('-DNANOARROW_DEBUG', language: 'cpp')
 endif
