@@ -18,7 +18,7 @@
 # Normally you should meson wrap install nanoarrow to populate this file; however
 # we use wrap-git to ensure this example is testing the latest version in our CI.
 [wrap-git]
-url = ../../../..
+url = ../../..
 revision = head
 
 [provide]
