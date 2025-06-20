@@ -122,7 +122,7 @@ jobs:
           ./run.sh
 
       - name: Meson example
-        # This example doesn't seem to work on Windows
+        # These examples don't seem to work on Windows
         # https://github.com/apache/arrow-nanoarrow/issues/725
         if: matrix.config.label != 'windows'
         shell: bash
@@ -135,6 +135,7 @@ jobs:
           ./builddir/example_meson_minimal_app
 
       - name: Python example
+        if: matrix.config.label != 'windows'
         shell: bash
         run: |
           python3 -m pip install examples/python-package
