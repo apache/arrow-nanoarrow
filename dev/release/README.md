@@ -113,7 +113,7 @@ to verify the C library; R and Rtools can be installed using the
 
 ```bash
 # Pass location of R to the verification script
-export NANOARROW_CMAKE_OPTIONS="-Dgtest_force_shared_crt=ON -DNANOARROW_ARROW_STATIC=ON"
+export NANOARROW_CMAKE_OPTIONS="-Dgtest_force_shared_crt=ON"
 export R_HOME="/c/Program Files/R/R-4.5.0"
 ```
 
@@ -136,7 +136,7 @@ On recent Fedora (e.g., `docker run --rm -it fedora:latest`), you can install al
 using `dnf`:
 
 ```bash
-dnf install -y git cmake R gnupg curl python3-devel python3-virtualenv
+dnf install -y git cmake R gnupg curl python3-devel python3-virtualenv awk
 ```
 
 ### Arch Linux
@@ -150,8 +150,7 @@ pacman -Sy git gcc make cmake r-base gnupg curl python
 
 ### Alpine Linux
 
-On Alpine Linux (e.g., `docker run --rm -it alpine:latest`), all prerequisites are available using `apk add` except for Arrow C++ which requires enabling the
-community repository.
+On Alpine Linux (e.g., `docker run --rm -it alpine:latest`), all prerequisites are available using `apk add`.
 
 ```bash
 
