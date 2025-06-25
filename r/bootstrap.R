@@ -43,7 +43,8 @@ run_bundler <- function() {
     "--with-flatcc"
   )
   command <- sprintf(
-    "python3 ../ci/scripts/bundle.py  %s",
+    "%s ../ci/scripts/bundle.py  %s",
+    python(),
     paste(args, collapse = " ")
   )
 
