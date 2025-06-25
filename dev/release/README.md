@@ -117,6 +117,8 @@ export NANOARROW_CMAKE_OPTIONS="-Dgtest_force_shared_crt=ON"
 export R_HOME="/c/Program Files/R/R-4.5.0"
 ```
 
+Unfortunately verifying Python via the release verification script on Windows is not currently possible, thus successful verification requites `TEST_PYTHON=0 ./verify-release-candidate.sh`.
+
 ### Debian/Ubuntu
 
 On Debian/Ubuntu (e.g., `docker run --rm -it ubuntu:latest`) you can install prerequisites using `apt`.
