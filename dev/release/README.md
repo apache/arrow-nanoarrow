@@ -481,10 +481,8 @@ The Apache Arrow Community
 ### Remove old artifacts from SVN
 
 These artifacts include any release candidates that were uploaded to
-<https://dist.apache.org/repos/dist/dev/arrow/> and old releases that
-were upload to
-<https://dist.apache.org/repos/dist/release/arrow/>. You can remove
-them using:
+<https://dist.apache.org/repos/dist/dev/arrow/>. You can remove them
+using:
 
 ```
 # Once
