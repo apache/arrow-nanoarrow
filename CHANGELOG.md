@@ -337,3 +337,73 @@
 
 - Fix meson build and clean up some warnings (#595)
 - test with the `HalfFloatType` from arrow (#503)
+
+## nanoarrow 0.7.0
+
+### Clean
+
+- Use Meson disabler objects instead of conditions (#744)
+- Use meson format for meson build configurations (#682)
+- Assorted Meson and clang-tidy fixes (#673)
+
+### Docs
+
+- Ensure all headers are parsed by Doxygen (#681)
+- **python**: Update development instructions for Python bindings (#685)
+
+### Feat
+
+- Add UniqueSharedBuffer C++ wrapper (#747)
+- Use feature options instead of boolean in Meson (#739)
+- Use hidden symbol linkage in Meson configuration (#731)
+- Add support for Decimal32/64 to R package (#717)
+- Improve shared linkage support (#719)
+- Add `ArrowDecimalAppendStringToBuffer()` (#720)
+- Implement LIST_VIEW and LARGE_LIST_VIEW support (#710)
+- Add ZSTD decompression support to IPC reader (#693)
+- add Decimal32/Decimal64 support (#683)
+- **python**: Implement extension type/mechanism in python package (#688)
+- **python**: Add map type constructor (#687)
+- **r**: Add zstd decompression support to R package (#733)
+- **r**: Support native creation of more numeric Arrow arrays from integer vectors (#697)
+- **r**: Support matrix objects as fixed-size-list arrays (#692)
+
+### Fix
+
+- Align flatbuffer test data stored as globals (#783)
+- Make auto_features more user friendly in Meson (#763)
+- Linking to nanoarrow-testing-shared on Windows (#778)
+- Ensure nanoarrow-testing can be linked to in a shared Windows build (#770)
+- Don't use the value of `__GNUC__` unless defined (#769)
+- Fix ignored offset in ArrowArrayViewGetIntervalUnsafe (#755)
+- Enure ArrowIpcSetDecompressor() marks input decompressor as released (#748)
+- Fix valgrind error suggesting use of an uninitialized value (#750)
+- Fix potential integer overflows (#736)
+- ArrowDecimalSetDigits() on s390x + test fixes for big endian (#732)
+- Remove rust version pin for integration test job (#729)
+- CMake install directories on Windows (#715)
+- remove deprecated operator"" syntax usage (#661)
+- **ci**: Meson windows example CI (#791)
+- **ci**: Fix runner specification for c-device (#760)
+- **ci**: Update actions using ubuntu-20.04 (#745)
+- **ci**: Use gcovr instead of lcov (#694)
+- **cpp**: Ensure Meson build compiles Arrow tests (#711)
+- **cpp**: Fix offset handling in ViewArrayAs Range Helpers (#702)
+- **docs**: Fix download link in the README (#712)
+- **python**: Ensure source distribution builds with Cython 3.1.0 (#759)
+- **r**: Ensure that `python` is used on Windows when running bootstrap.R (#792)
+- **r**: Update vctrs extension name to reflect implementation change (#752)
+- **r**: sub-day precision Date should be floored when treated as integer (#674)
+
+### Python
+
+- Use meson-python instead of setuptools (#644)
+
+### Refactor
+
+- Split up nanoarrow.hpp into multiple .hpp files (#668)
+
+### Test
+
+- Test LargeList SchemaInit without Arrow (#714)
+- Make Arrow C++ dependency optional (#677)
