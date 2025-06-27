@@ -15,4 +15,4 @@ dist/flatcc.c
 src/nanoarrow/ipc/flatcc_generated.h
 thirdparty/*
 python/src/nanoarrow/dlpack_abi.h
-python/subprojects/arrow-nanoarrow
+python/subprojects/arrow-nanoarrow/*

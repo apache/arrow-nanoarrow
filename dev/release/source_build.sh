@@ -45,6 +45,8 @@ main() {
     mv "${base_name}/" "${base_name}.tmp/"
     cp -R -d "${base_name}.tmp" "${base_name}"
     rm -rf "${base_name}.tmp/"
+    MESON_SOURCE_ROOT="${base_name}/python" MESON_DIST_ROOT="${base_name}/python" \
+                     python "${base_name}/python/generate_dist.py"
 
     # Create new tarball
     tar czf "${tar_ball}" "${base_name}/"
