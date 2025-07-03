@@ -18,7 +18,7 @@
 message(STATUS "Building using CMake version: ${CMAKE_VERSION}")
 cmake_minimum_required(VERSION 3.14)
 
-set(NANOARROW_VERSION "0.7.0-SNAPSHOT")
+set(NANOARROW_VERSION "0.8.0-SNAPSHOT")
 string(REGEX MATCH "^[0-9]+\\.[0-9]+\\.[0-9]+" NANOARROW_BASE_VERSION
              "${NANOARROW_VERSION}")
 project(nanoarrow VERSION "${NANOARROW_BASE_VERSION}")
