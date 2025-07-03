@@ -4,8 +4,12 @@
         "url": "https://arrow.apache.org/nanoarrow/main/"
     },
     {
-        "version": "0.6.0",
+        "version": "0.7.0",
         "url": "https://arrow.apache.org/nanoarrow/latest/"
+    },
+    {
+        "version": "0.7.0",
+        "url": "https://arrow.apache.org/nanoarrow/0.7.0/"
     },
     {
         "version": "0.6.0",
