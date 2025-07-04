@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">nanoarrow</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.6.0.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.7.0.9000</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -32,6 +32,24 @@
       <small>Source: <a href="https://github.com/apache/arrow-nanoarrow/blob/main/r/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.7.0" id="nanoarrow-070">nanoarrow 0.7.0<a class="anchor" aria-label="anchor" href="#nanoarrow-070"></a></h2><p class="text-muted">CRAN release: 2025-07-03</p>
+<ul><li>Add zstd decompression support to R package (<a href="https://github.com/apache/arrow-nanoarrow/issues/733" class="external-link">#733</a>)</li>
+<li>Support native creation of more numeric Arrow arrays from integer vectors (<a href="https://github.com/apache/arrow-nanoarrow/issues/697" class="external-link">#697</a>)</li>
+<li>Support matrix objects as fixed-size-list arrays (<a href="https://github.com/apache/arrow-nanoarrow/issues/692" class="external-link">#692</a>)</li>
+<li>Ensure that <code>python</code> is used on Windows when running bootstrap.R (<a href="https://github.com/apache/arrow-nanoarrow/issues/792" class="external-link">#792</a>)</li>
+<li>Update vctrs extension name to reflect implementation change (<a href="https://github.com/apache/arrow-nanoarrow/issues/752" class="external-link">#752</a>)</li>
+<li>sub-day precision Date should be floored when treated as integer (<a href="https://github.com/apache/arrow-nanoarrow/issues/674" class="external-link">#674</a>)</li>
+</ul></div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.6.0" id="nanoarrow-060">nanoarrow 0.6.0<a class="anchor" aria-label="anchor" href="#nanoarrow-060"></a></h2><p class="text-muted">CRAN release: 2024-10-13</p>
+<ul><li>Add float16 support for R bindings (<a href="https://github.com/apache/arrow-nanoarrow/issues/650" class="external-link">#650</a>)</li>
+<li>Implement string view support in R bindings (<a href="https://github.com/apache/arrow-nanoarrow/issues/636" class="external-link">#636</a>)</li>
+<li>Allow opt-out of warning for unregistered extension types (<a href="https://github.com/apache/arrow-nanoarrow/issues/632" class="external-link">#632</a>)</li>
+<li>Add bindings to IPC writer (<a href="https://github.com/apache/arrow-nanoarrow/issues/608" class="external-link">#608</a>)</li>
+<li>Avoid flatcc aligned_alloc() call when compiling R package (<a href="https://github.com/apache/arrow-nanoarrow/issues/494" class="external-link">#494</a>)</li>
+<li>Use JSON in experimental R vctrs extension type (<a href="https://github.com/apache/arrow-nanoarrow/issues/533" class="external-link">#533</a>)</li>
+</ul></div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.5.0" id="nanoarrow-050">nanoarrow 0.5.0<a class="anchor" aria-label="anchor" href="#nanoarrow-050"></a></h2><p class="text-muted">CRAN release: 2024-05-26</p>
 <ul><li>Add experimental <code>nanoarrow_vctr</code> to wrap a list of arrays (<a href="https://github.com/apache/arrow-nanoarrow/issues/461" class="external-link">#461</a>)</li>
