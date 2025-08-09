@@ -277,49 +277,65 @@ static inline ArrowErrorCode _ArrowArrayAppendEmptyInternal(struct ArrowArray* a
   }
 
   // Add appropriate buffer fill
-  struct ArrowBuffer* buffer;
-  int64_t size_bytes;
-
   for (int i = 0; i < NANOARROW_MAX_FIXED_BUFFERS; i++) {
-    buffer = ArrowArrayBuffer(array, i);
-    size_bytes = private_data->layout.element_size_bits[i] / 8;
+    struct ArrowBuffer* buffer = ArrowArrayBuffer(array, i);
+    int64_t size_bytes = private_data->layout.element_size_bits[i] / 8;
 
     switch (private_data->layout.buffer_type[i]) {
       case NANOARROW_BUFFER_TYPE_NONE:
       case NANOARROW_BUFFER_TYPE_VARIADIC_DATA:
       case NANOARROW_BUFFER_TYPE_VARIADIC_SIZE:
       case NANOARROW_BUFFER_TYPE_VALIDITY:
-        continue;
+        // These buffer types don't require initialization for empty appends:
+        // - NONE: No buffer exists
+        // - VARIADIC_*: Handled by child arrays
+        // - VALIDITY: Already handled in previous bitmap logic
+        break;
+
       case NANOARROW_BUFFER_TYPE_SIZE:
+        // Size buffers (e.g., string/array lengths) should be zero-initialized:
+        // This ensures empty elements have logical zero-length
         NANOARROW_RETURN_NOT_OK(ArrowBufferAppendFill(buffer, 0, size_bytes * n));
-        continue;
+        break;
+
       case NANOARROW_BUFFER_TYPE_DATA_OFFSET:
-        // Append the current value at the end of the offset buffer for each element
+        // Offset buffers require special handling to maintain continuity.
+        // 1. Reserve space for new offset entries
         NANOARROW_RETURN_NOT_OK(ArrowBufferReserve(buffer, size_bytes * n));
 
+        // 2. Duplicate last offset value for each new (empty) element
         for (int64_t j = 0; j < n; j++) {
           ArrowBufferAppendUnsafe(buffer, buffer->data + size_bytes * (array->length + j),
                                   size_bytes);
         }
 
-        // Skip the data buffer
+        // 3. Skip next buffer (DATA) since it's paired with offsets
+        //    Rationale: Offset buffers are always followed by data buffers
+        //    that don't require separate initialization here
         i++;
-        continue;
+        break;
+
       case NANOARROW_BUFFER_TYPE_DATA:
-        // Zero out the next bit of memory
+        // Fixed-width data buffers require zero-initialization:
         if (private_data->layout.element_size_bits[i] % 8 == 0) {
+          // Byte-aligned: use efficient memset-style fill
           NANOARROW_RETURN_NOT_OK(ArrowBufferAppendFill(buffer, 0, size_bytes * n));
         } else {
+          // Bit-packed: use special bitwise initialization
           NANOARROW_RETURN_NOT_OK(_ArrowArrayAppendBits(array, i, 0, n));
         }
-        continue;
+        break;
+
       case NANOARROW_BUFFER_TYPE_VIEW_OFFSET:
+        // View offset buffers (for string/binary view types) require zero-initialization.
         NANOARROW_RETURN_NOT_OK(ArrowBufferReserve(buffer, size_bytes * n));
         NANOARROW_RETURN_NOT_OK(ArrowBufferAppendFill(buffer, 0, size_bytes * n));
-        continue;
+        break;
+
       case NANOARROW_BUFFER_TYPE_TYPE_ID:
       case NANOARROW_BUFFER_TYPE_UNION_OFFSET:
-        // These cases return above
+        // These buffer types should have been handled by the outer type switch and
+        // are not expected here, indicating an internal logic error.
         return EINVAL;
     }
   }
