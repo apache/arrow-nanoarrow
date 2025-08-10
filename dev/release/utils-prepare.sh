@@ -42,7 +42,7 @@ update_versions() {
   sed -i.bak -E "s/set\(NANOARROW_VERSION \".+\"\)/set(NANOARROW_VERSION \"${version}\")/g" CMakeLists.txt
   rm CMakeLists.txt.bak
   git add CMakeLists.txt
-  sed -i.bak -E "s/version: '.+'/version: '${version}')/g" meson.build
+  sed -i.bak -E "s/ version: '.+'/ version: '${version}'/g" meson.build
   rm meson.build.bak
   git add meson.build
   popd
