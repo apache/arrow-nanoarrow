@@ -338,16 +338,26 @@ in `DESCRIPTION`).
 
 The Python package source distribution and wheels are built using the [Build Python Wheels](https://github.com/apache/arrow-nanoarrow/actions/workflows/python-wheels.yaml) action on the `maint-0.7.0` branch after cutting the release candidate.
 
-To submit these to PyPI, download all assets from the run into a folder (e.g., `python/dist`) and run:
+To submit these to PyPI, download all assets from the run into a folder (e.g., `python/dist`) and run `twine upload`:
 
 ```shell
 # pip install twine
-twine upload python/dist/*.tar.gz python/dist/*.whl
+
+# Clear the dist directory
+rm -rf python/dist
+mkdir python/dist
+
+# Download assets from the lastest `maint-x.x.x` branch run,
+# remove the pyodide wheels (which will be rejected by PyPI)
+pushd python/dist
+gh run download 15963020465
+rm -rf release-wheels-pyodide
+popd
+
+twine upload python/dist/**/*.tar.gz python/dist/**/*.whl
 ```
 
 You will need to enter a token with "upload packages" permissions for the [nanoarrow PyPI project](https://pypi.org/project/nanoarrow/).
-
-This can/should be automated for future releases using one or more GitHub API calls.
 
 ### Update Python package on conda-forge
 
