@@ -438,7 +438,8 @@ the release candidate.
 
 This email should be sent to `announce@apache.org` and `dev@arrow.apache.org`. It
 **must** be sent from your Apache email address and **must** be sent through
-the `mail-relay.apache.org` outgoing server.
+the `mail-relay.apache.org` outgoing server. It also must be in plain text
+or it will be rejected by the announce mailing list.
 
 Email template:
 
