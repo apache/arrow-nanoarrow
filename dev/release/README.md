@@ -353,7 +353,7 @@ To submit these to PyPI, download all assets from the run into a folder (e.g., `
 rm -rf python/dist
 mkdir python/dist
 
-# Download assets from the lastest `maint-x.x.x` branch run,
+# Download assets from the latest `maint-x.x.x` branch run,
 # remove the pyodide wheels (which will be rejected by PyPI)
 pushd python/dist
 gh run download 15963020465
