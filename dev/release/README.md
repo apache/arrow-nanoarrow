@@ -511,3 +511,10 @@ This is handled by
 ```bash
 dev/release/post-03-bump-versions.sh . 0.7.0 0.8.0
 ```
+
+After this PR is merged, create the dev tag that is used to generate the changelog:
+
+```shell
+git tag -a apache-arrow-nanoarrow-0.8.0.dev -m "tag dev 0.8.0"
+git push upstream apache-arrow-nanoarrow-0.8.0.dev
+```
