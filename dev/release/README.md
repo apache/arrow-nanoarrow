@@ -192,6 +192,11 @@ When these steps are complete, run
 dev/release/01-prepare.sh . 0.6.0 0.7.0 0.8.0 0
 ```
 
+A currently not automated part of this workflow is updating the R NEWS.md
+from the changelog: any changelog items for the `r/...` component can
+be copied to the R NEWS.md file. This is not essential (i.e., it does not
+affect the ability to release the R package).
+
 This will update version numbers, the changelong, and create the git tag
 `apache-arrow-nanoarrow-0.7.0-rc0`. Check to make sure that the changelog
 and versions are what you expect them to be before pushing the tag (you
@@ -511,6 +516,10 @@ This is handled by
 ```bash
 dev/release/post-03-bump-versions.sh . 0.7.0 0.8.0
 ```
+
+A currently not automated part of this workflow is also porting the R NEWS.md
+updates that occurred when updating the changelog. This is not essential but
+makes the next R NEWS.md update for the next release make a bit more sense.
 
 After this PR is merged, create the dev tag that is used to generate the changelog:
 
