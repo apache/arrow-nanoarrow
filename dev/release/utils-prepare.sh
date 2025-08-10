@@ -58,30 +58,3 @@ update_versions() {
   git add _static_version.py
   popd
 }
-
-set_resolved_issues() {
-    # TODO: this needs to work with open milestones
-    local -r version="${1}"
-    local -r milestone_info=$(gh api \
-                                 /repos/apache/arrow-nanoarrow/milestones \
-                                 -X GET \
-                                 -F state=all \
-                                 --jq ".[] | select(.title | test(\"nanoarrow ${version}\$\"))")
-    local -r milestone_number=$(echo "${milestone_info}" | jq -r '.number')
-
-    local -r graphql_query="query {
-    repository(owner: \"apache\", name: \"arrow-nanoarrow\") {
-        milestone(number: ${milestone_number}) {
-            issues(states: CLOSED) {
-                totalCount
-            }
-        }
-    }
-}
-"
-
-    export MILESTONE_URL=$(echo "${milestone_info}" | jq -r '.html_url')
-    export RESOLVED_ISSUES=$(gh api graphql \
-                            -f query="${graphql_query}" \
-                            --jq '.data.repository.milestone.issues.totalCount')
-}
