@@ -311,28 +311,29 @@ dev/release/post-01-upload.sh 0.7.0 0
 
 ### Submit R package to CRAN
 
-The R package submission occurs from a separate branch to facilitate including
-any small changes requested by a member of the CRAN team; however, these
-updates are usually automatic and do not require additional changes.
-Before a release candidate is created, the first section of
-`usethis::use_release_issue()` should all be completed (i.e., any changes
-after release should be minor tweaks). The steps are:
+The R package can be updated directly from the release branch if no updates
+are required to pass CRAN checks. Because most updates are just updates of
+the underlying C library, most updates should not required special updates
+just to submit to CRAN. It is usually a good idea to check the package URLs
+and run a [WinBuilder](https://win-builder.r-project.org/) check before
+submitting, just to be sure. These can be run with:
 
-- Ensure you are on the release branch (i.e., `git switch maint-0.7.0`)
-- Run `usethis::pr_init("r-cran-maint-0.7.0")` and push the branch to your
-  fork.
-- Ensure `cran_comments.md` is up-to-date.
-- Run `devtools::check()` locally and verify that the package version is correct
-- Run `urlchecker::url_check()`
-- Run `devtools::check_win_devel()` and wait for the response
-- Run `devtools::submit_cran()`
-- Confirm submission email
+```r
+urlchecker::url_check()
+devtools::check_win_devel()
+```
 
-Any changes required at this stage should be made as a PR into `main` and
-cherry-picked into the `r-cran-maint-XXX` packaging branch. (i.e.,
-`git cherry-pick 01234abcdef`). If any changes
-to the source are required, bump the "tweak" version (e.g., `Version: 0.7.0.1`
-in `DESCRIPTION`).
+If there are no NOTEs, WARNINGs, or ERRORs on the winbuilder results
+(emailed to the package maintainer), the package can be submitted to CRAN with:
+
+```r
+devtools::submit_cran()
+```
+
+If changes *are* required, create a branch called `r-cran-maint-0.7.-0`,
+make any changes required, and resubmit to CRAN after bumping the "tweak"
+version (e.g., `Version: 0.7.0.1` in the `DESCRIPTION`). Ensure those changes
+are also reflected in the main branch after submission is successful.
 
 ### Submit Python package to PyPI
 
