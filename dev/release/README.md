@@ -494,14 +494,13 @@ The Apache Arrow Community
 ### Remove old artifacts from SVN
 
 These artifacts include any release candidates that were uploaded to
-<https://dist.apache.org/repos/dist/dev/arrow/>. You can remove them
-using:
+<https://dist.apache.org/repos/dist/dev/arrow/> and old releases that
+were upload to
+<https://dist.apache.org/repos/dist/release/arrow/>. You can remove
+them using:
 
 ```
-# Once
-export APACHE_USERNAME=xxx
-# Once for every release candidate
-svn rm --username=$APACHE_USERNAME -m "Clean up svn artifacts" https://dist.apache.org/repos/dist/dev/arrow/apache-arrow-nanoarrow-0.7.0-rc0/
+dev/release/post-02-remove-old-artifacts.sh
 ```
 
 ### Bumped versions on main
