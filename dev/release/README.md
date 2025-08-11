@@ -192,6 +192,11 @@ When these steps are complete, run
 dev/release/01-prepare.sh . 0.6.0 0.7.0 0.8.0 0
 ```
 
+A currently not automated part of this workflow is updating the R NEWS.md
+from the changelog: any changelog items for the `r/...` component can
+be copied to the R NEWS.md file. This is not essential (i.e., it does not
+affect the ability to release the R package).
+
 This will update version numbers, the changelong, and create the git tag
 `apache-arrow-nanoarrow-0.7.0-rc0`. Check to make sure that the changelog
 and versions are what you expect them to be before pushing the tag (you
@@ -311,43 +316,54 @@ dev/release/post-01-upload.sh 0.7.0 0
 
 ### Submit R package to CRAN
 
-The R package submission occurs from a separate branch to facilitate including
-any small changes requested by a member of the CRAN team; however, these
-updates are usually automatic and do not require additional changes.
-Before a release candidate is created, the first section of
-`usethis::use_release_issue()` should all be completed (i.e., any changes
-after release should be minor tweaks). The steps are:
+The R package can be updated directly from the release branch if no updates
+are required to pass CRAN checks. Because most updates are just updates of
+the underlying C library, most updates should not required special updates
+just to submit to CRAN. It is usually a good idea to check the package URLs
+and run a [WinBuilder](https://win-builder.r-project.org/) check before
+submitting, just to be sure. These can be run with:
 
-- Ensure you are on the release branch (i.e., `git switch maint-0.7.0`)
-- Run `usethis::pr_init("r-cran-maint-0.7.0")` and push the branch to your
-  fork.
-- Ensure `cran_comments.md` is up-to-date.
-- Run `devtools::check()` locally and verify that the package version is correct
-- Run `urlchecker::url_check()`
-- Run `devtools::check_win_devel()` and wait for the response
-- Run `devtools::submit_cran()`
-- Confirm submission email
+```r
+urlchecker::url_check()
+devtools::check_win_devel()
+```
 
-Any changes required at this stage should be made as a PR into `main` and
-cherry-picked into the `r-cran-maint-XXX` packaging branch. (i.e.,
-`git cherry-pick 01234abcdef`). If any changes
-to the source are required, bump the "tweak" version (e.g., `Version: 0.7.0.1`
-in `DESCRIPTION`).
+If there are no NOTEs, WARNINGs, or ERRORs on the winbuilder results
+(emailed to the package maintainer), the package can be submitted to CRAN with:
+
+```r
+devtools::submit_cran()
+```
+
+If changes *are* required, create a branch called `r-cran-maint-0.7.-0`,
+make any changes required, and resubmit to CRAN after bumping the "tweak"
+version (e.g., `Version: 0.7.0.1` in the `DESCRIPTION`). Ensure those changes
+are also reflected in the main branch after submission is successful.
 
 ### Submit Python package to PyPI
 
 The Python package source distribution and wheels are built using the [Build Python Wheels](https://github.com/apache/arrow-nanoarrow/actions/workflows/python-wheels.yaml) action on the `maint-0.7.0` branch after cutting the release candidate.
 
-To submit these to PyPI, download all assets from the run into a folder (e.g., `python/dist`) and run:
+To submit these to PyPI, download all assets from the run into a folder (e.g., `python/dist`) and run `twine upload`:
 
 ```shell
 # pip install twine
-twine upload python/dist/*.tar.gz python/dist/*.whl
+
+# Clear the dist directory
+rm -rf python/dist
+mkdir python/dist
+
+# Download assets from the latest `maint-x.x.x` branch run,
+# remove the pyodide wheels (which will be rejected by PyPI)
+pushd python/dist
+gh run download 15963020465
+rm -rf release-wheels-pyodide
+popd
+
+twine upload python/dist/**/*.tar.gz python/dist/**/*.whl
 ```
 
 You will need to enter a token with "upload packages" permissions for the [nanoarrow PyPI project](https://pypi.org/project/nanoarrow/).
-
-This can/should be automated for future releases using one or more GitHub API calls.
 
 ### Update Python package on conda-forge
 
@@ -427,7 +443,8 @@ the release candidate.
 
 This email should be sent to `announce@apache.org` and `dev@arrow.apache.org`. It
 **must** be sent from your Apache email address and **must** be sent through
-the `mail-relay.apache.org` outgoing server.
+the `mail-relay.apache.org` outgoing server. It also must be in plain text
+or it will be rejected by the announce mailing list.
 
 Email template:
 
@@ -482,14 +499,13 @@ The Apache Arrow Community
 ### Remove old artifacts from SVN
 
 These artifacts include any release candidates that were uploaded to
-<https://dist.apache.org/repos/dist/dev/arrow/>. You can remove them
-using:
+<https://dist.apache.org/repos/dist/dev/arrow/> and old releases that
+were upload to
+<https://dist.apache.org/repos/dist/release/arrow/>. You can remove
+them using:
 
 ```
-# Once
-export APACHE_USERNAME=xxx
-# Once for every release candidate
-svn rm --username=$APACHE_USERNAME -m "Clean up svn artifacts" https://dist.apache.org/repos/dist/dev/arrow/apache-arrow-nanoarrow-0.7.0-rc0/
+dev/release/post-02-remove-old-artifacts.sh
 ```
 
 ### Bumped versions on main
@@ -499,4 +515,15 @@ This is handled by
 
 ```bash
 dev/release/post-03-bump-versions.sh . 0.7.0 0.8.0
+```
+
+A currently not automated part of this workflow is also porting the R NEWS.md
+updates that occurred when updating the changelog. This is not essential but
+makes the next R NEWS.md update for the next release make a bit more sense.
+
+After this PR is merged, create the dev tag that is used to generate the changelog:
+
+```shell
+git tag -a apache-arrow-nanoarrow-0.8.0.dev -m "tag dev 0.8.0"
+git push upstream apache-arrow-nanoarrow-0.8.0.dev
 ```
