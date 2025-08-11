@@ -140,9 +140,7 @@ extern "C" {
 
 #endif /* __STDC__ */
 
-#define STRINGIFY(x) #x
-#define TOSTRING(x) STRINGIFY(x)
-#pragma message "C standard version __STDC_VERSION__ = " TOSTRING(__STDC_VERSION__)
+#error "C standard version __STDC_VERSION__ = " __STDC_VERSION__
 
 // For C23, alignas/alignof are keywords and will warn (-Wkeyword-macro) when #defined here
 #if !(defined(__STDC__) && __STDC__ && defined(__STDC_VERSION__) && __STDC_VERSION__ >= 202311L)
