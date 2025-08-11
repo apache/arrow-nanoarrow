@@ -16,6 +16,7 @@ Description: Provides an 'R' interface to the 'nanoarrow' 'C' library and the
   to and from 'R' objects are provided alongside helpers to facilitate zero-copy
   data transfer among 'R' bindings to libraries implementing the 'Arrow' 'C'
   data interface.
+
 License: Apache License (>= 2)
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
