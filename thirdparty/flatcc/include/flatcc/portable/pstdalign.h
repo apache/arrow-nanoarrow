@@ -1,3 +1,11 @@
+
+#define _xNANOARROW_CONCAT(x, y) x##y
+#define _xNANOARROW_MAKE_NAME(x, y) _xNANOARROW_CONCAT(x, y)
+#define foofyfoofyfoofy _xNANOARROW_MAKE_NAME(foofy, __STDC_VERSION__)
+static inline int foofyfoofyfoofy(void) {
+
+}
+
 #ifndef PSTDALIGN_H
 #define PSTDALIGN_H
 
@@ -140,7 +148,6 @@ extern "C" {
 
 #endif /* __STDC__ */
 
-#error "C standard version __STDC_VERSION__ = " __STDC_VERSION__
 
 // For C23, alignas/alignof are keywords and will warn (-Wkeyword-macro) when #defined here
 #if !(defined(__STDC__) && __STDC__ && defined(__STDC_VERSION__) && __STDC_VERSION__ >= 202311L)
