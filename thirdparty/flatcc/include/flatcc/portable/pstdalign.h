@@ -1,4 +1,3 @@
-
 #ifndef PSTDALIGN_H
 #define PSTDALIGN_H
 
@@ -141,16 +140,18 @@ extern "C" {
 
 #endif /* __STDC__ */
 
-
 // For C23, alignas/alignof are keywords and will warn (-Wkeyword-macro) when #defined here
-#if !(defined(__STDC__) && __STDC__ && defined(__STDC_VERSION__) && __STDC_VERSION__ >= 202300L)
+// GH-801: 202000L is the value used by Apple clang-16 when compiling with -std=gnu2x (i.e.,
+// the draft standard at the time), which reflects the GitHub Actions runner at the time of this
+// writing.
+#if !(defined(__STDC__) && __STDC__ && defined(__STDC_VERSION__) && __STDC_VERSION__ >= 202000L)
 
 #ifndef alignas
-//#define alignas _Alignas
+#define alignas _Alignas
 #endif
 
 #ifndef alignof
-//#define alignof _Alignof
+#define alignof _Alignof
 #endif
 
 #endif
