@@ -20,7 +20,7 @@ License: Apache License (>= 2)
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.2
-URL: https://arrow.apache.org/nanoarrow/latest/r/,  https://github.com/apache/arrow-nanoarrow
+URL: https://arrow.apache.org/nanoarrow/latest/r/, https://github.com/apache/arrow-nanoarrow
 BugReports: https://github.com/apache/arrow-nanoarrow/issues
 Suggests:
     arrow (>= 9.0.0),
