@@ -146,11 +146,11 @@ extern "C" {
 #if !(defined(__STDC__) && __STDC__ && defined(__STDC_VERSION__) && __STDC_VERSION__ >= 202300L)
 
 #ifndef alignas
-#define alignas _Alignas
+//#define alignas _Alignas
 #endif
 
 #ifndef alignof
-#define alignof _Alignof
+//#define alignof _Alignof
 #endif
 
 #endif

@@ -21,7 +21,10 @@
 
 #include "nanoarrow.h"
 
-SEXP nanoarrow_c_version(void) { return Rf_mkString(NANOARROW_VERSION); }
+SEXP nanoarrow_c_version(void) {
+  Rf_error("%ld", __STDC_VERSION__);
+  return Rf_mkString(NANOARROW_VERSION);
+}
 
 SEXP nanoarrow_c_version_runtime(void) { return Rf_mkString(ArrowNanoarrowVersion()); }
 
