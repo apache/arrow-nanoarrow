@@ -1746,6 +1746,14 @@ TEST(ArrayTest, ArrayTestAppendToMapArray) {
   array.children[0]->length = array.children[0]->length + 1;
   EXPECT_EQ(ArrowArrayFinishBuildingDefault(&array, &error), NANOARROW_OK);
 
+  // Check values with an array view
+  struct ArrowArrayView array_view;
+  ASSERT_EQ(ArrowArrayViewInitFromSchema(&array_view, &schema, &error), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayViewListChildOffset(&array_view, 0), 0);
+  ASSERT_EQ(ArrowArrayViewListChildOffset(&array_view, 1), 1);
+  ArrowArrayViewReset(&array_view);
+
 #if defined(NANOARROW_BUILD_TESTS_WITH_ARROW)
   auto maybe_arrow_array = ImportArray(&array, &schema);
   ARROW_EXPECT_OK(maybe_arrow_array);
