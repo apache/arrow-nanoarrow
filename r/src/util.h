@@ -37,20 +37,6 @@ extern SEXP nanoarrow_ptype_raw;
 
 void nanoarrow_init_cached_sexps(void);
 
-// Internal abstractions for R_PreserveObject and R_ReleaseObject
-// that provide an opportunity for debugging information about
-// preserved object lifecycle and possible future optimizations.
-// These implementations use C++ and live in nanoarrow_cpp.cc
-void nanoarrow_preserve_init(void);
-void nanoarrow_preserve_sexp(SEXP obj);
-void nanoarrow_release_sexp(SEXP obj);
-int64_t nanoarrow_preserved_count(void);
-int64_t nanoarrow_preserved_empty(void);
-int nanoarrow_is_main_thread(void);
-
-// For testing
-void nanoarrow_preserve_and_release_on_other_thread(SEXP obj);
-
 // Checker for very small mallocs()
 static inline void check_trivial_alloc(const void* ptr, const char* ptr_type) {
   if (ptr == NULL) {
