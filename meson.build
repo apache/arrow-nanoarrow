@@ -20,8 +20,8 @@ project(
     'c',
     'cpp',
     version: '0.8.0-SNAPSHOT',
-    license: 'Apache 2.0',
-    meson_version: '>=1.1.0',
+    license: 'Apache-2.0',
+    meson_version: '>=0.58.0',
     default_options: ['c_std=c99', 'warning_level=2', 'cpp_std=c++17'],
 )
 
@@ -150,7 +150,7 @@ if get_option('ipc').enabled()
         link_with: nanoarrow_ipc_lib,
         dependencies: [nanoarrow_dep],
     )
-    meson.override_dependency('nanoarrow-ipc', nanoarrow_dep)
+    meson.override_dependency('nanoarrow-ipc', nanoarrow_ipc_dep)
     zlib_dep = dependency('zlib', default_options: ['tests=disabled'])
 else
     flatcc_dep = disabler()

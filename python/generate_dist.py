@@ -30,7 +30,7 @@ def main():
 
     subproj_dir.mkdir(parents=True)
     shutil.copy(src_dir / "meson.build", subproj_dir / "meson.build")
-    shutil.copy(src_dir / "meson.options", subproj_dir / "meson.options")
+    shutil.copy(src_dir / "meson_options.txt", subproj_dir / "meson_options.txt")
 
     # Copy over any subproject dependency / wrap files
     subproj_subproj_dir = subproj_dir / "subprojects"
