@@ -20,8 +20,8 @@ project(
     'c',
     'cpp',
     version: '0.8.0-SNAPSHOT',
-    license: 'Apache 2.0',
-    meson_version: '>=1.3.0',
+    license: 'Apache-2.0',
+    meson_version: '>=0.58.0',
     default_options: ['c_std=c99', 'warning_level=2', 'cpp_std=c++17'],
 )
 
@@ -91,11 +91,19 @@ nanoarrow_lib = library(
     gnu_symbol_visibility: 'hidden',
 )
 
+pkg = import('pkgconfig')
+pkg.generate(
+    nanoarrow_lib,
+    description: 'Helpers for Arrow C Data & Arrow C Stream interfaces',
+)
+
 nanoarrow_dep = declare_dependency(
     include_directories: [incdir],
     link_with: nanoarrow_lib,
     compile_args: nanoarrow_dep_args,
 )
+
+meson.override_dependency('nanoarrow', nanoarrow_dep)
 
 if get_option('ipc').enabled()
     # flatcc does not export symbols in a way that works with
@@ -135,11 +143,14 @@ if get_option('ipc').enabled()
         c_args: ipc_lib_c_args,
         gnu_symbol_visibility: 'hidden',
     )
+    pkg.generate(nanoarrow_ipc_lib, filebase: 'nanoarrow-ipc')
+
     nanoarrow_ipc_dep = declare_dependency(
         include_directories: [incdir],
         link_with: nanoarrow_ipc_lib,
         dependencies: [nanoarrow_dep],
     )
+    meson.override_dependency('nanoarrow-ipc', nanoarrow_ipc_dep)
     zlib_dep = dependency('zlib', default_options: ['tests=disabled'])
 else
     flatcc_dep = disabler()
@@ -191,12 +202,14 @@ if needs_device
         cpp_args: device_defines,
         gnu_symbol_visibility: 'hidden',
     )
+    pkg.generate(nanoarrow_device_lib, filebase: 'nanoarrow-device')
 
     nanoarrow_device_dep = declare_dependency(
         include_directories: [incdir],
         link_with: nanoarrow_device_lib,
         dependencies: device_deps,
     )
+    meson.override_dependency('nanoarrow-device', nanoarrow_device_dep)
 else
     nanoarrow_device_dep = disabler()
 endif
@@ -213,12 +226,14 @@ if needs_testing
         install: true,
         gnu_symbol_visibility: 'hidden',
     )
+    pkg.generate(nanoarrow_testing_lib, filebase: 'nanoarrow-testing')
 
     nanoarrow_testing_dep = declare_dependency(
         include_directories: [incdir],
         link_with: nanoarrow_testing_lib,
         dependencies: [nanoarrow_dep, nlohmann_json_dep],
     )
+    meson.override_dependency('nanoarrow-testing', nanoarrow_testing_dep)
 else
     nanoarrow_testing_dep = disabler()
 endif
@@ -385,9 +400,3 @@ if get_option('apps').enabled()
         dependencies: [nanoarrow_ipc_dep],
     )
 endif
-
-pkg = import('pkgconfig')
-pkg.generate(
-    nanoarrow_lib,
-    description: 'Helpers for Arrow C Data & Arrow C Stream interfaces',
-)
