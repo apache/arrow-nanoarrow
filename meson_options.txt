@@ -16,7 +16,6 @@
 # under the License.
 
 option('tests', type: 'feature', description: 'Build tests')
-option('tests_with_arrow', type: 'feature', description: 'Build tests with Arrow')
 option('benchmarks', type: 'feature', description: 'Build benchmarks')
 option('apps', type: 'feature', description: 'Build utility applications')
 option('ipc', type: 'feature', description: 'Build IPC libraries')

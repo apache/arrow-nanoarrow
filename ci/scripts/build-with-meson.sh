@@ -62,7 +62,7 @@ function main() {
 
     show_header "Compile project with meson"
     meson setup "${SANDBOX_DIR}" \
-          --pkg-config-path $PKG_CONFIG_PATH \
+          -Dnanoarrow:auto_features=enabled \
           -Dwerror=true \
           -Dbuildtype=release
 
@@ -72,8 +72,7 @@ function main() {
     meson configure \
           -Dbuildtype=debugoptimized \
           -Db_sanitize="address,undefined" \
-          -Db_coverage=false \
-          -Dauto_features=enabled
+          -Db_coverage=false
     meson compile
     meson test --suite nanoarrow --print-errorlogs
 
@@ -81,8 +80,7 @@ function main() {
     meson configure \
           -Dbuildtype=debugoptimized \
           -Db_sanitize=none \
-          -Db_coverage=false \
-          -Dauto_features=enabled
+          -Db_coverage=false
     meson compile
     meson test --suite nanoarrow --print-errorlog \
           --wrap='valgrind --track-origins=yes --leak-check=full'
@@ -91,8 +89,7 @@ function main() {
     meson configure \
           -Dbuildtype=release \
           -Db_sanitize=none \
-          -Db_coverage=false \
-          -Dauto_features=enabled
+          -Db_coverage=false
     meson compile
     meson test --suite nanoarrow --print-errorlogs --benchmark
 
@@ -100,9 +97,7 @@ function main() {
     meson configure \
           -Dbuildtype=release \
           -Db_sanitize=none \
-          -Db_coverage=true \
-          -Dauto_features=enabled
-
+          -Db_coverage=true
     meson compile
     meson test --suite nanoarrow --print-errorlogs
 

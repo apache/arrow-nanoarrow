@@ -148,23 +148,9 @@ jobs:
           python3 -m pip install --upgrade pip
           python3 -m pip install gcovr "meson<1.8.0" ninja
 
-      - name: Cache Arrow C++ Build
-        id: cache-arrow-build
-        uses: actions/cache@v4
-        with:
-          path: arrow
-          # Bump the number at the end of this line to force a new Arrow C++ build
-          key: arrow-${{ runner.os }}-${{ runner.arch }}-3
-
-      - name: Build Arrow C++
-        if: steps.cache-arrow-build.outputs.cache-hit != 'true'
-        shell: bash
-        run: |
-          ci/scripts/build-arrow-cpp-minimal.sh 20.0.0 arrow
-
       - name: Run meson testing script
         run: |
-          PKG_CONFIG_PATH="$(pwd)/arrow/lib/pkgconfig" ci/scripts/build-with-meson.sh
+          ci/scripts/build-with-meson.sh
 
   meson-build-windows:
     runs-on: windows-latest
