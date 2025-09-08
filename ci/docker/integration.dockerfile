@@ -24,6 +24,7 @@ ENV ARROW_USE_CCACHE=OFF \
     BUILD_DOCS_CPP=OFF \
     ARROW_INTEGRATION_CPP=ON \
     ARROW_INTEGRATION_CSHARP=ON \
+    ARCHERY_INTEGRATION_WITH_DOTNET=1 \
     ARCHERY_INTEGRATION_WITH_GO=1 \
     ARCHERY_INTEGRATION_WITH_JAVA=1 \
     ARCHERY_INTEGRATION_WITH_JS=1 \
@@ -43,6 +44,9 @@ ENV BUILD_DOCS_CPP=OFF
 
 # Clone the arrow monorepo
 RUN git clone https://github.com/apache/arrow.git /arrow-integration --recurse-submodules
+
+# Clone the arrow-dotnet repo
+RUN git clone https://github.com/apache/arrow-dotnet.git /arrow-integration/dotnet
 
 # Clone the arrow-go repo
 RUN git clone https://github.com/apache/arrow-go.git /arrow-integration/go
