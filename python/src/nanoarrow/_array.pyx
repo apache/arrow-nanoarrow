@@ -32,6 +32,7 @@ from cpython cimport (
 
 from nanoarrow_c cimport (
     ArrowArray,
+    ArrowArrayAddVariadicBuffers,
     ArrowArrayAppendBytes,
     ArrowArrayAppendNull,
     ArrowArrayAppendString,
@@ -721,6 +722,13 @@ cdef class CArrayBuilder:
         self._ptr.null_count = self._ptr.length - count
         return self
 
+    def ensure_buffers(self, n_buffers) -> CArrayBuilder:
+        if self._ptr.n_buffers < n_buffers:
+            code = ArrowArrayAddVariadicBuffers(self._ptr, n_buffers - self._ptr.n_buffers)
+            Error.raise_error_not_ok("ArrowArrayAddVariadicBuffers() failed", code)
+
+        return self
+
     def set_buffer(self, int64_t i, CBuffer buffer, move=False) -> CArrayBuilder:
         """Set an ArrowArray buffer
 
@@ -732,8 +740,8 @@ cdef class CArrayBuilder:
         is False (the default), this function will a make a shallow copy via another
         layer of Python object wrapping.
         """
-        if i < 0 or i > 3:
-            raise IndexError("i must be >= 0 and <= 3")
+        if i < 0 or i >= self._ptr.n_buffers:
+            raise IndexError(f"i must be >= 0 and < {self._ptr.n_buffers}")
 
         if buffer._device != self._device:
             raise ValueError(
