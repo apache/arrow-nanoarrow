@@ -484,14 +484,15 @@ static void ArrowArrayFlushInternalPointers(struct ArrowArray* array) {
   }
 
   if (is_binary_view) {
-    const int32_t nvirt_buf = private_data->n_variadic_buffers;
+    const int32_t n_variadic_buffers = private_data->n_variadic_buffers;
+    const int32_t n_total_buffers = nfixed_buf + n_variadic_buffers + 1;
     private_data->buffer_data = (const void**)ArrowRealloc(
-        private_data->buffer_data, sizeof(void*) * (nfixed_buf + nvirt_buf + 1));
-    for (int32_t i = 0; i < nvirt_buf; i++) {
-      private_data->buffer_data[nfixed_buf + i] = private_data->variadic_buffers[i].data;
+        private_data->buffer_data, sizeof(void*) * n_total_buffers);
+
+    for (int32_t i = nfixed_buf; i < n_total_buffers; i++) {
+      private_data->buffer_data[i] = ArrowArrayBuffer(array, i)->data;
     }
-    private_data->buffer_data[nfixed_buf + nvirt_buf] =
-        private_data->variadic_buffer_sizes;
+
     array->buffers = (const void**)(private_data->buffer_data);
   }
 
