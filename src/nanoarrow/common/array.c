@@ -471,38 +471,33 @@ static ArrowErrorCode ArrowArrayFinalizeBuffers(struct ArrowArray* array) {
   return NANOARROW_OK;
 }
 
-static void ArrowArrayFlushInternalPointers(struct ArrowArray* array) {
+static ArrowErrorCode ArrowArrayFlushInternalPointers(struct ArrowArray* array) {
   struct ArrowArrayPrivateData* private_data =
       (struct ArrowArrayPrivateData*)array->private_data;
 
-  const bool is_binary_view = private_data->storage_type == NANOARROW_TYPE_STRING_VIEW ||
-                              private_data->storage_type == NANOARROW_TYPE_BINARY_VIEW;
-  const int32_t nfixed_buf = is_binary_view ? 2 : NANOARROW_MAX_FIXED_BUFFERS;
+  if (array->n_buffers > NANOARROW_MAX_FIXED_BUFFERS) {
+    private_data->buffer_data = (const void**)ArrowRealloc(
+        private_data->buffer_data, sizeof(void*) * array->n_buffers);
+    if (private_data->buffer_data == NULL) {
+      return ENOMEM;
+    }
+  }
 
-  for (int32_t i = 0; i < nfixed_buf; i++) {
+  for (int32_t i = 0; i < array->n_buffers; i++) {
     private_data->buffer_data[i] = ArrowArrayBuffer(array, i)->data;
   }
 
-  if (is_binary_view) {
-    const int32_t n_variadic_buffers = private_data->n_variadic_buffers;
-    const int32_t n_total_buffers = nfixed_buf + n_variadic_buffers + 1;
-    private_data->buffer_data = (const void**)ArrowRealloc(
-        private_data->buffer_data, sizeof(void*) * n_total_buffers);
-
-    for (int32_t i = nfixed_buf; i < n_total_buffers; i++) {
-      private_data->buffer_data[i] = ArrowArrayBuffer(array, i)->data;
-    }
-
-    array->buffers = (const void**)(private_data->buffer_data);
-  }
+  array->buffers = (const void**)(private_data->buffer_data);
 
   for (int64_t i = 0; i < array->n_children; i++) {
-    ArrowArrayFlushInternalPointers(array->children[i]);
+    NANOARROW_RETURN_NOT_OK(ArrowArrayFlushInternalPointers(array->children[i]));
   }
 
   if (array->dictionary != NULL) {
-    ArrowArrayFlushInternalPointers(array->dictionary);
+    NANOARROW_RETURN_NOT_OK(ArrowArrayFlushInternalPointers(array->dictionary));
   }
+
+  return NANOARROW_OK;
 }
 
 ArrowErrorCode ArrowArrayFinishBuilding(struct ArrowArray* array,
@@ -518,7 +513,7 @@ ArrowErrorCode ArrowArrayFinishBuilding(struct ArrowArray* array,
 
   // Make sure the value we get with array->buffers[i] is set to the actual
   // pointer (which may have changed from the original due to reallocation)
-  ArrowArrayFlushInternalPointers(array);
+  NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowArrayFlushInternalPointers(array), error);
 
   if (validation_level == NANOARROW_VALIDATION_LEVEL_NONE) {
     return NANOARROW_OK;

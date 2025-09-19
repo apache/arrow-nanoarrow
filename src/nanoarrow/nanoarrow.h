@@ -905,6 +905,12 @@ NANOARROW_DLL void ArrowArraySetValidityBitmap(struct ArrowArray* array,
 NANOARROW_DLL ArrowErrorCode ArrowArraySetBuffer(struct ArrowArray* array, int64_t i,
                                                  struct ArrowBuffer* buffer);
 
+/// \brief Add variadic buffers to a string or binary view array
+///
+/// array must have been allocated using ArrowArrayInitFromType()
+static inline ArrowErrorCode ArrowArrayAddVariadicBuffers(struct ArrowArray* array,
+                                                          int32_t n_buffers);
+
 /// \brief Get the validity bitmap of an ArrowArray
 ///
 /// array must have been allocated using ArrowArrayInitFromType()

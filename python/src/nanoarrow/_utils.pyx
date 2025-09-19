@@ -32,6 +32,7 @@ from cpython.ref cimport Py_INCREF, Py_DECREF
 
 from nanoarrow_c cimport (
     ArrowArray,
+    ArrowArrayAddVariadicBuffers,
     ArrowArrayAllocateChildren,
     ArrowArrayAllocateDictionary,
     ArrowArrayBuffer,
