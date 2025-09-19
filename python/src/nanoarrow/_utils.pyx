@@ -363,6 +363,10 @@ cdef void c_array_shallow_copy(object base, const ArrowArray* src, ArrowArray* d
     tmp.offset = src.offset
     tmp.null_count = src.null_count
 
+    if src.n_buffers > 3:
+        code = ArrowArrayAddVariadicBuffers(dst, src.n_buffers - 3)
+        Error.raise_error_not_ok("ArrowArrayAddVariadicBuffers()", code)
+
     for i in range(src.n_buffers):
         if src.buffers[i] != NULL:
             # The purpose of this buffer is soley so that we can use the
