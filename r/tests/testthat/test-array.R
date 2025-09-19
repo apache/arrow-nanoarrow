@@ -342,14 +342,46 @@ test_that("array modify can modify buffers", {
   array <- as_nanoarrow_array(1:5)
   expect_error(
     nanoarrow_array_modify(array, list(buffers = rep(list(NULL), 4))),
-    "must be <= 3"
+    "Changing the number of buffers in array_modify is not supported"
   )
 
   # Check that specifying too few buffers will result in a validation error
   expect_error(
     nanoarrow_array_modify(array, list(buffers = list()), validate = TRUE),
-    "Expected 2 buffer"
+    "Changing the number of buffers in array_modify is not supported"
   )
+})
+
+test_that("array modify can modify variadic buffers", {
+  # Create a string view array with >1 variadic buffers. The default
+  # internal threshold for splitting up internal buffers is ~30kb.
+  boring_strings <- vapply(
+    1:10000,
+    function(i) paste0("boring string", i),
+    character(1)
+  )
+
+  array <- as_nanoarrow_array(boring_strings, schema = na_string_view())
+  expect_identical(length(array$buffers), 9L)
+  variadic_sizes <- convert_buffer(array$buffers[[9]])
+  expect_identical(variadic_sizes, c(32757, 32759, 32759, 32759, 32759, 5101))
+  expect_identical(convert_array(array), boring_strings)
+
+  # Save the original array
+  original_array <- array
+
+  # Modify one of the array buffers
+  cool_string_bytes <- charToRaw("cooool string1")
+  first_buffer <- as.raw(array$buffers[[3]])
+  first_buffer[1:length(cool_string_bytes)] <- cool_string_bytes
+  array$buffers[[3]] <- first_buffer
+
+  cool_strings <- boring_strings
+  cool_strings[1] <- "cooool string1"
+  expect_identical(convert_array(array), cool_strings)
+
+  # Check that the original was unmodified
+  expect_identical(convert_array(original_array), boring_strings)
 })
 
 test_that("array modify checks buffer sizes", {
