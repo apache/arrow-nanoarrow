@@ -333,18 +333,17 @@ ArrowErrorCode ArrowArraySetBuffer(struct ArrowArray* array, int64_t i,
   struct ArrowArrayPrivateData* private_data =
       (struct ArrowArrayPrivateData*)array->private_data;
 
-  switch (i) {
-    case 0:
-      ArrowBufferMove(buffer, &private_data->bitmap.buffer);
-      private_data->buffer_data[i] = private_data->bitmap.buffer.data;
-      break;
-    case 1:
-    case 2:
-      ArrowBufferMove(buffer, &private_data->buffers[i - 1]);
-      private_data->buffer_data[i] = private_data->buffers[i - 1].data;
-      break;
-    default:
-      return EINVAL;
+  if (i >= array->n_buffers || i < 0) {
+    return EINVAL;
+  }
+
+  struct ArrowBuffer* dst = ArrowArrayBuffer(array, i);
+  ArrowBufferReset(dst);
+  ArrowBufferMove(buffer, dst);
+  private_data->buffer_data[i] = dst->data;
+
+  if (array->n_buffers > 3 && i > 2 && i < array->n_buffers) {
+    private_data->variadic_buffer_sizes[i - 2] = dst->size_bytes;
   }
 
   return NANOARROW_OK;
