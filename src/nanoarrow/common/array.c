@@ -38,7 +38,6 @@ static void ArrowArrayReleaseInternal(struct ArrowArray* array) {
       ArrowBufferReset(&private_data->variadic_buffers[i]);
     }
     ArrowFree(private_data->variadic_buffers);
-    ArrowFree(private_data->variadic_buffer_sizes);
     ArrowFree(private_data);
   }
 
