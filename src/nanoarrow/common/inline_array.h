@@ -43,8 +43,17 @@ static inline struct ArrowBuffer* ArrowArrayBuffer(struct ArrowArray* array, int
   switch (i) {
     case 0:
       return &private_data->bitmap.buffer;
+    case 1:
+      return private_data->buffers;
     default:
-      return private_data->buffers + i - 1;
+      if (array->n_buffers > 3 && i == (array->n_buffers - 1)) {
+        return private_data->buffers + 1;
+      } else if (array->n_buffers > 3) {
+        return private_data->variadic_buffers + (i - 2);
+      } else {
+        NANOARROW_DCHECK(i == 2);
+        return private_data->buffers + i - 1;
+      }
   }
 }
 
@@ -527,9 +536,9 @@ static inline int32_t ArrowArrayVariadicBufferCount(struct ArrowArray* array) {
 }
 
 static inline ArrowErrorCode ArrowArrayAddVariadicBuffers(struct ArrowArray* array,
-                                                          int32_t nbuffers) {
+                                                          int32_t n_buffers) {
   const int32_t n_current_bufs = ArrowArrayVariadicBufferCount(array);
-  const int32_t nvariadic_bufs_needed = n_current_bufs + nbuffers;
+  const int32_t nvariadic_bufs_needed = n_current_bufs + n_buffers;
 
   struct ArrowArrayPrivateData* private_data =
       (struct ArrowArrayPrivateData*)array->private_data;
@@ -539,15 +548,9 @@ static inline ArrowErrorCode ArrowArrayAddVariadicBuffers(struct ArrowArray* arr
   if (private_data->variadic_buffers == NULL) {
     return ENOMEM;
   }
-  private_data->variadic_buffer_sizes = (int64_t*)ArrowRealloc(
-      private_data->variadic_buffer_sizes, sizeof(int64_t) * nvariadic_bufs_needed);
-  if (private_data->variadic_buffer_sizes == NULL) {
-    return ENOMEM;
-  }
 
   for (int32_t i = n_current_bufs; i < nvariadic_bufs_needed; i++) {
     ArrowBufferInit(&private_data->variadic_buffers[i]);
-    private_data->variadic_buffer_sizes[i] = 0;
   }
   private_data->n_variadic_buffers = nvariadic_bufs_needed;
   array->n_buffers = NANOARROW_BINARY_VIEW_FIXED_BUFFERS + 1 + nvariadic_bufs_needed;
@@ -589,7 +592,6 @@ static inline ArrowErrorCode ArrowArrayAppendBytes(struct ArrowArray* array,
       bvt.ref.offset = (int32_t)variadic_buf->size_bytes;
       NANOARROW_RETURN_NOT_OK(
           ArrowBufferAppend(variadic_buf, value.data.as_char, value.size_bytes));
-      private_data->variadic_buffer_sizes[buf_index] = variadic_buf->size_bytes;
     }
     NANOARROW_RETURN_NOT_OK(ArrowBufferAppend(data_buffer, &bvt, sizeof(bvt)));
   } else {
