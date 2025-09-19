@@ -536,9 +536,9 @@ static inline int32_t ArrowArrayVariadicBufferCount(struct ArrowArray* array) {
 }
 
 static inline ArrowErrorCode ArrowArrayAddVariadicBuffers(struct ArrowArray* array,
-                                                          int32_t nbuffers) {
+                                                          int32_t n_buffers) {
   const int32_t n_current_bufs = ArrowArrayVariadicBufferCount(array);
-  const int32_t nvariadic_bufs_needed = n_current_bufs + nbuffers;
+  const int32_t nvariadic_bufs_needed = n_current_bufs + n_buffers;
 
   struct ArrowArrayPrivateData* private_data =
       (struct ArrowArrayPrivateData*)array->private_data;
