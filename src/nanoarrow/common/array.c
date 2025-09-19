@@ -341,10 +341,6 @@ ArrowErrorCode ArrowArraySetBuffer(struct ArrowArray* array, int64_t i,
   ArrowBufferMove(buffer, dst);
   private_data->buffer_data[i] = dst->data;
 
-  if (array->n_buffers > 3 && i > 2 && i < array->n_buffers) {
-    private_data->variadic_buffer_sizes[i - 2] = dst->size_bytes;
-  }
-
   return NANOARROW_OK;
 }
 
@@ -476,6 +472,8 @@ static ArrowErrorCode ArrowArrayFlushInternalPointers(struct ArrowArray* array) 
       (struct ArrowArrayPrivateData*)array->private_data;
 
   if (array->n_buffers > NANOARROW_MAX_FIXED_BUFFERS) {
+    // If we have variadic buffers, we may have more buffers
+    // than are currently allocated in private_data->buffer_data.
     private_data->buffer_data = (const void**)ArrowRealloc(
         private_data->buffer_data, sizeof(void*) * array->n_buffers);
     if (private_data->buffer_data == NULL) {
