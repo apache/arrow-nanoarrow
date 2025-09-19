@@ -43,8 +43,17 @@ static inline struct ArrowBuffer* ArrowArrayBuffer(struct ArrowArray* array, int
   switch (i) {
     case 0:
       return &private_data->bitmap.buffer;
+    case 1:
+      return private_data->buffers;
     default:
-      return private_data->buffers + i - 1;
+      if (array->n_buffers > 3 && i == (array->n_buffers - 1)) {
+        return private_data->buffers + 1;
+      } else if (array->n_buffers > 3) {
+        return private_data->variadic_buffers + (i - 2);
+      } else {
+        NANOARROW_DCHECK(i == 2);
+        return private_data->buffers + i - 1;
+      }
   }
 }
 
