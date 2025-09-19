@@ -401,7 +401,7 @@ static ArrowErrorCode ArrowArrayViewInitFromArray(struct ArrowArrayView* array_v
 static ArrowErrorCode ArrowArrayReserveInternal(struct ArrowArray* array,
                                                 struct ArrowArrayView* array_view) {
   // Loop through buffers and reserve the extra space that we know about
-  for (int64_t i = 0; i < array->n_buffers; i++) {
+  for (int64_t i = 0; i < NANOARROW_MAX_FIXED_BUFFERS; i++) {
     // Don't reserve on a validity buffer that hasn't been allocated yet
     if (array_view->layout.buffer_type[i] == NANOARROW_BUFFER_TYPE_VALIDITY &&
         ArrowArrayBuffer(array, i)->data == NULL) {
