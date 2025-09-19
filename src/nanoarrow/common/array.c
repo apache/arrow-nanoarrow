@@ -479,6 +479,19 @@ static ArrowErrorCode ArrowArrayFlushInternalPointers(struct ArrowArray* array) 
     if (private_data->buffer_data == NULL) {
       return ENOMEM;
     }
+
+    // If the variadic sizes buffer was not set, populate it now
+    struct ArrowBuffer* sizes_buffer = ArrowArrayBuffer(array, array->n_buffers - 1);
+    if (sizes_buffer->data == NULL && sizes_buffer->size_bytes == 0) {
+      NANOARROW_RETURN_NOT_OK(
+          ArrowBufferReserve(sizes_buffer, private_data->n_variadic_buffers));
+      for (int64_t i = 0; i < private_data->n_variadic_buffers; i++) {
+        struct ArrowBuffer* variadic_buffer =
+            ArrowArrayBuffer(array, i + NANOARROW_BINARY_VIEW_FIXED_BUFFERS);
+        NANOARROW_RETURN_NOT_OK(
+            ArrowBufferAppendInt64(sizes_buffer, variadic_buffer->size_bytes));
+      }
+    }
   }
 
   for (int32_t i = 0; i < array->n_buffers; i++) {
