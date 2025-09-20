@@ -757,11 +757,6 @@ cdef class CArrayBuilder:
 
         ArrowBufferMove(buffer._ptr, ArrowArrayBuffer(self._ptr, i))
 
-        # The buffer's lifecycle is now owned by the array; however, we need
-        # array->buffers[i] to be updated such that it equals
-        # ArrowArrayBuffer(array, i)->data.
-        self._ptr.buffers[i] = ArrowArrayBuffer(self._ptr, i).data
-
         return self
 
     def set_child(self, int64_t i, CArray c_array, move=False) -> CArrayBuilder:
