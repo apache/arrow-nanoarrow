@@ -73,6 +73,10 @@ static void ArrowArrayReleaseInternal(struct ArrowArray* array) {
   array->release = NULL;
 }
 
+static int ArrowArrayIsInternal(struct ArrowArray* array) {
+  return array->release == &ArrowArrayReleaseInternal;
+}
+
 static ArrowErrorCode ArrowArraySetStorageType(struct ArrowArray* array,
                                                enum ArrowType storage_type) {
   switch (storage_type) {
@@ -345,7 +349,14 @@ ArrowErrorCode ArrowArraySetBuffer(struct ArrowArray* array, int64_t i,
 }
 
 static ArrowErrorCode ArrowArrayViewInitFromArray(struct ArrowArrayView* array_view,
-                                                  struct ArrowArray* array) {
+                                                  struct ArrowArray* array,
+                                                  struct ArrowError* error) {
+  if (!ArrowArrayIsInternal(array)) {
+    ArrowErrorSet(error,
+                  "Can't initialize internal ArrowArrayView from external ArrowArray");
+    return EINVAL;
+  }
+
   struct ArrowArrayPrivateData* private_data =
       (struct ArrowArrayPrivateData*)array->private_data;
 
@@ -370,7 +381,8 @@ static ArrowErrorCode ArrowArrayViewInitFromArray(struct ArrowArrayView* array_v
   }
 
   for (int64_t i = 0; i < array->n_children; i++) {
-    result = ArrowArrayViewInitFromArray(array_view->children[i], array->children[i]);
+    result =
+        ArrowArrayViewInitFromArray(array_view->children[i], array->children[i], error);
     if (result != NANOARROW_OK) {
       ArrowArrayViewReset(array_view);
       return result;
@@ -384,7 +396,8 @@ static ArrowErrorCode ArrowArrayViewInitFromArray(struct ArrowArrayView* array_v
       return result;
     }
 
-    result = ArrowArrayViewInitFromArray(array_view->dictionary, array->dictionary);
+    result =
+        ArrowArrayViewInitFromArray(array_view->dictionary, array->dictionary, error);
     if (result != NANOARROW_OK) {
       ArrowArrayViewReset(array_view);
       return result;
@@ -425,7 +438,7 @@ static ArrowErrorCode ArrowArrayReserveInternal(struct ArrowArray* array,
 ArrowErrorCode ArrowArrayReserve(struct ArrowArray* array,
                                  int64_t additional_size_elements) {
   struct ArrowArrayView array_view;
-  NANOARROW_RETURN_NOT_OK(ArrowArrayViewInitFromArray(&array_view, array));
+  NANOARROW_RETURN_NOT_OK(ArrowArrayViewInitFromArray(&array_view, array, NULL));
 
   // Calculate theoretical buffer sizes (recursively)
   ArrowArrayViewSetLength(&array_view, array->length + additional_size_elements);
@@ -457,10 +470,12 @@ static ArrowErrorCode ArrowArrayFinalizeBuffers(struct ArrowArray* array) {
   }
 
   for (int64_t i = 0; i < array->n_children; i++) {
-    NANOARROW_RETURN_NOT_OK(ArrowArrayFinalizeBuffers(array->children[i]));
+    if (ArrowArrayIsInternal(array->children[i])) {
+      NANOARROW_RETURN_NOT_OK(ArrowArrayFinalizeBuffers(array->children[i]));
+    }
   }
 
-  if (array->dictionary != NULL) {
+  if (array->dictionary != NULL && ArrowArrayIsInternal(array->dictionary)) {
     NANOARROW_RETURN_NOT_OK(ArrowArrayFinalizeBuffers(array->dictionary));
   }
 
@@ -501,10 +516,12 @@ static ArrowErrorCode ArrowArrayFlushInternalPointers(struct ArrowArray* array) 
   array->buffers = (const void**)(private_data->buffer_data);
 
   for (int64_t i = 0; i < array->n_children; i++) {
-    NANOARROW_RETURN_NOT_OK(ArrowArrayFlushInternalPointers(array->children[i]));
+    if (ArrowArrayIsInternal(array->children[i])) {
+      NANOARROW_RETURN_NOT_OK(ArrowArrayFlushInternalPointers(array->children[i]));
+    }
   }
 
-  if (array->dictionary != NULL) {
+  if (array->dictionary != NULL && ArrowArrayIsInternal(array->dictionary)) {
     NANOARROW_RETURN_NOT_OK(ArrowArrayFlushInternalPointers(array->dictionary));
   }
 
@@ -532,8 +549,8 @@ ArrowErrorCode ArrowArrayFinishBuilding(struct ArrowArray* array,
 
   // For validation, initialize an ArrowArrayView with our known buffer sizes
   struct ArrowArrayView array_view;
-  NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowArrayViewInitFromArray(&array_view, array),
-                                     error);
+  NANOARROW_RETURN_NOT_OK_WITH_ERROR(
+      ArrowArrayViewInitFromArray(&array_view, array, error), error);
   int result = ArrowArrayViewValidate(&array_view, validation_level, error);
   ArrowArrayViewReset(&array_view);
   return result;

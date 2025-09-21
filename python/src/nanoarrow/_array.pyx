@@ -822,20 +822,22 @@ cdef class CArrayBuilder:
         cdef Error error = Error()
         cdef int code
 
-        if self._can_validate:
-            c_validation_level = NANOARROW_VALIDATION_LEVEL_DEFAULT
-            if validation_level == "full":
-                c_validation_level = NANOARROW_VALIDATION_LEVEL_FULL
-            elif validation_level == "minimal":
-                c_validation_level = NANOARROW_VALIDATION_LEVEL_MINIMAL
-            elif validation_level == "none":
-                c_validation_level = NANOARROW_VALIDATION_LEVEL_NONE
-
-            code = ArrowArrayFinishBuilding(self._ptr, c_validation_level, &error.c_error)
-            error.raise_message_not_ok("ArrowArrayFinishBuildingDefault()", code)
-
-        elif validation_level not in (None, "none"):
+        if not self._can_validate and validation_level not in (None, "none"):
             raise NotImplementedError("Validation for array with children is not implemented")
+
+        if not self._can_validate:
+            validation_level = "none"
+
+        c_validation_level = NANOARROW_VALIDATION_LEVEL_DEFAULT
+        if validation_level == "full":
+            c_validation_level = NANOARROW_VALIDATION_LEVEL_FULL
+        elif validation_level == "minimal":
+            c_validation_level = NANOARROW_VALIDATION_LEVEL_MINIMAL
+        elif validation_level == "none":
+            c_validation_level = NANOARROW_VALIDATION_LEVEL_NONE
+
+        code = ArrowArrayFinishBuilding(self._ptr, c_validation_level, &error.c_error)
+        error.raise_message_not_ok("ArrowArrayFinishBuildingDefault()", code)
 
         out = self.c_array
         self.c_array = CArray.allocate(CSchema.allocate())
