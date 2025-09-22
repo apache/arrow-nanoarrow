@@ -549,12 +549,21 @@ static inline ArrowErrorCode ArrowArrayAddVariadicBuffers(struct ArrowArray* arr
     return ENOMEM;
   }
 
-  for (int32_t i = n_current_bufs; i < nvariadic_bufs_needed; i++) {
-    ArrowBufferInit(&private_data->variadic_buffers[i]);
-  }
   private_data->n_variadic_buffers = nvariadic_bufs_needed;
   array->n_buffers = NANOARROW_BINARY_VIEW_FIXED_BUFFERS + 1 + nvariadic_bufs_needed;
 
+  private_data->buffer_data = (const void**)ArrowRealloc(
+      private_data->buffer_data, array->n_buffers * sizeof(void*));
+
+  for (int32_t i = n_current_bufs; i < nvariadic_bufs_needed; i++) {
+    ArrowBufferInit(&private_data->variadic_buffers[i]);
+    private_data->buffer_data[NANOARROW_BINARY_VIEW_FIXED_BUFFERS + i] = NULL;
+  }
+
+  private_data->buffer_data[NANOARROW_BINARY_VIEW_FIXED_BUFFERS + nvariadic_bufs_needed] =
+      NULL;
+
+  array->buffers = private_data->buffer_data;
   return NANOARROW_OK;
 }
 
