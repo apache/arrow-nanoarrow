@@ -332,6 +332,10 @@ nanoarrow_array_modify <- function(array, new_values, validate = TRUE) {
     )
   }
 
+  # Finish building (e.g., ensure pointers are flushed)
+  .Call(nanoarrow_c_array_finish_building, array_copy)
+
+  # Validate if requested
   if (!is.null(schema) && validate) {
     array_copy <- .Call(nanoarrow_c_array_validate_after_modify, array_copy, schema)
   }

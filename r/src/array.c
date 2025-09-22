@@ -248,6 +248,17 @@ static int move_array_buffers(struct ArrowArray* src, struct ArrowArray* dst,
   return NANOARROW_OK;
 }
 
+SEXP nanoarrow_c_array_finish_building(SEXP array_xptr) {
+  struct ArrowArray* array = nanoarrow_array_from_xptr(array_xptr);
+  struct ArrowError error;
+  int result = ArrowArrayFinishBuilding(array, NANOARROW_VALIDATION_LEVEL_NONE, &error);
+  if (result != NANOARROW_OK) {
+    Rf_error("ArrowArrayFinishBuilding(): %s", error.message);
+  }
+
+  return R_NilValue;
+}
+
 SEXP nanoarrow_c_array_validate_after_modify(SEXP array_xptr, SEXP schema_xptr) {
   // A very particular type of validation we can do with the ArrowArray we use
   // in nanoarrow_array_modify() (which was created using ArrowArrayInit).

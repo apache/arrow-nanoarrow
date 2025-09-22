@@ -374,11 +374,15 @@ test_that("array modify can modify variadic buffers", {
   cool_string_bytes <- charToRaw("cooool string1")
   first_buffer <- as.raw(array$buffers[[3]])
   first_buffer[1:length(cool_string_bytes)] <- cool_string_bytes
+
   array$buffers[[3]] <- first_buffer
 
   cool_strings <- boring_strings
   cool_strings[1] <- "cooool string1"
   expect_identical(convert_array(array), cool_strings)
+
+  variadic_sizes <- convert_buffer(array$buffers[[9]])
+  expect_identical(variadic_sizes, c(32757, 32759, 32759, 32759, 32759, 5101))
 
   # Check that the original was unmodified
   expect_identical(convert_array(original_array), boring_strings)
