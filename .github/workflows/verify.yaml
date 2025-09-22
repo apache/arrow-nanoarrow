@@ -96,7 +96,7 @@ jobs:
         if: steps.cache-arrow-build.outputs.cache-hit != 'true' && matrix.config.label != 'windows-win32'
         shell: bash
         run: |
-          src/ci/scripts/build-arrow-cpp-minimal.sh 20.0.0 arrow
+          src/ci/scripts/build-arrow-cpp-minimal.sh 21.0.0 arrow
 
       - name: Set CMake options
         shell: bash
