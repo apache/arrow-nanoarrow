@@ -173,7 +173,6 @@ ArrowErrorCode ArrowArrayInitFromType(struct ArrowArray* array,
   }
   private_data->n_variadic_buffers = 0;
   private_data->variadic_buffers = NULL;
-  private_data->variadic_buffer_sizes = NULL;
   private_data->list_view_offset = 0;
 
   array->private_data = private_data;

@@ -870,9 +870,6 @@ struct ArrowArrayPrivateData {
   // Variadic buffers for binary view types
   struct ArrowBuffer* variadic_buffers;
 
-  // Size of each variadic buffer in bytes
-  int64_t* variadic_buffer_sizes;
-
   // The current offset used to build list views
   int64_t list_view_offset;
 };
