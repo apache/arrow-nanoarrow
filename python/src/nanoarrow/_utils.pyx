@@ -364,6 +364,7 @@ cdef void c_array_shallow_copy(object base, const ArrowArray* src, ArrowArray* d
     tmp.offset = src.offset
     tmp.null_count = src.null_count
 
+    # We might need some more buffers if we are shallowly copying a string/binary view
     if src.n_buffers > 3:
         code = ArrowArrayAddVariadicBuffers(dst, src.n_buffers - 3)
         Error.raise_error_not_ok("ArrowArrayAddVariadicBuffers()", code)

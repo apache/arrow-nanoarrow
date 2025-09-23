@@ -373,7 +373,7 @@ test_that("array modify can modify variadic buffers", {
   # Modify one of the array buffers
   cool_string_bytes <- charToRaw("cooool string1")
   first_buffer <- as.raw(array$buffers[[3]])
-  first_buffer[1:length(cool_string_bytes)] <- cool_string_bytes
+  first_buffer[seq_along(cool_string_bytes)] <- cool_string_bytes
 
   array$buffers[[3]] <- first_buffer
 
