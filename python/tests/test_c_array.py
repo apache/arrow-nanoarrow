@@ -501,6 +501,36 @@ def test_c_array_from_buffers_recursive():
         )
 
 
+def test_c_array_from_buffers_string_view():
+    # Creating the actual view buffer is hard, but we can at least make sure the buffers are able to
+    # be roundtripped.
+    c_array = na.c_array_from_buffers(
+        na.string_view(),
+        0,
+        [
+            None,
+            None,
+            b"banana one",
+            b"banana two",
+            b"banana three",
+            na.c_buffer([10, 10, 12], na.int64()),
+        ],
+        validation_level="none"
+    )
+    assert c_array.length == 0
+    assert c_array.null_count == 0
+    assert c_array.offset == 0
+
+    array_view = c_array.view()
+    assert array_view.storage_type == "string_view"
+    assert bytes(array_view.buffer(0)) == b""
+    assert bytes(array_view.buffer(1)) == b""
+    assert bytes(array_view.buffer(2)) == b"banana one"
+    assert bytes(array_view.buffer(3)) == b"banana two"
+    assert bytes(array_view.buffer(4)) == b"banana three"
+    assert list(array_view.buffer(5)) == [10, 10, 12]
+
+
 def test_c_array_from_buffers_validation():
     # Should fail with all validation levels except none
     for validation_level in ("full", "default", "minimal"):
