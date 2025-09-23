@@ -339,9 +339,16 @@ ArrowErrorCode ArrowArraySetBuffer(struct ArrowArray* array, int64_t i,
     return EINVAL;
   }
 
+  // Find the `i`th buffer, release what is currently there, and move the
+  // supplied buffer into that slot.
   struct ArrowBuffer* dst = ArrowArrayBuffer(array, i);
   ArrowBufferReset(dst);
   ArrowBufferMove(buffer, dst);
+
+  // Flush the pointer into array->buffers. In theory clients should call
+  // ArrowArrayFinishBuilding() to flush the pointer values before passing
+  // this array elsewhere; however, in early nanoarrow versions this was not
+  // needed and some code may depend on this being true.
   private_data->buffer_data[i] = dst->data;
   array->buffers = private_data->buffer_data;
 
@@ -483,11 +490,16 @@ static ArrowErrorCode ArrowArrayFinalizeBuffers(struct ArrowArray* array) {
 }
 
 static ArrowErrorCode ArrowArrayFlushInternalPointers(struct ArrowArray* array) {
+  NANOARROW_DCHECK(ArrowArrayIsInternal(array));
   struct ArrowArrayPrivateData* private_data =
       (struct ArrowArrayPrivateData*)array->private_data;
 
   if (array->n_buffers > NANOARROW_MAX_FIXED_BUFFERS) {
-    // If the variadic sizes buffer was not set, populate it now
+    // If the variadic sizes buffer was not set and there is at least one variadic
+    // buffer, populate it now (if there are no variadic buffers there will be exactly
+    // three total buffers and we don't need to do anything special here). Notably, this
+    // will occur when building a BinaryView/StringView array by element using the
+    // appender.
     struct ArrowBuffer* sizes_buffer = ArrowArrayBuffer(array, array->n_buffers - 1);
     if (sizes_buffer->data == NULL && sizes_buffer->size_bytes == 0) {
       NANOARROW_RETURN_NOT_OK(
@@ -507,6 +519,9 @@ static ArrowErrorCode ArrowArrayFlushInternalPointers(struct ArrowArray* array) 
 
   array->buffers = (const void**)(private_data->buffer_data);
 
+  // Flush internal pointers for child/dictionary arrays if we allocated them. Clients
+  // building arrays by buffer might have moved arrays from some other source (e.g.,
+  // to create a record batch) and calling this function in that case will cause a crash.
   for (int64_t i = 0; i < array->n_children; i++) {
     if (ArrowArrayIsInternal(array->children[i])) {
       NANOARROW_RETURN_NOT_OK(ArrowArrayFlushInternalPointers(array->children[i]));

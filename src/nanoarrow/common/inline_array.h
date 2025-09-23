@@ -47,10 +47,18 @@ static inline struct ArrowBuffer* ArrowArrayBuffer(struct ArrowArray* array, int
       return private_data->buffers;
     default:
       if (array->n_buffers > 3 && i == (array->n_buffers - 1)) {
+        // The variadic buffer sizes buffer if for a BinaryView/String view array
+      // is always stored in private_data->buffers[1]; however, from the numbered
+      // buffers perspective this is the array->buffers[array->n_buffers - 1].
         return private_data->buffers + 1;
       } else if (array->n_buffers > 3) {
+        // If there are one or more variadic buffers, they are stored in
+        // private_data->variadic_buffers
         return private_data->variadic_buffers + (i - 2);
       } else {
+        // Otherwise, we're just accessing buffer at index 2 (e.g., String/Binary
+        // data buffer or variadic sizes buffer for the case where there are no
+        // variadic buffers)
         NANOARROW_DCHECK(i == 2);
         return private_data->buffers + i - 1;
       }
@@ -560,9 +568,12 @@ static inline ArrowErrorCode ArrowArrayAddVariadicBuffers(struct ArrowArray* arr
     private_data->buffer_data[NANOARROW_BINARY_VIEW_FIXED_BUFFERS + i] = NULL;
   }
 
+  // Zero out memory for the final buffer (variadic sizes buffer we haven't built yet)
   private_data->buffer_data[NANOARROW_BINARY_VIEW_FIXED_BUFFERS + nvariadic_bufs_needed] =
       NULL;
 
+
+  // Ensure array->buffers points to a valid value
   array->buffers = private_data->buffer_data;
   return NANOARROW_OK;
 }
