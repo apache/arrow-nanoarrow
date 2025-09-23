@@ -502,8 +502,8 @@ def test_c_array_from_buffers_recursive():
 
 
 def test_c_array_from_buffers_string_view():
-    # Creating the actual view buffer is hard, but we can at least make sure the buffers are able to
-    # be roundtripped.
+    # Creating the actual view buffer is hard, but we can at least make sure the
+    # buffers are able to be roundtripped.
     c_array = na.c_array_from_buffers(
         na.string_view(),
         0,
@@ -515,7 +515,7 @@ def test_c_array_from_buffers_string_view():
             b"banana three",
             na.c_buffer([10, 10, 12], na.int64()),
         ],
-        validation_level="none"
+        validation_level="none",
     )
     assert c_array.length == 0
     assert c_array.null_count == 0
