@@ -32,6 +32,7 @@ from cpython.ref cimport Py_INCREF, Py_DECREF
 
 from nanoarrow_c cimport (
     ArrowArray,
+    ArrowArrayAddVariadicBuffers,
     ArrowArrayAllocateChildren,
     ArrowArrayAllocateDictionary,
     ArrowArrayBuffer,
@@ -362,6 +363,11 @@ cdef void c_array_shallow_copy(object base, const ArrowArray* src, ArrowArray* d
     tmp.length = src.length
     tmp.offset = src.offset
     tmp.null_count = src.null_count
+
+    # We might need some more buffers if we are shallowly copying a string/binary view
+    if src.n_buffers > 3:
+        code = ArrowArrayAddVariadicBuffers(dst, src.n_buffers - 3)
+        Error.raise_error_not_ok("ArrowArrayAddVariadicBuffers()", code)
 
     for i in range(src.n_buffers):
         if src.buffers[i] != NULL:

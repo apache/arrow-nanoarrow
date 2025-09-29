@@ -216,6 +216,58 @@ TEST(ArrayTest, ArrayTestSetBuffer) {
   ArrowArrayRelease(&array);
 }
 
+TEST(ArrayTest, ArrayTestStringViewBuffer) {
+  // Build an array of size zero but with a few variadic buffers to ensure our get/set
+  // buffer logic finds the correct buffers.
+
+  struct ArrowBuffer vbuffer0, vbuffer1, vbuffer2;
+  ArrowBufferInit(&vbuffer0);
+  ASSERT_EQ(ArrowBufferAppendStringView(&vbuffer0, ArrowCharView("banana one")),
+            NANOARROW_OK);
+  ArrowBufferInit(&vbuffer1);
+  ASSERT_EQ(ArrowBufferAppendStringView(&vbuffer1, ArrowCharView("banana two")),
+            NANOARROW_OK);
+  ArrowBufferInit(&vbuffer2);
+  ASSERT_EQ(ArrowBufferAppendStringView(&vbuffer2, ArrowCharView("banana three")),
+            NANOARROW_OK);
+
+  struct ArrowArray array;
+  ASSERT_EQ(ArrowArrayInitFromType(&array, NANOARROW_TYPE_STRING_VIEW), NANOARROW_OK);
+  ASSERT_EQ(array.n_buffers, 3);
+
+  // Add variadic buffers
+  ASSERT_EQ(ArrowArrayAddVariadicBuffers(&array, 3), NANOARROW_OK);
+  ASSERT_EQ(array.n_buffers, 6);
+
+  // Set their content
+  ASSERT_EQ(ArrowArraySetBuffer(&array, 2, &vbuffer0), NANOARROW_OK);
+  ASSERT_EQ(ArrowArraySetBuffer(&array, 3, &vbuffer1), NANOARROW_OK);
+  ASSERT_EQ(ArrowArraySetBuffer(&array, 4, &vbuffer2), NANOARROW_OK);
+
+  // Ensure it is reflected in array->buffers
+  EXPECT_EQ(memcmp(array.buffers[2], "banana one", 10), 0);
+  EXPECT_EQ(memcmp(array.buffers[3], "banana two", 10), 0);
+  EXPECT_EQ(memcmp(array.buffers[4], "banana three", 12), 0);
+
+  // Sizes buffer has not been built yet
+  EXPECT_EQ(array.buffers[5], nullptr);
+
+  // ArrowArrayBuffer should find the correct buffers as well
+  EXPECT_EQ(ArrowArrayBuffer(&array, 2)->data, array.buffers[2]);
+  EXPECT_EQ(ArrowArrayBuffer(&array, 3)->data, array.buffers[3]);
+  EXPECT_EQ(ArrowArrayBuffer(&array, 4)->data, array.buffers[4]);
+  EXPECT_EQ(ArrowArrayBuffer(&array, 5)->data, array.buffers[5]);
+
+  // After we finish building, the sizes buffer should have been built for us
+  ASSERT_EQ(ArrowArrayFinishBuilding(&array, NANOARROW_VALIDATION_LEVEL_NONE, nullptr),
+            NANOARROW_OK);
+
+  int64_t expected_sizes[] = {10, 10, 12};
+  EXPECT_EQ(memcmp(array.buffers[5], &expected_sizes, sizeof(expected_sizes)), 0);
+
+  ArrowArrayRelease(&array);
+}
+
 TEST(ArrayTest, ArrayTestBuildByBuffer) {
   // the array ["a", null, "bc", null, "def", null, "ghij"]
   uint8_t validity_bitmap[] = {0x55};

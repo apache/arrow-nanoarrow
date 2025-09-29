@@ -278,6 +278,10 @@ def c_array_from_buffers(
     # of children have been initialized.
     builder.init_from_schema(schema)
 
+    # We might need more buffers if we're constructing a string or binary view
+    buffers = list(buffers)
+    builder.ensure_buffers(len(buffers))
+
     # Set buffers, optionally moving ownership of the buffers as well (i.e.,
     # the objects in the input buffers would be replaced with an empty ArrowBuffer)
     for i, buffer in enumerate(buffers):

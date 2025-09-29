@@ -93,8 +93,8 @@ SEXP nanoarrow_c_array_set_buffers(SEXP array_xptr, SEXP buffers_sexp) {
   struct ArrowArray* array = nanoarrow_array_from_xptr(array_xptr);
 
   int64_t n_buffers = Rf_xlength(buffers_sexp);
-  if (n_buffers > 3) {
-    Rf_error("length(array$buffers) must be <= 3");
+  if (n_buffers != array->n_buffers) {
+    Rf_error("Changing the number of buffers in array_modify is not supported");
   }
 
   // Release any buffers that aren't about to be replaced
@@ -248,6 +248,17 @@ static int move_array_buffers(struct ArrowArray* src, struct ArrowArray* dst,
   return NANOARROW_OK;
 }
 
+SEXP nanoarrow_c_array_finish_building(SEXP array_xptr) {
+  struct ArrowArray* array = nanoarrow_array_from_xptr(array_xptr);
+  struct ArrowError error;
+  int result = ArrowArrayFinishBuilding(array, NANOARROW_VALIDATION_LEVEL_NONE, &error);
+  if (result != NANOARROW_OK) {
+    Rf_error("ArrowArrayFinishBuilding(): %s", error.message);
+  }
+
+  return R_NilValue;
+}
+
 SEXP nanoarrow_c_array_validate_after_modify(SEXP array_xptr, SEXP schema_xptr) {
   // A very particular type of validation we can do with the ArrowArray we use
   // in nanoarrow_array_modify() (which was created using ArrowArrayInit).
@@ -269,6 +280,16 @@ SEXP nanoarrow_c_array_validate_after_modify(SEXP array_xptr, SEXP schema_xptr) 
   int result = ArrowArrayInitFromSchema(array_dst, schema, &error);
   if (result != NANOARROW_OK) {
     Rf_error("ArrowArrayInitFromSchema(): %s", error.message);
+  }
+
+  // Add any variadic buffers that might be required
+  if ((array->n_buffers > array_dst->n_buffers) &&
+      array->n_buffers > NANOARROW_MAX_FIXED_BUFFERS) {
+    result =
+        ArrowArrayAddVariadicBuffers(array_dst, array->n_buffers - array_dst->n_buffers);
+    if (result != NANOARROW_OK) {
+      Rf_error("ArrowArrayAddVariadicBuffers() failed");
+    }
   }
 
   result = move_array_buffers(array, array_dst, schema, &error);

@@ -94,6 +94,15 @@ static inline void array_export(SEXP array_xptr, struct ArrowArray* array_copy) 
   array_copy->offset = array->offset;
 
   // Get buffer references, each of which preserve a reference to independent_array_xptr
+
+  // We might need some more buffers to be allocated for string views
+  if (array->n_buffers > 3) {
+    result = ArrowArrayAddVariadicBuffers(array_copy, array->n_buffers - 3);
+    if (result != NANOARROW_OK) {
+      Rf_error("ArrowArrayAddVariadicBuffers() failed");
+    }
+  }
+
   array_copy->n_buffers = array->n_buffers;
   for (int64_t i = 0; i < array->n_buffers; i++) {
     SEXP borrowed_buffer =

@@ -32,6 +32,7 @@ from cpython cimport (
 
 from nanoarrow_c cimport (
     ArrowArray,
+    ArrowArrayAddVariadicBuffers,
     ArrowArrayAppendBytes,
     ArrowArrayAppendNull,
     ArrowArrayAppendString,
@@ -721,6 +722,13 @@ cdef class CArrayBuilder:
         self._ptr.null_count = self._ptr.length - count
         return self
 
+    def ensure_buffers(self, n_buffers) -> CArrayBuilder:
+        if self._ptr.n_buffers < n_buffers:
+            code = ArrowArrayAddVariadicBuffers(self._ptr, n_buffers - self._ptr.n_buffers)
+            Error.raise_error_not_ok("ArrowArrayAddVariadicBuffers() failed", code)
+
+        return self
+
     def set_buffer(self, int64_t i, CBuffer buffer, move=False) -> CArrayBuilder:
         """Set an ArrowArray buffer
 
@@ -732,8 +740,8 @@ cdef class CArrayBuilder:
         is False (the default), this function will a make a shallow copy via another
         layer of Python object wrapping.
         """
-        if i < 0 or i > 3:
-            raise IndexError("i must be >= 0 and <= 3")
+        if i < 0 or i >= self._ptr.n_buffers:
+            raise IndexError(f"i must be >= 0 and < {self._ptr.n_buffers}")
 
         if buffer._device != self._device:
             raise ValueError(
@@ -748,11 +756,6 @@ cdef class CArrayBuilder:
             buffer = CBuffer.from_pybuffer(buffer)
 
         ArrowBufferMove(buffer._ptr, ArrowArrayBuffer(self._ptr, i))
-
-        # The buffer's lifecycle is now owned by the array; however, we need
-        # array->buffers[i] to be updated such that it equals
-        # ArrowArrayBuffer(array, i)->data.
-        self._ptr.buffers[i] = ArrowArrayBuffer(self._ptr, i).data
 
         return self
 
@@ -819,20 +822,22 @@ cdef class CArrayBuilder:
         cdef Error error = Error()
         cdef int code
 
-        if self._can_validate:
-            c_validation_level = NANOARROW_VALIDATION_LEVEL_DEFAULT
-            if validation_level == "full":
-                c_validation_level = NANOARROW_VALIDATION_LEVEL_FULL
-            elif validation_level == "minimal":
-                c_validation_level = NANOARROW_VALIDATION_LEVEL_MINIMAL
-            elif validation_level == "none":
-                c_validation_level = NANOARROW_VALIDATION_LEVEL_NONE
-
-            code = ArrowArrayFinishBuilding(self._ptr, c_validation_level, &error.c_error)
-            error.raise_message_not_ok("ArrowArrayFinishBuildingDefault()", code)
-
-        elif validation_level not in (None, "none"):
+        if not self._can_validate and validation_level not in (None, "none"):
             raise NotImplementedError("Validation for array with children is not implemented")
+
+        if not self._can_validate:
+            validation_level = "none"
+
+        c_validation_level = NANOARROW_VALIDATION_LEVEL_DEFAULT
+        if validation_level == "full":
+            c_validation_level = NANOARROW_VALIDATION_LEVEL_FULL
+        elif validation_level == "minimal":
+            c_validation_level = NANOARROW_VALIDATION_LEVEL_MINIMAL
+        elif validation_level == "none":
+            c_validation_level = NANOARROW_VALIDATION_LEVEL_NONE
+
+        code = ArrowArrayFinishBuilding(self._ptr, c_validation_level, &error.c_error)
+        error.raise_message_not_ok("ArrowArrayFinishBuildingDefault()", code)
 
         out = self.c_array
         self.c_array = CArray.allocate(CSchema.allocate())
