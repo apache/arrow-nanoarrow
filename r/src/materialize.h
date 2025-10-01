@@ -23,6 +23,10 @@
 
 #include "materialize_common.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 // A heuristic to identify prototypes that should be treated like data frames
 // (i.e., including record-style vectors like POSIXct). This heuristic returns
 // true if ptype is a data.frame or is an S3 list with names.
@@ -45,5 +49,9 @@ SEXP nanoarrow_materialize_realloc(SEXP ptype, R_xlen_t len);
 // Finalize an object before returning to R. Currently only used for
 // nanoarrow_vctr conversion.
 int nanoarrow_materialize_finalize_result(SEXP converter_xptr);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
