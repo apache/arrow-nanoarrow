@@ -99,7 +99,7 @@ jobs:
           - {os: "windows-latest", label: "windows-x86", platform: "auto", arch: "x86"}
           - {os: "windows-latest", label: "windows-amd64", platform: "auto", arch: "AMD64"}
           - {os: "windows-latest", label: "windows-arm64", platform: "auto", arch: "ARM64"}
-          - {os: "macOS-13", label: "macOS", platform: "auto", arch: "auto"}
+          - {os: "macos-latest", label: "macOS", platform: "auto", arch: "auto"}
           - {os: "macOS-14", label: "macOS-arm64", platform: "auto", arch: "auto"}
           - {os: "ubuntu-24.04-arm", label: "linux-arm64", platform: "auto", arch: "auto"}
 
