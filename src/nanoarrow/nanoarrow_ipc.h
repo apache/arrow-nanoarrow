@@ -160,6 +160,15 @@ enum ArrowIpcCompressionType {
 /// \brief Feature flag for a stream that uses compression
 #define NANOARROW_IPC_FEATURE_COMPRESSED_BODY 2
 
+/// \brief Description of an Arrow IPC DictionaryBatch message
+struct ArrowIpcDictionaryBatch {
+  /// \brief The identifier for this dictionary
+  int64_t id;
+  /// \brief If non-zero, values should be appended to the existing dictionary.
+  /// Otherwise, values should replace the existing dictionary.
+  int is_delta;
+};
+
 /// \brief Checks the nanoarrow runtime to make sure the run/build versions match
 NANOARROW_DLL ArrowErrorCode ArrowIpcCheckRuntime(struct ArrowError* error);
 
@@ -299,6 +308,9 @@ struct ArrowIpcDecoder {
 
   /// \brief The number of bytes in the forthcoming body message.
   int64_t body_size_bytes;
+
+  /// \brief The last decoded DictionaryBatch
+  struct ArrowIpcDictionaryBatch* dictionary;
 
   /// \brief The last decoded Footer
   ///
@@ -447,6 +459,30 @@ NANOARROW_DLL ArrowErrorCode ArrowIpcDecoderDecodeArrayFromShared(
     struct ArrowIpcDecoder* decoder, struct ArrowIpcSharedBuffer* shared, int64_t i,
     struct ArrowArray* out, enum ArrowValidationLevel validation_level,
     struct ArrowError* error);
+
+struct ArrowIpcDictionary {
+  int64_t id;
+  struct ArrowSchema schema;
+  struct ArrowArray array;
+};
+
+void ArrowIpcDictionaryInit(struct ArrowIpcDictionary* dictionary);
+
+void ArrowIpcDictionaryReset(struct ArrowIpcDictionary* dictionary);
+
+struct ArrowIpcDictionaries {
+  struct ArrowIpcDictionary* dictionaries;
+  int64_t n_dictionaries;
+  int64_t capacity;
+  void* private_data;
+};
+
+void ArrowIpcDictionariesInit(struct ArrowIpcDictionaries* dictionaries);
+
+ArrowErrorCode ArrowIpcDictionariesAppend(struct ArrowIpcDictionaries* dictionaries,
+                                          int64_t id, struct ArrowSchema* schema);
+
+void ArrowIpcDictionariesReset(struct ArrowIpcDictionaries* dictionaries);
 
 /// \brief An user-extensible input data source
 struct ArrowIpcInputStream {
@@ -663,6 +699,7 @@ ArrowErrorCode ArrowIpcWriterStartFile(struct ArrowIpcWriter* writer,
 /// Writes the IPC file's footer, footer size, and ending magic.
 NANOARROW_DLL ArrowErrorCode ArrowIpcWriterFinalizeFile(struct ArrowIpcWriter* writer,
                                                         struct ArrowError* error);
+
 /// @}
 
 // Internal APIs:
