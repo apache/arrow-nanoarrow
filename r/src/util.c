@@ -19,6 +19,7 @@
 #include <R.h>
 #include <Rinternals.h>
 
+#include "preserve.h"
 #include "util.h"
 
 SEXP nanoarrow_ns_pkg = NULL;
