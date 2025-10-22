@@ -49,8 +49,10 @@ implemented using the nanoarrow Python package which provides similar
 primitives for facilitating interchange in Python.
 }
 \examples{
-\dontshow{if (has_reticulate_with_nanoarrow()) withAutoprint(\{ # examplesIf}
+\dontshow{if (identical(Sys.getenv("NANOARROW_R_TEST_RETICULATE"), "true")) withAutoprint(\{ # examplesIf}
 library(reticulate)
+
+py_require("nanoarrow")
 
 na <- import("nanoarrow", convert = FALSE)
 python_arrayish_thing <- na$Array(1:3, na_int32())

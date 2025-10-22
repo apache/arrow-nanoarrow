@@ -15,6 +15,11 @@
 # specific language governing permissions and limitations
 # under the License.
 
+if (identical(Sys.getenv("NANOARROW_R_TEST_RETICULATE"), "true")) {
+  reticulate::py_available(initialize = TRUE)
+  reticulate::py_require("nanoarrow")
+}
+
 test_that("as_nanoarrow_schema() for Python object", {
   skip_if_not(has_reticulate_with_nanoarrow())
 

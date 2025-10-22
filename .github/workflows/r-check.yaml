@@ -90,6 +90,7 @@ jobs:
         env:
           ARROW_R_VERBOSE_TEST: "true"
           _R_CHECK_FORCE_SUGGESTS_: false
+          NANOARROW_R_TEST_RETICULATE: "true"
         with:
           upload-snapshots: true
           working-directory: r
