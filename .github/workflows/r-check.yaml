@@ -60,6 +60,15 @@ jobs:
           http-user-agent: ${{ matrix.config.http-user-agent }}
           use-public-rspm: true
 
+      # Set up for reticulate integration tests
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Install nanoarrow (Python)
+        run:
+          pip install nanoarrow
+
       # Check package install with extra warning flags except on Windows,
       # where the R headers cause some problems
       - name: Check R CMD INSTALL
