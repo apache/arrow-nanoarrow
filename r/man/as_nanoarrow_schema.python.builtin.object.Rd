@@ -4,7 +4,7 @@
 \alias{as_nanoarrow_schema.python.builtin.object}
 \alias{as_nanoarrow_array.python.builtin.object}
 \alias{as_nanoarrow_array_stream.python.builtin.object}
-\alias{has_reticulate_with_nanoarrow}
+\alias{test_reticulate_with_nanoarrow}
 \title{Python integration via reticulate}
 \usage{
 \method{as_nanoarrow_schema}{python.builtin.object}(x, ...)
@@ -13,7 +13,7 @@
 
 \method{as_nanoarrow_array_stream}{python.builtin.object}(x, ..., schema = NULL)
 
-has_reticulate_with_nanoarrow()
+test_reticulate_with_nanoarrow()
 }
 \arguments{
 \item{x}{An Python object to convert}
@@ -49,7 +49,7 @@ implemented using the nanoarrow Python package which provides similar
 primitives for facilitating interchange in Python.
 }
 \examples{
-\dontshow{if (identical(Sys.getenv("NANOARROW_R_TEST_RETICULATE"), "true")) withAutoprint(\{ # examplesIf}
+\dontshow{if (test_reticulate_with_nanoarrow()) withAutoprint(\{ # examplesIf}
 library(reticulate)
 
 py_require("nanoarrow")

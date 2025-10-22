@@ -45,7 +45,7 @@
 #'     nanoarrow_array_stream.
 #' @export
 #'
-#' @examplesIf identical(Sys.getenv("NANOARROW_R_TEST_RETICULATE"), "true")
+#' @examplesIf test_reticulate_with_nanoarrow()
 #' library(reticulate)
 #'
 #' py_require("nanoarrow")
@@ -162,6 +162,11 @@ py_to_r.nanoarrow.array_stream.ArrayStream <- function(x) {
 
 #' @rdname as_nanoarrow_schema.python.builtin.object
 #' @export
+test_reticulate_with_nanoarrow <- function() {
+  identical(Sys.getenv("NANOARROW_R_TEST_RETICULATE"), "true") &&
+    packageVersion("reticulate") >= "1.43.0"
+}
+
 has_reticulate_with_nanoarrow <- function() {
   requireNamespace("reticulate", quietly = TRUE) &&
     reticulate::py_available() &&
