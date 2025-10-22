@@ -15,7 +15,8 @@
 # specific language governing permissions and limitations
 # under the License.
 
-if (identical(Sys.getenv("NANOARROW_R_TEST_RETICULATE"), "true")) {
+if (identical(Sys.getenv("NANOARROW_R_TEST_RETICULATE"), "true") &&
+    packageVersion("reticulate") >= "1.43.0") {
   reticulate::py_available(initialize = TRUE)
   reticulate::py_require("nanoarrow")
 }
