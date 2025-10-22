@@ -24,7 +24,7 @@ through Arrow memory. The vctrs extension type uses \code{\link[vctrs:vec_data]{
 \code{\link[=as_nanoarrow_array]{as_nanoarrow_array()}} and \code{\link[=convert_array]{convert_array()}} to ensure roundtrip fidelity.
 }
 \examples{
-\dontshow{if (requireNamespace("jsonlite", quietly = TRUE)) (if (getRversion() >= "3.4") withAutoprint else force)(\{ # examplesIf}
+\dontshow{if (requireNamespace("jsonlite", quietly = TRUE)) withAutoprint(\{ # examplesIf}
 vctr <- as.POSIXlt("2000-01-02 03:45", tz = "UTC")
 array <- as_nanoarrow_array(vctr, schema = na_vctrs(vctr))
 infer_nanoarrow_ptype(array)
