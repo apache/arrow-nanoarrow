@@ -18,13 +18,13 @@
 # For testing
 has_reticulate_with_nanoarrow <- function() {
   requireNamespace("reticulate", quietly = TRUE) &&
-    reticulate::py_available() &&
+    reticulate::py_available(initialize = TRUE) &&
     !inherits(try(reticulate::import("nanoarrow"), silent = TRUE), "try-error")
 }
 
 #' @export
 as_nanoarrow_schema.python.builtin.object <- function(x, ...) {
-  na <- import("nanoarrow", convert = FALSE)
+  na <- reticulate::import("nanoarrow", convert = FALSE)
   c_schema <- na$c_schema(x)
 
   schema_dst <- nanoarrow_allocate_schema()
@@ -42,7 +42,7 @@ as_nanoarrow_array.python.builtin.object <- function(x, ..., schema = NULL) {
     schema <- reticulate::r_to_py(as_nanoarrow_schema(schema), convert = FALSE)
   }
 
-  na <- import("nanoarrow", convert = FALSE)
+  na <- reticulate::import("nanoarrow", convert = FALSE)
   c_array <- na$c_array(x, schema)
 
   schema_dst <- nanoarrow_allocate_schema()
@@ -66,7 +66,7 @@ as_nanoarrow_array_stream.python.builtin.object <- function(x, ..., schema = NUL
     schema <- reticulate::r_to_py(as_nanoarrow_schema(schema), convert = FALSE)
   }
 
-  na <- import("nanoarrow", convert = FALSE)
+  na <- reticulate::import("nanoarrow", convert = FALSE)
   c_array_stream <- na$c_array_stream(x, schema)
 
   array_stream_dst <- nanoarrow_allocate_array_stream()
@@ -85,7 +85,7 @@ r_to_py.nanoarrow_schema <- function(x, convert = FALSE) {
   out_addr <- reticulate::py_str(out[["_addr"]]())
   nanoarrow_pointer_export(x, out_addr)
 
-  na <- import("nanoarrow", convert = convert)
+  na <- reticulate::import("nanoarrow", convert = FALSE)
   na$Schema(out)
 }
 
@@ -99,7 +99,7 @@ r_to_py.nanoarrow_array <- function(x, convert = FALSE) {
   nanoarrow_pointer_export(infer_nanoarrow_schema(x), out_schema_addr)
   nanoarrow_pointer_export(x, out_addr)
 
-  na <- import("nanoarrow", convert = convert)
+  na <- reticulate::import("nanoarrow", convert = FALSE)
   na$Array(out)
 }
 
@@ -110,7 +110,7 @@ r_to_py.nanoarrow_array_stream <- function(x, convert = FALSE) {
   out_addr <- reticulate::py_str(out[["_addr"]]())
   nanoarrow_pointer_export(x, out_addr)
 
-  na <- import("nanoarrow", convert = convert)
+  na <- reticulate::import("nanoarrow", convert = FALSE)
   na$ArrayStream(out)
 }
 

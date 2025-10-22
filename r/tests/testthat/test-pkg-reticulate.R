@@ -81,3 +81,26 @@ test_that("arrays can be converted to Python and back", {
   r_array <- reticulate::py_to_r(py_array)
   expect_identical(convert_array(r_array), 1:5)
 })
+
+test_that("arrays can be converted to Python and back", {
+  skip_if_not(has_reticulate_with_nanoarrow())
+
+  stream <- basic_array_stream(list(1:5, 6:10, 11:15))
+  expect_identical(
+    convert_array(stream$get_next()),
+    1:5
+  )
+
+  py_stream <- reticulate::r_to_py(stream)
+  expect_s3_class(py_stream, "nanoarrow.array_stream.ArrayStream")
+  expect_identical(
+    convert_array(reticulate::py_to_r(py_stream$read_next())),
+    6:10
+  )
+
+  r_stream <- reticulate::py_to_r(py_stream)
+  expect_identical(
+    convert_array(r_stream$get_next()),
+    11:15
+  )
+})
