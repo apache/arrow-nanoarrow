@@ -15,14 +15,44 @@
 # specific language governing permissions and limitations
 # under the License.
 
-# For testing
-has_reticulate_with_nanoarrow <- function() {
-  requireNamespace("reticulate", quietly = TRUE) &&
-    reticulate::py_available(initialize = TRUE) &&
-    !inherits(try(reticulate::import("nanoarrow"), silent = TRUE), "try-error")
-}
 
+#' Python integration via reticulate
+#'
+#' These functions enable Python wrapper objects created via reticulate to
+#' be used with any function that uses [as_nanoarrow_array()] or
+#' [as_nanoarrow_array_stream()] to accept generic "arrowable" input.
+#' Implementations for [reticulate::py_to_r()] and [reticulate::r_to_py()]
+#' are also included such that nanoarrow's array/schema/array stream objects
+#' can be passed as arguments to Python functions that would otherwise accept
+#' an object implementing the Arrow PyCapsule protocol.
+#'
+#' This implementation uses the
+#' [Arrow PyCapsule protocol](https://arrow.apache.org/docs/format/CDataInterface/PyCapsuleInterface.html)
+#' to interpret an arbitrary Python object as an Arrow array/schema/array stream
+#' and produces Python objects that implement this protocol. This is currently
+#' implemented using the nanoarrow Python package which provides similar
+#' primitives for facilitating interchange in Python.
+#'
+#' @param x An Python object to convert
+#' @param schema A requested schema, which may or may not be honoured depending
+#'   on the capabilities of the producer
+#' @param ... Unused
+#'
+#' @returns
+#'   - `as_nanoarrow_schema()` returns an object of class nanoarrow_schema
+#'   - `as_nanoarrow_array()` returns an object of class nanoarrow_array
+#'   - `as_nanoarrow_array_stream()` returns an object of class
+#'     nanoarrow_array_stream.
 #' @export
+#'
+#' @examplesIf has_reticulate_with_nanoarrow()
+#' library(reticulate)
+#'
+#' na <- import("nanoarrow", convert = FALSE)
+#' python_arrayish_thing <- na$Array(1:3, na_int32())
+#' as_nanoarrow_array(python_arrayish_thing)
+#'
+#' r_to_py(as_nanoarrow_array(1:3))
 as_nanoarrow_schema.python.builtin.object <- function(x, ...) {
   na <- reticulate::import("nanoarrow", convert = FALSE)
   c_schema <- na$c_schema(x)
@@ -36,6 +66,7 @@ as_nanoarrow_schema.python.builtin.object <- function(x, ...) {
   schema_dst
 }
 
+#' @rdname as_nanoarrow_schema.python.builtin.object
 #' @export
 as_nanoarrow_array.python.builtin.object <- function(x, ..., schema = NULL) {
   if (!is.null(schema)) {
@@ -60,6 +91,7 @@ as_nanoarrow_array.python.builtin.object <- function(x, ..., schema = NULL) {
   array_dst
 }
 
+#' @rdname as_nanoarrow_schema.python.builtin.object
 #' @export
 as_nanoarrow_array_stream.python.builtin.object <- function(x, ..., schema = NULL) {
   if (!is.null(schema)) {
@@ -124,4 +156,12 @@ py_to_r.nanoarrow.array.Array <- function(x) {
 
 py_to_r.nanoarrow.array_stream.ArrayStream <- function(x) {
   as_nanoarrow_array_stream(x)
+}
+
+#' @rdname as_nanoarrow_schema.python.builtin.object
+#' @export
+has_reticulate_with_nanoarrow <- function() {
+  requireNamespace("reticulate", quietly = TRUE) &&
+    reticulate::py_available(initialize = TRUE) &&
+    !inherits(try(reticulate::import("nanoarrow"), silent = TRUE), "try-error")
 }
