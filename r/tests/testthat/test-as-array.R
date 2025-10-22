@@ -330,6 +330,22 @@ test_that("as_nanoarrow_array() works for integer64() -> na_int64()", {
   expect_identical(convert_array(array, double()), as.double(c(1:10, NA_real_)))
 })
 
+test_that("as_nanoarrow_array() works for integer64() -> timezone/duration", {
+  skip_if_not_installed("bit64")
+
+  array <- as_nanoarrow_array(bit64::as.integer64(1:10), schema = na_timestamp("s"))
+  expect_identical(
+    convert_array(array),
+    as.POSIXct(as.double(1:10), tz = "UTC")
+  )
+
+  array <- as_nanoarrow_array(bit64::as.integer64(1:10), schema = na_duration("s"))
+  expect_identical(
+    convert_array(array),
+    as.difftime(as.double(1:10), units = "secs")
+  )
+})
+
 test_that("as_nanoarrow_array() works for double -> na_int8()", {
   skip_if_not_installed("arrow")
   casted <- as_nanoarrow_array(as.double(1:10), schema = na_int8())

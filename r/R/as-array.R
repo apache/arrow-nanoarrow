@@ -90,7 +90,9 @@ as_nanoarrow_array.integer64 <- function(x, ..., schema = NULL) {
   switch(
     parsed$type,
     int64 = ,
-    uint64 = {
+    uint64 = ,
+    timestamp = ,
+    duration = {
       if (anyNA(x)) {
         is_valid_lgl <- is.finite(x)
         is_valid <- as_nanoarrow_array(is_valid_lgl, schema = na_bool())$buffers[[2]]
