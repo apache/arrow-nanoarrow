@@ -336,7 +336,7 @@ test_that("as_nanoarrow_array() works for integer64() -> timezone/duration", {
   array <- as_nanoarrow_array(bit64::as.integer64(1:10), schema = na_timestamp("s"))
   expect_identical(
     convert_array(array),
-    as.POSIXct(as.double(1:10), tz = "UTC")
+    as.POSIXct(as.double(1:10), tz = "UTC", origin = "1970-01-01")
   )
 
   array <- as_nanoarrow_array(bit64::as.integer64(1:10), schema = na_duration("s"))
