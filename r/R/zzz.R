@@ -31,6 +31,13 @@
   s3_register("arrow::as_arrow_table", "nanoarrow_array_stream")
   s3_register("arrow::as_record_batch_reader", "nanoarrow_array_stream")
 
+  s3_register("reticulate::r_to_py", "nanoarrow_schema")
+  s3_register("reticulate::r_to_py", "nanoarrow_array")
+  s3_register("reticulate::r_to_py", "nanoarrow_array_stream")
+  s3_register("reticulate::py_to_r", "nanoarrow.schema.Schema")
+  s3_register("reticulate::py_to_r", "nanoarrow.array.Array")
+  s3_register("reticulate::py_to_r", "nanoarrow.array_stream.ArrayStream")
+
   s3_register("tibble::as_tibble", "nanoarrow_array")
 }
 
