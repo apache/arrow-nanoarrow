@@ -46,6 +46,7 @@ jobs:
           - { runs_on: "ubuntu-latest", platform: "fedora", arch: "amd64", service: "verify" }
           - { runs_on: "ubuntu-latest", platform: "archlinux", arch: "amd64", service: "verify" }
           - { runs_on: "ubuntu-latest", platform: "alpine", arch: "amd64", service: "verify" }
+          - { runs_on: "ubuntu-latest", platform: "centos", arch: "amd64", service: "verify" }
 
           - { runs_on: "ubuntu-24.04-arm", platform: "ubuntu", arch: "arm64", service: "verify" }
           - { runs_on: "ubuntu-24.04-arm", platform: "fedora", arch: "arm64", service: "verify" }
