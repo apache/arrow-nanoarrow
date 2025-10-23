@@ -51,6 +51,7 @@ jobs:
           - { runs_on: "ubuntu-24.04-arm", platform: "ubuntu", arch: "arm64", service: "verify" }
           - { runs_on: "ubuntu-24.04-arm", platform: "fedora", arch: "arm64", service: "verify" }
           - { runs_on: "ubuntu-24.04-arm", platform: "alpine", arch: "arm64", service: "verify" }
+          - { runs_on: "ubuntu-24.04-arm", platform: "centos", arch: "arm64", service: "verify" }
 
           - { runs_on: "ubuntu-latest", platform: "alpine", arch: "s390x", service: "verify" }
 
@@ -138,6 +139,17 @@ jobs:
           ghcr.io/apache/arrow-nanoarrow:fedora-arm64 --arch arm64
 
         docker manifest create \
+          ghcr.io/apache/arrow-nanoarrow:centos \
+          ghcr.io/apache/arrow-nanoarrow:centos-amd64 \
+          ghcr.io/apache/arrow-nanoarrow:centos-arm64
+        docker manifest annotate \
+          ghcr.io/apache/arrow-nanoarrow:centos \
+          ghcr.io/apache/arrow-nanoarrow:centos-amd64 --arch amd64
+        docker manifest annotate \
+          ghcr.io/apache/arrow-nanoarrow:centos \
+          ghcr.io/apache/arrow-nanoarrow:centos-arm64 --arch arm64
+
+        docker manifest create \
           ghcr.io/apache/arrow-nanoarrow:alpine \
           ghcr.io/apache/arrow-nanoarrow:alpine-amd64 \
           ghcr.io/apache/arrow-nanoarrow:alpine-arm64 \
@@ -158,3 +170,4 @@ jobs:
         docker manifest push ghcr.io/apache/arrow-nanoarrow:ubuntu
         docker manifest push ghcr.io/apache/arrow-nanoarrow:fedora
         docker manifest push ghcr.io/apache/arrow-nanoarrow:alpine
+        docker manifest push ghcr.io/apache/arrow-nanoarrow:centos
