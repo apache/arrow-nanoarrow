@@ -17,22 +17,14 @@
 
 ARG NANOARROW_ARCH
 
-FROM --platform=linux/${NANOARROW_ARCH} centos:7
+FROM --platform=linux/${NANOARROW_ARCH} gagor/centos:9
 
 RUN yum install -y epel-release
 RUN yum install -y git gnupg curl R gcc-c++ gcc-gfortran cmake3 python3-devel
 
-# For Arrow C++. Use 9.0.0 because this version works fine with the default gcc
-RUN curl -L https://github.com/apache/arrow/archive/refs/tags/apache-arrow-9.0.0.tar.gz | tar -zxf - && \
-    mkdir /arrow-build && \
-    cd /arrow-build && \
-    cmake3 ../arrow-apache-arrow-9.0.0/cpp \
-        -DARROW_JEMALLOC=OFF \
-        -DARROW_SIMD_LEVEL=NONE \
-        -DARROW_WITH_ZLIB=ON \
-        -DCMAKE_INSTALL_PREFIX=../arrow && \
-    cmake3 --build . && \
-    make install
+# For Arrow C++
+COPY ci/scripts/build-arrow-cpp-minimal.sh /
+RUN /build-arrow-cpp-minimal.sh 21.0.0 /arrow
 
 RUN python3 -m venv /venv
 RUN source /venv/bin/activate && \

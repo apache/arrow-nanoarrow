@@ -43,24 +43,22 @@ ENV ARROW_RUST_EXE_PATH=/build/rust/debug
 ENV BUILD_DOCS_CPP=OFF
 
 # Clone the arrow monorepo
-RUN git clone https://github.com/apache/arrow.git /arrow-integration --recurse-submodules
+RUN git clone https://github.com/apache/arrow.git /arrow-integration --recurse-submodules --depth 1
 
 # Clone the arrow-dotnet repo
-RUN git clone https://github.com/apache/arrow-dotnet.git /arrow-integration/dotnet
+RUN git clone https://github.com/apache/arrow-dotnet.git /arrow-integration/dotnet --depth 1
 
 # Clone the arrow-go repo
-RUN git clone https://github.com/apache/arrow-go.git /arrow-integration/go
+RUN git clone https://github.com/apache/arrow-go.git /arrow-integration/go --depth 1
 
 # Clone the arrow-java repo
-RUN git clone https://github.com/apache/arrow-java.git /arrow-integration/java
+RUN git clone https://github.com/apache/arrow-java.git /arrow-integration/java --depth 1
 
-# Clone the arrow-js repo.
-# We can remove the "rm -rf ..." part when we remove js/ in apache/arrow.
-RUN rm -rf /arrow-integration/js && \
-    git clone https://github.com/apache/arrow-js.git /arrow-integration/js
+# Clone the arrow-js repo
+RUN git clone https://github.com/apache/arrow-js.git /arrow-integration/js --depth 1
 
 # Clone the arrow-rs repo
-RUN git clone https://github.com/apache/arrow-rs.git /arrow-integration/rust
+RUN git clone https://github.com/apache/arrow-rs.git /arrow-integration/rust --depth 1
 
 # Build all the integrations except nanoarrow (since we'll do that ourselves on each run)
 RUN ARCHERY_INTEGRATION_WITH_NANOARROW="0" \

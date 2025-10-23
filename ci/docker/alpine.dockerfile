@@ -23,7 +23,7 @@ RUN apk add bash linux-headers git cmake R R-dev g++ gfortran gnupg curl py3-vir
 
 # For Arrow C++
 COPY ci/scripts/build-arrow-cpp-minimal.sh /
-RUN /build-arrow-cpp-minimal.sh 18.1.0 /arrow
+RUN /build-arrow-cpp-minimal.sh 21.0.0 /arrow
 
 # There's a missing define that numpy's build needs on s390x and there is no wheel
 RUN (grep -e "S390" /usr/include/bits/hwcap.h && echo "#define HWCAP_S390_VX HWCAP_S390_VXRS" >> /usr/include/bits/hwcap.h) || true
