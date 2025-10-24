@@ -57,7 +57,6 @@ ArrowIpcDecompressFunction ArrowIpcGetZstdDecompressionFunction(void) {
 #if defined(NANOARROW_IPC_WITH_LZ4)
 #include <lz4.h>
 #include <lz4frame.h>
-#include <lz4hc.h>
 
 static ArrowErrorCode ArrowIpcDecompressLZ4(struct ArrowBufferView src, uint8_t* dst,
                                             int64_t dst_size, struct ArrowError* error) {
