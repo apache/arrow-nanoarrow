@@ -40,6 +40,8 @@ option(NANOARROW_FLATCC_INCLUDE_DIR "Include directory for flatcc includes" OFF)
 option(NANOARROW_FLATCC_LIB_DIR "Library directory that contains libflatccrt.a" OFF)
 option(NANOARROW_IPC_WITH_ZSTD "Build nanoarrow with ZSTD compression support built in"
        OFF)
+option(NANOARROW_IPC_WITH_LZ4 "Build nanoarrow with LZ4 compression support built in"
+       OFF)
 
 option(NANOARROW_DEVICE "Build device extension" OFF)
 option(NANOARROW_TESTING "Build testing extension" OFF)
@@ -245,6 +247,23 @@ if(NANOARROW_IPC)
     else()
       set(NANOARROW_IPC_EXTRA_LIBS zstd::libzstd)
     endif()
+  endif()
+
+  if(NANOARROW_IPC_WITH_LZ4)
+    find_package(PkgConfig REQUIRED)
+    pkg_check_modules(LZ4 REQUIRED liblz4)
+
+    message(STATUS "LZ4 library directories: ${LZ4_LIBRARY_DIRS}")
+    message(STATUS "LZ4 include directories: ${LZ4_INCLUDE_DIRS}")
+    message(STATUS "LZ4 libraries: ${LZ4_LIBRARIES}")
+
+    add_library(lz4::lz4 INTERFACE IMPORTED)
+    target_include_directories(lz4::lz4 INTERFACE ${LZ4_INCLUDE_DIRS})
+    target_link_directories(lz4::lz4 INTERFACE ${LZ4_LIBRARY_DIRS})
+    target_link_libraries(lz4::lz4 INTERFACE ${LZ4_LIBRARIES})
+
+    set(NANOARROW_IPC_EXTRA_FLAGS "-DNANOARROW_IPC_WITH_LZ4")
+    set(NANOARROW_IPC_EXTRA_LIBS ${NANOARROW_IPC_EXTRA_LIBS} lz4::lz4)
   endif()
 
   if(NOT NANOARROW_BUNDLE)
