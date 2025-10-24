@@ -40,8 +40,7 @@ option(NANOARROW_FLATCC_INCLUDE_DIR "Include directory for flatcc includes" OFF)
 option(NANOARROW_FLATCC_LIB_DIR "Library directory that contains libflatccrt.a" OFF)
 option(NANOARROW_IPC_WITH_ZSTD "Build nanoarrow with ZSTD compression support built in"
        OFF)
-option(NANOARROW_IPC_WITH_LZ4 "Build nanoarrow with LZ4 compression support built in"
-       OFF)
+option(NANOARROW_IPC_WITH_LZ4 "Build nanoarrow with LZ4 compression support built in" OFF)
 
 option(NANOARROW_DEVICE "Build device extension" OFF)
 option(NANOARROW_TESTING "Build testing extension" OFF)
@@ -267,7 +266,8 @@ if(NANOARROW_IPC)
     target_include_directories(lz4::lz4 INTERFACE ${LZ4_INCLUDE_DIRS})
     target_link_libraries(lz4::lz4 INTERFACE ${LZ4_LIBRARIES})
     if(LZ4_LIBRARY_DIRS)
-      set_target_properties(lz4::lz4 PROPERTIES INTERFACE_LINK_DIRECTORIES "${LZ4_LIBRARY_DIRS}")
+      set_target_properties(lz4::lz4 PROPERTIES INTERFACE_LINK_DIRECTORIES
+                                                "${LZ4_LIBRARY_DIRS}")
     endif()
 
     set(NANOARROW_IPC_EXTRA_FLAGS ${NANOARROW_IPC_EXTRA_FLAGS} "-DNANOARROW_IPC_WITH_LZ4")
@@ -323,8 +323,11 @@ if(NANOARROW_IPC AND (NANOARROW_BUILD_INTEGRATION_TESTS OR NANOARROW_BUILD_TESTS
                                     $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/src>
                                     $<INSTALL_INTERFACE:include>)
   target_link_libraries(nanoarrow_ipc_integration
-                        PRIVATE nanoarrow_testing_static nanoarrow_ipc_static flatccrt
-                                nanoarrow_coverage_config ${NANOARROW_IPC_EXTRA_LIBS})
+                        PRIVATE nanoarrow_testing_static
+                                nanoarrow_ipc_static
+                                flatccrt
+                                nanoarrow_coverage_config
+                                ${NANOARROW_IPC_EXTRA_LIBS})
 endif()
 
 if(NANOARROW_DEVICE)
