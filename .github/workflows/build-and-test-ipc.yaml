@@ -43,7 +43,7 @@ jobs:
       fail-fast: false
       matrix:
         config:
-          - {label: default-build, cmake_args: "-DNANOARROW_BUILD_APPS=ON -DNANOARROW_IPC_WITH_ZSTD=ON"}
+          - {label: default-build, cmake_args: "-DNANOARROW_BUILD_APPS=ON -DNANOARROW_IPC_WITH_ZSTD=ON -DNANOARROW_IPC_WITH_LZ4=ON"}
           - {label: default-noatomics, cmake_args: "-DCMAKE_C_FLAGS='-DNANOARROW_IPC_USE_STDATOMIC=0'"}
           - {label: shared-test-linkage, cmake_args: "-DNANOARROW_TEST_LINKAGE_SHARED=ON"}
           - {label: namespaced-build, cmake_args: "-DNANOARROW_NAMESPACE=SomeUserNamespace"}
@@ -73,7 +73,7 @@ jobs:
         with:
           path: arrow
           # Bump the number at the end of this line to force a new Arrow C++ build
-          key: arrow-${{ runner.os }}-${{ runner.arch }}-4
+          key: arrow-${{ runner.os }}-${{ runner.arch }}-5
 
       - name: Build Arrow C++
         if: steps.cache-arrow-build.outputs.cache-hit != 'true'
