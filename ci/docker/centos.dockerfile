@@ -17,7 +17,7 @@
 
 ARG NANOARROW_ARCH
 
-FROM --platform=linux/${NANOARROW_ARCH} gagor/centos:9
+FROM --platform=linux/${NANOARROW_ARCH} tgagor/centos:9
 
 RUN yum install -y epel-release
 RUN yum install -y git gnupg curl R gcc-c++ gcc-gfortran cmake3 python3-devel
