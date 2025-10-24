@@ -19,8 +19,16 @@ ARG NANOARROW_ARCH
 
 FROM --platform=linux/${NANOARROW_ARCH} tgagor/centos:9
 
-RUN yum install -y epel-release
-RUN yum install -y git gnupg curl R gcc-c++ gcc-gfortran cmake3 python3-devel
+RUN dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm
+RUN dnf install -y git gnupg gcc-c++ gcc-gfortran cmake python3-devel
+
+# Install R
+# https://docs.posit.co/resources/install-r.html
+ENV R_VERSION=4.5.1
+RUN curl -O https://cdn.posit.co/r/rhel-9/pkgs/R-${R_VERSION}-1-1.$(arch).rpm && \
+    dnf install -y R-${R_VERSION}-1-1.$(arch).rpm
+RUN ln -s /opt/R/${R_VERSION}/bin/R /usr/local/bin/R && \
+    ln -s /opt/R/${R_VERSION}/bin/Rscript /usr/local/bin/Rscript
 
 # For Arrow C++
 COPY ci/scripts/build-arrow-cpp-minimal.sh /
@@ -32,10 +40,6 @@ RUN source /venv/bin/activate && \
     pip install build Cython pytest pytest-cython numpy
 ENV NANOARROW_PYTHON_VENV "/venv"
 
-# Locale required for R CMD check
-RUN localedef -c -f UTF-8 -i en_US en_US.UTF-8
-ENV LC_ALL en_US.UTF-8
-
 # For R. Note that arrow is not installed (takes too long).
 RUN mkdir ~/.R && echo "MAKEFLAGS = -j$(nproc)" > ~/.R/Makevars
 RUN R -e 'install.packages("desc", repos = "https://cloud.r-project.org")' && mkdir /tmp/rdeps
@@ -43,6 +47,4 @@ COPY r/DESCRIPTION /tmp/rdeps
 RUN R -e 'install.packages(setdiff(desc::desc("/tmp/rdeps")$get_deps()$package, "arrow"), repos = "https://cloud.r-project.org")'
 RUN rm -f ~/.R/Makevars
 
-ENV NANOARROW_CMAKE_OPTIONS -DArrow_DIR=/arrow/lib/cmake/Arrow
-ENV CMAKE_BIN cmake3
-ENV CTEST_BIN ctest3
+ENV NANOARROW_CMAKE_OPTIONS "-DNANOARROW_BUILD_TESTS_WITH_ARROW=ON -DArrow_DIR=/arrow/lib64/cmake/Arrow"
