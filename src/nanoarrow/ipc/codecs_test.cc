@@ -26,8 +26,8 @@
 const uint8_t kZstdCompressed012[] = {0x28, 0xb5, 0x2f, 0xfd, 0x20, 0x0c, 0x61,
                                       0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01,
                                       0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00};
-const uint8_t kZstdUncompressed012[] = {0x00, 0x00, 0x00, 0x00, 0x01, 0x00,
-                                        0x00, 0x00, 0x02, 0x00, 0x00, 0x00};
+const uint8_t kUncompressed012[] = {0x00, 0x00, 0x00, 0x00, 0x01, 0x00,
+                                    0x00, 0x00, 0x02, 0x00, 0x00, 0x00};
 
 TEST(NanoarrowIpcTest, NanoarrowIpcZstdBuildMatchesRuntime) {
 #if defined(NANOARROW_IPC_WITH_ZSTD)
@@ -51,13 +51,13 @@ TEST(NanoarrowIpcTest, ZstdDecodeValidInput) {
   uint8_t out[16];
   std::memset(out, 0, sizeof(out));
   ASSERT_EQ(decompress({{&kZstdCompressed012}, sizeof(kZstdCompressed012)}, out,
-                       sizeof(kZstdUncompressed012), &error),
+                       sizeof(kUncompressed012), &error),
             NANOARROW_OK)
       << error.message;
-  EXPECT_TRUE(std::memcmp(out, kZstdUncompressed012, sizeof(kZstdUncompressed012)) == 0);
+  EXPECT_TRUE(std::memcmp(out, kUncompressed012, sizeof(kUncompressed012)) == 0);
 
   ASSERT_EQ(decompress({{kZstdCompressed012}, sizeof(kZstdCompressed012)}, out,
-                       sizeof(kZstdUncompressed012) + 1, &error),
+                       sizeof(kUncompressed012) + 1, &error),
             EIO);
   EXPECT_STREQ(error.message, "Expected decompressed size of 13 bytes but got 12 bytes");
 }
@@ -74,6 +74,57 @@ TEST(NanoarrowIpcTest, ZstdDecodeInvalidInput) {
   EXPECT_THAT(error.message,
               ::testing::StartsWith("ZSTD_decompress([buffer with 5 bytes] -> [buffer "
                                     "with 0 bytes]) failed with error"));
+}
+
+// LZ4 compressed little endian int32s [0, 1, 2]
+const uint8_t kLZ4Compressed012[] = {
+    0x04, 0x22, 0x4d, 0x18, 0x60, 0x40, 0x82, 0x0c, 0x00, 0x00, 0x80, 0x00, 0x00, 0x00,
+    0x00, 0x01, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+
+TEST(NanoarrowIpcTest, NanoarrowIpcLZ4BuildMatchesRuntime) {
+#if defined(NANOARROW_IPC_WITH_LZ4)
+  ASSERT_NE(ArrowIpcGetLZ4DecompressionFunction(), nullptr);
+#else
+  ASSERT_EQ(ArrowIpcGetLZ4DecompressionFunction(), nullptr);
+#endif
+}
+
+TEST(NanoarrowIpcTest, LZ4DecodeValidInput) {
+  auto decompress = ArrowIpcGetLZ4DecompressionFunction();
+  if (!decompress) {
+    GTEST_SKIP() << "nanoarrow_ipc not built with NANOARROW_IPC_WITH_LZ4";
+  }
+
+  struct ArrowError error {};
+
+  // Check a decompress of a valid compressed buffer
+  uint8_t out[16];
+  std::memset(out, 0, sizeof(out));
+  ASSERT_EQ(decompress({{&kLZ4Compressed012}, sizeof(kLZ4Compressed012)}, out,
+                       sizeof(kUncompressed012), &error),
+            NANOARROW_OK)
+      << error.message;
+  EXPECT_TRUE(std::memcmp(out, kUncompressed012, sizeof(kUncompressed012)) == 0);
+
+  ASSERT_EQ(decompress({{kLZ4Compressed012}, sizeof(kLZ4Compressed012)}, out,
+                       sizeof(kUncompressed012) + 1, &error),
+            EIO);
+  EXPECT_STREQ(error.message, "Expected decompressed size of 13 bytes but got 12 bytes");
+}
+
+TEST(NanoarrowIpcTest, LZ4DecodeInvalidInput) {
+  auto decompress = ArrowIpcGetLZ4DecompressionFunction();
+  if (!decompress) {
+    GTEST_SKIP() << "nanoarrow_ipc not built with NANOARROW_IPC_WITH_LZ4";
+  }
+
+  struct ArrowError error {};
+
+  const char* bad_data = "abcde";
+  EXPECT_EQ(decompress({{bad_data}, 5}, nullptr, 0, &error), EIO);
+  EXPECT_THAT(error.message,
+              ::testing::StartsWith(
+                  "Expected complete frame but found frame with 6 bytes remaining"));
 }
 
 TEST(NanoarrowIpcTest, SerialDecompressor) {
