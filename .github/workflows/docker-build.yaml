@@ -138,20 +138,6 @@ jobs:
           ghcr.io/apache/arrow-nanoarrow:fedora-arm64 --arch arm64
 
         docker manifest create \
-          ghcr.io/apache/arrow-nanoarrow:centos \
-          ghcr.io/apache/arrow-nanoarrow:centos-amd64
-        docker manifest annotate \
-          ghcr.io/apache/arrow-nanoarrow:centos \
-          ghcr.io/apache/arrow-nanoarrow:centos-amd64 --arch amd64
-
-        docker manifest create \
-          ghcr.io/apache/arrow-nanoarrow:archlinux \
-          ghcr.io/apache/arrow-nanoarrow:archlinux-amd64
-        docker manifest annotate \
-          ghcr.io/apache/arrow-nanoarrow:archlinux \
-          ghcr.io/apache/arrow-nanoarrow:archlinux-amd64 --arch amd64
-
-        docker manifest create \
           ghcr.io/apache/arrow-nanoarrow:alpine \
           ghcr.io/apache/arrow-nanoarrow:alpine-amd64 \
           ghcr.io/apache/arrow-nanoarrow:alpine-arm64 \
@@ -172,4 +158,3 @@ jobs:
         docker manifest push ghcr.io/apache/arrow-nanoarrow:ubuntu
         docker manifest push ghcr.io/apache/arrow-nanoarrow:fedora
         docker manifest push ghcr.io/apache/arrow-nanoarrow:alpine
-        docker manifest push ghcr.io/apache/arrow-nanoarrow:centos
