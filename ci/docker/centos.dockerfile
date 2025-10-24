@@ -20,7 +20,7 @@ ARG NANOARROW_ARCH
 FROM --platform=linux/${NANOARROW_ARCH} tgagor/centos:9
 
 RUN dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm
-RUN dnf install -y git gnupg gcc-c++ gcc-gfortran cmake python3-devel
+RUN dnf install -y git gnupg gcc-c++ gcc-gfortran cmake python3-devel lz4-devel
 
 # Install R
 # https://docs.posit.co/resources/install-r.html
