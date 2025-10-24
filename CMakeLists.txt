@@ -250,8 +250,14 @@ if(NANOARROW_IPC)
   endif()
 
   if(NANOARROW_IPC_WITH_LZ4)
-    find_package(PkgConfig REQUIRED)
-    pkg_check_modules(LZ4 REQUIRED liblz4)
+    if(NOT LZ4_LIBRARY_DIRS AND NOT LZ4_INCLUDE_DIRS)
+      find_package(PkgConfig REQUIRED)
+      pkg_check_modules(LZ4 REQUIRED liblz4)
+    endif()
+
+    if(NOT LZ4_LIBRARIES)
+      set(LZ4_LIBRARIES lz4)
+    endif()
 
     message(STATUS "LZ4 library directories: ${LZ4_LIBRARY_DIRS}")
     message(STATUS "LZ4 include directories: ${LZ4_INCLUDE_DIRS}")
@@ -259,10 +265,12 @@ if(NANOARROW_IPC)
 
     add_library(lz4::lz4 INTERFACE IMPORTED)
     target_include_directories(lz4::lz4 INTERFACE ${LZ4_INCLUDE_DIRS})
-    target_link_directories(lz4::lz4 INTERFACE ${LZ4_LIBRARY_DIRS})
     target_link_libraries(lz4::lz4 INTERFACE ${LZ4_LIBRARIES})
+    if(LZ4_LIBRARY_DIRS)
+      set_target_properties(lz4::lz4 PROPERTIES INTERFACE_LINK_DIRECTORIES "${LZ4_LIBRARY_DIRS}")
+    endif()
 
-    set(NANOARROW_IPC_EXTRA_FLAGS "-DNANOARROW_IPC_WITH_LZ4")
+    set(NANOARROW_IPC_EXTRA_FLAGS ${NANOARROW_IPC_EXTRA_FLAGS} "-DNANOARROW_IPC_WITH_LZ4")
     set(NANOARROW_IPC_EXTRA_LIBS ${NANOARROW_IPC_EXTRA_LIBS} lz4::lz4)
   endif()
 
@@ -316,7 +324,7 @@ if(NANOARROW_IPC AND (NANOARROW_BUILD_INTEGRATION_TESTS OR NANOARROW_BUILD_TESTS
                                     $<INSTALL_INTERFACE:include>)
   target_link_libraries(nanoarrow_ipc_integration
                         PRIVATE nanoarrow_testing_static nanoarrow_ipc_static flatccrt
-                                nanoarrow_coverage_config)
+                                nanoarrow_coverage_config ${NANOARROW_IPC_EXTRA_LIBS})
 endif()
 
 if(NANOARROW_DEVICE)
