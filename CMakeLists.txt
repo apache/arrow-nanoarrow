@@ -663,15 +663,17 @@ if(NANOARROW_BUILD_TESTS)
 
   include(GoogleTest)
   # Some users have reported a timeout with the default value of 5
+  # This also is the case on Windows occasionally on CI when building with
+  # Arrow C++.
   # Building with -DBUILD_SHARED_LIBS=ON may also help reduce the size of test
   # executables.
-  gtest_discover_tests(utils_test DISCOVERY_TIMEOUT 10)
-  gtest_discover_tests(buffer_test DISCOVERY_TIMEOUT 10)
-  gtest_discover_tests(array_test DISCOVERY_TIMEOUT 10)
-  gtest_discover_tests(schema_test DISCOVERY_TIMEOUT 10)
-  gtest_discover_tests(array_stream_test DISCOVERY_TIMEOUT 10)
-  gtest_discover_tests(nanoarrow_testing_test DISCOVERY_TIMEOUT 10)
-  gtest_discover_tests(c_data_integration_test DISCOVERY_TIMEOUT 10)
+  gtest_discover_tests(utils_test DISCOVERY_TIMEOUT 15)
+  gtest_discover_tests(buffer_test DISCOVERY_TIMEOUT 15)
+  gtest_discover_tests(array_test DISCOVERY_TIMEOUT 15)
+  gtest_discover_tests(schema_test DISCOVERY_TIMEOUT 15)
+  gtest_discover_tests(array_stream_test DISCOVERY_TIMEOUT 15)
+  gtest_discover_tests(nanoarrow_testing_test DISCOVERY_TIMEOUT 15)
+  gtest_discover_tests(c_data_integration_test DISCOVERY_TIMEOUT 15)
   gtest_discover_tests(hpp_array_stream)
   gtest_discover_tests(hpp_buffer)
   gtest_discover_tests(hpp_exception)

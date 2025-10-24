@@ -17,32 +17,28 @@
 
 ARG NANOARROW_ARCH
 
-FROM --platform=linux/${NANOARROW_ARCH} centos:7
+FROM --platform=linux/${NANOARROW_ARCH} tgagor/centos:9
 
-RUN yum install -y epel-release
-RUN yum install -y git gnupg curl R gcc-c++ gcc-gfortran cmake3 python3-devel
+RUN dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm
+RUN dnf install -y git gnupg gcc-c++ gcc-gfortran cmake python3-devel lz4-devel
 
-# For Arrow C++. Use 9.0.0 because this version works fine with the default gcc
-RUN curl -L https://github.com/apache/arrow/archive/refs/tags/apache-arrow-9.0.0.tar.gz | tar -zxf - && \
-    mkdir /arrow-build && \
-    cd /arrow-build && \
-    cmake3 ../arrow-apache-arrow-9.0.0/cpp \
-        -DARROW_JEMALLOC=OFF \
-        -DARROW_SIMD_LEVEL=NONE \
-        -DARROW_WITH_ZLIB=ON \
-        -DCMAKE_INSTALL_PREFIX=../arrow && \
-    cmake3 --build . && \
-    make install
+# Install R
+# https://docs.posit.co/resources/install-r.html
+ENV R_VERSION=4.5.1
+RUN curl -O https://cdn.posit.co/r/rhel-9/pkgs/R-${R_VERSION}-1-1.$(arch).rpm && \
+    dnf install -y R-${R_VERSION}-1-1.$(arch).rpm
+RUN ln -s /opt/R/${R_VERSION}/bin/R /usr/local/bin/R && \
+    ln -s /opt/R/${R_VERSION}/bin/Rscript /usr/local/bin/Rscript
+
+# For Arrow C++
+COPY ci/scripts/build-arrow-cpp-minimal.sh /
+RUN /build-arrow-cpp-minimal.sh 21.0.0 /arrow
 
 RUN python3 -m venv /venv
 RUN source /venv/bin/activate && \
     pip install --upgrade pip && \
     pip install build Cython pytest pytest-cython numpy
 ENV NANOARROW_PYTHON_VENV "/venv"
-
-# Locale required for R CMD check
-RUN localedef -c -f UTF-8 -i en_US en_US.UTF-8
-ENV LC_ALL en_US.UTF-8
 
 # For R. Note that arrow is not installed (takes too long).
 RUN mkdir ~/.R && echo "MAKEFLAGS = -j$(nproc)" > ~/.R/Makevars
@@ -51,6 +47,4 @@ COPY r/DESCRIPTION /tmp/rdeps
 RUN R -e 'install.packages(setdiff(desc::desc("/tmp/rdeps")$get_deps()$package, "arrow"), repos = "https://cloud.r-project.org")'
 RUN rm -f ~/.R/Makevars
 
-ENV NANOARROW_CMAKE_OPTIONS -DArrow_DIR=/arrow/lib/cmake/Arrow
-ENV CMAKE_BIN cmake3
-ENV CTEST_BIN ctest3
+ENV NANOARROW_CMAKE_OPTIONS "-DNANOARROW_BUILD_TESTS_WITH_ARROW=ON -DArrow_DIR=/arrow/lib64/cmake/Arrow"

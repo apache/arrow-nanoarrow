@@ -33,3 +33,5 @@ RUN R -e 'install.packages("desc", repos = "https://cloud.r-project.org")' && mk
 COPY r/DESCRIPTION /tmp/rdeps
 RUN R -e 'install.packages(setdiff(desc::desc("/tmp/rdeps")$get_deps()$package, "arrow"), repos = "https://cloud.r-project.org")'
 RUN rm -f ~/.R/Makevars
+
+ENV NANOARROW_CMAKE_OPTIONS -DNANOARROW_BUILD_TESTS_WITH_ARROW=ON

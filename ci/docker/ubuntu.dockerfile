@@ -50,3 +50,5 @@ RUN R -e 'install.packages(setdiff(desc::desc("/tmp/rdeps")$get_deps()$package, 
 RUN echo "CXX17FLAGS += -fPIC" >> ~/.R/Makevars
 RUN ARROW_USE_PKG_CONFIG=false ARROW_R_DEV=true R -e 'install.packages("arrow", repos = "https://cloud.r-project.org"); library(arrow)'
 RUN rm -f ~/.R/Makevars
+
+ENV NANOARROW_CMAKE_OPTIONS -DNANOARROW_BUILD_TESTS_WITH_ARROW=ON
