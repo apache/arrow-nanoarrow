@@ -44,7 +44,7 @@ TEST(NanoarrowIpcTest, ZstdDecodeValidInput) {
   }
 
   // Empty->empty seems to work
-  struct ArrowError error {};
+  struct ArrowError error{};
   EXPECT_EQ(decompress({{nullptr}, 0}, nullptr, 0, &error), NANOARROW_OK);
 
   // Check a decompress of a valid compressed buffer
@@ -68,7 +68,7 @@ TEST(NanoarrowIpcTest, ZstdDecodeInvalidInput) {
     GTEST_SKIP() << "nanoarrow_ipc not built with NANOARROW_IPC_WITH_ZSTD";
   }
 
-  struct ArrowError error {};
+  struct ArrowError error{};
   const char* bad_data = "abcde";
   EXPECT_EQ(decompress({{bad_data}, 5}, nullptr, 0, &error), EIO);
   EXPECT_THAT(error.message,
@@ -95,7 +95,7 @@ TEST(NanoarrowIpcTest, LZ4DecodeValidInput) {
     GTEST_SKIP() << "nanoarrow_ipc not built with NANOARROW_IPC_WITH_LZ4";
   }
 
-  struct ArrowError error {};
+  struct ArrowError error{};
 
   // Check a decompress of a valid compressed buffer
   uint8_t out[16];
@@ -118,17 +118,31 @@ TEST(NanoarrowIpcTest, LZ4DecodeInvalidInput) {
     GTEST_SKIP() << "nanoarrow_ipc not built with NANOARROW_IPC_WITH_LZ4";
   }
 
-  struct ArrowError error {};
+  struct ArrowError error{};
+  uint8_t out[16];
+  std::memset(out, 0, sizeof(out));
 
+  // LZ4_decompress() needs almost correct data to trigger this failure branch
+  uint8_t src[16];
+  memcpy(src, kLZ4Compressed012, sizeof(src));
+  src[5] = 0xff;
+  ASSERT_EQ(decompress({{&src}, sizeof(src)}, out, sizeof(kUncompressed012), &error),
+            EIO);
+  EXPECT_THAT(
+      error.message,
+      ::testing::StartsWith(
+          "LZ4F_decompress([buffer with 16 bytes] -> [buffer with 12 bytes]) failed"));
+
+  // Nonsensical data triggers a different failure branch
   const char* bad_data = "abcde";
   EXPECT_EQ(decompress({{bad_data}, 5}, nullptr, 0, &error), EIO);
   EXPECT_THAT(error.message,
               ::testing::StartsWith(
-                  "Expected complete frame but found frame with 6 bytes remaining"));
+                  "Expected complete LZ4 frame but found frame with 6 bytes remaining"));
 }
 
 TEST(NanoarrowIpcTest, SerialDecompressor) {
-  struct ArrowError error {};
+  struct ArrowError error{};
   nanoarrow::ipc::UniqueDecompressor decompressor;
 
   ASSERT_EQ(ArrowIpcSerialDecompressor(decompressor.get()), NANOARROW_OK);

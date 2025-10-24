@@ -95,7 +95,7 @@ static ArrowErrorCode ArrowIpcDecompressLZ4(struct ArrowBufferView src, uint8_t*
   if (ret != 0) {
     NANOARROW_UNUSED(LZ4F_freeDecompressionContext(ctx));
     ArrowErrorSet(
-        error, "Expected complete frame but found frame with %" PRId64 " bytes remaining",
+        error, "Expected complete LZ4 frame but found frame with %" PRId64 " bytes remaining",
         (int64_t)ret);
     return EIO;
   }
