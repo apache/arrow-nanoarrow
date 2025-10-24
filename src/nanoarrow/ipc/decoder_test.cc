@@ -434,7 +434,7 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDecodeCompressedRecordBatchLZ4) {
     EXPECT_FATAL_FAILURE(
         TestDecodeInt32Batch(kSimpleRecordBatchCompressedLZ4,
                              sizeof(kSimpleRecordBatchCompressedLZ4), {0, 1, 2}),
-        "Compression type with value 2 not supported by this build of nanoarrow");
+        "Compression type with value 1 not supported by this build of nanoarrow");
   } else {
     ASSERT_NO_FATAL_FAILURE(TestDecodeInt32Batch(kSimpleRecordBatchCompressedLZ4,
                                                  sizeof(kSimpleRecordBatchCompressedLZ4),
