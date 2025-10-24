@@ -529,13 +529,15 @@ TEST_P(TestFileFixture, NanoarrowIpcTestFileIPCCheckJSON) {
 // At least one Windows MSVC version does not allow the #if defined()
 // to be within a macro invocation, so we define these two cases
 // with some repetition.
-#if defined(NANOARROW_IPC_WITH_ZSTD)
+#if defined(NANOARROW_IPC_WITH_ZSTD) && defined(NANOARROW_IPC_WITH_LZ4)
 INSTANTIATE_TEST_SUITE_P(
     NanoarrowIpcTest, TestFileFixture,
     ::testing::Values(
         // Testing of other files
         TestFile::OK("2.0.0-compression/generated_uncompressible_zstd.stream"),
         TestFile::OK("2.0.0-compression/generated_zstd.stream"),
+        TestFile::OK("2.0.0-compression/generated_uncompressible_lz4.stream"),
+        TestFile::OK("2.0.0-compression/generated_lz4.stream"),
         TestFile::OK("0.17.1/generated_union.stream"),
         TestFile::OK("0.14.1/generated_datetime.stream"),
         TestFile::OK("0.14.1/generated_decimal.stream"),
