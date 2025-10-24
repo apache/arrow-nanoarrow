@@ -430,7 +430,7 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDecodeCompressedRecordBatchZstd) {
 }
 
 TEST(NanoarrowIpcTest, NanoarrowIpcDecodeCompressedRecordBatchLZ4) {
-  if (ArrowIpcGetZstdDecompressionFunction() == nullptr) {
+  if (ArrowIpcGetLZ4DecompressionFunction() == nullptr) {
     EXPECT_FATAL_FAILURE(
         TestDecodeInt32Batch(kSimpleRecordBatchCompressedLZ4,
                              sizeof(kSimpleRecordBatchCompressedLZ4), {0, 1, 2}),
