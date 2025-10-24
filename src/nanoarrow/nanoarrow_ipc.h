@@ -31,6 +31,8 @@
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcSharedBufferReset)
 #define ArrowIpcGetZstdDecompressionFunction \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcGetZstdDecompressionFunction)
+#define ArrowIpcGetLz4DecompressionFunction \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcGetLz4DecompressionFunction)
 #define ArrowIpcSerialDecompressor \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcSerialDecompressor)
 #define ArrowIpcSerialDecompressorSetFunction \
