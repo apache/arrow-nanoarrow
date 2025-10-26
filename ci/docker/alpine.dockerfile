@@ -19,11 +19,12 @@ ARG NANOARROW_ARCH
 
 FROM --platform=linux/${NANOARROW_ARCH} alpine:latest
 
-RUN apk add bash linux-headers git cmake R R-dev g++ gfortran gnupg curl py3-virtualenv python3-dev
+RUN apk add bash linux-headers git cmake R R-dev g++ gfortran gnupg \
+    curl py3-virtualenv python3-dev lz4-dev
 
 # For Arrow C++
 COPY ci/scripts/build-arrow-cpp-minimal.sh /
-RUN /build-arrow-cpp-minimal.sh 18.1.0 /arrow
+RUN /build-arrow-cpp-minimal.sh 21.0.0 /arrow
 
 # There's a missing define that numpy's build needs on s390x and there is no wheel
 RUN (grep -e "S390" /usr/include/bits/hwcap.h && echo "#define HWCAP_S390_VX HWCAP_S390_VXRS" >> /usr/include/bits/hwcap.h) || true
@@ -37,4 +38,4 @@ COPY r/DESCRIPTION /tmp/rdeps
 RUN R -e 'gsub("\\(.*?\\)", "", read.dcf("/tmp/rdeps")[1, "Suggests"]) |> strsplit("[^A-Za-z0-9.]+") |> unlist(use.names = FALSE) |> setdiff("arrow") |> install.packages(repos = "https://cloud.r-project.org")'
 RUN rm -f ~/.R/Makevars
 
-ENV NANOARROW_CMAKE_OPTIONS -DArrow_DIR=/arrow/lib/cmake/Arrow
+ENV NANOARROW_CMAKE_OPTIONS -DNANOARROW_BUILD_TESTS_WITH_ARROW=ON -DArrow_DIR=/arrow/lib/cmake/Arrow
