@@ -18,7 +18,7 @@
 import enum
 import reprlib
 from functools import cached_property
-from typing import List, Mapping, Union
+from typing import List, Mapping, Union, Optional
 
 from nanoarrow._schema import (
     CArrowTimeUnit,
@@ -1290,6 +1290,69 @@ def dictionary(index_type, value_type, dictionary_ordered: bool = False) -> Sche
     )
 
 
+def sparse_union(
+    fields, type_codes: Optional[List[int]] = None, nullable: bool = True
+) -> Schema:
+    """Create a type where an element could be one of several pre-defined types
+
+    Parameters
+    ----------
+    fields :
+        * A dictionary whose keys are field names and values are schema-like objects
+        * An iterable whose items are a schema like objects where the field name is
+          inherited from the schema-like object.
+    type_codes : Specific numeric identifiers attached to each field (must be between
+        0 and 127, inclusive). When missing, these are generated as a sequence along
+        ``fields``.
+    nullable : bool, optional
+        Use ``False`` to mark this field as non-nullable.
+
+    Examples
+    --------
+
+    >>> import nanoarrow as na
+    >>> print("not done")
+    """
+    if type_codes is None:
+        type_codes = list(range(len(fields)))
+    return Schema(
+        Type.SPARSE_UNION, fields=fields, type_codes=type_codes, nullable=nullable
+    )
+
+
+def dense_union(
+    fields, type_codes: Optional[List[int]] = None, nullable: bool = True
+) -> Schema:
+    """Create a type where an element could be one of several pre-defined types
+
+    A dense union has a more compact (but more complex) representation than a sparse union.
+    Most Arrow unions in use are dense unions.
+
+    Parameters
+    ----------
+    fields :
+        * A dictionary whose keys are field names and values are schema-like objects
+        * An iterable whose items are a schema like objects where the field name is
+          inherited from the schema-like object.
+    type_codes : Specific numeric identifiers attached to each field (must be between
+        0 and 127, inclusive). When missing, these are generated as a sequence along
+        ``fields``.
+    nullable : bool, optional
+        Use ``False`` to mark this field as non-nullable.
+
+    Examples
+    --------
+
+    >>> import nanoarrow as na
+    >>> print("not done")
+    """
+    if type_codes is None:
+        type_codes = list(range(len(fields)))
+    return Schema(
+        Type.DENSE_UNION, fields=fields, type_codes=type_codes, nullable=nullable
+    )
+
+
 def extension_type(
     storage_schema,
     extension_name: str,
@@ -1387,6 +1450,16 @@ def _c_schema_from_type_and_params(type: Type, params: dict):
         if "dictionary_ordered" in params and bool(params.pop("dictionary_ordered")):
             factory.set_dictionary_ordered(True)
 
+    elif type == Type.SPARSE_UNION:
+        type_codes = params.pop("type_codes")
+        type_codes_str = ",".join(str(code) for code in type_codes)
+        factory.set_format(f"+us:{type_codes_str}")
+
+    elif type == Type.DENSE_UNION:
+        type_codes = params.pop("type_codes")
+        type_codes_str = ",".join(str(code) for code in type_codes)
+        factory.set_format(f"+ud:{type_codes_str}")
+
     else:
         factory.set_type(type.value)
 
@@ -1457,4 +1530,6 @@ _PARAM_NAMES = {
     _types.LARGE_LIST: ("value_type",),
     _types.FIXED_SIZE_LIST: ("value_type", "list_size"),
     _types.DICTIONARY: ("index_type", "value_type", "dictionary_ordered"),
+    _types.SPARSE_UNION: ("fields", "type_codes"),
+    _types.DENSE_UNION: ("fields", "type_codes"),
 }
