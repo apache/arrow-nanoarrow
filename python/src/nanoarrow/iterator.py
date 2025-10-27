@@ -17,7 +17,7 @@
 
 import warnings
 from functools import cached_property
-from itertools import islice, repeat, groupby
+from itertools import groupby, islice, repeat
 from typing import Iterable, Tuple
 
 from nanoarrow._array import CArrayView
@@ -337,7 +337,8 @@ class PyIterator(ArrayViewBaseIterator):
 
             if (child_offsets[-1] - child_offset0) != (type_id_run_length - 1):
                 raise ValueError(
-                    f"Child offsets for type_id {item_type_id} are not sequential: {list(child_offsets)} / {type_id_run_length}"
+                    f"Child offsets for type_id {item_type_id} are not sequential:"
+                    " {list(child_offsets)} / {type_id_run_length}"
                 )
 
             child_index = child_index_by_type_id[item_type_id]

@@ -18,7 +18,7 @@
 import enum
 import reprlib
 from functools import cached_property
-from typing import List, Mapping, Union, Optional
+from typing import List, Mapping, Optional, Union
 
 from nanoarrow._schema import (
     CArrowTimeUnit,
@@ -473,6 +473,7 @@ class Schema:
 
         >>> import nanoarrow as na
         >>> na.dense_union([na.int32(), na.string()]).type_codes
+        [0, 1]
         """
         if self._c_schema_view.type_id in (_types.SPARSE_UNION, _types.DENSE_UNION):
             return list(self._c_schema_view.union_type_ids)
@@ -1323,7 +1324,8 @@ def sparse_union(
     --------
 
     >>> import nanoarrow as na
-    >>> print("not done")
+    >>> na.sparse_union([na.int32(), na.string()])
+    <Schema> sparse_union([0,1])<: int32, : string>
     """
     if type_codes is None:
         type_codes = list(range(len(fields)))
@@ -1337,8 +1339,8 @@ def dense_union(
 ) -> Schema:
     """Create a type where an element could be one of several pre-defined types
 
-    A dense union has a more compact (but more complex) representation than a sparse union.
-    Most Arrow unions in use are dense unions.
+    A dense union has a more compact (but more complex) representation than a
+    sparse union. Most Arrow unions in use are dense unions.
 
     Parameters
     ----------
@@ -1356,7 +1358,8 @@ def dense_union(
     --------
 
     >>> import nanoarrow as na
-    >>> print("not done")
+    >>> na.dense_union([na.int32(), na.string()])
+    <Schema> dense_union([0,1])<: int32, : string>
     """
     if type_codes is None:
         type_codes = list(range(len(fields)))
