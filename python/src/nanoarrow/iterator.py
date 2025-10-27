@@ -335,6 +335,11 @@ class PyIterator(ArrayViewBaseIterator):
             child_offsets = offsets[i : (i + type_id_run_length)]
             child_offset0 = child_offsets[0]
 
+            if (child_offsets[-1] - child_offset0) != (type_id_run_length - 1):
+                raise ValueError(
+                    f"Child offsets for type_id {item_type_id} are not sequential: {list(child_offsets)} / {type_id_run_length}"
+                )
+
             child_index = child_index_by_type_id[item_type_id]
             yield from self._children[child_index]._iter_chunk(
                 child_offset0, type_id_run_length
