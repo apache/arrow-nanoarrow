@@ -308,6 +308,8 @@ class PyIterator(ArrayViewBaseIterator):
 
         type_id = memoryview(view.buffer(0))[offset : (offset + length + 1)]
 
+        # Try as hard as we can to reduce the number of times we request a child iterator
+        # by iterating over runs of consecutive type_ids
         i = 0
         for item_type_id, item_type_id_iter in groupby(type_id):
             type_id_run_length = len(list(item_type_id_iter))
@@ -328,6 +330,8 @@ class PyIterator(ArrayViewBaseIterator):
         type_id = memoryview(view.buffer(0))[offset : (offset + length + 1)]
         offsets = memoryview(view.buffer(1))[offset : (offset + length + 1)]
 
+        # Try as hard as we can to reduce the number of times we request a child iterator
+        # by iterating over runs of consecutive type_ids
         i = 0
         for item_type_id, item_type_id_iter in groupby(type_id):
             type_id_run_length = 0
@@ -335,6 +339,10 @@ class PyIterator(ArrayViewBaseIterator):
             child_offsets = offsets[i : (i + type_id_run_length)]
             child_offset0 = child_offsets[0]
 
+            # This only works if there are no missing elements (i.e., for sequences
+            # of an identical type_id, the elements must be sequential and increasing).
+            # The spec specifies the sequential/increasing nature of these offsets but
+            # we check to be sure.
             if (child_offsets[-1] - child_offset0) != (type_id_run_length - 1):
                 raise ValueError(
                     f"Child offsets for type_id {item_type_id} are not sequential:"
