@@ -54,6 +54,65 @@ ArrowIpcDecompressFunction ArrowIpcGetZstdDecompressionFunction(void) {
 #endif
 }
 
+#if defined(NANOARROW_IPC_WITH_LZ4)
+#include <lz4.h>
+#include <lz4frame.h>
+
+static ArrowErrorCode ArrowIpcDecompressLZ4(struct ArrowBufferView src, uint8_t* dst,
+                                            int64_t dst_size, struct ArrowError* error) {
+  LZ4F_errorCode_t ret;
+  LZ4F_decompressionContext_t ctx = NULL;
+
+  ret = LZ4F_createDecompressionContext(&ctx, LZ4F_VERSION);
+  if (LZ4F_isError(ret)) {
+    ArrowErrorSet(error, "LZ4 init failed");
+    return EIO;
+  }
+
+  size_t dst_capacity = dst_size;
+  size_t src_size = src.size_bytes;
+  ret = LZ4F_decompress(ctx, dst, &dst_capacity, src.data.data, &src_size,
+                        NULL /* options */);
+  if (LZ4F_isError(ret)) {
+    NANOARROW_UNUSED(LZ4F_freeDecompressionContext(ctx));
+    ArrowErrorSet(error,
+                  "LZ4F_decompress([buffer with %" PRId64
+                  " bytes] -> [buffer with %" PRId64 " bytes]) failed",
+                  src.size_bytes, dst_size);
+    return EIO;
+  }
+
+  if ((int64_t)dst_capacity != dst_size) {
+    NANOARROW_UNUSED(LZ4F_freeDecompressionContext(ctx));
+    ArrowErrorSet(error,
+                  "Expected decompressed size of %" PRId64 " bytes but got %" PRId64
+                  " bytes",
+                  dst_size, (int64_t)dst_capacity);
+    return EIO;
+  }
+
+  if (ret != 0) {
+    NANOARROW_UNUSED(LZ4F_freeDecompressionContext(ctx));
+    ArrowErrorSet(error,
+                  "Expected complete LZ4 frame but found frame with %" PRId64
+                  " bytes remaining",
+                  (int64_t)ret);
+    return EIO;
+  }
+
+  NANOARROW_UNUSED(LZ4F_freeDecompressionContext(ctx));
+  return NANOARROW_OK;
+}
+#endif
+
+ArrowIpcDecompressFunction ArrowIpcGetLZ4DecompressionFunction(void) {
+#if defined(NANOARROW_IPC_WITH_LZ4)
+  return &ArrowIpcDecompressLZ4;
+#else
+  return NULL;
+#endif
+}
+
 struct ArrowIpcSerialDecompressorPrivate {
   ArrowIpcDecompressFunction decompress_functions[3];
 };
@@ -115,6 +174,9 @@ ArrowErrorCode ArrowIpcSerialDecompressor(struct ArrowIpcDecompressor* decompres
   memset(decompressor->private_data, 0, sizeof(struct ArrowIpcSerialDecompressorPrivate));
   ArrowIpcSerialDecompressorSetFunction(decompressor, NANOARROW_IPC_COMPRESSION_TYPE_ZSTD,
                                         ArrowIpcGetZstdDecompressionFunction());
+  ArrowIpcSerialDecompressorSetFunction(decompressor,
+                                        NANOARROW_IPC_COMPRESSION_TYPE_LZ4_FRAME,
+                                        ArrowIpcGetLZ4DecompressionFunction());
   return NANOARROW_OK;
 }
 

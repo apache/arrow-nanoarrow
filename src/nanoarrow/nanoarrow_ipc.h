@@ -31,6 +31,8 @@
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcSharedBufferReset)
 #define ArrowIpcGetZstdDecompressionFunction \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcGetZstdDecompressionFunction)
+#define ArrowIpcGetLZ4DecompressionFunction \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcGetLZ4DecompressionFunction)
 #define ArrowIpcSerialDecompressor \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcSerialDecompressor)
 #define ArrowIpcSerialDecompressorSetFunction \
@@ -252,6 +254,11 @@ typedef ArrowErrorCode (*ArrowIpcDecompressFunction)(struct ArrowBufferView src,
 ///
 /// The result will be NULL if nanoarrow was not built with NANOARROW_IPC_WITH_ZSTD.
 NANOARROW_DLL ArrowIpcDecompressFunction ArrowIpcGetZstdDecompressionFunction(void);
+
+/// \brief Get the decompression function for LZ4
+///
+/// The result will be NULL if nanoarrow was not built with NANOARROW_IPC_WITH_LZ4.
+NANOARROW_DLL ArrowIpcDecompressFunction ArrowIpcGetLZ4DecompressionFunction(void);
 
 /// \brief An ArrowIpcDecompressor implementation that performs decompression in serial
 NANOARROW_DLL ArrowErrorCode
