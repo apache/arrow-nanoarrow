@@ -334,7 +334,6 @@ class PyIterator(ArrayViewBaseIterator):
         # iterator by iterating over runs of consecutive type_ids
         i = 0
         for item_type_id, item_type_id_iter in groupby(type_id):
-            type_id_run_length = 0
             type_id_run_length = len(list(item_type_id_iter))
             child_offsets = offsets[i : (i + type_id_run_length)]
             child_offset0 = child_offsets[0]
