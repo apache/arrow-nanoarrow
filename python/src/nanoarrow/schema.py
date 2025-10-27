@@ -468,7 +468,7 @@ class Schema:
             return None
 
     @property
-    def type_codes(self) -> List[int]:
+    def type_codes(self) -> Optional[List[int]]:
         """Union type identifiers
 
         >>> import nanoarrow as na
