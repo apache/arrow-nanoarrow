@@ -530,3 +530,42 @@ def test_iterator_extension():
 def test_iterator_null():
     array = na.c_array_from_buffers(na.null(), 3, [])
     assert list(iter_py(array)) == [None, None, None]
+
+
+def test_iterator_sparse_union():
+    schema = na.sparse_union([na.bool_(), na.int32(), na.float64(), na.string()])
+
+    c_array = na.c_array_from_buffers(
+        schema,
+        length=6,
+        null_count=0,
+        buffers=[na.c_buffer([0, 1, 2, 3, 0, 0], na.int8())],
+        children=[
+            na.c_array([True, None, None, None, None, False], na.bool_()),
+            na.c_array([None, 123, None, None, None, None], na.int32()),
+            na.c_array([None, None, 456.0, None, None, None], na.float64()),
+            na.c_array([None, None, None, "789", None, None], na.string()),
+        ],
+    )
+
+    assert list(iter_py(c_array)) == [True, 123, 456.0, '789', None, False]
+
+
+def test_iterator_dense_union():
+    schema = na.dense_union([na.bool_(), na.int32(), na.float64(), na.string()])
+
+    c_array = na.c_array_from_buffers(
+        schema,
+        length=6,
+        null_count=0,
+        buffers=[na.c_buffer([0, 1, 2, 3, 0, 0], na.int8()), na.c_buffer([0, 0, 0, 0, 1, 2], na.int32())],
+        children=[
+            na.c_array([True, None, False], na.bool_()),
+            na.c_array([123], na.int32()),
+            na.c_array([456.0], na.float64()),
+            na.c_array(["789"], na.string()),
+        ],
+    )
+
+    assert list(iter_py(c_array)) == [True, 123, 456.0, '789', None, False]
+

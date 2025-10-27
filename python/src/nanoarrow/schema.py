@@ -468,6 +468,18 @@ class Schema:
             return None
 
     @property
+    def type_codes(self) -> List[int]:
+        """Union type identifiers
+
+        >>> import nanoarrow as na
+        >>> na.dense_union([na.int32(), na.string()]).type_codes
+        """
+        if self._c_schema_view.type_id in (_types.SPARSE_UNION, _types.DENSE_UNION):
+            return list(self._c_schema_view.union_type_ids)
+        else:
+            return None
+
+    @property
     def n_fields(self) -> int:
         """Number of child Schemas
 
