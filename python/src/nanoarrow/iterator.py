@@ -17,7 +17,7 @@
 
 import warnings
 from functools import cached_property
-from itertools import islice, repeat
+from itertools import groupby, islice, repeat
 from typing import Iterable, Tuple
 
 from nanoarrow._array import CArrayView
@@ -297,6 +297,64 @@ class PyIterator(ArrayViewBaseIterator):
             for _ in range(length):
                 yield list(islice(child_iter, fixed_size))
 
+    def _sparse_union_iter(self, offset, length):
+        view = self._array_view
+        offset += view.offset
+
+        type_codes = self.schema.type_codes
+        child_index_by_type_id = {
+            member_id: i for i, member_id in enumerate(type_codes)
+        }
+
+        type_id = memoryview(view.buffer(0))[offset : (offset + length + 1)]
+
+        # Try as hard as we can to reduce the number of times we request a child
+        # iterator by iterating over runs of consecutive type_ids
+        i = 0
+        for item_type_id, item_type_id_iter in groupby(type_id):
+            type_id_run_length = len(list(item_type_id_iter))
+            child = self._children[child_index_by_type_id[item_type_id]]
+            yield from child._iter_chunk(i, type_id_run_length)
+
+            i += type_id_run_length
+
+    def _dense_union_iter(self, offset, length):
+        view = self._array_view
+        offset += view.offset
+
+        type_codes = self.schema.type_codes
+        child_index_by_type_id = {
+            member_id: i for i, member_id in enumerate(type_codes)
+        }
+
+        type_id = memoryview(view.buffer(0))[offset : (offset + length + 1)]
+        offsets = memoryview(view.buffer(1))[offset : (offset + length + 1)]
+
+        # Try as hard as we can to reduce the number of times we request a child
+        # iterator by iterating over runs of consecutive type_ids
+        i = 0
+        for item_type_id, item_type_id_iter in groupby(type_id):
+            type_id_run_length = len(list(item_type_id_iter))
+            child_offsets = offsets[i : (i + type_id_run_length)]
+            child_offset0 = child_offsets[0]
+
+            # This only works if there are no missing elements (i.e., for sequences
+            # of an identical type_id, the elements must be sequential and increasing).
+            # The spec specifies the sequential/increasing nature of these offsets but
+            # we check to be sure.
+            if (child_offsets[-1] - child_offset0) != (type_id_run_length - 1):
+                raise ValueError(
+                    f"Child offsets for type_id {item_type_id} are not sequential: "
+                    f"{list(child_offsets)} / {type_id_run_length}"
+                )
+
+            child_index = child_index_by_type_id[item_type_id]
+            yield from self._children[child_index]._iter_chunk(
+                child_offset0, type_id_run_length
+            )
+
+            i += type_id_run_length
+
     def _string_iter(self, offset, length):
         view = self._array_view
         offset += view.offset
@@ -568,6 +626,8 @@ _ITEMS_ITER_LOOKUP = {
     _types.LIST: "_list_iter",
     _types.LARGE_LIST: "_list_iter",
     _types.FIXED_SIZE_LIST: "_fixed_size_list_iter",
+    _types.SPARSE_UNION: "_sparse_union_iter",
+    _types.DENSE_UNION: "_dense_union_iter",
     _types.DICTIONARY: "_dictionary_iter",
     _types.DATE32: "_date_iter",
     _types.DATE64: "_date_iter",

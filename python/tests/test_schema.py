@@ -222,6 +222,26 @@ def test_schema_dictionary():
     assert schema_obj_ordered.dictionary_ordered is True
 
 
+def test_schema_union():
+    schema_obj = na.dense_union([na.int32(), na.string()])
+    assert schema_obj.type == na.Type.DENSE_UNION
+    assert schema_obj.type_codes == [0, 1]
+
+    # Make sure custom type_codes come through
+    schema_obj = na.dense_union([na.int32(), na.string()], type_codes=[1, 0])
+    assert schema_obj.type == na.Type.DENSE_UNION
+    assert schema_obj.type_codes == [1, 0]
+
+    schema_obj = na.sparse_union([na.int32(), na.string()])
+    assert schema_obj.type == na.Type.SPARSE_UNION
+    assert schema_obj.type_codes == [0, 1]
+
+    # Make sure custom type_codes come through
+    schema_obj = na.sparse_union([na.int32(), na.string()], type_codes=[1, 0])
+    assert schema_obj.type == na.Type.SPARSE_UNION
+    assert schema_obj.type_codes == [1, 0]
+
+
 def test_schema_extension():
     schema_obj = na.int32()
     assert schema_obj.extension is None
