@@ -97,7 +97,11 @@ convert_array_stream <- function(array_stream, to = NULL, size = NULL, n = Inf) 
     converted_batches <- lapply(batches, function(b) .Call(nanoarrow_c_convert_array, b, to))
     if (is.data.frame(to)) {
       # Prefer vctrs::vec_rbind over base::rbind because it's faster.
-      converted <- do.call(vctrs::vec_rbind, converted_batches)
+      if (requireNamespace("vctrs", quietly = TRUE)) {
+        converted <- do.call(vctrs::vec_rbind, converted_batches)
+      } else {
+        converted <- do.call(rbind, converted_batches)
+      }
     } else if (is.matrix(to)) {
       converted <- do.call(rbind, converted_batches)
     } else {
