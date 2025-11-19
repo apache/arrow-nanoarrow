@@ -115,6 +115,12 @@ static const void* nanoarrow_altrep_dataptr_or_null(SEXP altrep_sexp) {
   return NULL;
 }
 
+static void nanoarrow_altstring_set_elt(SEXP altrep_sexp, R_xlen_t i, SEXP elt) {
+  SEXP materialized = PROTECT(nanoarrow_altstring_materialize(altrep_sexp));
+  SET_STRING_ELT(materialized, i, elt);
+  UNPROTECT(1);
+}
+
 static R_altrep_class_t nanoarrow_altrep_chr_cls;
 
 static void register_nanoarrow_altstring(DllInfo* info) {
@@ -127,6 +133,7 @@ static void register_nanoarrow_altstring(DllInfo* info) {
   R_set_altvec_Dataptr_method(nanoarrow_altrep_chr_cls, &nanoarrow_altrep_dataptr);
 
   R_set_altstring_Elt_method(nanoarrow_altrep_chr_cls, &nanoarrow_altstring_elt);
+  R_set_altstring_Set_elt_method(nanoarrow_altrep_chr_cls, &nanoarrow_altstring_set_elt);
 
   // Notes about other available methods:
   //
