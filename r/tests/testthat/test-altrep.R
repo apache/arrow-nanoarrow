@@ -32,21 +32,29 @@ test_that("nanoarrow_altrep_chr() works for string", {
   expect_length(x_altrep, 27)
   expect_false(is_nanoarrow_altrep_materialized(x_altrep))
 
-  # Setting an element will materialize, duplicate, then modify
+  # Setting an element will materialize, duplicate, then modify in R <= 4.5
   x_altrep2 <- x_altrep
   x_altrep2[1] <- "not a letter"
   expect_identical(x_altrep2, c("not a letter", letters))
-  expect_true(is_nanoarrow_altrep_materialized(x_altrep))
 
-  # Check the same operations on the materialized output
+  # Materialization should get printed in inspect() if it occurred here (R <= 4.5)
+  # On R-devel (2025-11-19), x_altrep2 becomes an independent copy here and
+  # the original is not materialized with our current implementation.
+  if (getRversion() <= "4.5.1") {
+    expect_true(is_nanoarrow_altrep_materialized(x_altrep))
+    expect_output(.Internal(inspect(x_altrep)), "<materialized nanoarrow::altrep_chr\\[27\\]>")
+  }
+
+  # Make sure the original is unmodified
   expect_identical(x_altrep, c(NA, letters))
   expect_length(x_altrep, 27)
 
-  # Materialization should get printed in inspect()
+  # Force materialization on the original and ensure it worked
+  nanoarrow_altrep_force_materialize(x_altrep)
+  expect_true(is_nanoarrow_altrep_materialized(x_altrep))
   expect_output(.Internal(inspect(x_altrep)), "<materialized nanoarrow::altrep_chr\\[27\\]>")
 
-  # For good measure, force materialization again and check
-  nanoarrow_altrep_force_materialize(x_altrep)
+  # ...and that the value is still correct
   expect_identical(x_altrep, c(NA, letters))
   expect_length(x_altrep, 27)
 })
