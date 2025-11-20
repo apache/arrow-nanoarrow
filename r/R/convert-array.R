@@ -158,7 +158,7 @@ convert_array.nanoarrow_vctr <- function(array, to, ...) {
 #' @export
 convert_array.vctrs_partial_frame <- function(array, to, ...) {
   # The vctrs::partial_frame() is scheduled for removal in future vctrs
-  # https://github.com/apache/arrow-nanoarrow/issues/xxx
+  # https://github.com/apache/arrow-nanoarrow/issues/825
   ptype <- infer_nanoarrow_ptype(array)
   if (!is.data.frame(ptype)) {
     stop_cant_convert_array(array, to)
