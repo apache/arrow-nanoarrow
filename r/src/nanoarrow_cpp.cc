@@ -26,6 +26,9 @@
 #include <thread>
 #include <vector>
 
+#include "nanoarrow.hpp"
+#include "nanoarrow/r.h"
+
 // Without this infrastructure, it's possible to check that all objects
 // are released by running devtools::test(); gc() in a fresh session and
 // making sure that nanoarrow:::preserved_count() is zero afterward.
@@ -200,4 +203,81 @@ extern "C" void nanoarrow_preserve_and_release_on_other_thread(SEXP obj) {
   nanoarrow_preserve_sexp(obj);
   std::thread worker([obj] { nanoarrow_release_sexp(obj); });
   worker.join();
+}
+
+struct ArrayVector {
+  nanoarrow::UniqueSchema schema;
+  nanoarrow::UniqueArray batch;
+  std::vector<nanoarrow::UniqueArray> vec;
+};
+
+static void release_array_vector_xptr(SEXP array_vector_xptr) {
+  auto ptr = reinterpret_cast<ArrayVector*>(R_ExternalPtrAddr(array_vector_xptr));
+  if (ptr != NULL) {
+    delete ptr;
+  }
+}
+
+extern "C" SEXP nanoarrow_c_collect_array_stream(SEXP array_stream_xptr, SEXP n_sexp) {
+  struct ArrowArrayStream* array_stream =
+      nanoarrow_array_stream_from_xptr(array_stream_xptr);
+
+  double n_real = REAL(n_sexp)[0];
+  int n;
+  if (R_FINITE(n_real)) {
+    n = (int)n_real;
+  } else {
+    n = INT_MAX;
+  }
+
+  auto array_vector = new ArrayVector();
+  SEXP array_vector_xptr =
+      PROTECT(R_MakeExternalPtr(array_vector, R_NilValue, R_NilValue));
+  R_RegisterCFinalizer(array_vector_xptr, &release_array_vector_xptr);
+
+  struct ArrowError error;
+  ArrowErrorInit(&error);
+  int code = ArrowArrayStreamGetSchema(array_stream, array_vector->schema.get(), &error);
+  if (code != NANOARROW_OK) {
+    Rf_error("ArrowArrayStreamGetSchema() failed (%d): %s", code, error.message);
+  }
+
+  int64_t n_actual = 0;
+  int64_t size = 0;
+  while (n > 0) {
+    code = ArrowArrayStreamGetNext(array_stream, array_vector->batch.get(), &error);
+    if (code != NANOARROW_OK) {
+      Rf_error("ArrowArrayStreamGetNext() failed (%d): %s", code, error.message);
+    }
+
+    if (array_vector->batch->release == nullptr) {
+      break;
+    }
+
+    size += array_vector->batch->length;
+    ++n_actual;
+    --n;
+    array_vector->vec.push_back(std::move(array_vector->batch));
+    array_vector->batch.reset();
+
+    R_CheckUserInterrupt();
+  }
+
+  SEXP array_stream_out_xptr = PROTECT(nanoarrow_array_stream_owning_xptr());
+  struct ArrowArrayStream* array_stream_out =
+      nanoarrow_output_array_stream_from_xptr(array_stream_out_xptr);
+
+  nanoarrow::VectorArrayStream(array_vector->schema.get(), std::move(array_vector->vec))
+      .ToArrayStream(array_stream_out);
+
+  SEXP size_sexp = PROTECT(Rf_ScalarReal(size));
+  SEXP n_actual_sexp = PROTECT(Rf_ScalarReal(n_actual));
+  const char* names[] = {"stream", "size", "n", ""};
+  SEXP out = PROTECT(Rf_mkNamed(VECSXP, names));
+  SET_VECTOR_ELT(out, 0, array_stream_out_xptr);
+  SET_VECTOR_ELT(out, 1, size_sexp);
+  SET_VECTOR_ELT(out, 2, n_actual_sexp);
+
+  UNPROTECT(5);
+  return out;
 }
