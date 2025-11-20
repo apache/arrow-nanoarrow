@@ -22,12 +22,6 @@
 /// and error handling can be used with nanoarrow data structures.
 /// These utilities are not intended to mirror the nanoarrow C API.
 
-
-
-
-
-
-
 // Licensed to the Apache Software Foundation (ASF) under one
 // or more contributor license agreements.  See the NOTICE file
 // distributed with this work for additional information
@@ -417,8 +411,6 @@ NANOARROW_CXX_NAMESPACE_END
 
 #include <vector>
 
-
-
 NANOARROW_CXX_NAMESPACE_BEGIN
 
 /// \defgroup nanoarrow_hpp-array-stream ArrayStream helpers
@@ -706,7 +698,6 @@ NANOARROW_CXX_NAMESPACE_END
 
 #include <stdint.h>
 #include <type_traits>
-
 
 #include "nanoarrow.h"
 
