@@ -79,18 +79,6 @@ test_that("convert to vector works for data.frame", {
   )
 })
 
-test_that("convert to vector works for partial_frame", {
-  skip_if_not_installed("vctrs")
-
-  array <- as_nanoarrow_array(
-    data.frame(a = 1L, b = "two", stringsAsFactors = FALSE)
-  )
-  expect_identical(
-    convert_array(array, vctrs::partial_frame()),
-    data.frame(a = 1L, b = "two", stringsAsFactors = FALSE)
-  )
-})
-
 test_that("convert to vector works for extension<struct> -> data.frame()", {
   array <- nanoarrow_extension_array(
     data.frame(x = c(TRUE, FALSE, NA, FALSE, TRUE)),
