@@ -22,5 +22,7 @@ nanoarrow.c
 nanoarrow.h
 nanoarrow_ipc.h
 nanoarrow_ipc.c
+nanoarrow.hpp
+nanoarrow_ipc.hpp
 flatcc*
 Makevars
