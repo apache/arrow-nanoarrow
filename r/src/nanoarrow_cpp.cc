@@ -205,12 +205,17 @@ extern "C" void nanoarrow_preserve_and_release_on_other_thread(SEXP obj) {
   worker.join();
 }
 
+// Collector utility for iterating over and collecting batches
+// Keeping this all in a single object reduces the amount of C++ deletion
+// we need to keep track of.
 struct ArrayVector {
   nanoarrow::UniqueSchema schema;
   nanoarrow::UniqueArray batch;
   std::vector<nanoarrow::UniqueArray> vec;
 };
 
+// Use an external pointer to handle deleting the ArrayVector in
+// the event of a longjmp
 static void release_array_vector_xptr(SEXP array_vector_xptr) {
   auto ptr = reinterpret_cast<ArrayVector*>(R_ExternalPtrAddr(array_vector_xptr));
   if (ptr != NULL) {
@@ -218,6 +223,9 @@ static void release_array_vector_xptr(SEXP array_vector_xptr) {
   }
 }
 
+// Collects the entire array stream and collects the total number of rows and
+// total number of batches so that the R code on the end of this can decide
+// how best to proceed.
 extern "C" SEXP nanoarrow_c_collect_array_stream(SEXP array_stream_xptr, SEXP n_sexp) {
   struct ArrowArrayStream* array_stream =
       nanoarrow_array_stream_from_xptr(array_stream_xptr);
