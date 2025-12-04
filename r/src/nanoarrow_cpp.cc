@@ -218,7 +218,7 @@ struct ArrayVector {
 // the event of a longjmp
 static void release_array_vector_xptr(SEXP array_vector_xptr) {
   auto ptr = reinterpret_cast<ArrayVector*>(R_ExternalPtrAddr(array_vector_xptr));
-  if (ptr != NULL) {
+  if (ptr != nullptr) {
     delete ptr;
   }
 }
