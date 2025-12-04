@@ -60,7 +60,3 @@ stopifnot(file.exists("../CMakeLists.txt") && run_bundler())
 f <- "src/flatcc/portable/pdiagnostic.h"
 lines <- readLines(f)
 writeLines(gsub("^#pragma", "/**/#pragma", lines), f)
-
-# Remove unused files
-unused_files <- list.files("src", "\\.hpp$", full.names = TRUE)
-unlink(unused_files)
