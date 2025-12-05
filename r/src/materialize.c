@@ -68,6 +68,8 @@ R_xlen_t nanoarrow_data_frame_size(SEXP x) {
     // This both avoids materializing the row.names attribute and
     // makes this work with struct-style vctrs that don't have a
     // row.names attribute but that always have one or more element
+
+    // TODO: this isn't valid if the first child is a data frame
     return Rf_xlength(VECTOR_ELT(x, 0));
   } else {
     // Since ALTREP was introduced, materializing the row.names attribute is
@@ -559,6 +561,7 @@ static int nanoarrow_materialize_list_of(struct RConverter* converter,
     case NANOARROW_TYPE_NA:
       return NANOARROW_OK;
     case NANOARROW_TYPE_LIST:
+    case NANOARROW_TYPE_MAP:
       for (int64_t i = 0; i < dst->length; i++) {
         if (!ArrowArrayViewIsNull(src->array_view, src->offset + i)) {
           offset = offsets[raw_src_offset + i];
