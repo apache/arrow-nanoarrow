@@ -1084,6 +1084,30 @@ test_that("convert to vector works for null -> vctrs::list_of()", {
   )
 })
 
+test_that("convert to vector works for map -> vctrs::list_of", {
+  skip_if_not_installed("arrow")
+  skip_if_not_installed("vctrs")
+
+  values <- vctrs::list_of(
+    data.frame(key = "key1", value = 1L),
+    data.frame(key = c("key2", "key3"), value = c(2L, 3L)),
+    NULL
+  )
+
+  array_list <- as_nanoarrow_array(
+    arrow::Array$create(
+      values,
+      type = arrow::map_of(arrow::string(), arrow::int32())
+    )
+  )
+
+  # Default conversion
+  expect_identical(
+    convert_array(array_list),
+    values
+  )
+})
+
 test_that("convert to vector works for fixed_size_list_of() -> matrix()", {
   mat <- matrix(1:6, ncol = 2, byrow = TRUE)
   array <- as_nanoarrow_array(mat)
