@@ -252,6 +252,9 @@ test_that("convert array stream works for fixed_size_list_of() with parent nulls
   )
 })
 
+# TODO: Check a read of complex-map.arrows to ensure a totally bonkers
+# collection of map/struct/string makes it all the way through the system
+
 test_that("convert array stream respects the value of n", {
   batches <- list(
     data.frame(x = 1:5),
