@@ -154,9 +154,16 @@ test_that("convert to vector works for tibble", {
   )
 })
 
-# TODO: Add test for a struct-style vctr like POSIXlt where the first column
-# is a data.frame() or other S3 object to ensure the length() is computed
-# correctly
+test_that("convert to vector works for a rcrd-sytle vctr with complex columns", {
+  skip_if_not_installed("vctrs")
+
+  rcrd <- vctrs::new_rcrd(list(x = data.frame(y = 1:10)))
+  rcrd_array <- as_nanoarrow_array(vctrs::vec_data(rcrd))
+  expect_identical(
+    convert_array(rcrd_array, rcrd),
+    rcrd
+  )
+})
 
 test_that("convert to vector works for nanoarrow_vctr()", {
   array <- as_nanoarrow_array(c("one", "two", "three"))
