@@ -29,12 +29,12 @@ library(sedonadb)
 
 sd_sql("SET datafusion.execution.batch_size = 1024")
 
-sd_read_parquet("/Volumes/data/overture/data/theme=divisions/type=division_area/") |> 
+sd_read_parquet("/Volumes/data/overture/data/theme=divisions/type=division_area/") |>
   sd_to_view("division_area", overwrite = TRUE)
 
-sd_sql("SELECT ROW_NUMBER() OVER (ORDER BY names.primary) as idx, names FROM division_area WHERE names.common IS NOT NULL") |> 
+sd_sql("SELECT ROW_NUMBER() OVER (ORDER BY names.primary) as idx, names FROM division_area WHERE names.common IS NOT NULL") |>
   sd_compute() |> sd_to_view("names_with_common", overwrite = TRUE)
 
-sd_sql("SELECT * FROM names_with_common WHERE (idx % 100) = 0 ORDER BY idx") |> 
+sd_sql("SELECT * FROM names_with_common WHERE (idx % 100) = 0 ORDER BY idx") |>
   nanoarrow::write_nanoarrow("inst/test-data/complex-map.arrows")
 ```
