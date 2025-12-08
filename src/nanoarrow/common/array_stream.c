@@ -107,6 +107,7 @@ ArrowErrorCode ArrowBasicArrayStreamInit(struct ArrowArrayStream* array_stream,
         (struct ArrowArray*)ArrowMalloc(n_arrays * sizeof(struct ArrowArray));
     if (private_data->arrays == NULL) {
       ArrowBasicArrayStreamRelease(array_stream);
+      ArrowFree(private_data);
       return ENOMEM;
     }
   }
