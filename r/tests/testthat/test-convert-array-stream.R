@@ -252,6 +252,40 @@ test_that("convert array stream works for fixed_size_list_of() with parent nulls
   )
 })
 
+test_that("complex nested struct/map combination can be read", {
+  skip_if_not_installed("arrow")
+  skip_if_not_installed("vctrs")
+
+  complex_map_file <- system.file("test-data/complex-map.arrows", package = "nanoarrow")
+  df_from_arrow <- as.data.frame(arrow::read_ipc_stream(complex_map_file))
+  df_from_nanoarrow <- as.data.frame(read_nanoarrow(complex_map_file))
+
+  expect_identical(
+    df_from_nanoarrow$idx,
+    as.double(df_from_arrow$idx)
+  )
+
+  expect_identical(
+    df_from_nanoarrow$names$primary,
+    df_from_arrow$names$primary
+  )
+
+  expect_identical(
+    df_from_nanoarrow$names$common[[3000]],
+    as.data.frame(df_from_arrow$names$common[[3000]])
+  )
+
+  expect_identical(
+    lengths(df_from_nanoarrow$names$rules),
+    lengths(df_from_arrow$names$rules)
+  )
+
+  expect_identical(
+    df_from_nanoarrow$names$rules[[4238]][c("variant", "language", "value")],
+    as.data.frame(df_from_arrow$names$rules[[4238]][c("variant", "language", "value")])
+  )
+})
+
 test_that("convert array stream respects the value of n", {
   batches <- list(
     data.frame(x = 1:5),

@@ -64,17 +64,41 @@ static int has_attrib_safe(SEXP x, SEXP sym) {
 }
 
 R_xlen_t nanoarrow_data_frame_size(SEXP x) {
-  if (Rf_length(x) > 0) {
-    // This both avoids materializing the row.names attribute and
-    // makes this work with struct-style vctrs that don't have a
-    // row.names attribute but that always have one or more element
+  // If this is actually a data frame, check the rownames. ALTREP ensures
+  // that "expanding" these rownames by accessing the attribute does not
+  // actually compute millions of strings.
+  if (Rf_inherits(x, "data.frame")) {
+    return Rf_xlength(Rf_getAttrib(x, R_RowNamesSymbol));
+  }
+
+  // If we are here, this is a struct style vctr. If we have a plain vctr
+  // as the first element we can just compute its length from the Rf_xlength()
+  // of the first column.
+  if (Rf_length(x) > 0 && !Rf_isObject(VECTOR_ELT(x, 0))) {
     return Rf_xlength(VECTOR_ELT(x, 0));
   } else {
-    // Since ALTREP was introduced, materializing the row.names attribute is
-    // usually deferred such that values in the form c(NA, -nrow), 1:nrow, or
-    // as.character(1:nrow) are never actually computed when the length is
-    // taken.
-    return Rf_xlength(Rf_getAttrib(x, R_RowNamesSymbol));
+    // Otherwise, we need S3 dispatch to compute the length for us.
+    SEXP length_sym = PROTECT(Rf_install("length"));
+    SEXP call_sexp = PROTECT(Rf_lang2(length_sym, x));
+    SEXP length_sexp = PROTECT(Rf_eval(call_sexp, R_BaseEnv));
+    if (Rf_xlength(length_sexp) != 1) {
+      Rf_error("length() return value with size != 1");
+    }
+
+    R_xlen_t out = 0;
+    switch (TYPEOF(length_sexp)) {
+      case INTSXP:
+        out = INTEGER(length_sexp)[0];
+        break;
+      case REALSXP:
+        out = (R_xlen_t)REAL(length_sexp)[0];
+        break;
+      default:
+        Rf_error("length() return value with unexpected type");
+    }
+
+    UNPROTECT(3);
+    return out;
   }
 }
 
@@ -559,6 +583,7 @@ static int nanoarrow_materialize_list_of(struct RConverter* converter,
     case NANOARROW_TYPE_NA:
       return NANOARROW_OK;
     case NANOARROW_TYPE_LIST:
+    case NANOARROW_TYPE_MAP:
       for (int64_t i = 0; i < dst->length; i++) {
         if (!ArrowArrayViewIsNull(src->array_view, src->offset + i)) {
           offset = offsets[raw_src_offset + i];

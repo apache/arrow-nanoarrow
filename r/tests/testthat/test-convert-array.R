@@ -154,6 +154,17 @@ test_that("convert to vector works for tibble", {
   )
 })
 
+test_that("convert to vector works for a rcrd-sytle vctr with complex columns", {
+  skip_if_not_installed("vctrs")
+
+  rcrd <- vctrs::new_rcrd(list(x = data.frame(y = 1:10)))
+  rcrd_array <- as_nanoarrow_array(vctrs::vec_data(rcrd))
+  expect_identical(
+    convert_array(rcrd_array, rcrd),
+    rcrd
+  )
+})
+
 test_that("convert to vector works for nanoarrow_vctr()", {
   array <- as_nanoarrow_array(c("one", "two", "three"))
 
@@ -1081,6 +1092,30 @@ test_that("convert to vector works for null -> vctrs::list_of()", {
   expect_identical(
     convert_array(array, vctrs::list_of(.ptype = integer())),
     vctrs::new_list_of(rep(list(NULL), 10), ptype = integer())
+  )
+})
+
+test_that("convert to vector works for map -> vctrs::list_of", {
+  skip_if_not_installed("arrow")
+  skip_if_not_installed("vctrs")
+
+  values <- vctrs::list_of(
+    data.frame(key = "key1", value = 1L),
+    data.frame(key = c("key2", "key3"), value = c(2L, 3L)),
+    NULL
+  )
+
+  array_list <- as_nanoarrow_array(
+    arrow::Array$create(
+      values,
+      type = arrow::map_of(arrow::string(), arrow::int32())
+    )
+  )
+
+  # Default conversion
+  expect_identical(
+    convert_array(array_list),
+    values
   )
 })
 
