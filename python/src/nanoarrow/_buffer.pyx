@@ -1150,10 +1150,6 @@ cdef class NoneAwareWrapperIterator:
         cdef CBuffer validity
         null_count = self._item_count - self._valid_count
 
-        # If we did allocate a bitmap, make sure the last few bits are zeroed
-        if null_count > 0 and self._bitmap.size_bits % 8 != 0:
-            ArrowBitmapAppendUnsafe(&self._bitmap, 0, self._bitmap.size_bits % 8)
-
         if null_count > 0:
             validity = CBuffer.empty()
             ArrowBufferMove(&self._bitmap.buffer, validity._ptr)
