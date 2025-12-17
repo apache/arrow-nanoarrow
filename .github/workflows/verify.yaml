@@ -139,7 +139,7 @@ jobs:
               platform: "ubuntu",
               arch: "amd64",
               extra_label: "-memcheck",
-              compose_args: "-e TEST_WITH_MEMCHECK=1 -e TEST_C_BUNDLED=0"
+              compose_args: "-e TEST_WITH_MEMCHECK=1  -e TEST_C_BUNDLED=0"
             }
           - {
               platform: "ubuntu",
