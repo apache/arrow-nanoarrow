@@ -234,7 +234,7 @@ static inline ArrowErrorCode ArrowArrayStreamGetSchema(
     struct ArrowArrayStream* array_stream, struct ArrowSchema* out,
     struct ArrowError* error);
 
-/// \brief Call the get_schema callback of an ArrowArrayStream
+/// \brief Call the get_next callback of an ArrowArrayStream
 /// \ingroup nanoarrow-arrow-cdata
 ///
 /// Unlike the get_next callback, this wrapper checks the return code
@@ -245,12 +245,13 @@ static inline ArrowErrorCode ArrowArrayStreamGetNext(
     struct ArrowArrayStream* array_stream, struct ArrowArray* out,
     struct ArrowError* error);
 
-/// \brief Call the get_next callback of an ArrowArrayStream
+/// \brief Call the get_last_error callback of an ArrowArrayStream
 /// \ingroup nanoarrow-arrow-cdata
 ///
-/// Unlike the get_next callback, this function never returns NULL (i.e., its
-/// result is safe to use in printf-style error formatters). Null values from the
-/// original callback are reported as "<get_last_error() returned NULL>".
+/// Unlike the get_last_error callback, this function never returns NULL (i.e.,
+/// its result is safe to use in printf-style error formatters). Null values
+/// from the original callback are reported as
+/// "<get_last_error() returned NULL>".
 static inline const char* ArrowArrayStreamGetLastError(
     struct ArrowArrayStream* array_stream);
 
