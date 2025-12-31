@@ -39,8 +39,8 @@
 <link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
     <script src="../_static/documentation_options.js?v=5929fcd5"></script>
-    <script src="../_static/doctools.js?v=9bcbadda"></script>
-    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script>DOCUMENTATION_OPTIONS.pagename = 'reference/c';</script>
     <script>
         DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
@@ -2464,15 +2464,15 @@
 <dl class="cpp function">
 <dt class="sig sig-object cpp" id="_CPPv423ArrowArrayStreamGetNextP16ArrowArrayStreamP10ArrowArrayP10ArrowError">
 <span id="_CPPv323ArrowArrayStreamGetNextP16ArrowArrayStreamP10ArrowArrayP10ArrowError"></span><span id="_CPPv223ArrowArrayStreamGetNextP16ArrowArrayStreamP10ArrowArrayP10ArrowError"></span><span id="ArrowArrayStreamGetNext__ArrowArrayStreamP.ArrowArrayP.ArrowErrorP"></span><span class="target" id="group__nanoarrow-arrow-cdata_1gad985280e1a92dedd0af3e8c217e4b2a7"></span><span class="k"><span class="pre">static</span></span><span class="w"> </span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv414ArrowErrorCode" title="ArrowErrorCode"><span class="n"><span class="pre">ArrowErrorCode</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">ArrowArrayStreamGetNext</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv416ArrowArrayStream" title="ArrowArrayStream"><span class="n"><span class="pre">ArrowArrayStream</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">array_stream</span></span>, <span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv410ArrowArray" title="ArrowArray"><span class="n"><span class="pre">ArrowArray</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">out</span></span>, <span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv410ArrowError" title="ArrowError"><span class="n"><span class="pre">ArrowError</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">error</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv423ArrowArrayStreamGetNextP16ArrowArrayStreamP10ArrowArrayP10ArrowError" title="Link to this definition">#</a><br /></dt>
-<dd><p>Call the get_schema callback of an <a class="reference internal" href="#struct_arrow_array_stream"><span class="std std-ref">ArrowArrayStream</span></a>. </p>
+<dd><p>Call the get_next callback of an <a class="reference internal" href="#struct_arrow_array_stream"><span class="std std-ref">ArrowArrayStream</span></a>. </p>
 <p>Unlike the get_next callback, this wrapper checks the return code and propagates the error reported by get_last_error into error. This makes it significantly less verbose to iterate over array streams using <a class="reference internal" href="#group__nanoarrow-errors_1gadded0e0e389c1711f6ee55885f0960fd"><span class="std std-ref">NANOARROW_RETURN_NOT_OK()</span></a>-style error handling. </p>
 </dd></dl>
 
 <dl class="cpp function">
 <dt class="sig sig-object cpp" id="_CPPv428ArrowArrayStreamGetLastErrorP16ArrowArrayStream">
 <span id="_CPPv328ArrowArrayStreamGetLastErrorP16ArrowArrayStream"></span><span id="_CPPv228ArrowArrayStreamGetLastErrorP16ArrowArrayStream"></span><span id="ArrowArrayStreamGetLastError__ArrowArrayStreamP"></span><span class="target" id="group__nanoarrow-arrow-cdata_1ga20eef6f269c795ddfb2880f507767166"></span><span class="k"><span class="pre">static</span></span><span class="w"> </span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="kt"><span class="pre">char</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="sig-name descname"><span class="n"><span class="pre">ArrowArrayStreamGetLastError</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv416ArrowArrayStream" title="ArrowArrayStream"><span class="n"><span class="pre">ArrowArrayStream</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">array_stream</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv428ArrowArrayStreamGetLastErrorP16ArrowArrayStream" title="Link to this definition">#</a><br /></dt>
-<dd><p>Call the get_next callback of an <a class="reference internal" href="#struct_arrow_array_stream"><span class="std std-ref">ArrowArrayStream</span></a>. </p>
-<p>Unlike the get_next callback, this function never returns NULL (i.e., its result is safe to use in printf-style error formatters). Null values from the original callback are reported as “&lt;get_last_error() returned NULL&gt;”. </p>
+<dd><p>Call the get_last_error callback of an <a class="reference internal" href="#struct_arrow_array_stream"><span class="std std-ref">ArrowArrayStream</span></a>. </p>
+<p>Unlike the get_last_error callback, this function never returns NULL (i.e., its result is safe to use in printf-style error formatters). Null values from the original callback are reported as “&lt;get_last_error() returned NULL&gt;”. </p>
 </dd></dl>
 
 </div>
@@ -3076,7 +3076,7 @@
         <div class="footer-item">
 
   <p class="sphinx-version">
-    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.2.3.
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 9.0.4.
     <br/>
   </p>
 </div>

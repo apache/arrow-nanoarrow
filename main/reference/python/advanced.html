@@ -39,8 +39,8 @@
 <link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
     <script src="../../_static/documentation_options.js?v=5929fcd5"></script>
-    <script src="../../_static/doctools.js?v=9bcbadda"></script>
-    <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script>DOCUMENTATION_OPTIONS.pagename = 'reference/python/advanced';</script>
     <script>
         DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
@@ -472,14 +472,14 @@ parameterized types). This wrapper extends that facility to Python.</p>
 <span id="c-array-utilities"></span><h2>C Array Utilities<a class="headerlink" href="#module-nanoarrow.c_array" title="Link to this heading">#</a></h2>
 <dl class="py class">
 <dt class="sig sig-object py" id="nanoarrow.c_array.ArrayBuilder">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">ArrayBuilder</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">schema</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#nanoarrow.c_array.ArrayBuilder" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">ArrayBuilder</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">schema</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#nanoarrow.c_array.ArrayBuilder" title="Link to this definition">#</a></dt>
 <dd><p>Internal utility to build CArrays from various types of input</p>
 <p>This class and its subclasses are designed to help separate the code
 that actually builds a CArray from the code that chooses the strategy
 used to do the building.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="nanoarrow.c_array.ArrayBuilder.infer_schema">
-<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">infer_schema</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">obj</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">CSchema</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#nanoarrow.c_array.ArrayBuilder.infer_schema" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">infer_schema</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">obj</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">CSchema</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#nanoarrow.c_array.ArrayBuilder.infer_schema" title="Link to this definition">#</a></dt>
 <dd><p>Infer the Arrow data type from a target object</p>
 <p>Returns the type as a <code class="xref py py-class docutils literal notranslate"><span class="pre">CSchema</span></code> and an object that can be
 consumed in the same way by append() in the event it had to be
@@ -491,7 +491,7 @@ necessary to consume the first element from the original iterator).</p>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="nanoarrow.c_array.ArrayFromIterableBuilder">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">ArrayFromIterableBuilder</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">schema</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#nanoarrow.c_array.ArrayFromIterableBuilder" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">ArrayFromIterableBuilder</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">schema</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#nanoarrow.c_array.ArrayFromIterableBuilder" title="Link to this definition">#</a></dt>
 <dd><p>Build a CArray from an iterable of scalar objects</p>
 <p>This builder converts an iterable to a CArray using some heuristics to pick
 the fastest available method for converting to a particular type of array.
@@ -500,7 +500,7 @@ library (string, binary), (2) array.array() (integer/float except float16),
 (3) CBufferBuilder.write_elements() (everything else).</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="nanoarrow.c_array.ArrayFromIterableBuilder.infer_schema">
-<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">infer_schema</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">obj</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">CBuffer</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">CSchema</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#nanoarrow.c_array.ArrayFromIterableBuilder.infer_schema" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">infer_schema</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">obj</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">CBuffer</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">CSchema</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#nanoarrow.c_array.ArrayFromIterableBuilder.infer_schema" title="Link to this definition">#</a></dt>
 <dd><p>Infer the Arrow data type from a target object</p>
 <p>Returns the type as a <code class="xref py py-class docutils literal notranslate"><span class="pre">CSchema</span></code> and an object that can be
 consumed in the same way by append() in the event it had to be
@@ -512,13 +512,13 @@ necessary to consume the first element from the original iterator).</p>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="nanoarrow.c_array.ArrayFromPyBufferBuilder">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">ArrayFromPyBufferBuilder</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">schema</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#nanoarrow.c_array.ArrayFromPyBufferBuilder" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">ArrayFromPyBufferBuilder</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">schema</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#nanoarrow.c_array.ArrayFromPyBufferBuilder" title="Link to this definition">#</a></dt>
 <dd><p>Build a CArray from a Python Buffer</p>
 <p>This builder converts a Python buffer (e.g., numpy array, bytes, array.array)
 to a CArray (without copying the contents of the buffer).</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="nanoarrow.c_array.ArrayFromPyBufferBuilder.infer_schema">
-<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">infer_schema</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">obj</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">CBuffer</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">CSchema</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#nanoarrow.c_array.ArrayFromPyBufferBuilder.infer_schema" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">infer_schema</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">obj</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">CBuffer</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">CSchema</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#nanoarrow.c_array.ArrayFromPyBufferBuilder.infer_schema" title="Link to this definition">#</a></dt>
 <dd><p>Infer the Arrow data type from a target object</p>
 <p>Returns the type as a <code class="xref py py-class docutils literal notranslate"><span class="pre">CSchema</span></code> and an object that can be
 consumed in the same way by append() in the event it had to be
@@ -530,13 +530,13 @@ necessary to consume the first element from the original iterator).</p>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="nanoarrow.c_array.EmptyArrayBuilder">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">EmptyArrayBuilder</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">schema</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#nanoarrow.c_array.EmptyArrayBuilder" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">EmptyArrayBuilder</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">schema</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#nanoarrow.c_array.EmptyArrayBuilder" title="Link to this definition">#</a></dt>
 <dd><p>Build an empty CArray of any type</p>
 <p>This builder accepts any empty input and produces a valid length zero
 array as output.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="nanoarrow.c_array.EmptyArrayBuilder.infer_schema">
-<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">infer_schema</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">obj</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">CSchema</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#nanoarrow.c_array.EmptyArrayBuilder.infer_schema" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">infer_schema</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">obj</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">CSchema</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#nanoarrow.c_array.EmptyArrayBuilder.infer_schema" title="Link to this definition">#</a></dt>
 <dd><p>Infer the Arrow data type from a target object</p>
 <p>Returns the type as a <code class="xref py py-class docutils literal notranslate"><span class="pre">CSchema</span></code> and an object that can be
 consumed in the same way by append() in the event it had to be
@@ -914,7 +914,7 @@ These objects are usually created using <cite>nanoarrow.c_array_stream()</cite>.
         <div class="footer-item">
 
   <p class="sphinx-version">
-    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.2.3.
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 9.0.4.
     <br/>
   </p>
 </div>

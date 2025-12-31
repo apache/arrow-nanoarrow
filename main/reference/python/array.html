@@ -39,8 +39,8 @@
 <link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
 
     <script src="../../_static/documentation_options.js?v=5929fcd5"></script>
-    <script src="../../_static/doctools.js?v=9bcbadda"></script>
-    <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script>DOCUMENTATION_OPTIONS.pagename = 'reference/python/array';</script>
     <script>
         DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
@@ -388,7 +388,7 @@
 <span id="high-level-arraystream-implementation"></span><h1>High-level ArrayStream Implementation<a class="headerlink" href="#module-nanoarrow.array" title="Link to this heading">#</a></h1>
 <dl class="py class">
 <dt class="sig sig-object py" id="nanoarrow.array.Array">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">Array</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">obj</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">schema</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#nanoarrow.array.Array" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">Array</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">obj</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">schema</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#nanoarrow.array.Array" title="Link to this definition">#</a></dt>
 <dd><p>High-level in-memory Array representation</p>
 <p>The Array is nanoarrow’s high-level in-memory array representation whose
 scope maps to that of a fully-consumed ArrowArrayStream in the Arrow C Data
@@ -440,7 +440,7 @@ Defaults to the CPU device.</p>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="nanoarrow.array.Array.buffers">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">buffers</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">CBufferView</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#nanoarrow.array.Array.buffers" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">buffers</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">CBufferView</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span></span><a class="headerlink" href="#nanoarrow.array.Array.buffers" title="Link to this definition">#</a></dt>
 <dd><p>Access buffers of a contiguous array.</p>
 <section id="id2">
 <h3>Examples<a class="headerlink" href="#id2" title="Link to this heading">#</a></h3>
@@ -512,7 +512,7 @@ Defaults to the CPU device.</p>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="nanoarrow.array.Array.device">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">device</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Device</span></em><a class="headerlink" href="#nanoarrow.array.Array.device" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">device</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Device</span></span><a class="headerlink" href="#nanoarrow.array.Array.device" title="Link to this definition">#</a></dt>
 <dd><p>Get the device on which the buffers for this array are allocated</p>
 <section id="id7">
 <h3>Examples<a class="headerlink" href="#id7" title="Link to this heading">#</a></h3>
@@ -529,7 +529,7 @@ Defaults to the CPU device.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="nanoarrow.array.Array.from_chunks">
-<em class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">from_chunks</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">obj</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Iterable</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">schema</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">validate</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#nanoarrow.array.Array.from_chunks" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">from_chunks</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">obj</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Iterable</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">schema</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">validate</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#nanoarrow.array.Array.from_chunks" title="Link to this definition">#</a></dt>
 <dd><p>Create an Array with explicit chunks</p>
 <p>Creates an <a class="reference internal" href="#nanoarrow.array.Array" title="nanoarrow.array.Array"><code class="xref py py-class docutils literal notranslate"><span class="pre">Array</span></code></a> with explicit chunking from an iterable of
 objects that can be converted to a <code class="xref py py-func docutils literal notranslate"><span class="pre">c_array()</span></code>.</p>
@@ -701,7 +701,7 @@ contiguous in memory.</p>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="nanoarrow.array.Array.n_buffers">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">n_buffers</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></em><a class="headerlink" href="#nanoarrow.array.Array.n_buffers" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">n_buffers</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></span><a class="headerlink" href="#nanoarrow.array.Array.n_buffers" title="Link to this definition">#</a></dt>
 <dd><p>Get the number of buffers in each chunk of this Array</p>
 <section id="id16">
 <h3>Examples<a class="headerlink" href="#id16" title="Link to this heading">#</a></h3>
@@ -716,7 +716,7 @@ contiguous in memory.</p>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="nanoarrow.array.Array.n_children">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">n_children</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></em><a class="headerlink" href="#nanoarrow.array.Array.n_children" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">n_children</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></span><a class="headerlink" href="#nanoarrow.array.Array.n_children" title="Link to this definition">#</a></dt>
 <dd><p>Get the number of children for an Array of this type.</p>
 <section id="id17">
 <h3>Examples<a class="headerlink" href="#id17" title="Link to this heading">#</a></h3>
@@ -736,7 +736,7 @@ contiguous in memory.</p>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="nanoarrow.array.Array.n_chunks">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">n_chunks</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></em><a class="headerlink" href="#nanoarrow.array.Array.n_chunks" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">n_chunks</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></span><a class="headerlink" href="#nanoarrow.array.Array.n_chunks" title="Link to this definition">#</a></dt>
 <dd><p>Get the number of chunks in the underlying representation of this Array.</p>
 <section id="id18">
 <h3>Examples<a class="headerlink" href="#id18" title="Link to this heading">#</a></h3>
@@ -751,7 +751,7 @@ contiguous in memory.</p>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="nanoarrow.array.Array.offset">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">offset</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></em><a class="headerlink" href="#nanoarrow.array.Array.offset" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">offset</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></span><a class="headerlink" href="#nanoarrow.array.Array.offset" title="Link to this definition">#</a></dt>
 <dd><p>Access the logical offset of a contiguous array</p>
 <section id="id19">
 <h3>Examples<a class="headerlink" href="#id19" title="Link to this heading">#</a></h3>
@@ -766,7 +766,7 @@ contiguous in memory.</p>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="nanoarrow.array.Array.schema">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">schema</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="schema.html#nanoarrow.schema.Schema" title="nanoarrow.schema.Schema"><span class="pre">Schema</span></a></em><a class="headerlink" href="#nanoarrow.array.Array.schema" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">schema</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="schema.html#nanoarrow.schema.Schema" title="nanoarrow.schema.Schema"><span class="pre">Schema</span></a></span><a class="headerlink" href="#nanoarrow.array.Array.schema" title="Link to this definition">#</a></dt>
 <dd><p>Get the schema (data type) of this Array</p>
 </dd></dl>
 
@@ -790,7 +790,7 @@ and return the serialized result.</p>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="nanoarrow.array.Scalar">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">Scalar</span></span><a class="headerlink" href="#nanoarrow.array.Scalar" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">Scalar</span></span><a class="headerlink" href="#nanoarrow.array.Scalar" title="Link to this definition">#</a></dt>
 <dd><p>Generic wrapper around an <a class="reference internal" href="#nanoarrow.array.Array" title="nanoarrow.array.Array"><code class="xref py py-class docutils literal notranslate"><span class="pre">Array</span></code></a> element</p>
 <p>This class exists to provide a generic implementation of
 array-like indexing for the <a class="reference internal" href="#nanoarrow.array.Array" title="nanoarrow.array.Array"><code class="xref py py-class docutils literal notranslate"><span class="pre">Array</span></code></a>. These objects
@@ -819,7 +819,7 @@ iterate over an <a class="reference internal" href="#nanoarrow.array.Array" titl
 
 <dl class="py property">
 <dt class="sig sig-object py" id="nanoarrow.array.Scalar.schema">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">schema</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="schema.html#nanoarrow.schema.Schema" title="nanoarrow.schema.Schema"><span class="pre">Schema</span></a></em><a class="headerlink" href="#nanoarrow.array.Scalar.schema" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">schema</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="schema.html#nanoarrow.schema.Schema" title="nanoarrow.schema.Schema"><span class="pre">Schema</span></a></span><a class="headerlink" href="#nanoarrow.array.Scalar.schema" title="Link to this definition">#</a></dt>
 <dd><p>Get the schema (data type) of this scalar</p>
 </dd></dl>
 
@@ -972,7 +972,7 @@ iterate over an <a class="reference internal" href="#nanoarrow.array.Array" titl
         <div class="footer-item">
 
   <p class="sphinx-version">
-    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.2.3.
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 9.0.4.
     <br/>
   </p>
 </div>
