@@ -50,9 +50,7 @@ jobs:
           - {runner: ubuntu-latest, label: bundled-build, cmake_args: "-DNANOARROW_DEVICE_BUNDLE=ON"}
           - {runner: ubuntu-latest, label: shared-test-linkage, cmake_args: "-DNANOARROW_TEST_LINKAGE_SHARED=ON"}
           - {runner: macOS-latest, label: with-metal, cmake_args: "-DNANOARROW_DEVICE_WITH_METAL=ON"}
-          # This runner is currently not available
-          # https://github.com/apache/arrow-nanoarrow/issues/814
-          # - {runner: ["self-hosted", "cuda"], label: with-cuda, cmake_args: "-DNANOARROW_DEVICE_WITH_CUDA=ON"}
+          - {runner: "runs-on=${{ github.run_id }}/family=g4dn.xlarge/image=ubuntu24-gpu-x64/spot=capacity-optimized", label: with-cuda, cmake_args: "-DNANOARROW_DEVICE_WITH_CUDA=ON"}
 
     steps:
       - uses: actions/checkout@v4
@@ -66,8 +64,16 @@ jobs:
         if: matrix.config.label == 'with-cuda'
         uses: actions/setup-python@v5
         with:
-          python-version: "3.x"
+          # cupy-cuda12x does not have a PyPI distribution for Python 3.14
+          python-version: "3.13"
           cache: 'pip'
+
+      - name: Display NVIDIA SMI details
+        if: matrix.config.label == 'with-cuda'
+        run: |
+          nvidia-smi
+          nvidia-smi -L
+          nvidia-smi -q -d Memory
 
       # The self-hosted runner for CUDA needs a number of packages installed that
       # are already installed on the GitHub runner
