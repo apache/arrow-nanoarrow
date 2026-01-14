@@ -1251,8 +1251,8 @@ NANOARROW_DLL ArrowErrorCode ArrowBasicArrayStreamInit(
 /// \brief Set the ith ArrowArray in this ArrowArrayStream.
 ///
 /// array_stream must have been initialized with ArrowBasicArrayStreamInit().
-/// This function move the ownership of array to the array_stream. i must
-/// be greater than zero and less than the value of n_arrays passed in
+/// This function moves the ownership of array to the array_stream. i must
+/// be greater than or equal to zero and less than the value of n_arrays passed in
 /// ArrowBasicArrayStreamInit(). Callers are not required to fill all
 /// n_arrays members (i.e., n_arrays is a maximum bound).
 NANOARROW_DLL void ArrowBasicArrayStreamSetArray(struct ArrowArrayStream* array_stream,
