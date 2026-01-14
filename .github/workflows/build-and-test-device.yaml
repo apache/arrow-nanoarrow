@@ -64,7 +64,8 @@ jobs:
         if: matrix.config.label == 'with-cuda'
         uses: actions/setup-python@v5
         with:
-          python-version: "3.x"
+          # cupy-cuda12x does not have a PyPI distribution for Python 3.14
+          python-version: "3.13"
           cache: 'pip'
 
       - name: Display NVIDIA SMI details
