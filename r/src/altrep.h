@@ -32,7 +32,6 @@
 static inline const char* nanoarrow_altrep_class(SEXP x) {
   if (ALTREP(x)) {
 #if R_VERSION >= R_Version(4, 6, 0)
-#error "make sure this fails to compile so we know this branch is tested in ci"
     SEXP data_class_sym = R_altrep_class_name(x);
 #else
     SEXP data_class_sym = CAR(ATTRIB(ALTREP_CLASS(x)));
