@@ -31,7 +31,11 @@
 // object.
 static inline const char* nanoarrow_altrep_class(SEXP x) {
   if (ALTREP(x)) {
+#if R_VERSION >= R_Version(4, 6, 0)
+    SEXP data_class_sym = R_altrep_class_name(x);
+#else
     SEXP data_class_sym = CAR(ATTRIB(ALTREP_CLASS(x)));
+#endif
     return CHAR(PRINTNAME(data_class_sym));
   } else {
     return NULL;
