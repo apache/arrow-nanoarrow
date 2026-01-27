@@ -27,7 +27,7 @@ should be materialized.
 ## Details
 
 - null to
-  [`vctrs::unspecified()`](https://vctrs.r-lib.org/reference/unspecified.html)
+  [`vctrs::unspecified()`](https://vctrs.r-lib.org/reference/vctrs-unspecified.html)
 
 - boolean to [`logical()`](https://rdrr.io/r/base/logical.html)
 

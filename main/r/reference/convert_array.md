@@ -104,9 +104,9 @@ Conversions are implemented for the following R vector types:
   can be converted to
   [`data.frame()`](https://rdrr.io/r/base/data.frame.html).
 
-- [`vctrs::unspecified()`](https://vctrs.r-lib.org/reference/unspecified.html):
+- [`vctrs::unspecified()`](https://vctrs.r-lib.org/reference/vctrs-unspecified.html):
   Any type can be converted to
-  [`vctrs::unspecified()`](https://vctrs.r-lib.org/reference/unspecified.html);
+  [`vctrs::unspecified()`](https://vctrs.r-lib.org/reference/vctrs-unspecified.html);
   however, a warning will be raised if any non-null values are
   encountered.
 
