@@ -186,7 +186,7 @@ SEXP nanoarrow_c_buffer_info(SEXP buffer_xptr) {
                          "type", "data_type",  "element_size_bits",
                          ""};
   SEXP info = PROTECT(Rf_mkNamed(VECSXP, names));
-  SET_VECTOR_ELT(info, 0, R_MakeExternalPtr(buffer->data, NULL, buffer_xptr));
+  SET_VECTOR_ELT(info, 0, R_MakeExternalPtr(buffer->data, R_NilValue, buffer_xptr));
   SET_VECTOR_ELT(info, 1, Rf_ScalarReal((double)buffer->size_bytes));
   SET_VECTOR_ELT(info, 2, Rf_ScalarReal((double)buffer->capacity_bytes));
   SET_VECTOR_ELT(info, 3, buffer_type_sexp);
