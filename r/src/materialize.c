@@ -59,7 +59,7 @@ SEXP nanoarrow_alloc_type(enum VectorType vector_type, R_xlen_t len) {
 // expands the row.names attribute
 static int has_attrib_safe(SEXP x, SEXP sym) {
 #if R_VERSION >= R_Version(4, 6, 0)
-  return (int) R_hasAttrib(x, sym);
+  return (int)R_hasAttrib(x, sym);
 #else
   for (SEXP atts = ATTRIB(x); atts != R_NilValue; atts = CDR(atts)) {
     if (TAG(atts) == sym) return TRUE;
