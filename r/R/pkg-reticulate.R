@@ -161,6 +161,7 @@ py_to_r.nanoarrow.array_stream.ArrayStream <- function(x) {
 }
 
 #' @rdname as_nanoarrow_schema.python.builtin.object
+#' @importFrom utils packageVersion
 #' @export
 test_reticulate_with_nanoarrow <- function() {
   identical(Sys.getenv("NANOARROW_R_TEST_RETICULATE"), "true") &&

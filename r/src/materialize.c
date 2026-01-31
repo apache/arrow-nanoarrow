@@ -18,6 +18,7 @@
 #define R_NO_REMAP
 #include <R.h>
 #include <Rinternals.h>
+#include <Rversion.h>
 
 #include "array.h"
 #include "nanoarrow.h"
@@ -57,10 +58,14 @@ SEXP nanoarrow_alloc_type(enum VectorType vector_type, R_xlen_t len) {
 // A version of Rf_getAttrib(x, sym) != R_NilValue that never
 // expands the row.names attribute
 static int has_attrib_safe(SEXP x, SEXP sym) {
+#if R_VERSION >= R_Version(4, 6, 0)
+  return (int)R_hasAttrib(x, sym);
+#else
   for (SEXP atts = ATTRIB(x); atts != R_NilValue; atts = CDR(atts)) {
     if (TAG(atts) == sym) return TRUE;
   }
   return FALSE;
+#endif
 }
 
 R_xlen_t nanoarrow_data_frame_size(SEXP x) {
