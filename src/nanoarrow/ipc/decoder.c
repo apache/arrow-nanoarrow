@@ -1999,12 +1999,6 @@ static ArrowErrorCode ArrowIpcDecoderDecodeArrayViewInternal(
   struct ArrowIpcDecoderPrivate* private_data =
       (struct ArrowIpcDecoderPrivate*)decoder->private_data;
 
-  if (private_data->last_message == NULL ||
-      decoder->message_type != NANOARROW_IPC_MESSAGE_TYPE_RECORD_BATCH) {
-    ArrowErrorSet(error, "decoder did not just decode a RecordBatch message");
-    return EINVAL;
-  }
-
   // RecordBatch messages don't count the root node but decoder->fields does
   // (decoder->fields[0] is the root field)
   if (field_i + 1 >= private_data->n_fields) {
@@ -2067,6 +2061,14 @@ ArrowErrorCode ArrowIpcDecoderDecodeArrayView(struct ArrowIpcDecoder* decoder,
                                               struct ArrowBufferView body, int64_t i,
                                               struct ArrowArrayView** out,
                                               struct ArrowError* error) {
+  struct ArrowIpcDecoderPrivate* private_data =
+      (struct ArrowIpcDecoderPrivate*)decoder->private_data;
+  if (private_data->last_message == NULL ||
+      decoder->message_type != NANOARROW_IPC_MESSAGE_TYPE_RECORD_BATCH) {
+    ArrowErrorSet(error, "decoder did not just decode a RecordBatch message");
+    return EINVAL;
+  }
+
   return ArrowIpcDecoderDecodeArrayViewInternal(
       decoder, ArrowIpcBufferFactoryFromView(&body), i, out, error);
 }
@@ -2076,6 +2078,14 @@ ArrowErrorCode ArrowIpcDecoderDecodeArray(struct ArrowIpcDecoder* decoder,
                                           struct ArrowArray* out,
                                           enum ArrowValidationLevel validation_level,
                                           struct ArrowError* error) {
+  struct ArrowIpcDecoderPrivate* private_data =
+      (struct ArrowIpcDecoderPrivate*)decoder->private_data;
+  if (private_data->last_message == NULL ||
+      decoder->message_type != NANOARROW_IPC_MESSAGE_TYPE_RECORD_BATCH) {
+    ArrowErrorSet(error, "decoder did not just decode a RecordBatch message");
+    return EINVAL;
+  }
+
   struct ArrowArrayView* array_view;
   NANOARROW_RETURN_NOT_OK(ArrowIpcDecoderDecodeArrayViewInternal(
       decoder, ArrowIpcBufferFactoryFromView(&body), i, &array_view, error));
@@ -2120,22 +2130,31 @@ ArrowErrorCode ArrowIpcDecoderDecodeArrayFromShared(
   return NANOARROW_OK;
 }
 
-void ArrowIpcDictionaryInit(struct ArrowIpcDictionary* dictionary) {
-  NANOARROW_DCHECK(dictionary != NULL);
+ArrowErrorCode ArrowIpcDictionaryDecoderInit(struct ArrowIpcDictionaryDecoder* dictionary,
+                                             const struct ArrowIpcDecoder* parent,
+                                             int64_t id,
+                                             struct ArrowSchema* value_schema) {
+  memset(dictionary, 0, sizeof(struct ArrowIpcDictionaryDecoder));
+  NANOARROW_RETURN_NOT_OK(ArrowIpcDecoderInit(&dictionary->decoder));
+  ArrowErrorCode result =
+      ArrowIpcDecoderSetEndianness(&dictionary->decoder, parent->endianness);
+  if (result != NANOARROW_OK) {
+    ArrowIpcDecoderReset(&dictionary->decoder);
+    return result;
+  }
 
-  memset(dictionary, 0, sizeof(struct ArrowIpcDictionary));
+  result = ArrowIpcDecoderSetSchema(&dictionary->decoder, value_schema, NULL);
+  if (result != NANOARROW_OK) {
+    return result;
+  }
+
+  dictionary->id = id;
+  return NANOARROW_OK;
 }
 
-void ArrowIpcDictionaryReset(struct ArrowIpcDictionary* dictionary) {
+void ArrowIpcDictionaryDecoderReset(struct ArrowIpcDictionaryDecoder* dictionary) {
   NANOARROW_DCHECK(dictionary != NULL);
-
-  if (dictionary->schema.release != NULL) {
-    ArrowSchemaRelease(&dictionary->schema);
-  }
-
-  if (dictionary->array.release != NULL) {
-    ArrowArrayRelease(&dictionary->array);
-  }
+  ArrowIpcDecoderReset(&dictionary->decoder);
 }
 
 void ArrowIpcDictionariesInit(struct ArrowIpcDictionaries* dictionaries) {
@@ -2147,7 +2166,7 @@ void ArrowIpcDictionariesReset(struct ArrowIpcDictionaries* dictionaries) {
   NANOARROW_DCHECK(dictionaries != NULL);
 
   for (int64_t i = 0; i < dictionaries->n_dictionaries; i++) {
-    ArrowIpcDictionaryReset(dictionaries->dictionaries + i);
+    ArrowIpcDictionaryDecoderReset(dictionaries->dictionaries + i);
   }
 
   if (dictionaries->dictionaries != NULL) {
@@ -2156,14 +2175,21 @@ void ArrowIpcDictionariesReset(struct ArrowIpcDictionaries* dictionaries) {
 }
 
 ArrowErrorCode ArrowIpcDictionariesAppend(struct ArrowIpcDictionaries* dictionaries,
+                                          const struct ArrowIpcDecoder* decoder,
                                           int64_t id, struct ArrowSchema* schema) {
+  struct ArrowIpcDictionaryDecoder decoder_tmp;
+  NANOARROW_RETURN_NOT_OK(
+      ArrowIpcDictionaryDecoderInit(&decoder_tmp, decoder, id, schema));
+
   if ((dictionaries->n_dictionaries + 1) > dictionaries->capacity) {
     int64_t new_capacity =
         dictionaries->n_dictionaries == 0 ? 1 : dictionaries->n_dictionaries * 2;
-    struct ArrowIpcDictionary* new_dictionaries =
-        (struct ArrowIpcDictionary*)ArrowRealloc(
-            dictionaries->dictionaries, new_capacity * sizeof(struct ArrowIpcDictionary));
+    struct ArrowIpcDictionaryDecoder* new_dictionaries =
+        (struct ArrowIpcDictionaryDecoder*)ArrowRealloc(
+            dictionaries->dictionaries,
+            new_capacity * sizeof(struct ArrowIpcDictionaryDecoder));
     if (new_dictionaries == NULL) {
+      ArrowIpcDictionaryDecoderReset(&decoder_tmp);
       return ENOMEM;
     }
 
@@ -2171,11 +2197,9 @@ ArrowErrorCode ArrowIpcDictionariesAppend(struct ArrowIpcDictionaries* dictionar
     dictionaries->capacity = new_capacity;
   }
 
-  struct ArrowIpcDictionary* dictionary =
+  struct ArrowIpcDictionaryDecoder* dictionary =
       dictionaries->dictionaries + dictionaries->n_dictionaries;
-  ArrowIpcDictionaryInit(dictionary);
-  dictionary->id = id;
-  ArrowSchemaMove(schema, &dictionary->schema);
+  memcpy(&decoder_tmp, dictionary, sizeof(struct ArrowIpcDictionaryDecoder));
   dictionaries->n_dictionaries++;
   return NANOARROW_OK;
 }

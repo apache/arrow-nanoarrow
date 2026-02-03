@@ -467,29 +467,40 @@ NANOARROW_DLL ArrowErrorCode ArrowIpcDecoderDecodeArrayFromShared(
     struct ArrowArray* out, enum ArrowValidationLevel validation_level,
     struct ArrowError* error);
 
-struct ArrowIpcDictionary {
+struct ArrowIpcDictionaryDecoder {
   int64_t id;
-  struct ArrowSchema schema;
-  struct ArrowArray array;
+  struct ArrowIpcDecoder decoder;
 };
 
-void ArrowIpcDictionaryInit(struct ArrowIpcDictionary* dictionary);
+ArrowErrorCode ArrowIpcDictionaryDecoderInit(struct ArrowIpcDictionaryDecoder* dictionary,
+                                             const struct ArrowIpcDecoder* parent,
+                                             int64_t id,
+                                             struct ArrowSchema* value_schema);
 
-void ArrowIpcDictionaryReset(struct ArrowIpcDictionary* dictionary);
+void ArrowIpcDictionaryDecoderReset(struct ArrowIpcDictionaryDecoder* dictionary);
 
 struct ArrowIpcDictionaries {
-  struct ArrowIpcDictionary* dictionaries;
+  struct ArrowIpcDictionaryDecoder* dictionaries;
   int64_t n_dictionaries;
   int64_t capacity;
-  void* private_data;
 };
 
 void ArrowIpcDictionariesInit(struct ArrowIpcDictionaries* dictionaries);
+void ArrowIpcDictionariesReset(struct ArrowIpcDictionaries* dictionaries);
 
 ArrowErrorCode ArrowIpcDictionariesAppend(struct ArrowIpcDictionaries* dictionaries,
+
+                                          const struct ArrowIpcDecoder* decoder,
                                           int64_t id, struct ArrowSchema* schema);
 
-void ArrowIpcDictionariesReset(struct ArrowIpcDictionaries* dictionaries);
+/// \brief Append the current DictionaryBatch message to the encoder
+///
+/// After a successful call to ArrowIpcDecoderDecodeHeader(), assemble an ArrowArray given
+/// a message body and append (or replace) the corresponding entry in this decoder's
+/// ArrowIpcDictionaries.
+NANOARROW_DLL ArrowErrorCode ArrowIpcDecoderAppendDictionaryFromShared(
+    struct ArrowIpcDecoder* decoder, struct ArrowIpcSharedBuffer* shared,
+    enum ArrowValidationLevel validation_level, struct ArrowError* error);
 
 /// \brief An user-extensible input data source
 struct ArrowIpcInputStream {
