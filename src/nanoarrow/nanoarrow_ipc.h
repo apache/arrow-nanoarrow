@@ -489,7 +489,6 @@ void ArrowIpcDictionariesInit(struct ArrowIpcDictionaries* dictionaries);
 void ArrowIpcDictionariesReset(struct ArrowIpcDictionaries* dictionaries);
 
 ArrowErrorCode ArrowIpcDictionariesAppend(struct ArrowIpcDictionaries* dictionaries,
-
                                           const struct ArrowIpcDecoder* decoder,
                                           int64_t id, struct ArrowSchema* schema);
 
