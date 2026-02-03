@@ -1540,3 +1540,36 @@ TEST(NanoarrowIpcTest, NanoarrowIpcFooterDecodingErrors) {
       << error.message;
   EXPECT_EQ(decoder->header_size_bytes, 0xFFFF);
 }
+
+TEST(NanoarrowIpcTest, NanoarrowIpcDictionariesLifecycle) {
+  struct ArrowIpcDictionaries dictionaries;
+
+  // Test init
+  ArrowIpcDictionariesInit(&dictionaries);
+  EXPECT_EQ(dictionaries.dictionaries, nullptr);
+  EXPECT_EQ(dictionaries.n_dictionaries, 0);
+  EXPECT_EQ(dictionaries.capacity, 0);
+
+  // Test append first dictionary
+  nanoarrow::UniqueSchema schema1;
+  ASSERT_EQ(ArrowSchemaInitFromType(schema1.get(), NANOARROW_TYPE_INT32), NANOARROW_OK);
+  ASSERT_EQ(ArrowIpcDictionariesAppend(&dictionaries, 42, schema1.get()), NANOARROW_OK);
+  EXPECT_EQ(dictionaries.n_dictionaries, 1);
+  EXPECT_GE(dictionaries.capacity, 1);
+  EXPECT_NE(dictionaries.dictionaries, nullptr);
+  EXPECT_EQ(dictionaries.dictionaries[0].id, 42);
+  EXPECT_NE(dictionaries.dictionaries[0].schema.release, nullptr);
+
+  // Test append second dictionary
+  nanoarrow::UniqueSchema schema2;
+  ASSERT_EQ(ArrowSchemaInitFromType(schema2.get(), NANOARROW_TYPE_STRING), NANOARROW_OK);
+  ASSERT_EQ(ArrowIpcDictionariesAppend(&dictionaries, 99, schema2.get()), NANOARROW_OK);
+  EXPECT_EQ(dictionaries.n_dictionaries, 2);
+  EXPECT_GE(dictionaries.capacity, 2);
+  EXPECT_EQ(dictionaries.dictionaries[0].id, 42);
+  EXPECT_EQ(dictionaries.dictionaries[1].id, 99);
+  EXPECT_NE(dictionaries.dictionaries[1].schema.release, nullptr);
+
+  // Test reset cleans up all resources
+  ArrowIpcDictionariesReset(&dictionaries);
+}

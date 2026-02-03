@@ -2159,13 +2159,15 @@ ArrowErrorCode ArrowIpcDictionariesAppend(struct ArrowIpcDictionaries* dictionar
                                           int64_t id, struct ArrowSchema* schema) {
   if ((dictionaries->n_dictionaries + 1) > dictionaries->capacity) {
     int64_t new_capacity =
-        1 ? dictionaries->n_dictionaries == 0 : dictionaries->n_dictionaries * 2;
-    struct ArrowIpcDictionaries* new_dictionaries = realloc(
-        dictionaries->dictionaries, new_capacity * sizeof(struct ArrowIpcDictionary));
+        dictionaries->n_dictionaries == 0 ? 1 : dictionaries->n_dictionaries * 2;
+    struct ArrowIpcDictionary* new_dictionaries =
+        (struct ArrowIpcDictionary*)ArrowRealloc(
+            dictionaries->dictionaries, new_capacity * sizeof(struct ArrowIpcDictionary));
     if (new_dictionaries == NULL) {
       return ENOMEM;
     }
 
+    dictionaries->dictionaries = new_dictionaries;
     dictionaries->capacity = new_capacity;
   }
 
