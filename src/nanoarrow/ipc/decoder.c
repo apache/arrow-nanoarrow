@@ -66,8 +66,8 @@ struct ArrowIpcField {
   struct ArrowArray* array;
   // The cumulative number of buffers preceding this node.
   int64_t buffer_offset;
-  // Dictionary information for dictionary-encoded fields
-  struct ArrowIpcDictionary* dictionary;
+  // Dictionary identifier for this node
+  int64_t dictionary_id;
 };
 
 // Internal data specific to the read/decode process
@@ -103,6 +103,11 @@ struct ArrowIpcDecoderPrivate {
   struct ArrowIpcFooter footer;
   // Decompressor for compression support
   struct ArrowIpcDecompressor decompressor;
+  // Owned dictionary tracker. Only the root decoder will own its dictionary tracker;
+  // however, a reference to it will be passed to decode methods such that child
+  // dictionary decoders can share a single dictionary source to support nested
+  // dictionaries.
+  struct ArrowIpcDictionaries owned_dictionaries;
 };
 
 ArrowErrorCode ArrowIpcCheckRuntime(struct ArrowError* error) {
@@ -863,11 +868,18 @@ static int ArrowIpcSetDictionaryEncoding(
     schema->flags |= ARROW_FLAG_DICTIONARY_ORDERED;
   }
 
-  // TODO: should the non extension-type field metadata get moved back to the
-  // parent field?
+  // TODO: The non extension-type field metadata should get moved back to the
+  // parent field if there was any.
 
-  // TODO: Record the dictionary id in Schema metadata? (Or keep track of it
-  // some other way?)
+  // TODO: Track the dictionary. This can be as a const struct ArrowSchema* pointer
+  // paried with an identifier, which must be passed down through all of these calls.
+  // After the schema has been set, this pairing of ArrowSchema* pointer to id must
+  // be post-processed to:
+  //
+  // - Check that identical identifiers refer to equivalent schemas
+  // - Set the ArrowIpcField dictionary id member
+  // - Create the IPC decoders (or maybe this should be done lazily on first dictionary
+  //   batch decode)
 
   return NANOARROW_OK;
 }
@@ -1428,7 +1440,7 @@ static void ArrowIpcDecoderInitFields(struct ArrowIpcField* fields,
   field->array_view = array_view;
   field->array = array;
   field->buffer_offset = *n_buffers;
-  field->dictionary = NULL;
+  field->dictionary_id = -1;
 
   for (int i = 0; i < NANOARROW_MAX_FIXED_BUFFERS; i++) {
     *n_buffers += array_view->layout.buffer_type[i] != NANOARROW_BUFFER_TYPE_NONE;
