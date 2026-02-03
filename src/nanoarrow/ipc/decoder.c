@@ -2199,7 +2199,7 @@ ArrowErrorCode ArrowIpcDictionariesAppend(struct ArrowIpcDictionaries* dictionar
 
   struct ArrowIpcDictionaryDecoder* dictionary =
       dictionaries->dictionaries + dictionaries->n_dictionaries;
-  memcpy(&decoder_tmp, dictionary, sizeof(struct ArrowIpcDictionaryDecoder));
+  memcpy(dictionary, &decoder_tmp, sizeof(struct ArrowIpcDictionaryDecoder));
   dictionaries->n_dictionaries++;
   return NANOARROW_OK;
 }
