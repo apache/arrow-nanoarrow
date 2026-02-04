@@ -21,6 +21,7 @@
 #if defined(NANOARROW_BUILD_TESTS_WITH_ARROW)
 #include <arrow/array.h>
 #include <arrow/c/bridge.h>
+#include <arrow/extension/uuid.h>
 #include <arrow/ipc/api.h>
 #include <arrow/util/key_value_metadata.h>
 #endif
@@ -732,139 +733,6 @@ TEST(NanoarrowIpcTest, NanoarrowIpcSetDecompressor) {
   ArrowIpcDecoderReset(&decoder);
 }
 
-#if defined(NANOARROW_BUILD_TESTS_WITH_ARROW)
-class ArrowTypeParameterizedTestFixture
-    : public ::testing::TestWithParam<std::shared_ptr<arrow::DataType>> {
- protected:
-  std::shared_ptr<arrow::DataType> data_type;
-};
-
-TEST_P(ArrowTypeParameterizedTestFixture, NanoarrowIpcArrowTypeRoundtrip) {
-  const std::shared_ptr<arrow::DataType>& data_type = GetParam();
-  std::shared_ptr<arrow::Schema> dummy_schema =
-      arrow::schema({arrow::field("dummy_name", data_type)});
-  auto maybe_serialized = arrow::ipc::SerializeSchema(*dummy_schema);
-  ASSERT_TRUE(maybe_serialized.ok());
-
-  struct ArrowBufferView buffer_view;
-  buffer_view.data.data = maybe_serialized.ValueUnsafe()->data();
-  buffer_view.size_bytes = maybe_serialized.ValueOrDie()->size();
-
-  struct ArrowIpcDecoder decoder;
-  ArrowIpcDecoderInit(&decoder);
-  ASSERT_EQ(ArrowIpcDecoderVerifyHeader(&decoder, buffer_view, nullptr), NANOARROW_OK);
-  EXPECT_EQ(decoder.header_size_bytes, buffer_view.size_bytes);
-  EXPECT_EQ(decoder.body_size_bytes, 0);
-
-  ASSERT_EQ(ArrowIpcDecoderDecodeHeader(&decoder, buffer_view, nullptr), NANOARROW_OK);
-  struct ArrowSchema schema;
-  ASSERT_EQ(ArrowIpcDecoderDecodeSchema(&decoder, &schema, nullptr), NANOARROW_OK);
-  auto maybe_schema = arrow::ImportSchema(&schema);
-  ASSERT_TRUE(maybe_schema.ok());
-
-  // Better failure message if we first check for string equality
-  EXPECT_EQ(maybe_schema.ValueUnsafe()->ToString(), dummy_schema->ToString());
-  EXPECT_TRUE(maybe_schema.ValueUnsafe()->Equals(dummy_schema, true));
-
-  ArrowIpcDecoderReset(&decoder);
-}
-#endif
-
-std::string ArrowSchemaMetadataToString(const char* metadata) {
-  struct ArrowMetadataReader reader;
-  auto st = ArrowMetadataReaderInit(&reader, metadata);
-  EXPECT_EQ(st, NANOARROW_OK);
-
-  bool comma = false;
-  std::string out;
-  while (reader.remaining_keys > 0) {
-    struct ArrowStringView key, value;
-    auto st = ArrowMetadataReaderRead(&reader, &key, &value);
-    EXPECT_EQ(st, NANOARROW_OK);
-    if (comma) {
-      out += ", ";
-    }
-    comma = true;
-
-    out.append(key.data, key.size_bytes);
-    out += "=";
-    out.append(value.data, value.size_bytes);
-  }
-  return out;
-}
-
-std::string ArrowSchemaToString(const struct ArrowSchema* schema) {
-  int64_t n = ArrowSchemaToString(schema, nullptr, 0, /*recursive=*/false);
-  std::vector<char> out_vec(n, '\0');
-  ArrowSchemaToString(schema, out_vec.data(), n, /*recursive=*/false);
-  std::string out(out_vec.data(), out_vec.size());
-
-  std::string metadata = ArrowSchemaMetadataToString(schema->metadata);
-  if (!metadata.empty()) {
-    out += "{" + metadata + "}";
-  }
-
-  bool comma = false;
-  if (schema->format[0] == '+') {
-    out += "<";
-    for (int64_t i = 0; i < schema->n_children; ++i) {
-      if (comma) {
-        out += ", ";
-      }
-      comma = true;
-
-      auto* child = schema->children[i];
-      if (child && child->name[0] != '\0') {
-        out += child->name;
-        out += ": ";
-      }
-      out += ArrowSchemaToString(schema->children[i]);
-    }
-    out += ">";
-  }
-
-  return out;
-}
-
-#if defined(NANOARROW_BUILD_TESTS_WITH_ARROW)
-TEST_P(ArrowTypeParameterizedTestFixture, NanoarrowIpcNanoarrowTypeRoundtrip) {
-  nanoarrow::UniqueSchema schema;
-  ASSERT_TRUE(
-      arrow::ExportSchema(arrow::Schema({arrow::field("", GetParam())}), schema.get())
-          .ok());
-
-  nanoarrow::ipc::UniqueEncoder encoder;
-  EXPECT_EQ(ArrowIpcEncoderInit(encoder.get()), NANOARROW_OK);
-
-  struct ArrowError error;
-  EXPECT_EQ(ArrowIpcEncoderEncodeSchema(encoder.get(), schema.get(), &error),
-            NANOARROW_OK)
-      << error.message;
-
-  nanoarrow::UniqueBuffer buffer;
-  EXPECT_EQ(
-      ArrowIpcEncoderFinalizeBuffer(encoder.get(), /*encapsulate=*/true, buffer.get()),
-      NANOARROW_OK);
-
-  struct ArrowBufferView buffer_view;
-  buffer_view.data.data = buffer->data;
-  buffer_view.size_bytes = buffer->size_bytes;
-
-  nanoarrow::ipc::UniqueDecoder decoder;
-  ArrowIpcDecoderInit(decoder.get());
-  ASSERT_EQ(ArrowIpcDecoderVerifyHeader(decoder.get(), buffer_view, nullptr),
-            NANOARROW_OK);
-  ASSERT_EQ(ArrowIpcDecoderDecodeHeader(decoder.get(), buffer_view, nullptr),
-            NANOARROW_OK);
-
-  nanoarrow::UniqueSchema roundtripped;
-  ASSERT_EQ(ArrowIpcDecoderDecodeSchema(decoder.get(), roundtripped.get(), nullptr),
-            NANOARROW_OK);
-
-  EXPECT_EQ(ArrowSchemaToString(roundtripped.get()), ArrowSchemaToString(schema.get()));
-}
-#endif
-
 TEST(NanoarrowIpcTest, NanoarrowIpcDecodeSimpleRecordBatchFromShared) {
   struct ArrowIpcDecoder decoder;
   struct ArrowError error;
@@ -999,7 +867,148 @@ TEST(NanoarrowIpcTest, NanoarrowIpcSharedBufferThreadSafeDecode) {
 }
 
 #if defined(NANOARROW_BUILD_TESTS_WITH_ARROW)
+class ArrowTypeParameterizedTestFixture
+    : public ::testing::TestWithParam<std::shared_ptr<arrow::DataType>> {
+ protected:
+  std::shared_ptr<arrow::DataType> data_type;
+};
+
+TEST_P(ArrowTypeParameterizedTestFixture, NanoarrowIpcArrowTypeRoundtrip) {
+  const std::shared_ptr<arrow::DataType>& data_type = GetParam();
+  std::shared_ptr<arrow::Schema> dummy_schema =
+      arrow::schema({arrow::field("dummy_name", data_type)});
+  auto maybe_serialized = arrow::ipc::SerializeSchema(*dummy_schema);
+  ASSERT_TRUE(maybe_serialized.ok());
+
+  struct ArrowBufferView buffer_view;
+  buffer_view.data.data = maybe_serialized.ValueUnsafe()->data();
+  buffer_view.size_bytes = maybe_serialized.ValueOrDie()->size();
+
+  struct ArrowIpcDecoder decoder;
+  ArrowIpcDecoderInit(&decoder);
+  ASSERT_EQ(ArrowIpcDecoderVerifyHeader(&decoder, buffer_view, nullptr), NANOARROW_OK);
+  EXPECT_EQ(decoder.header_size_bytes, buffer_view.size_bytes);
+  EXPECT_EQ(decoder.body_size_bytes, 0);
+
+  ASSERT_EQ(ArrowIpcDecoderDecodeHeader(&decoder, buffer_view, nullptr), NANOARROW_OK);
+  struct ArrowSchema schema;
+  ASSERT_EQ(ArrowIpcDecoderDecodeSchema(&decoder, &schema, nullptr), NANOARROW_OK);
+  auto maybe_schema = arrow::ImportSchema(&schema);
+  ASSERT_TRUE(maybe_schema.ok());
+
+  // Better failure message if we first check for string equality
+  EXPECT_EQ(maybe_schema.ValueUnsafe()->ToString(), dummy_schema->ToString());
+  EXPECT_TRUE(maybe_schema.ValueUnsafe()->Equals(dummy_schema, true));
+
+  ArrowIpcDecoderReset(&decoder);
+}
+#endif
+
+std::string ArrowSchemaMetadataToString(const char* metadata) {
+  struct ArrowMetadataReader reader;
+  auto st = ArrowMetadataReaderInit(&reader, metadata);
+  EXPECT_EQ(st, NANOARROW_OK);
+
+  bool comma = false;
+  std::string out;
+  while (reader.remaining_keys > 0) {
+    struct ArrowStringView key, value;
+    auto st = ArrowMetadataReaderRead(&reader, &key, &value);
+    EXPECT_EQ(st, NANOARROW_OK);
+    if (comma) {
+      out += ", ";
+    }
+    comma = true;
+
+    out.append(key.data, key.size_bytes);
+    out += "=";
+    out.append(value.data, value.size_bytes);
+  }
+  return out;
+}
+
+std::string ArrowSchemaToString(const struct ArrowSchema* schema) {
+  int64_t n = ArrowSchemaToString(schema, nullptr, 0, /*recursive=*/false);
+  std::vector<char> out_vec(n, '\0');
+  ArrowSchemaToString(schema, out_vec.data(), n, /*recursive=*/false);
+  std::string out(out_vec.data(), out_vec.size());
+
+  std::string metadata = ArrowSchemaMetadataToString(schema->metadata);
+  if (!metadata.empty()) {
+    out += "{" + metadata + "}";
+  }
+
+  bool comma = false;
+  if (schema->format[0] == '+') {
+    out += "<";
+    for (int64_t i = 0; i < schema->n_children; ++i) {
+      if (comma) {
+        out += ", ";
+      }
+      comma = true;
+
+      auto* child = schema->children[i];
+      if (child && child->name[0] != '\0') {
+        out += child->name;
+        out += ": ";
+      }
+      out += ArrowSchemaToString(schema->children[i]);
+    }
+    out += ">";
+  }
+
+  return out;
+}
+
+#if defined(NANOARROW_BUILD_TESTS_WITH_ARROW)
+TEST_P(ArrowTypeParameterizedTestFixture, NanoarrowIpcNanoarrowTypeRoundtrip) {
+  if (GetParam()->id() == arrow::Type::DICTIONARY) {
+    GTEST_SKIP() << "Dictionary array decode is not yet supported";
+  }
+
+  nanoarrow::UniqueSchema schema;
+  ASSERT_TRUE(
+      arrow::ExportSchema(arrow::Schema({arrow::field("", GetParam())}), schema.get())
+          .ok());
+
+  nanoarrow::ipc::UniqueEncoder encoder;
+  EXPECT_EQ(ArrowIpcEncoderInit(encoder.get()), NANOARROW_OK);
+
+  struct ArrowError error;
+  EXPECT_EQ(ArrowIpcEncoderEncodeSchema(encoder.get(), schema.get(), &error),
+            NANOARROW_OK)
+      << error.message;
+
+  nanoarrow::UniqueBuffer buffer;
+  EXPECT_EQ(
+      ArrowIpcEncoderFinalizeBuffer(encoder.get(), /*encapsulate=*/true, buffer.get()),
+      NANOARROW_OK);
+
+  struct ArrowBufferView buffer_view;
+  buffer_view.data.data = buffer->data;
+  buffer_view.size_bytes = buffer->size_bytes;
+
+  nanoarrow::ipc::UniqueDecoder decoder;
+  ArrowIpcDecoderInit(decoder.get());
+  ASSERT_EQ(ArrowIpcDecoderVerifyHeader(decoder.get(), buffer_view, nullptr),
+            NANOARROW_OK);
+  ASSERT_EQ(ArrowIpcDecoderDecodeHeader(decoder.get(), buffer_view, nullptr),
+            NANOARROW_OK);
+
+  nanoarrow::UniqueSchema roundtripped;
+  ASSERT_EQ(ArrowIpcDecoderDecodeSchema(decoder.get(), roundtripped.get(), nullptr),
+            NANOARROW_OK);
+
+  EXPECT_EQ(ArrowSchemaToString(roundtripped.get()), ArrowSchemaToString(schema.get()));
+}
+#endif
+
+#if defined(NANOARROW_BUILD_TESTS_WITH_ARROW)
 TEST_P(ArrowTypeParameterizedTestFixture, NanoarrowIpcArrowArrayRoundtrip) {
+  if (GetParam()->id() == arrow::Type::DICTIONARY) {
+    GTEST_SKIP() << "Dictionary array decode is not yet supported";
+  }
+
   const std::shared_ptr<arrow::DataType>& data_type = GetParam();
   std::shared_ptr<arrow::Schema> dummy_schema =
       arrow::schema({arrow::field("dummy_name", data_type)});
@@ -1091,6 +1100,10 @@ void AssertArrayViewIdentical(const struct ArrowArrayView* actual,
 
 #if defined(NANOARROW_BUILD_TESTS_WITH_ARROW)
 TEST_P(ArrowTypeParameterizedTestFixture, NanoarrowIpcNanoarrowArrayRoundtrip) {
+  if (GetParam()->id() == arrow::Type::DICTIONARY) {
+    GTEST_SKIP() << "nanoarrow encoder cannot yet encode dictionaries";
+  }
+
   struct ArrowError error;
   nanoarrow::UniqueSchema schema;
   ASSERT_TRUE(
@@ -1170,8 +1183,7 @@ INSTANTIATE_TEST_SUITE_P(
         arrow::map(arrow::utf8(), arrow::int64(), true),
         arrow::struct_({arrow::field("col1", arrow::int32()),
                         arrow::field("col2", arrow::utf8())}),
-        // Zero-size union doesn't roundtrip through the C Data interface until
-        // Arrow 11 (which is not yet available on all platforms)
+        // Zero-size union
         // arrow::sparse_union(FieldVector()), arrow::dense_union(FieldVector()),
         // No custom type IDs
         arrow::sparse_union({arrow::field("col1", arrow::int32()),
@@ -1188,9 +1200,14 @@ INSTANTIATE_TEST_SUITE_P(
 
         // Type with nested metadata
         arrow::list(arrow::field("some_custom_name", arrow::int32(),
-                                 arrow::KeyValueMetadata::Make({"key1"}, {"value1"})))
-
-            ));
+                                 arrow::KeyValueMetadata::Make({"key1"}, {"value1"}))),
+        // Dictionary encoding
+        arrow::dictionary(arrow::int32(), arrow::utf8()),
+        arrow::dictionary(arrow::int32(), arrow::utf8(), true),
+        // Extension type
+        arrow::extension::uuid(),
+        // Dictionary-encoded extension
+        arrow::dictionary(arrow::int32(), arrow::extension::uuid())));
 
 class ArrowSchemaParameterizedTestFixture
     : public ::testing::TestWithParam<std::shared_ptr<arrow::Schema>> {
@@ -1228,6 +1245,12 @@ TEST_P(ArrowSchemaParameterizedTestFixture, NanoarrowIpcArrowSchemaRoundtrip) {
 }
 
 TEST_P(ArrowSchemaParameterizedTestFixture, NanoarrowIpcNanoarrowSchemaRoundtrip) {
+  for (const auto& field : GetParam()->fields()) {
+    if (field->type()->id() == arrow::Type::DICTIONARY) {
+      GTEST_SKIP() << "nanoarrow cannot yet encode arrays with dictionaries";
+    }
+  }
+
   const std::shared_ptr<arrow::Schema>& arrow_schema = GetParam();
 
   nanoarrow::UniqueSchema schema;
@@ -1265,6 +1288,12 @@ TEST_P(ArrowSchemaParameterizedTestFixture, NanoarrowIpcNanoarrowSchemaRoundtrip
 }
 
 TEST_P(ArrowSchemaParameterizedTestFixture, NanoarrowIpcNanoarrowFooterRoundtrip) {
+  for (const auto& field : GetParam()->fields()) {
+    if (field->type()->id() == arrow::Type::DICTIONARY) {
+      GTEST_SKIP() << "nanoarrow cannot yet encode arrays with dictionaries";
+    }
+  }
+
   using namespace nanoarrow::literals;
   const std::shared_ptr<arrow::Schema>& arrow_schema = GetParam();
 
@@ -1335,7 +1364,15 @@ INSTANTIATE_TEST_SUITE_P(
         // Schema metadata
         arrow::schema({}, arrow::KeyValueMetadata::Make({"key1"}, {"value1"})),
         // Non-nullable field
-        arrow::schema({arrow::field("some_name", arrow::int32(), false)})));
+        arrow::schema({arrow::field("some_name", arrow::int32(), false)}),
+        // Dictionary with field metadata
+        arrow::schema({arrow::field(
+            "some_name", arrow::dictionary(arrow::int32(), arrow::utf8()),
+            arrow::KeyValueMetadata::Make({"key1", "key2"}, {"value1", "value2"}))}),
+        // Dictionary with field metadata
+        arrow::schema({arrow::field(
+            "some_name", arrow::dictionary(arrow::int32(), arrow::extension::uuid()),
+            arrow::KeyValueMetadata::Make({"key1", "key2"}, {"value1", "value2"}))})));
 
 class ArrowTypeIdParameterizedTestFixture
     : public ::testing::TestWithParam<enum ArrowType> {
@@ -1553,9 +1590,9 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDictionariesLifecycle) {
   // Create a parent decoder for use in append
   nanoarrow::ipc::UniqueDecoder parent_decoder;
   ASSERT_EQ(ArrowIpcDecoderInit(parent_decoder.get()), NANOARROW_OK);
-  ASSERT_EQ(ArrowIpcDecoderSetEndianness(parent_decoder.get(),
-                                         ArrowIpcSystemEndianness()),
-            NANOARROW_OK);
+  ASSERT_EQ(
+      ArrowIpcDecoderSetEndianness(parent_decoder.get(), ArrowIpcSystemEndianness()),
+      NANOARROW_OK);
 
   // Test append first dictionary
   nanoarrow::UniqueSchema schema1;
@@ -1563,9 +1600,9 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDictionariesLifecycle) {
   ASSERT_EQ(ArrowSchemaSetTypeStruct(schema1.get(), 1), NANOARROW_OK);
   ASSERT_EQ(ArrowSchemaSetType(schema1->children[0], NANOARROW_TYPE_INT32), NANOARROW_OK);
   ASSERT_EQ(ArrowSchemaSetName(schema1->children[0], "value"), NANOARROW_OK);
-  ASSERT_EQ(ArrowIpcDictionariesAppend(&dictionaries, parent_decoder.get(), 42,
-                                       schema1.get()),
-            NANOARROW_OK);
+  ASSERT_EQ(
+      ArrowIpcDictionariesAppend(&dictionaries, parent_decoder.get(), 42, schema1.get()),
+      NANOARROW_OK);
   EXPECT_EQ(dictionaries.n_dictionaries, 1);
   EXPECT_GE(dictionaries.capacity, 1);
   EXPECT_NE(dictionaries.dictionaries, nullptr);
@@ -1575,11 +1612,12 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDictionariesLifecycle) {
   nanoarrow::UniqueSchema schema2;
   ArrowSchemaInit(schema2.get());
   ASSERT_EQ(ArrowSchemaSetTypeStruct(schema2.get(), 1), NANOARROW_OK);
-  ASSERT_EQ(ArrowSchemaSetType(schema2->children[0], NANOARROW_TYPE_STRING), NANOARROW_OK);
-  ASSERT_EQ(ArrowSchemaSetName(schema2->children[0], "value"), NANOARROW_OK);
-  ASSERT_EQ(ArrowIpcDictionariesAppend(&dictionaries, parent_decoder.get(), 99,
-                                       schema2.get()),
+  ASSERT_EQ(ArrowSchemaSetType(schema2->children[0], NANOARROW_TYPE_STRING),
             NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaSetName(schema2->children[0], "value"), NANOARROW_OK);
+  ASSERT_EQ(
+      ArrowIpcDictionariesAppend(&dictionaries, parent_decoder.get(), 99, schema2.get()),
+      NANOARROW_OK);
   EXPECT_EQ(dictionaries.n_dictionaries, 2);
   EXPECT_GE(dictionaries.capacity, 2);
   EXPECT_EQ(dictionaries.dictionaries[0].id, 42);
