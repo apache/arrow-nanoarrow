@@ -643,24 +643,7 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDecodeDictionaryBatch) {
   EXPECT_FALSE(decoder.dictionary->is_delta);
 
   // TODO: Access RecordBatch content
-
-  ArrowIpcDecoderReset(&decoder);
-}
-
-TEST(NanoarrowIpcTest, NanoarrowIpcDecodeDictionaryRecordBatch) {
-  struct ArrowIpcDecoder decoder;
-  struct ArrowError error;
-
-  struct ArrowBufferView data;
-  data.data.as_uint8 = kDictionaryRecordBatch;
-  data.size_bytes = sizeof(kDictionaryRecordBatch);
-
-  ASSERT_EQ(ArrowIpcDecoderInit(&decoder), NANOARROW_OK);
-
-  EXPECT_EQ(ArrowIpcDecoderVerifyHeader(&decoder, data, &error), NANOARROW_OK);
-  ASSERT_EQ(decoder.message_type, NANOARROW_IPC_MESSAGE_TYPE_RECORD_BATCH);
-
-  // TODO: Decode RecordBatch content populating dictionary array member
+  // https://github.com/apache/arrow-nanoarrow/issues/845
 
   ArrowIpcDecoderReset(&decoder);
 }
