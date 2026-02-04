@@ -171,7 +171,6 @@ The first step to creating a nanoarrow release is to create a `maint-VERSION` br
 (e.g., `usethis::pr_init("maint-0.8.0")`) and push the branch to `upstream`. This is
 a good opportunity to run though the above instructions to make sure the verification
 script and instructions are up-to-date.
-targeting the maint-XX branch that was just pushed.
 
 This is a good time to run other final checks such as:
 
@@ -196,6 +195,10 @@ A currently not automated part of this workflow is updating the R NEWS.md
 from the changelog: any changelog items for the `r/...` component can
 be copied to the R NEWS.md file. This is not essential (i.e., it does not
 affect the ability to release the R package).
+
+It is also important to ensure the usage on the README reflects the
+current version (e.g., download links refer to 0.8.0). This should be done
+after the release branch is created.
 
 This will update version numbers, the changelong, and create the git tag
 `apache-arrow-nanoarrow-0.8.0-rc0`. Check to make sure that the changelog
@@ -248,7 +251,7 @@ At this point the release candidate is suitable for a vote on the Apache Arrow d
 
 Hello,
 
-I would like to propose the following release candidate (rc0) of Apache Arrow nanoarrow [0] version 0.8.0. This is an initial release consisting of 44 resolved GitHub issues from 5 contributors [1].
+I would like to propose the following release candidate (rc0) of Apache Arrow nanoarrow [0] version 0.8.0. This release consists of 44 resolved GitHub issues from 5 contributors [1].
 
 This release candidate is based on commit: {rc_commit} [2]
 
@@ -284,6 +287,8 @@ After a passing release vote, the following tasks must be completed:
 [ ] Submit Python package to PyPI
 [ ] Update Python package on conda-forge
 [ ] Update the WrapDB entry
+[ ] Update the vcpkg entry
+[ ] Update the Conan entry
 [ ] Update release documentation
 [ ] Release blog post at https://github.com/apache/arrow-site/pull/288
 [ ] Sent announcement to announce@apache.org
@@ -335,10 +340,12 @@ If there are no NOTEs, WARNINGs, or ERRORs on the winbuilder results
 devtools::submit_cran()
 ```
 
-If changes *are* required, create a branch called `r-cran-maint-0.7.-0`,
+If changes *are* required, create a branch called `r-cran-maint-0.8.0`,
 make any changes required, and resubmit to CRAN after bumping the "tweak"
-version (e.g., `Version: 0.8.0.1` in the `DESCRIPTION`). Ensure those changes
-are also reflected in the main branch after submission is successful.
+version (e.g., `Version: 0.8.0-1` in the `DESCRIPTION`). Ensure those changes
+are also reflected in the main branch after submission is successful. Be sure to update
+`NEWS.md` in the R package to ensure that changes included in patch updates are
+transparent.
 
 ### Submit Python package to PyPI
 
@@ -376,6 +383,10 @@ The nanoarrow C library is available for users of the [Meson build system](https
 ### Update the vcpkg Entry
 
 The nanoarrow C library is available on [vcpkg](https://github.com/microsoft/vcpkg). When a new release is added, PR into the vcpkg repository to make the new version available to users. See https://github.com/microsoft/vcpkg/pull/46029 for a template PR. It is a good idea to do this step before merging a release to catch packaging issues before finalizing the content of the version.
+
+### Update the conan Entry
+
+The nanoarrow C library is available on [conan](https://conan.io/center). When a new release is added, PR into the conan-center-index repository to make the new version available. See https://github.com/conan-io/conan-center-index/pull/29405 for a template PR.
 
 ### Update release documentation
 
@@ -452,7 +463,7 @@ Email template:
 [ANNOUNCE] Apache Arrow nanoarrow 0.8.0 Released
 
 The Apache Arrow community is pleased to announce the 0.8.0 release of
-Apache Arrow nanoarrow. This initial release covers 79 resolved issues
+Apache Arrow nanoarrow. This release covers 79 resolved issues
 from 9 contributors[1].
 
 The release is available now from [2], release notes are available at
