@@ -940,15 +940,8 @@ static int ArrowIpcSetDictionaryEncoding(
   NANOARROW_RETURN_NOT_OK_WITH_ERROR(
       ArrowIpcMoveNonExtensionFieldMetadataBackToFieldIfNeeded(schema), error);
 
-  // TODO: Track the dictionary. This can be as a const struct ArrowSchema* pointer
-  // paried with an identifier, which must be passed down through all of these calls.
-  // After the schema has been set, this pairing of ArrowSchema* pointer to id must
-  // be post-processed to:
-  //
-  // - Check that identical identifiers refer to equivalent schemas
-  // - Set the ArrowIpcField dictionary id member
-  // - Create the IPC decoders (or maybe this should be done lazily on first dictionary
-  //   batch decode)
+  // TODO: Track the dictionary
+  // https://github.com/apache/arrow-nanoarrow/issues/844
 
   return NANOARROW_OK;
 }
@@ -1964,6 +1957,11 @@ static int ArrowIpcDecoderWalkGetArray(struct ArrowArrayView* array_view,
   for (int64_t i = 0; i < array->n_children; i++) {
     NANOARROW_RETURN_NOT_OK(ArrowIpcDecoderWalkGetArray(
         array_view->children[i], array->children[i], out->children[i], error));
+  }
+
+  if (array->dictionary != NULL) {
+    ArrowErrorSet(error, "Decode of dictionary array is not yet supported");
+    return ENOTSUP;
   }
 
   return NANOARROW_OK;
