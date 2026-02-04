@@ -25,7 +25,7 @@
 - Fix usage of deperecated syntax for forthcoming R release (#840)
 - Fix map type and struct-nested-in-struct convert (#829)
 - Collect array streams in C (not R) before conversion (#828)
-- Fix test for forthcoming ALTREP behaviour in R-devel (#826)
+- Fix test for forthcoming ALTREP behaviour in R-devel (#826, #842)
 - Ensure C23 version check works for clang16 (current GitHub Actions) (#801)
 
 # nanoarrow 0.7.0
