@@ -66,8 +66,6 @@ struct ArrowIpcField {
   struct ArrowArray* array;
   // The cumulative number of buffers preceding this node.
   int64_t buffer_offset;
-  // Dictionary identifier for this node
-  int64_t dictionary_id;
 };
 
 // Internal data specific to the read/decode process
@@ -1511,7 +1509,6 @@ static void ArrowIpcDecoderInitFields(struct ArrowIpcField* fields,
   field->array_view = array_view;
   field->array = array;
   field->buffer_offset = *n_buffers;
-  field->dictionary_id = -1;
 
   for (int i = 0; i < NANOARROW_MAX_FIXED_BUFFERS; i++) {
     *n_buffers += array_view->layout.buffer_type[i] != NANOARROW_BUFFER_TYPE_NONE;
