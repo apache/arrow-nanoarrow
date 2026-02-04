@@ -866,6 +866,47 @@ TEST(NanoarrowIpcTest, NanoarrowIpcSharedBufferThreadSafeDecode) {
   // We will get a (occasional) memory leak if the atomic counter does not work
 }
 
+TEST(NanoarrowIpcTest, NanoarrowIpcFooterDecodingErrors) {
+  struct ArrowError error;
+
+  nanoarrow::ipc::UniqueDecoder decoder;
+  ArrowIpcDecoderInit(decoder.get());
+
+  // not enough data to get the size+magic
+  EXPECT_EQ(ArrowIpcDecoderPeekFooter(decoder.get(), {{nullptr}, 3}, &error), ESPIPE)
+      << error.message;
+
+  // doesn't end with magic
+  EXPECT_EQ(ArrowIpcDecoderPeekFooter(decoder.get(), {{"\0\0\0\0blargh"}, 10}, &error),
+            EINVAL)
+      << error.message;
+
+  // negative size
+  EXPECT_EQ(ArrowIpcDecoderPeekFooter(decoder.get(),
+                                      {{"\xFF\xFF\xFF\xFF"
+                                        "ARROW1"},
+                                       10},
+                                      &error),
+            EINVAL)
+      << error.message;
+
+  // PeekFooter doesn't check for available data
+  EXPECT_EQ(
+      ArrowIpcDecoderPeekFooter(decoder.get(), {{"\xFF\xFF\0\0ARROW1"}, 10}, &error),
+      NANOARROW_OK)
+      << error.message;
+  EXPECT_EQ(decoder->header_size_bytes, 0xFFFF);
+
+  decoder->header_size_bytes = -1;
+
+  // VerifyFooter *does* check for enough available data
+  EXPECT_EQ(
+      ArrowIpcDecoderVerifyFooter(decoder.get(), {{"\xFF\xFF\0\0ARROW1"}, 10}, &error),
+      ESPIPE)
+      << error.message;
+  EXPECT_EQ(decoder->header_size_bytes, 0xFFFF);
+}
+
 #if defined(NANOARROW_BUILD_TESTS_WITH_ARROW)
 class ArrowTypeParameterizedTestFixture
     : public ::testing::TestWithParam<std::shared_ptr<arrow::DataType>> {
@@ -1536,47 +1577,6 @@ INSTANTIATE_TEST_SUITE_P(NanoarrowIpcTest, ArrowTypeIdParameterizedTestFixture,
                                            NANOARROW_TYPE_DECIMAL256,
                                            NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO));
 #endif
-
-TEST(NanoarrowIpcTest, NanoarrowIpcFooterDecodingErrors) {
-  struct ArrowError error;
-
-  nanoarrow::ipc::UniqueDecoder decoder;
-  ArrowIpcDecoderInit(decoder.get());
-
-  // not enough data to get the size+magic
-  EXPECT_EQ(ArrowIpcDecoderPeekFooter(decoder.get(), {{nullptr}, 3}, &error), ESPIPE)
-      << error.message;
-
-  // doesn't end with magic
-  EXPECT_EQ(ArrowIpcDecoderPeekFooter(decoder.get(), {{"\0\0\0\0blargh"}, 10}, &error),
-            EINVAL)
-      << error.message;
-
-  // negative size
-  EXPECT_EQ(ArrowIpcDecoderPeekFooter(decoder.get(),
-                                      {{"\xFF\xFF\xFF\xFF"
-                                        "ARROW1"},
-                                       10},
-                                      &error),
-            EINVAL)
-      << error.message;
-
-  // PeekFooter doesn't check for available data
-  EXPECT_EQ(
-      ArrowIpcDecoderPeekFooter(decoder.get(), {{"\xFF\xFF\0\0ARROW1"}, 10}, &error),
-      NANOARROW_OK)
-      << error.message;
-  EXPECT_EQ(decoder->header_size_bytes, 0xFFFF);
-
-  decoder->header_size_bytes = -1;
-
-  // VerifyFooter *does* check for enough available data
-  EXPECT_EQ(
-      ArrowIpcDecoderVerifyFooter(decoder.get(), {{"\xFF\xFF\0\0ARROW1"}, 10}, &error),
-      ESPIPE)
-      << error.message;
-  EXPECT_EQ(decoder->header_size_bytes, 0xFFFF);
-}
 
 TEST(NanoarrowIpcTest, NanoarrowIpcDictionariesLifecycle) {
   struct ArrowIpcDictionaries dictionaries;
