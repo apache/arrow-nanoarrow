@@ -103,11 +103,6 @@ struct ArrowIpcDecoderPrivate {
   struct ArrowIpcFooter footer;
   // Decompressor for compression support
   struct ArrowIpcDecompressor decompressor;
-  // Owned dictionary tracker. Only the root decoder will own its dictionary tracker;
-  // however, a reference to it will be passed to decode methods such that child
-  // dictionary decoders can share a single dictionary source to support nested
-  // dictionaries.
-  struct ArrowIpcDictionaries owned_dictionaries;
 };
 
 ArrowErrorCode ArrowIpcCheckRuntime(struct ArrowError* error) {
@@ -2215,79 +2210,5 @@ ArrowErrorCode ArrowIpcDecoderDecodeArrayFromShared(
   }
 
   ArrowArrayMove(&temp, out);
-  return NANOARROW_OK;
-}
-
-ArrowErrorCode ArrowIpcDictionaryDecoderInit(struct ArrowIpcDictionaryDecoder* dictionary,
-                                             const struct ArrowIpcDecoder* parent,
-                                             int64_t id,
-                                             struct ArrowSchema* value_schema) {
-  memset(dictionary, 0, sizeof(struct ArrowIpcDictionaryDecoder));
-  NANOARROW_RETURN_NOT_OK(ArrowIpcDecoderInit(&dictionary->decoder));
-  ArrowErrorCode result =
-      ArrowIpcDecoderSetEndianness(&dictionary->decoder, parent->endianness);
-  if (result != NANOARROW_OK) {
-    ArrowIpcDecoderReset(&dictionary->decoder);
-    return result;
-  }
-
-  result = ArrowIpcDecoderSetSchema(&dictionary->decoder, value_schema, NULL);
-  if (result != NANOARROW_OK) {
-    return result;
-  }
-
-  dictionary->id = id;
-  return NANOARROW_OK;
-}
-
-void ArrowIpcDictionaryDecoderReset(struct ArrowIpcDictionaryDecoder* dictionary) {
-  NANOARROW_DCHECK(dictionary != NULL);
-  ArrowIpcDecoderReset(&dictionary->decoder);
-}
-
-void ArrowIpcDictionariesInit(struct ArrowIpcDictionaries* dictionaries) {
-  NANOARROW_DCHECK(dictionaries != NULL);
-  memset(dictionaries, 0, sizeof(struct ArrowIpcDictionaries));
-}
-
-void ArrowIpcDictionariesReset(struct ArrowIpcDictionaries* dictionaries) {
-  NANOARROW_DCHECK(dictionaries != NULL);
-
-  for (int64_t i = 0; i < dictionaries->n_dictionaries; i++) {
-    ArrowIpcDictionaryDecoderReset(dictionaries->dictionaries + i);
-  }
-
-  if (dictionaries->dictionaries != NULL) {
-    ArrowFree(dictionaries->dictionaries);
-  }
-}
-
-ArrowErrorCode ArrowIpcDictionariesAppend(struct ArrowIpcDictionaries* dictionaries,
-                                          const struct ArrowIpcDecoder* decoder,
-                                          int64_t id, struct ArrowSchema* schema) {
-  struct ArrowIpcDictionaryDecoder decoder_tmp;
-  NANOARROW_RETURN_NOT_OK(
-      ArrowIpcDictionaryDecoderInit(&decoder_tmp, decoder, id, schema));
-
-  if ((dictionaries->n_dictionaries + 1) > dictionaries->capacity) {
-    int64_t new_capacity =
-        dictionaries->n_dictionaries == 0 ? 1 : dictionaries->n_dictionaries * 2;
-    struct ArrowIpcDictionaryDecoder* new_dictionaries =
-        (struct ArrowIpcDictionaryDecoder*)ArrowRealloc(
-            dictionaries->dictionaries,
-            new_capacity * sizeof(struct ArrowIpcDictionaryDecoder));
-    if (new_dictionaries == NULL) {
-      ArrowIpcDictionaryDecoderReset(&decoder_tmp);
-      return ENOMEM;
-    }
-
-    dictionaries->dictionaries = new_dictionaries;
-    dictionaries->capacity = new_capacity;
-  }
-
-  struct ArrowIpcDictionaryDecoder* dictionary =
-      dictionaries->dictionaries + dictionaries->n_dictionaries;
-  memcpy(dictionary, &decoder_tmp, sizeof(struct ArrowIpcDictionaryDecoder));
-  dictionaries->n_dictionaries++;
   return NANOARROW_OK;
 }
