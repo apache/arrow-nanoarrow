@@ -407,3 +407,32 @@
 
 - Test LargeList SchemaInit without Arrow (#714)
 - Make Arrow C++ dependency optional (#677)
+
+## nanoarrow 0.8.0
+
+### Docs
+
+- fix issues in ArrowBasicArrayStreamSetArray docstring (#838)
+- fix typos in nanoarrow.h docstrings (#837)
+
+### Feat
+
+- Add LZ4 decompression support to IPC reader (#819)
+- **python**: Support union types in Python bindings (#820)
+- **r**: Add reticulate/Python integration (#817)
+- **r**: Add support for creating timestamp and duration types from numeric storage (#816)
+
+### Fix
+
+- Fix leak reported by coverity scan (#832)
+- Ensure ArrowArrayBuffer() and ArrowArraySetBuffer() work for variadic buffers (#808)
+- Assorted updates to improve Meson WrapDB entry (#803)
+- Ensure the array view can be used to inspect map offsets (#802)
+- Refactor C function to resolve unreachable code error in Zig (#799)
+- **python**: Remove incorrect last byte zeroing in Python buffer construction (#835)
+- **r**: Correct invocation of R_MakeExternalPtr with R NULL (#841)
+- **r**: Fix usage of deperecated syntax for forthcoming R release (#840)
+- **r**: Fix map type and struct-nested-in-struct convert (#829)
+- **r**: Collect array streams in C (not R) before conversion (#828)
+- **r**: Fix test for forthcoming ALTREP behaviour in R-devel (#826)
+- **r**: Ensure C23 version check works for clang16 (current GitHub Actions) (#801)
