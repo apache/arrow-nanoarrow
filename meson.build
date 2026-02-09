@@ -19,7 +19,7 @@ project(
     'nanoarrow',
     'c',
     'cpp',
-    version: '0.8.0-SNAPSHOT',
+    version: '0.9.0-SNAPSHOT',
     license: 'Apache-2.0',
     meson_version: '>=0.58.0',
     default_options: ['c_std=c99', 'warning_level=2', 'cpp_std=c++17'],

@@ -18,7 +18,7 @@
 # This file is part of 'miniver': https://github.com/jbweston/miniver
 
 # Replaced by version-bumping scripts at release time
-version = "0.8.0.dev0"
+version = "0.9.0.dev0"
 
 # These values are only set if the distribution was created with 'git archive'
 refnames = "$Format:%D$"
