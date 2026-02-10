@@ -431,7 +431,7 @@
 - Refactor C function to resolve unreachable code error in Zig (#799)
 - **python**: Remove incorrect last byte zeroing in Python buffer construction (#835)
 - **r**: Correct invocation of R_MakeExternalPtr with R NULL (#841)
-- **r**: Fix usage of deperecated syntax for forthcoming R release (#840)
+- **r**: Fix usage of deprecated syntax for forthcoming R release (#840)
 - **r**: Fix map type and struct-nested-in-struct convert (#829)
 - **r**: Collect array streams in C (not R) before conversion (#828)
 - **r**: Fix test for forthcoming ALTREP behaviour in R-devel (#826)
