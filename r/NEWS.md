@@ -17,6 +17,17 @@
   under the License.
 -->
 
+# nanoarrow 0.8.0
+
+- Add reticulate/Python integration (#817)
+- Add support for creating timestamp and duration types from numeric storage (#816)
+- Correct invocation of R_MakeExternalPtr with R NULL (#841)
+- Fix usage of deperecated syntax for forthcoming R release (#840)
+- Fix map type and struct-nested-in-struct convert (#829)
+- Collect array streams in C (not R) before conversion (#828)
+- Fix test for forthcoming ALTREP behaviour in R-devel (#826, #842)
+- Ensure C23 version check works for clang16 (current GitHub Actions) (#801)
+
 # nanoarrow 0.7.0
 
 - Add zstd decompression support to R package (#733)
