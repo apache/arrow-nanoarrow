@@ -9,7 +9,7 @@
   ([\#816](https://github.com/apache/arrow-nanoarrow/issues/816))
 - Correct invocation of R_MakeExternalPtr with R NULL
   ([\#841](https://github.com/apache/arrow-nanoarrow/issues/841))
-- Fix usage of deperecated syntax for forthcoming R release
+- Fix usage of deprecated syntax for forthcoming R release
   ([\#840](https://github.com/apache/arrow-nanoarrow/issues/840))
 - Fix map type and struct-nested-in-struct convert
   ([\#829](https://github.com/apache/arrow-nanoarrow/issues/829))
