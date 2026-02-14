@@ -481,16 +481,16 @@ INSTANTIATE_TEST_SUITE_P(
         // Files with features that are not yet supported (Dictionary encoding)
         TestFile::NotSupported(
             "generated_dictionary_unsigned.stream",
-            "Schema message field with DictionaryEncoding not supported"),
+            "Found valid dictionary batch but dictionary encoding is not yet supported"),
         TestFile::NotSupported(
             "generated_dictionary.stream",
-            "Schema message field with DictionaryEncoding not supported"),
+            "Found valid dictionary batch but dictionary encoding is not yet supported"),
         TestFile::NotSupported(
             "generated_nested_dictionary.stream",
-            "Schema message field with DictionaryEncoding not supported"),
+            "Found valid dictionary batch but dictionary encoding is not yet supported"),
         TestFile::NotSupported(
             "generated_extension.stream",
-            "Schema message field with DictionaryEncoding not supported")
+            "Found valid dictionary batch but dictionary encoding is not yet supported")
         // Comment to keep last line from wrapping
         ));
 

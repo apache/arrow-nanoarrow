@@ -455,9 +455,18 @@ static int ArrowIpcArrayStreamReaderGetNext(struct ArrowArrayStream* stream,
   }
 
   // Make sure we have a RecordBatch message
-  if (private_data->decoder.message_type != NANOARROW_IPC_MESSAGE_TYPE_RECORD_BATCH) {
-    ArrowErrorSet(&private_data->error, "Unexpected message type (expected RecordBatch)");
-    return EINVAL;
+  switch (private_data->decoder.message_type) {
+    case NANOARROW_IPC_MESSAGE_TYPE_RECORD_BATCH:
+      break;
+    case NANOARROW_IPC_MESSAGE_TYPE_DICTIONARY_BATCH:
+      ArrowErrorSet(
+          &private_data->error,
+          "Found valid dictionary batch but dictionary encoding is not yet supported");
+      return ENOTSUP;
+    default:
+      ArrowErrorSet(&private_data->error,
+                    "Unexpected message type (expected RecordBatch)");
+      return EINVAL;
   }
 
   // Read in the body

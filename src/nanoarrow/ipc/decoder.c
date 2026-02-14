@@ -95,6 +95,8 @@ struct ArrowIpcDecoderPrivate {
   int64_t n_union_fields;
   // A pointer to the last flatbuffers message.
   const void* last_message;
+  // Storage for a DictionaryBatch
+  struct ArrowIpcDictionaryBatch dictionary;
   // Storage for a Footer
   struct ArrowIpcFooter footer;
   // Decompressor for compression support
@@ -823,17 +825,132 @@ static int ArrowIpcDecoderSetType(struct ArrowSchema* schema, ns(Field_table_t) 
   }
 }
 
+// A fun corner case when decoding dictionaries: the extension metadata lives with
+// the dictionary (i.e., the non-index type); however, the field metadata still
+// needs to exist on the field.
+static int ArrowIpcMoveNonExtensionFieldMetadataBackToFieldIfNeeded(
+    struct ArrowSchema* schema) {
+  NANOARROW_DCHECK(schema->dictionary != NULL);
+  struct ArrowMetadataReader reader;
+  NANOARROW_RETURN_NOT_OK(ArrowMetadataReaderInit(&reader, schema->dictionary->metadata));
+
+  // For the most common case (no metadata), nothing needs to be done here
+  if (reader.remaining_keys == 0) {
+    return NANOARROW_OK;
+  }
+
+  struct ArrowBuffer field_metadata;
+  struct ArrowBuffer extension_metadata;
+  NANOARROW_RETURN_NOT_OK(ArrowMetadataBuilderInit(&field_metadata, NULL));
+  ArrowErrorCode result = ArrowMetadataBuilderInit(&extension_metadata, NULL);
+  if (result != NANOARROW_OK) {
+    ArrowBufferReset(&field_metadata);
+    return result;
+  }
+
+  const struct ArrowStringView extension_name_key = ArrowCharView("ARROW:extension:name");
+  const struct ArrowStringView extension_metadata_key =
+      ArrowCharView("ARROW:extension:metadata");
+
+  struct ArrowStringView key;
+  struct ArrowStringView value;
+  while (reader.remaining_keys > 0) {
+    result = ArrowMetadataReaderRead(&reader, &key, &value);
+    if (result != NANOARROW_OK) {
+      ArrowBufferReset(&field_metadata);
+      ArrowBufferReset(&extension_metadata);
+      return result;
+    }
+
+    int key_is_extension_name =
+        key.size_bytes == extension_name_key.size_bytes &&
+        strncmp(key.data, extension_name_key.data, key.size_bytes) == 0;
+    int key_is_extension_metadata =
+        key.size_bytes == extension_metadata_key.size_bytes &&
+        strncmp(key.data, extension_metadata_key.data, key.size_bytes) == 0;
+    if (!key_is_extension_name && !key_is_extension_metadata) {
+      result = ArrowMetadataBuilderAppend(&field_metadata, key, value);
+      if (result != NANOARROW_OK) {
+        ArrowBufferReset(&field_metadata);
+        ArrowBufferReset(&extension_metadata);
+        return result;
+      }
+    } else {
+      result = ArrowMetadataBuilderAppend(&extension_metadata, key, value);
+      if (result != NANOARROW_OK) {
+        ArrowBufferReset(&field_metadata);
+        ArrowBufferReset(&extension_metadata);
+        return result;
+      }
+    }
+  }
+
+  result = ArrowSchemaSetMetadata(schema, (char*)field_metadata.data);
+  if (result != NANOARROW_OK) {
+    ArrowBufferReset(&field_metadata);
+    ArrowBufferReset(&extension_metadata);
+    return result;
+  }
+
+  result = ArrowSchemaSetMetadata(schema->dictionary, (char*)extension_metadata.data);
+  ArrowBufferReset(&field_metadata);
+  ArrowBufferReset(&extension_metadata);
+
+  return result;
+}
+
+static int ArrowIpcSetDictionaryEncoding(
+    struct ArrowSchema* schema, ns(DictionaryEncoding_table_t dictionary_encoding),
+    struct ArrowError* error) {
+  switch (
+      org_apache_arrow_flatbuf_DictionaryEncoding_dictionaryKind(dictionary_encoding)) {
+    case ns(DictionaryKind_DenseArray):
+      break;
+    default:
+      ArrowErrorSet(error, "Uexpected value for DictionaryKind");
+      return EINVAL;
+  }
+
+  struct ArrowSchema tmp;
+  ArrowSchemaMove(schema, &tmp);
+
+  ArrowSchemaInit(schema);
+  int result = ArrowSchemaAllocateDictionary(schema);
+  if (result != NANOARROW_OK) {
+    ArrowSchemaRelease(&tmp);
+    ArrowErrorSet(error, "ArrowSchemaAllocateDictionary() failed");
+    return result;
+  }
+
+  ArrowSchemaMove(&tmp, schema->dictionary);
+
+  NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowSchemaSetName(schema, schema->dictionary->name),
+                                     error);
+  NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowSchemaSetName(schema->dictionary, ""), error);
+
+  NANOARROW_RETURN_NOT_OK(ArrowIpcDecoderSetTypeInt(
+      schema, ns(DictionaryEncoding_indexType_get(dictionary_encoding)), error));
+
+  if (ns(DictionaryEncoding_isOrdered_get(dictionary_encoding))) {
+    schema->flags |= ARROW_FLAG_DICTIONARY_ORDERED;
+  }
+
+  // Field metadata should stay with the field; however, we need the extension metadata
+  // to stay with the dictionary.
+  NANOARROW_RETURN_NOT_OK_WITH_ERROR(
+      ArrowIpcMoveNonExtensionFieldMetadataBackToFieldIfNeeded(schema), error);
+
+  // TODO: Track the dictionary
+  // https://github.com/apache/arrow-nanoarrow/issues/844
+
+  return NANOARROW_OK;
+}
+
 static int ArrowIpcDecoderSetChildren(struct ArrowSchema* schema, ns(Field_vec_t) fields,
                                       struct ArrowError* error);
 
 static int ArrowIpcDecoderSetField(struct ArrowSchema* schema, ns(Field_table_t) field,
                                    struct ArrowError* error) {
-  // No dictionary support yet
-  if (ns(Field_dictionary_is_present(field))) {
-    ArrowErrorSet(error, "Schema message field with DictionaryEncoding not supported");
-    return ENOTSUP;
-  }
-
   int result;
   if (ns(Field_name_is_present(field))) {
     result = ArrowSchemaSetName(schema, ns(Field_name_get(field)));
@@ -874,7 +991,16 @@ static int ArrowIpcDecoderSetField(struct ArrowSchema* schema, ns(Field_table_t)
   }
 
   NANOARROW_RETURN_NOT_OK(ArrowIpcDecoderSetChildren(schema, children, error));
-  return ArrowIpcDecoderSetMetadata(schema, ns(Field_custom_metadata(field)), error);
+  NANOARROW_RETURN_NOT_OK(
+      ArrowIpcDecoderSetMetadata(schema, ns(Field_custom_metadata(field)), error));
+
+  // If this is a dictionary encoded field, set the dictionary encoding
+  if (ns(Field_dictionary_is_present(field))) {
+    NANOARROW_RETURN_NOT_OK(
+        ArrowIpcSetDictionaryEncoding(schema, ns(Field_dictionary(field)), error));
+  }
+
+  return NANOARROW_OK;
 }
 
 static int ArrowIpcDecoderSetChildren(struct ArrowSchema* schema, ns(Field_vec_t) fields,
@@ -927,6 +1053,19 @@ static int ArrowIpcDecoderDecodeSchemaHeader(struct ArrowIpcDecoder* decoder,
     }
   }
 
+  return NANOARROW_OK;
+}
+
+static int ArrowIpcDecoderDecodeDictionaryBatchHeader(
+    struct ArrowIpcDecoder* decoder, flatbuffers_generic_t message_header) {
+  struct ArrowIpcDecoderPrivate* private_data =
+      (struct ArrowIpcDecoderPrivate*)decoder->private_data;
+
+  ns(DictionaryBatch_table_t) dictionary = (ns(DictionaryBatch_table_t))message_header;
+  private_data->dictionary.id = ns(DictionaryBatch_id(dictionary));
+  private_data->dictionary.is_delta = ns(DictionaryBatch_isDelta(dictionary));
+
+  decoder->dictionary = &private_data->dictionary;
   return NANOARROW_OK;
 }
 
@@ -1000,6 +1139,8 @@ static inline void ArrowIpcDecoderResetHeaderInfo(struct ArrowIpcDecoder* decode
   decoder->codec = 0;
   decoder->header_size_bytes = 0;
   decoder->body_size_bytes = 0;
+  decoder->dictionary = NULL;
+  memset(&private_data->dictionary, 0, sizeof(struct ArrowIpcDictionaryBatch));
   decoder->footer = NULL;
   ArrowIpcFooterReset(&private_data->footer);
   private_data->last_message = NULL;
@@ -1242,11 +1383,14 @@ ArrowErrorCode ArrowIpcDecoderDecodeHeader(struct ArrowIpcDecoder* decoder,
       NANOARROW_RETURN_NOT_OK(
           ArrowIpcDecoderDecodeSchemaHeader(decoder, message_header, error));
       break;
+    case ns(MessageHeader_DictionaryBatch):
+      NANOARROW_RETURN_NOT_OK(
+          ArrowIpcDecoderDecodeDictionaryBatchHeader(decoder, message_header));
+      break;
     case ns(MessageHeader_RecordBatch):
       NANOARROW_RETURN_NOT_OK(
           ArrowIpcDecoderDecodeRecordBatchHeader(decoder, message_header, error));
       break;
-    case ns(MessageHeader_DictionaryBatch):
     case ns(MessageHeader_Tensor):
     case ns(MessageHeader_SparseTensor):
       ArrowErrorSet(error, "Unsupported message type: '%s'",
@@ -1815,6 +1959,11 @@ static int ArrowIpcDecoderWalkGetArray(struct ArrowArrayView* array_view,
         array_view->children[i], array->children[i], out->children[i], error));
   }
 
+  if (array->dictionary != NULL) {
+    ArrowErrorSet(error, "Decode of dictionary array is not yet supported");
+    return ENOTSUP;
+  }
+
   return NANOARROW_OK;
 }
 
@@ -1928,12 +2077,6 @@ static ArrowErrorCode ArrowIpcDecoderDecodeArrayViewInternal(
   struct ArrowIpcDecoderPrivate* private_data =
       (struct ArrowIpcDecoderPrivate*)decoder->private_data;
 
-  if (private_data->last_message == NULL ||
-      decoder->message_type != NANOARROW_IPC_MESSAGE_TYPE_RECORD_BATCH) {
-    ArrowErrorSet(error, "decoder did not just decode a RecordBatch message");
-    return EINVAL;
-  }
-
   // RecordBatch messages don't count the root node but decoder->fields does
   // (decoder->fields[0] is the root field)
   if (field_i + 1 >= private_data->n_fields) {
@@ -1996,6 +2139,14 @@ ArrowErrorCode ArrowIpcDecoderDecodeArrayView(struct ArrowIpcDecoder* decoder,
                                               struct ArrowBufferView body, int64_t i,
                                               struct ArrowArrayView** out,
                                               struct ArrowError* error) {
+  struct ArrowIpcDecoderPrivate* private_data =
+      (struct ArrowIpcDecoderPrivate*)decoder->private_data;
+  if (private_data->last_message == NULL ||
+      decoder->message_type != NANOARROW_IPC_MESSAGE_TYPE_RECORD_BATCH) {
+    ArrowErrorSet(error, "decoder did not just decode a RecordBatch message");
+    return EINVAL;
+  }
+
   return ArrowIpcDecoderDecodeArrayViewInternal(
       decoder, ArrowIpcBufferFactoryFromView(&body), i, out, error);
 }
@@ -2005,6 +2156,14 @@ ArrowErrorCode ArrowIpcDecoderDecodeArray(struct ArrowIpcDecoder* decoder,
                                           struct ArrowArray* out,
                                           enum ArrowValidationLevel validation_level,
                                           struct ArrowError* error) {
+  struct ArrowIpcDecoderPrivate* private_data =
+      (struct ArrowIpcDecoderPrivate*)decoder->private_data;
+  if (private_data->last_message == NULL ||
+      decoder->message_type != NANOARROW_IPC_MESSAGE_TYPE_RECORD_BATCH) {
+    ArrowErrorSet(error, "decoder did not just decode a RecordBatch message");
+    return EINVAL;
+  }
+
   struct ArrowArrayView* array_view;
   NANOARROW_RETURN_NOT_OK(ArrowIpcDecoderDecodeArrayViewInternal(
       decoder, ArrowIpcBufferFactoryFromView(&body), i, &array_view, error));
