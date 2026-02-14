@@ -1541,39 +1541,11 @@ ArrowErrorCode ArrowArrayViewValidate(struct ArrowArrayView* array_view,
   return EINVAL;
 }
 
-struct ArrowComparisonInternalState {
+struct ArrowArrayViewComparisonInternalState {
   enum ArrowCompareLevel level;
   int is_equal;
   struct ArrowError* reason;
 };
-
-NANOARROW_CHECK_PRINTF_ATTRIBUTE static void ArrowComparePrependPath(
-    struct ArrowError* out, const char* fmt, ...) {
-  if (out == NULL) {
-    return;
-  }
-
-  char prefix[128];
-  prefix[0] = '\0';
-  va_list args;
-  va_start(args, fmt);
-  int prefix_len = vsnprintf(prefix, sizeof(prefix), fmt, args);
-  va_end(args);
-
-  if (prefix_len <= 0) {
-    return;
-  }
-
-  size_t out_len = strlen(out->message);
-  size_t out_len_to_move = sizeof(struct ArrowError) - prefix_len - 1;
-  if (out_len_to_move > out_len) {
-    out_len_to_move = out_len;
-  }
-
-  memmove(out->message + prefix_len, out->message, out_len_to_move);
-  memcpy(out->message, prefix, prefix_len);
-  out->message[out_len + prefix_len] = '\0';
-}
 
 #define SET_NOT_EQUAL_AND_RETURN_IF_IMPL(cond_, state_, reason_) \
   do {                                                           \
@@ -1587,9 +1559,9 @@ NANOARROW_CHECK_PRINTF_ATTRIBUTE static void ArrowComparePrependPath(
 #define SET_NOT_EQUAL_AND_RETURN_IF(condition_, state_) \
   SET_NOT_EQUAL_AND_RETURN_IF_IMPL(condition_, state_, #condition_)
 
-static void ArrowArrayViewCompareBuffer(const struct ArrowArrayView* actual,
-                                        const struct ArrowArrayView* expected, int i,
-                                        struct ArrowComparisonInternalState* state) {
+static void ArrowArrayViewCompareBuffer(
+    const struct ArrowArrayView* actual, const struct ArrowArrayView* expected, int i,
+    struct ArrowArrayViewComparisonInternalState* state) {
   SET_NOT_EQUAL_AND_RETURN_IF(
       actual->buffer_views[i].size_bytes != expected->buffer_views[i].size_bytes, state);
 
@@ -1602,9 +1574,9 @@ static void ArrowArrayViewCompareBuffer(const struct ArrowArrayView* actual,
   }
 }
 
-static void ArrowArrayViewCompareIdentical(const struct ArrowArrayView* actual,
-                                           const struct ArrowArrayView* expected,
-                                           struct ArrowComparisonInternalState* state) {
+static void ArrowArrayViewCompareIdentical(
+    const struct ArrowArrayView* actual, const struct ArrowArrayView* expected,
+    struct ArrowArrayViewComparisonInternalState* state) {
   SET_NOT_EQUAL_AND_RETURN_IF(actual->storage_type != expected->storage_type, state);
   SET_NOT_EQUAL_AND_RETURN_IF(actual->n_children != expected->n_children, state);
   SET_NOT_EQUAL_AND_RETURN_IF(actual->dictionary == NULL && expected->dictionary != NULL,
@@ -1619,7 +1591,7 @@ static void ArrowArrayViewCompareIdentical(const struct ArrowArrayView* actual,
   for (int i = 0; i < NANOARROW_MAX_FIXED_BUFFERS; i++) {
     ArrowArrayViewCompareBuffer(actual, expected, i, state);
     if (!state->is_equal) {
-      ArrowComparePrependPath(state->reason, ".buffers[%d]", i);
+      ArrowErrorPrefix(state->reason, ".buffers[%d]", i);
       return;
     }
   }
@@ -1627,7 +1599,7 @@ static void ArrowArrayViewCompareIdentical(const struct ArrowArrayView* actual,
   for (int64_t i = 0; i < actual->n_children; i++) {
     ArrowArrayViewCompareIdentical(actual->children[i], expected->children[i], state);
     if (!state->is_equal) {
-      ArrowComparePrependPath(state->reason, ".children[%" PRId64 "]", i);
+      ArrowErrorPrefix(state->reason, ".children[%" PRId64 "]", i);
       return;
     }
   }
@@ -1635,7 +1607,7 @@ static void ArrowArrayViewCompareIdentical(const struct ArrowArrayView* actual,
   if (actual->dictionary != NULL) {
     ArrowArrayViewCompareIdentical(actual->dictionary, expected->dictionary, state);
     if (!state->is_equal) {
-      ArrowComparePrependPath(state->reason, ".dictionary");
+      ArrowErrorPrefix(state->reason, ".dictionary");
       return;
     }
   }
@@ -1647,7 +1619,7 @@ ArrowErrorCode ArrowArrayViewCompare(const struct ArrowArrayView* actual,
                                      const struct ArrowArrayView* expected,
                                      enum ArrowCompareLevel level, int* out,
                                      struct ArrowError* reason) {
-  struct ArrowComparisonInternalState state;
+  struct ArrowArrayViewComparisonInternalState state;
   state.level = level;
   state.is_equal = 1;
   state.reason = reason;
@@ -1662,7 +1634,7 @@ ArrowErrorCode ArrowArrayViewCompare(const struct ArrowArrayView* actual,
 
   *out = state.is_equal;
   if (!state.is_equal) {
-    ArrowComparePrependPath(state.reason, "root");
+    ArrowErrorPrefix(state.reason, "root");
   }
 
   return NANOARROW_OK;

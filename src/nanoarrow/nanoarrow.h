@@ -46,6 +46,7 @@
 #define ArrowBufferDeallocator \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowBufferDeallocator)
 #define ArrowErrorSet NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowErrorSet)
+#define ArrowErrorPrefix NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowErrorPrefix)
 #define ArrowLayoutInit NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowLayoutInit)
 #define ArrowDecimalSetDigits NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowDecimalSetDigits)
 #define ArrowDecimalAppendDigitsToBuffer \
@@ -69,6 +70,7 @@
 #define ArrowSchemaSetTypeUnion \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowSchemaSetTypeUnion)
 #define ArrowSchemaDeepCopy NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowSchemaDeepCopy)
+#define ArrowSchemaCompare NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowSchemaCompare)
 #define ArrowSchemaSetFormat NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowSchemaSetFormat)
 #define ArrowSchemaSetName NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowSchemaSetName)
 #define ArrowSchemaSetMetadata \
@@ -283,6 +285,12 @@ static inline void ArrowArrayStreamRelease(struct ArrowArrayStream* array_stream
 NANOARROW_DLL NANOARROW_CHECK_PRINTF_ATTRIBUTE int ArrowErrorSet(struct ArrowError* error,
                                                                  const char* fmt, ...);
 
+/// \brief Prefix the contents of an existing error using printf syntax.
+///
+/// If error is NULL, this function does nothing and returns NANOARROW_OK.
+NANOARROW_CHECK_PRINTF_ATTRIBUTE int ArrowErrorPrefix(struct ArrowError* error,
+                                                      const char* fmt, ...);
+
 /// @}
 
 /// \defgroup nanoarrow-utils Utility data structures
@@ -440,6 +448,19 @@ NANOARROW_DLL ArrowErrorCode ArrowSchemaSetTypeUnion(struct ArrowSchema* schema,
 /// Allocates and copies fields of schema into schema_out.
 NANOARROW_DLL ArrowErrorCode ArrowSchemaDeepCopy(const struct ArrowSchema* schema,
                                                  struct ArrowSchema* schema_out);
+
+/// \brief Compare two ArrowSchema objects for equality
+///
+/// Given two ArrowArrayView instances, place either 0 (not equal) and
+/// 1 (equal) at the address pointed to by out. If the comparison determines
+/// that actual and expected are not equal, a reason will be communicated via
+/// reason if reason is non-NULL.
+///
+/// Returns NANOARROW_OK if the comparison completed successfully.
+ArrowErrorCode ArrowSchemaCompare(const struct ArrowSchema* actual,
+                                  const struct ArrowSchema* expected,
+                                  enum ArrowCompareLevel level, int* out,
+                                  struct ArrowError* reason);
 
 /// \brief Copy format into schema->format
 ///
@@ -1157,7 +1178,7 @@ NANOARROW_DLL ArrowErrorCode ArrowArrayViewValidate(
 /// Given two ArrowArrayView instances, place either 0 (not equal) and
 /// 1 (equal) at the address pointed to by out. If the comparison determines
 /// that actual and expected are not equal, a reason will be communicated via
-/// error if error is non-NULL.
+/// reason if reason is non-NULL.
 ///
 /// Returns NANOARROW_OK if the comparison completed successfully.
 NANOARROW_DLL ArrowErrorCode ArrowArrayViewCompare(const struct ArrowArrayView* actual,
