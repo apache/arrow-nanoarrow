@@ -1,0 +1,360 @@
+# nanoarrow
+
+The goal of nanoarrow is to provide minimal useful bindings to the
+[Arrow C Data](https://arrow.apache.org/docs/format/CDataInterface.html)
+and [Arrow C
+Stream](https://arrow.apache.org/docs/format/CStreamInterface.html)
+interfaces using the [nanoarrow C
+library](https://arrow.apache.org/nanoarrow/).
+
+## Installation
+
+You can install the released version of nanoarrow from
+[CRAN](https://cran.r-project.org/) with:
+
+``` r
+install.packages("nanoarrow")
+```
+
+You can install the development version of nanoarrow from
+[GitHub](https://github.com/) with:
+
+``` r
+# install.packages("remotes")
+remotes::install_github("apache/arrow-nanoarrow/r")
+```
+
+If you can load the package, you’re good to go!
+
+``` r
+library(nanoarrow)
+```
+
+## Example
+
+The Arrow C Data and Arrow C Stream interfaces are comprised of three
+structures: the `ArrowSchema` which represents a data type of an array,
+the `ArrowArray` which represents the values of an array, and an
+`ArrowArrayStream`, which represents zero or more `ArrowArray`s with a
+common `ArrowSchema`. All three can be wrapped by R objects using the
+nanoarrow R package.
+
+### Schemas
+
+Use [`infer_nanoarrow_schema()`](reference/as_nanoarrow_schema.md) to
+get the ArrowSchema object that corresponds to a given R vector type;
+use [`as_nanoarrow_schema()`](reference/as_nanoarrow_schema.md) to
+convert an object from some other data type representation (e.g., an
+arrow R package `DataType` like
+[`arrow::int32()`](https://arrow.apache.org/docs/r/reference/data-type.html));
+or use `na_XXX()` functions to construct them.
+
+``` r
+infer_nanoarrow_schema(1:5)
+#> <nanoarrow_schema int32>
+#>  $ format    : chr "i"
+#>  $ name      : chr ""
+#>  $ metadata  : list()
+#>  $ flags     : int 2
+#>  $ children  : list()
+#>  $ dictionary: NULL
+as_nanoarrow_schema(arrow::schema(col1 = arrow::float64()))
+#> <nanoarrow_schema struct>
+#>  $ format    : chr "+s"
+#>  $ name      : chr ""
+#>  $ metadata  : list()
+#>  $ flags     : int 0
+#>  $ children  :List of 1
+#>   ..$ col1:<nanoarrow_schema double>
+#>   .. ..$ format    : chr "g"
+#>   .. ..$ name      : chr "col1"
+#>   .. ..$ metadata  : list()
+#>   .. ..$ flags     : int 2
+#>   .. ..$ children  : list()
+#>   .. ..$ dictionary: NULL
+#>  $ dictionary: NULL
+na_int64()
+#> <nanoarrow_schema int64>
+#>  $ format    : chr "l"
+#>  $ name      : chr ""
+#>  $ metadata  : list()
+#>  $ flags     : int 2
+#>  $ children  : list()
+#>  $ dictionary: NULL
+```
+
+### Arrays
+
+Use [`as_nanoarrow_array()`](reference/as_nanoarrow_array.md) to convert
+an object to an ArrowArray object:
+
+``` r
+as_nanoarrow_array(1:5)
+#> <nanoarrow_array int32[5]>
+#>  $ length    : int 5
+#>  $ null_count: int 0
+#>  $ offset    : int 0
+#>  $ buffers   :List of 2
+#>   ..$ :<nanoarrow_buffer validity<bool>[0][0 b]> ``
+#>   ..$ :<nanoarrow_buffer data<int32>[5][20 b]> `1 2 3 4 5`
+#>  $ dictionary: NULL
+#>  $ children  : list()
+as_nanoarrow_array(data.frame(col1 = c(1.1, 2.2)))
+#> <nanoarrow_array struct[2]>
+#>  $ length    : int 2
+#>  $ null_count: int 0
+#>  $ offset    : int 0
+#>  $ buffers   :List of 1
+#>   ..$ :<nanoarrow_buffer validity<bool>[0][0 b]> ``
+#>  $ children  :List of 1
+#>   ..$ col1:<nanoarrow_array double[2]>
+#>   .. ..$ length    : int 2
+#>   .. ..$ null_count: int 0
+#>   .. ..$ offset    : int 0
+#>   .. ..$ buffers   :List of 2
+#>   .. .. ..$ :<nanoarrow_buffer validity<bool>[0][0 b]> ``
+#>   .. .. ..$ :<nanoarrow_buffer data<double>[2][16 b]> `1.1 2.2`
+#>   .. ..$ dictionary: NULL
+#>   .. ..$ children  : list()
+#>  $ dictionary: NULL
+```
+
+You can use [`as.vector()`](https://rdrr.io/r/base/vector.html) or
+[`as.data.frame()`](https://rdrr.io/r/base/as.data.frame.html) to get
+the R representation of the object back:
+
+``` r
+array <- as_nanoarrow_array(data.frame(col1 = c(1.1, 2.2)))
+as.data.frame(array)
+#>   col1
+#> 1  1.1
+#> 2  2.2
+```
+
+Even though at the C level the ArrowArray is distinct from the
+ArrowSchema, at the R level we attach a schema wherever possible. You
+can access the attached schema using
+[`infer_nanoarrow_schema()`](reference/as_nanoarrow_schema.md):
+
+``` r
+infer_nanoarrow_schema(array)
+#> <nanoarrow_schema struct>
+#>  $ format    : chr "+s"
+#>  $ name      : chr ""
+#>  $ metadata  : list()
+#>  $ flags     : int 0
+#>  $ children  :List of 1
+#>   ..$ col1:<nanoarrow_schema double>
+#>   .. ..$ format    : chr "g"
+#>   .. ..$ name      : chr "col1"
+#>   .. ..$ metadata  : list()
+#>   .. ..$ flags     : int 2
+#>   .. ..$ children  : list()
+#>   .. ..$ dictionary: NULL
+#>  $ dictionary: NULL
+```
+
+### Array Streams
+
+The easiest way to create an ArrowArrayStream is from a list of arrays
+or objects that can be converted to an array using
+[`as_nanoarrow_array()`](reference/as_nanoarrow_array.md):
+
+``` r
+stream <- basic_array_stream(
+  list(
+    data.frame(col1 = c(1.1, 2.2)),
+    data.frame(col1 = c(3.3, 4.4))
+  )
+)
+```
+
+You can pull batches from the stream using the `$get_next()` method. The
+last batch will return `NULL`.
+
+``` r
+stream$get_next()
+#> <nanoarrow_array struct[2]>
+#>  $ length    : int 2
+#>  $ null_count: int 0
+#>  $ offset    : int 0
+#>  $ buffers   :List of 1
+#>   ..$ :<nanoarrow_buffer validity<bool>[0][0 b]> ``
+#>  $ children  :List of 1
+#>   ..$ col1:<nanoarrow_array double[2]>
+#>   .. ..$ length    : int 2
+#>   .. ..$ null_count: int 0
+#>   .. ..$ offset    : int 0
+#>   .. ..$ buffers   :List of 2
+#>   .. .. ..$ :<nanoarrow_buffer validity<bool>[0][0 b]> ``
+#>   .. .. ..$ :<nanoarrow_buffer data<double>[2][16 b]> `1.1 2.2`
+#>   .. ..$ dictionary: NULL
+#>   .. ..$ children  : list()
+#>  $ dictionary: NULL
+stream$get_next()
+#> <nanoarrow_array struct[2]>
+#>  $ length    : int 2
+#>  $ null_count: int 0
+#>  $ offset    : int 0
+#>  $ buffers   :List of 1
+#>   ..$ :<nanoarrow_buffer validity<bool>[0][0 b]> ``
+#>  $ children  :List of 1
+#>   ..$ col1:<nanoarrow_array double[2]>
+#>   .. ..$ length    : int 2
+#>   .. ..$ null_count: int 0
+#>   .. ..$ offset    : int 0
+#>   .. ..$ buffers   :List of 2
+#>   .. .. ..$ :<nanoarrow_buffer validity<bool>[0][0 b]> ``
+#>   .. .. ..$ :<nanoarrow_buffer data<double>[2][16 b]> `3.3 4.4`
+#>   .. ..$ dictionary: NULL
+#>   .. ..$ children  : list()
+#>  $ dictionary: NULL
+stream$get_next()
+#> NULL
+```
+
+You can pull all the batches into a
+[`data.frame()`](https://rdrr.io/r/base/data.frame.html) by calling
+[`as.data.frame()`](https://rdrr.io/r/base/as.data.frame.html) or
+[`as.vector()`](https://rdrr.io/r/base/vector.html):
+
+``` r
+stream <- basic_array_stream(
+  list(
+    data.frame(col1 = c(1.1, 2.2)),
+    data.frame(col1 = c(3.3, 4.4))
+  )
+)
+
+as.data.frame(stream)
+#>   col1
+#> 1  1.1
+#> 2  2.2
+#> 3  3.3
+#> 4  4.4
+```
+
+After consuming a stream, you should call the release method as soon as
+you can. This lets the implementation of the stream release any
+resources (like open files) it may be holding in a more predictable way
+than waiting for the garbage collector to clean up the object.
+
+## Integration with the arrow package
+
+The nanoarrow package implements
+[`as_nanoarrow_schema()`](reference/as_nanoarrow_schema.md),
+[`as_nanoarrow_array()`](reference/as_nanoarrow_array.md), and
+[`as_nanoarrow_array_stream()`](reference/as_nanoarrow_array_stream.md)
+for most arrow package types. Similarly, it implements
+[`arrow::as_arrow_array()`](https://arrow.apache.org/docs/r/reference/as_arrow_array.html),
+[`arrow::as_record_batch()`](https://arrow.apache.org/docs/r/reference/as_record_batch.html),
+[`arrow::as_arrow_table()`](https://arrow.apache.org/docs/r/reference/as_arrow_table.html),
+[`arrow::as_record_batch_reader()`](https://arrow.apache.org/docs/r/reference/as_record_batch_reader.html),
+[`arrow::infer_type()`](https://arrow.apache.org/docs/r/reference/infer_type.html),
+[`arrow::as_data_type()`](https://arrow.apache.org/docs/r/reference/as_data_type.html),
+and
+[`arrow::as_schema()`](https://arrow.apache.org/docs/r/reference/as_schema.html)
+for nanoarrow objects such that you can pass equivalent nanoarrow
+objects into many arrow functions and vice versa.
+
+# Package index
+
+## All functions
+
+- [`array_stream_set_finalizer()`](array_stream_set_finalizer.md) :
+  Register an array stream finalizer
+- [`as_nanoarrow_array()`](as_nanoarrow_array.md) : Convert an object to
+  a nanoarrow array
+- [`as_nanoarrow_array_stream()`](as_nanoarrow_array_stream.md) :
+  Convert an object to a nanoarrow array_stream
+- [`as_nanoarrow_buffer()`](as_nanoarrow_buffer.md) : Convert an object
+  to a nanoarrow buffer
+- [`as_nanoarrow_schema()`](as_nanoarrow_schema.md)
+  [`infer_nanoarrow_schema()`](as_nanoarrow_schema.md)
+  [`nanoarrow_schema_parse()`](as_nanoarrow_schema.md)
+  [`nanoarrow_schema_modify()`](as_nanoarrow_schema.md) : Convert an
+  object to a nanoarrow schema
+- [`as_nanoarrow_schema(`*`<python.builtin.object>`*`)`](as_nanoarrow_schema.python.builtin.object.md)
+  [`as_nanoarrow_array(`*`<python.builtin.object>`*`)`](as_nanoarrow_schema.python.builtin.object.md)
+  [`as_nanoarrow_array_stream(`*`<python.builtin.object>`*`)`](as_nanoarrow_schema.python.builtin.object.md)
+  [`test_reticulate_with_nanoarrow()`](as_nanoarrow_schema.python.builtin.object.md)
+  : Python integration via reticulate
+- [`as_nanoarrow_vctr()`](as_nanoarrow_vctr.md)
+  [`nanoarrow_vctr()`](as_nanoarrow_vctr.md) : Experimental Arrow
+  encoded arrays as R vectors
+- [`basic_array_stream()`](basic_array_stream.md) : Create ArrayStreams
+  from batches
+- [`convert_array()`](convert_array.md) : Convert an Array into an R
+  vector
+- [`convert_array_stream()`](convert_array_stream.md)
+  [`collect_array_stream()`](convert_array_stream.md) : Convert an Array
+  Stream into an R vector
+- [`example_ipc_stream()`](example_ipc_stream.md) : Example Arrow IPC
+  Data
+- [`infer_nanoarrow_ptype()`](infer_nanoarrow_ptype.md) : Infer an R
+  vector prototype
+- [`infer_nanoarrow_ptype_extension()`](infer_nanoarrow_ptype_extension.md)
+  [`convert_array_extension()`](infer_nanoarrow_ptype_extension.md)
+  [`as_nanoarrow_array_extension()`](infer_nanoarrow_ptype_extension.md)
+  : Implement Arrow extension types
+- [`na_type()`](na_type.md) [`na_na()`](na_type.md)
+  [`na_bool()`](na_type.md) [`na_int8()`](na_type.md)
+  [`na_uint8()`](na_type.md) [`na_int16()`](na_type.md)
+  [`na_uint16()`](na_type.md) [`na_int32()`](na_type.md)
+  [`na_uint32()`](na_type.md) [`na_int64()`](na_type.md)
+  [`na_uint64()`](na_type.md) [`na_half_float()`](na_type.md)
+  [`na_float()`](na_type.md) [`na_double()`](na_type.md)
+  [`na_string()`](na_type.md) [`na_large_string()`](na_type.md)
+  [`na_string_view()`](na_type.md) [`na_binary()`](na_type.md)
+  [`na_large_binary()`](na_type.md)
+  [`na_fixed_size_binary()`](na_type.md)
+  [`na_binary_view()`](na_type.md) [`na_date32()`](na_type.md)
+  [`na_date64()`](na_type.md) [`na_time32()`](na_type.md)
+  [`na_time64()`](na_type.md) [`na_duration()`](na_type.md)
+  [`na_interval_months()`](na_type.md)
+  [`na_interval_day_time()`](na_type.md)
+  [`na_interval_month_day_nano()`](na_type.md)
+  [`na_timestamp()`](na_type.md) [`na_decimal32()`](na_type.md)
+  [`na_decimal64()`](na_type.md) [`na_decimal128()`](na_type.md)
+  [`na_decimal256()`](na_type.md) [`na_struct()`](na_type.md)
+  [`na_sparse_union()`](na_type.md) [`na_dense_union()`](na_type.md)
+  [`na_list()`](na_type.md) [`na_large_list()`](na_type.md)
+  [`na_list_view()`](na_type.md) [`na_large_list_view()`](na_type.md)
+  [`na_fixed_size_list()`](na_type.md) [`na_map()`](na_type.md)
+  [`na_dictionary()`](na_type.md) [`na_extension()`](na_type.md) :
+  Create type objects
+- [`na_vctrs()`](na_vctrs.md) : Vctrs extension type
+- [`nanoarrow_array_init()`](nanoarrow_array_init.md)
+  [`nanoarrow_array_set_schema()`](nanoarrow_array_init.md)
+  [`nanoarrow_array_modify()`](nanoarrow_array_init.md) : Modify
+  nanoarrow arrays
+- [`nanoarrow_buffer_init()`](nanoarrow_buffer_init.md)
+  [`nanoarrow_buffer_append()`](nanoarrow_buffer_init.md)
+  [`convert_buffer()`](nanoarrow_buffer_init.md) : Create and modify
+  nanoarrow buffers
+- [`nanoarrow_extension_array()`](nanoarrow_extension_array.md) : Create
+  Arrow extension arrays
+- [`nanoarrow_extension_spec()`](nanoarrow_extension_spec.md)
+  [`register_nanoarrow_extension()`](nanoarrow_extension_spec.md)
+  [`unregister_nanoarrow_extension()`](nanoarrow_extension_spec.md)
+  [`resolve_nanoarrow_extension()`](nanoarrow_extension_spec.md) :
+  Register Arrow extension types
+- [`nanoarrow_pointer_is_valid()`](nanoarrow_pointer_is_valid.md)
+  [`nanoarrow_pointer_addr_dbl()`](nanoarrow_pointer_is_valid.md)
+  [`nanoarrow_pointer_addr_chr()`](nanoarrow_pointer_is_valid.md)
+  [`nanoarrow_pointer_addr_pretty()`](nanoarrow_pointer_is_valid.md)
+  [`nanoarrow_pointer_release()`](nanoarrow_pointer_is_valid.md)
+  [`nanoarrow_pointer_move()`](nanoarrow_pointer_is_valid.md)
+  [`nanoarrow_pointer_export()`](nanoarrow_pointer_is_valid.md)
+  [`nanoarrow_allocate_schema()`](nanoarrow_pointer_is_valid.md)
+  [`nanoarrow_allocate_array()`](nanoarrow_pointer_is_valid.md)
+  [`nanoarrow_allocate_array_stream()`](nanoarrow_pointer_is_valid.md)
+  [`nanoarrow_pointer_set_protected()`](nanoarrow_pointer_is_valid.md) :
+  Danger zone: low-level pointer operations
+- [`nanoarrow_version()`](nanoarrow_version.md)
+  [`nanoarrow_with_zstd()`](nanoarrow_version.md) : Underlying
+  'nanoarrow' C library build
+- [`read_nanoarrow()`](read_nanoarrow.md)
+  [`write_nanoarrow()`](read_nanoarrow.md) : Read/write serialized
+  streams of Arrow data
+
