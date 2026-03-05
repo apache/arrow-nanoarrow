@@ -907,7 +907,7 @@ static int ArrowIpcSetDictionaryEncoding(
     case ns(DictionaryKind_DenseArray):
       break;
     default:
-      ArrowErrorSet(error, "Uexpected value for DictionaryKind");
+      ArrowErrorSet(error, "Unexpected value for DictionaryKind");
       return EINVAL;
   }
 
