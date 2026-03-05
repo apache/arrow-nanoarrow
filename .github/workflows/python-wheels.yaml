@@ -112,7 +112,7 @@ jobs:
       - uses: actions/setup-python@v5
         if: matrix.config.arch != 'x86'
         with:
-          python-version: "3.12"
+          python-version: "3.x"
 
       - name: Setup MSVC (64-bit)
         if: matrix.config.arch == 'AMD64'
@@ -123,7 +123,7 @@ jobs:
       - uses: actions/setup-python@v5
         if: matrix.config.arch == 'x86'
         with:
-          python-version: "3.12"
+          python-version: "3.x"
           architecture: x86
 
       - name: Setup MSVC (32-bit)
@@ -144,6 +144,7 @@ jobs:
         run: |
           python -m cibuildwheel --output-dir wheelhouse python
         env:
+          PKG_CONFIG_PATH: ""
           CIBW_TEST_REQUIRES: pytest
           CIBW_TEST_COMMAND: pytest {package}/tests -vv
           CIBW_PLATFORM: ${{ matrix.config.platform }}
