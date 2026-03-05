@@ -133,7 +133,7 @@ jobs:
           arch: x86
 
       - name: Install cibuildwheel
-        run: python -m pip install cibuildwheel==2.23.3
+        run: python -m pip install cibuildwheel==3.4.0
 
       - name: Set nanoarrow Python dev version
         if: github.ref == 'refs/heads/main'
