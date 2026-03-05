@@ -608,7 +608,10 @@ static int enter_frame(flatcc_builder_t *B, uint16_t align)
 
 static inline void exit_frame(flatcc_builder_t *B)
 {
-    memset(B->ds, 0, B->ds_offset);
+    /* Clear the ds stack (if any struct frames have been allocated). */
+    if (B->ds) {
+        memset(B->ds, 0, B->ds_offset);
+    }
     B->ds_offset = frame(ds_offset);
     B->ds_first = frame(ds_first);
     refresh_ds(B, frame(type_limit));
@@ -1127,7 +1130,7 @@ flatcc_builder_vt_ref_t flatcc_builder_create_vtable(flatcc_builder_t *B,
      * struct).
      *
      * The vt_ref is stored as the reference + 1 to avoid having 0 as a
-     * valid reference (which usally means error). It also idententifies
+     * valid reference (which usually means error). It also idententifies
      * vtable references as the only uneven references, and the only
      * references that can be used multiple times in the same buffer.
      *
