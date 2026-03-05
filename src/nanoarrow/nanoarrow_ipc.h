@@ -317,7 +317,7 @@ struct ArrowIpcDecoder {
   int64_t body_size_bytes;
 
   /// \brief The last decoded DictionaryBatch
-  struct ArrowIpcDictionaryBatch* dictionary;
+  const struct ArrowIpcDictionaryBatch* dictionary;
 
   /// \brief The last decoded Footer
   ///
