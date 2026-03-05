@@ -2,6 +2,8 @@
 
 ## nanoarrow 0.8.0
 
+CRAN release: 2026-02-10
+
 - Add reticulate/Python integration
   ([\#817](https://github.com/apache/arrow-nanoarrow/issues/817))
 - Add support for creating timestamp and duration types from numeric
