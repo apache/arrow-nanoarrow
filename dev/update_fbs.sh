@@ -15,6 +15,11 @@
 # specific language governing permissions and limitations
 # under the License.
 
+REPO=`git rev-parse --show-toplevel`
+if [ -z "$REPO" ]; then
+  exit 1
+fi
+
 # get the .fbs files from the arrow repo
 mkdir -p format && cd format
 
@@ -24,8 +29,16 @@ curl -L https://github.com/apache/arrow/raw/main/format/SparseTensor.fbs --outpu
 curl -L https://github.com/apache/arrow/raw/main/format/Message.fbs --output Message.fbs
 curl -L https://github.com/apache/arrow/raw/main/format/File.fbs --output File.fbs
 
-# compile using flatcc
-flatcc --common --reader --builder --verifier --recursive --outfile ../../src/nanoarrow/ipc/flatcc_generated.h *.fbs
+# Download and build flatcc. Use the same version we vendor.
+git clone https://github.com/dvidelabs/flatcc.git
+git -C flatcc checkout e3e44836c5f625b5532586ddce895f8b5e36a212
+
+pushd flatcc
+cmake . && cmake --build .
+popd
+
+GENERATED="${REPO}/src/nanoarrow/ipc/flatcc_generated.h"
+flatcc/bin/flatcc --common --reader --builder --verifier --recursive --outfile "${GENERATED}" *.fbs
 
 # clean up
 cd ..
