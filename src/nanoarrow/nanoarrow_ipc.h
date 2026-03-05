@@ -323,7 +323,7 @@ struct ArrowIpcDecoder {
   ///
   /// \warning This API is currently only public for use in integration testing;
   ///          use at your own risk.
-  struct ArrowIpcFooter* footer;
+  const struct ArrowIpcFooter* footer;
 
   /// \brief Private resources managed by this library
   void* private_data;
