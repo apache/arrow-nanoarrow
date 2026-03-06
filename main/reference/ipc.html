@@ -823,6 +823,29 @@
 
 </div>
 <dl class="cpp struct">
+<dt class="sig sig-object cpp" id="_CPPv423ArrowIpcDictionaryBatch">
+<span id="_CPPv323ArrowIpcDictionaryBatch"></span><span id="_CPPv223ArrowIpcDictionaryBatch"></span><span id="ArrowIpcDictionaryBatch"></span><span class="target" id="struct_arrow_ipc_dictionary_batch"></span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">ArrowIpcDictionaryBatch</span></span></span><a class="headerlink" href="#_CPPv423ArrowIpcDictionaryBatch" title="Link to this definition">#</a><br /></dt>
+<dd><div class="docutils container">
+<em>#include &lt;nanoarrow_ipc.h&gt;</em></div>
+<p>Description of an Arrow IPC DictionaryBatch message. </p>
+<div class="breathe-sectiondef docutils container">
+<p class="breathe-sectiondef-title rubric" id="breathe-section-title-public-members">Public Members</p>
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4N23ArrowIpcDictionaryBatch2idE">
+<span id="_CPPv3N23ArrowIpcDictionaryBatch2idE"></span><span id="_CPPv2N23ArrowIpcDictionaryBatch2idE"></span><span id="ArrowIpcDictionaryBatch::id__int64_t"></span><span class="target" id="struct_arrow_ipc_dictionary_batch_1a5b5c3f2d0eadcd70117ad9488dd916c6"></span><span class="n"><span class="pre">int64_t</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">id</span></span></span><a class="headerlink" href="#_CPPv4N23ArrowIpcDictionaryBatch2idE" title="Link to this definition">#</a><br /></dt>
+<dd><p>The identifier for this dictionary. </p>
+</dd></dl>
+
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4N23ArrowIpcDictionaryBatch8is_deltaE">
+<span id="_CPPv3N23ArrowIpcDictionaryBatch8is_deltaE"></span><span id="_CPPv2N23ArrowIpcDictionaryBatch8is_deltaE"></span><span id="ArrowIpcDictionaryBatch::is_delta__i"></span><span class="target" id="struct_arrow_ipc_dictionary_batch_1a239885a6ae7913085991afe27dff7d82"></span><span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">is_delta</span></span></span><a class="headerlink" href="#_CPPv4N23ArrowIpcDictionaryBatch8is_deltaE" title="Link to this definition">#</a><br /></dt>
+<dd><p>If non-zero, values should be appended to the existing dictionary. Otherwise, values should replace the existing dictionary. </p>
+</dd></dl>
+
+</div>
+</dd></dl>
+
+<dl class="cpp struct">
 <dt class="sig sig-object cpp" id="_CPPv420ArrowIpcSharedBuffer">
 <span id="_CPPv320ArrowIpcSharedBuffer"></span><span id="_CPPv220ArrowIpcSharedBuffer"></span><span id="ArrowIpcSharedBuffer"></span><span class="target" id="struct_arrow_ipc_shared_buffer"></span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">ArrowIpcSharedBuffer</span></span></span><a class="headerlink" href="#_CPPv420ArrowIpcSharedBuffer" title="Link to this definition">#</a><br /></dt>
 <dd><div class="docutils container">
@@ -919,6 +942,12 @@
 <dt class="sig sig-object cpp" id="_CPPv4N15ArrowIpcDecoder15body_size_bytesE">
 <span id="_CPPv3N15ArrowIpcDecoder15body_size_bytesE"></span><span id="_CPPv2N15ArrowIpcDecoder15body_size_bytesE"></span><span id="ArrowIpcDecoder::body_size_bytes__int64_t"></span><span class="target" id="struct_arrow_ipc_decoder_1a69d8c83f127711e7a757936d90c1245e"></span><span class="n"><span class="pre">int64_t</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">body_size_bytes</span></span></span><a class="headerlink" href="#_CPPv4N15ArrowIpcDecoder15body_size_bytesE" title="Link to this definition">#</a><br /></dt>
 <dd><p>The number of bytes in the forthcoming body message. </p>
+</dd></dl>
+
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4N15ArrowIpcDecoder10dictionaryE">
+<span id="_CPPv3N15ArrowIpcDecoder10dictionaryE"></span><span id="_CPPv2N15ArrowIpcDecoder10dictionaryE"></span><span id="ArrowIpcDecoder::dictionary__ArrowIpcDictionaryBatchCP"></span><span class="target" id="struct_arrow_ipc_decoder_1a4387bdf8ec18876581210ec2fed48703"></span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv423ArrowIpcDictionaryBatch" title="ArrowIpcDictionaryBatch"><span class="n"><span class="pre">ArrowIpcDictionaryBatch</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="sig-name descname"><span class="n"><span class="pre">dictionary</span></span></span><a class="headerlink" href="#_CPPv4N15ArrowIpcDecoder10dictionaryE" title="Link to this definition">#</a><br /></dt>
+<dd><p>The last decoded DictionaryBatch. </p>
 </dd></dl>
 
 <dl class="cpp var">
@@ -1210,6 +1239,11 @@
 </li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv424ArrowIpcSystemEndiannessv"><code class="docutils literal notranslate"><span class="pre">ArrowIpcSystemEndianness()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv423ArrowIpcWriterStartFileP14ArrowIpcWriterP10ArrowError"><code class="docutils literal notranslate"><span class="pre">ArrowIpcWriterStartFile()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv423ArrowIpcDictionaryBatch"><code class="docutils literal notranslate"><span class="pre">ArrowIpcDictionaryBatch</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N23ArrowIpcDictionaryBatch2idE"><code class="docutils literal notranslate"><span class="pre">id</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N23ArrowIpcDictionaryBatch8is_deltaE"><code class="docutils literal notranslate"><span class="pre">is_delta</span></code></a></li>
+</ul>
+</li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv420ArrowIpcSharedBuffer"><code class="docutils literal notranslate"><span class="pre">ArrowIpcSharedBuffer</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv420ArrowIpcDecompressor"><code class="docutils literal notranslate"><span class="pre">ArrowIpcDecompressor</span></code></a><ul class="nav section-nav flex-column">
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N20ArrowIpcDecompressor14decompress_addE"><code class="docutils literal notranslate"><span class="pre">decompress_add</span></code></a></li>
@@ -1226,6 +1260,7 @@
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N15ArrowIpcDecoder5codecE"><code class="docutils literal notranslate"><span class="pre">codec</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N15ArrowIpcDecoder17header_size_bytesE"><code class="docutils literal notranslate"><span class="pre">header_size_bytes</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N15ArrowIpcDecoder15body_size_bytesE"><code class="docutils literal notranslate"><span class="pre">body_size_bytes</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N15ArrowIpcDecoder10dictionaryE"><code class="docutils literal notranslate"><span class="pre">dictionary</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N15ArrowIpcDecoder6footerE"><code class="docutils literal notranslate"><span class="pre">footer</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N15ArrowIpcDecoder12private_dataE"><code class="docutils literal notranslate"><span class="pre">private_data</span></code></a></li>
 </ul>
