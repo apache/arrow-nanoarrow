@@ -53,9 +53,9 @@ static inline void ArrowDeviceCudaSetError(CUresult err, const char* op,
     }                                                             \
   } while (0)
 
-#define NANOARROW_CUDA_RETURN_NOT_OK(EXPR, OP, ERROR)                                    \
-  _NANOARROW_CUDA_RETURN_NOT_OK_IMPL(_NANOARROW_MAKE_NAME(cuda_err_, __COUNTER__), EXPR, \
-                                     OP, ERROR)
+#define NANOARROW_CUDA_RETURN_NOT_OK(EXPR, OP, ERROR) \
+  _NANOARROW_CUDA_RETURN_NOT_OK_IMPL(                 \
+      _NANOARROW_MAKE_NAME(cuda_err_, _NANOARROW_UNIQUE_SUFFIX), EXPR, OP, ERROR)
 
 #if defined(NANOARROW_DEBUG)
 #define _NANOARROW_CUDA_ASSERT_OK_IMPL(NAME, EXPR, EXPR_STR)           \
@@ -63,9 +63,9 @@ static inline void ArrowDeviceCudaSetError(CUresult err, const char* op,
     const CUresult NAME = (EXPR);                                      \
     if (NAME != CUDA_SUCCESS) NANOARROW_PRINT_AND_DIE(NAME, EXPR_STR); \
   } while (0)
-#define NANOARROW_CUDA_ASSERT_OK(EXPR)                                                   \
-  _NANOARROW_CUDA_ASSERT_OK_IMPL(_NANOARROW_MAKE_NAME(errno_status_, __COUNTER__), EXPR, \
-                                 #EXPR)
+#define NANOARROW_CUDA_ASSERT_OK(EXPR) \
+  _NANOARROW_CUDA_ASSERT_OK_IMPL(      \
+      _NANOARROW_MAKE_NAME(errno_status_, _NANOARROW_UNIQUE_SUFFIX), EXPR, #EXPR)
 #else
 #define NANOARROW_CUDA_ASSERT_OK(EXPR) (void)(EXPR)
 #endif
