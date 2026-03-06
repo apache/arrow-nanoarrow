@@ -104,8 +104,6 @@ struct ArrowIpcDecoderPrivate {
 ArrowErrorCode ArrowIpcCheckRuntime(struct ArrowError* error) {
   // Avoids unused warnings when bundling the header into nanoarrow_ipc.c
   NANOARROW_UNUSED(flatbuffers_end);
-  NANOARROW_UNUSED(flatbuffers_true);
-  NANOARROW_UNUSED(flatbuffers_false);
   NANOARROW_UNUSED(flatcc_builder_is_nested);
   NANOARROW_UNUSED(__org_apache_arrow_flatbuf_Null_required);
   NANOARROW_UNUSED(__org_apache_arrow_flatbuf_Struct__required);

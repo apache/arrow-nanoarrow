@@ -81,8 +81,9 @@ typedef uint32_t flatbuffers_thash_t;
 /* Public facing type operations. */
 typedef flatbuffers_utype_t flatbuffers_union_type_t;
 
-static const flatbuffers_bool_t flatbuffers_true = FLATBUFFERS_TRUE;
-static const flatbuffers_bool_t flatbuffers_false = FLATBUFFERS_FALSE;
+// Unused const variables
+// static const flatbuffers_bool_t flatbuffers_true = FLATBUFFERS_TRUE;
+// static const flatbuffers_bool_t flatbuffers_false = FLATBUFFERS_FALSE;
 
 #define FLATBUFFERS_IDENTIFIER_SIZE (FLATBUFFERS_THASH_WIDTH / 8)
 
