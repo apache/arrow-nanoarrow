@@ -102,8 +102,52 @@ struct ArrowIpcDecoderPrivate {
 };
 
 ArrowErrorCode ArrowIpcCheckRuntime(struct ArrowError* error) {
-  // Avoids an unused warning when bundling the header into nanoarrow_ipc.c
+  // Avoids unused warnings when bundling the header into nanoarrow_ipc.c
   NANOARROW_UNUSED(flatbuffers_end);
+  NANOARROW_UNUSED(flatbuffers_true);
+  NANOARROW_UNUSED(flatbuffers_false);
+  NANOARROW_UNUSED(flatcc_builder_is_nested);
+  NANOARROW_UNUSED(__org_apache_arrow_flatbuf_Null_required);
+  NANOARROW_UNUSED(__org_apache_arrow_flatbuf_Struct__required);
+  NANOARROW_UNUSED(__org_apache_arrow_flatbuf_List_required);
+  NANOARROW_UNUSED(__org_apache_arrow_flatbuf_LargeList_required);
+  NANOARROW_UNUSED(__org_apache_arrow_flatbuf_ListView_required);
+  NANOARROW_UNUSED(__org_apache_arrow_flatbuf_LargeListView_required);
+  NANOARROW_UNUSED(__org_apache_arrow_flatbuf_FixedSizeList_required);
+  NANOARROW_UNUSED(__org_apache_arrow_flatbuf_Map_required);
+  NANOARROW_UNUSED(__org_apache_arrow_flatbuf_Union_required);
+  NANOARROW_UNUSED(__org_apache_arrow_flatbuf_Int_required);
+  NANOARROW_UNUSED(__org_apache_arrow_flatbuf_FloatingPoint_required);
+  NANOARROW_UNUSED(__org_apache_arrow_flatbuf_Utf8_required);
+  NANOARROW_UNUSED(__org_apache_arrow_flatbuf_Binary_required);
+  NANOARROW_UNUSED(__org_apache_arrow_flatbuf_LargeUtf8_required);
+  NANOARROW_UNUSED(__org_apache_arrow_flatbuf_LargeBinary_required);
+  NANOARROW_UNUSED(__org_apache_arrow_flatbuf_Utf8View_required);
+  NANOARROW_UNUSED(__org_apache_arrow_flatbuf_BinaryView_required);
+  NANOARROW_UNUSED(__org_apache_arrow_flatbuf_FixedSizeBinary_required);
+  NANOARROW_UNUSED(__org_apache_arrow_flatbuf_Bool_required);
+  NANOARROW_UNUSED(__org_apache_arrow_flatbuf_RunEndEncoded_required);
+  NANOARROW_UNUSED(__org_apache_arrow_flatbuf_Decimal_required);
+  NANOARROW_UNUSED(__org_apache_arrow_flatbuf_Date_required);
+  NANOARROW_UNUSED(__org_apache_arrow_flatbuf_Time_required);
+  NANOARROW_UNUSED(__org_apache_arrow_flatbuf_Timestamp_required);
+  NANOARROW_UNUSED(__org_apache_arrow_flatbuf_Interval_required);
+  NANOARROW_UNUSED(__org_apache_arrow_flatbuf_Duration_required);
+  NANOARROW_UNUSED(__org_apache_arrow_flatbuf_KeyValue_required);
+  NANOARROW_UNUSED(__org_apache_arrow_flatbuf_DictionaryEncoding_required);
+  NANOARROW_UNUSED(__org_apache_arrow_flatbuf_Field_required);
+  NANOARROW_UNUSED(__org_apache_arrow_flatbuf_Schema_required);
+  NANOARROW_UNUSED(__org_apache_arrow_flatbuf_Footer_required);
+  NANOARROW_UNUSED(__org_apache_arrow_flatbuf_TensorDim_required);
+  NANOARROW_UNUSED(__org_apache_arrow_flatbuf_Tensor_required);
+  NANOARROW_UNUSED(__org_apache_arrow_flatbuf_SparseTensorIndexCOO_required);
+  NANOARROW_UNUSED(__org_apache_arrow_flatbuf_SparseMatrixIndexCSX_required);
+  NANOARROW_UNUSED(__org_apache_arrow_flatbuf_SparseTensorIndexCSF_required);
+  NANOARROW_UNUSED(__org_apache_arrow_flatbuf_SparseTensor_required);
+  NANOARROW_UNUSED(__org_apache_arrow_flatbuf_BodyCompression_required);
+  NANOARROW_UNUSED(__org_apache_arrow_flatbuf_RecordBatch_required);
+  NANOARROW_UNUSED(__org_apache_arrow_flatbuf_DictionaryBatch_required);
+  NANOARROW_UNUSED(__org_apache_arrow_flatbuf_Message_required);
 
   const char* nanoarrow_runtime_version = ArrowNanoarrowVersion();
   const char* nanoarrow_ipc_build_time_version = NANOARROW_VERSION;
