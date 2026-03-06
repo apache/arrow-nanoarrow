@@ -93,7 +93,7 @@ const char *flatcc_verify_error_string(int err)
 
 /*
  * Identify checks related to runtime conditions (buffer size and
- * alignment) as seperate from those related to buffer content.
+ * alignment) as separate from those related to buffer content.
  */
 #define verify_runtime(cond, reason) verify(cond, reason)
 

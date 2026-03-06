@@ -16,7 +16,7 @@ extern "C" {
  * The user may do so subsequently. The reason is in part because
  * the information is not readily avaible without generated reader code,
  * in part because the buffer might use a different, but valid,
- * identifier and the user has no chance of specifiying this in the
+ * identifier and the user has no chance of specifying this in the
  * verifier code. The root verifier also doesn't assume a specific id
  * but accepts a user supplied input which may be null.
  *
@@ -209,7 +209,7 @@ int flatcc_verify_typed_buffer_header(const void *buf, size_t bufsiz, flatbuffer
  */
 int flatcc_verify_buffer_header_with_size(const void *buf, size_t *bufsiz, const char *fid);
 
-int flatcc_verify_typed_buffer_header_with_size(const void *buf, size_t *bufsiz, flatbuffers_thash_t type_hash);
+int flatcc_verify_typed_buffer_header_with_size(const void *buf, size_t *bufsiz, flatbuffers_thash_t thash);
 
 /*
  * The following functions are typically called by a generated table

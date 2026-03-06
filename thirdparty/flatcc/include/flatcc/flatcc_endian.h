@@ -45,7 +45,7 @@ extern "C" {
  * configuration.
  */
 
-#ifndef UINT8_t
+#ifndef UINT8_MAX
 #include <stdint.h>
 #endif
 

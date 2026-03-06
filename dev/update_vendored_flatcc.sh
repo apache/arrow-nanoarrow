@@ -22,7 +22,7 @@ fi
 
 # Download flatcc
 git clone https://github.com/dvidelabs/flatcc.git
-git -C flatcc checkout bf4f67a16d85541e474f1d67b8fb64913ba72bc7
+git -C flatcc checkout e3e44836c5f625b5532586ddce895f8b5e36a212
 
 # Remove previous vendored flatcc
 rm -rf $REPO/thirdparty/flatcc
@@ -45,6 +45,11 @@ cp flatcc/src/runtime/emitter.c \
 # This list is in topological order and could be used for a single-file include;
 # however, this approach is easier to support alongside a previous installation
 # of the flatcc runtime.
+if ! command -v makedepend > /dev/null 2>&1 ; then
+  echo "update_vendored_flatccc.sh requires makedepend (e.g., brew install makedepend)"
+  exit 1
+fi
+
 makedepend -s#: -f- -- -Iflatcc/include -I$REPO/src -DFLATCC_PORTABLE -- 2>/dev/null \
   `ls $REPO/thirdparty/flatcc/src/runtime/*.c` `ls $REPO/src/nanoarrow/ipc/*.c` | \
   # Remove the '<src file>.o: ' prefix

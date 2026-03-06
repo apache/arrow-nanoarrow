@@ -189,7 +189,7 @@ static inline int N ## _ ## NK ## _is_present(N ## _table_t t__tmp)\
 __## NS ## field_present(ID, t__tmp)\
 static inline T ## _union_t N ## _ ## NK ## _union(N ## _table_t t__tmp)\
 { T ## _union_t u__tmp = { 0, 0 }; u__tmp.type = N ## _ ## NK ## _type_get(t__tmp);\
-  if (u__tmp.type == 0) return u__tmp; u__tmp.value = N ## _ ## NK ## _get(t__tmp); return u__tmp; }\
+  if (u__tmp.type == 0) { return u__tmp; } u__tmp.value = N ## _ ## NK ## _get(t__tmp); return u__tmp; }\
 static inline NS ## string_t N ## _ ## NK ## _as_string(N ## _table_t t__tmp)\
 { return NS ## string_cast_from_generic(N ## _ ## NK ## _get(t__tmp)); }\
 
@@ -810,7 +810,7 @@ static inline N ## _union_vec_ref_t N ## _vec_clone(NS ## builder_t *B, N ##_uni
   _uvref.type = flatcc_builder_refmap_find(B, vec.type); _uvref.value = flatcc_builder_refmap_find(B, vec.value);\
   _len = N ## _union_vec_len(vec); if (_uvref.type == 0) {\
   _uvref.type = flatcc_builder_refmap_insert(B, vec.type, (flatcc_builder_create_type_vector(B, vec.type, _len))); }\
-  if (_uvref.type == 0) return _ret; if (_uvref.value == 0) {\
+  if (_uvref.type == 0) { return _ret; } if (_uvref.value == 0) {\
   if (flatcc_builder_start_offset_vector(B)) return _ret;\
   for (_i = 0; _i < _len; ++_i) { _uref = N ## _clone(B, N ## _union_vec_at(vec, _i));\
     if (!_uref.value || !(flatcc_builder_offset_vector_push(B, _uref.value))) return _ret; }\
@@ -915,11 +915,11 @@ __flatbuffers_build_offset_vector(NS, NS ## string)
 static inline T *N ## _array_copy(T *p, const T *p2, size_t n)\
 { memcpy(p, p2, n * sizeof(T)); return p; }\
 static inline T *N ## _array_copy_from_pe(T *p, const T *p2, size_t n)\
-{ size_t i; if (NS ## is_native_pe()) memcpy(p, p2, n * sizeof(T)); else\
-  for (i = 0; i < n; ++i) N ## _copy_from_pe(&p[i], &p2[i]); return p; }\
+{ size_t i; if (NS ## is_native_pe()) memcpy(p, p2, n * sizeof(T)); else {\
+  for (i = 0; i < n; ++i) N ## _copy_from_pe(&p[i], &p2[i]); } return p; }\
 static inline T *N ## _array_copy_to_pe(T *p, const T *p2, size_t n)\
-{ size_t i; if (NS ## is_native_pe()) memcpy(p, p2, n * sizeof(T)); else\
-  for (i = 0; i < n; ++i) N ## _copy_to_pe(&p[i], &p2[i]); return p; }
+{ size_t i; if (NS ## is_native_pe()) memcpy(p, p2, n * sizeof(T)); else {\
+  for (i = 0; i < n; ++i) N ## _copy_to_pe(&p[i], &p2[i]); } return p; }
 #define __flatbuffers_define_scalar_primitives(NS, N, T)\
 static inline T *N ## _from_pe(T *p) { return __ ## NS ## from_pe(p, N); }\
 static inline T *N ## _to_pe(T *p) { return __ ## NS ## to_pe(p, N); }\
@@ -1823,8 +1823,8 @@ static inline int org_apache_arrow_flatbuf_MetadataVersion_is_known_value(org_ap
  *       forward compatibility guarantees).
  *   2.  A means of negotiating between a client and server
  *       what features a stream is allowed to use. The enums
- *       values here are intented to represent higher level
- *       features, additional details maybe negotiated
+ *       values here are intended to represent higher level
+ *       features, additional details may be negotiated
  *       with key-value pairs specific to the protocol.
  *
  *  Enums added to this list should be assigned power-of-two values
@@ -2149,7 +2149,7 @@ __flatbuffers_define_scalar_field(0, org_apache_arrow_flatbuf_FixedSizeList, lis
  *  may be set in the metadata for this field.
  *
  *  In a field with Map type, the field has a child Struct field, which then
- *  has two children: key type and the second the value type. The names of the
+ *  has two children: the key type and the value type. The names of the
  *  child fields may be respectively "entries", "key", and "value", but this is
  *  not enforced.
  *
@@ -2320,9 +2320,9 @@ __flatbuffers_table_as_root(org_apache_arrow_flatbuf_RunEndEncoded)
 
 
 /**  Exact decimal value represented as an integer value in two's
- *  complement. Currently only 128-bit (16-byte) and 256-bit (32-byte) integers
- *  are used. The representation uses the endianness indicated
- *  in the Schema. */
+ *  complement. Currently 32-bit (4-byte), 64-bit (8-byte),
+ *  128-bit (16-byte) and 256-bit (32-byte) integers are used.
+ *  The representation uses the endianness indicated in the Schema. */
 struct org_apache_arrow_flatbuf_Decimal_table { uint8_t unused__; };
 
 static inline size_t org_apache_arrow_flatbuf_Decimal_vec_len(org_apache_arrow_flatbuf_Decimal_vec_t vec)
@@ -2335,7 +2335,7 @@ __flatbuffers_table_as_root(org_apache_arrow_flatbuf_Decimal)
 __flatbuffers_define_scalar_field(0, org_apache_arrow_flatbuf_Decimal, precision, flatbuffers_int32, int32_t, INT32_C(0))
 /**  Number of digits after the decimal point "." */
 __flatbuffers_define_scalar_field(1, org_apache_arrow_flatbuf_Decimal, scale, flatbuffers_int32, int32_t, INT32_C(0))
-/**  Number of bits per value. The only accepted widths are 128 and 256.
+/**  Number of bits per value. The accepted widths are 32, 64, 128 and 256.
  *  We use bitWidth for consistency with Int::bitWidth. */
 __flatbuffers_define_scalar_field(2, org_apache_arrow_flatbuf_Decimal, bitWidth, flatbuffers_int32, int32_t, INT32_C(128))
 
@@ -2661,7 +2661,7 @@ __flatbuffers_define_scalar_field(0, org_apache_arrow_flatbuf_DictionaryEncoding
  *  and to avoid uint64 indices unless they are required by an application. */
 __flatbuffers_define_table_field(1, org_apache_arrow_flatbuf_DictionaryEncoding, indexType, org_apache_arrow_flatbuf_Int_table_t, 0)
 /**  By default, dictionaries are not ordered, or the order does not have
- *  semantic meaning. In some statistical, applications, dictionary-encoding
+ *  semantic meaning. In some statistical applications, dictionary-encoding
  *  is used to represent ordered categorical data, and we provide a way to
  *  preserve that metadata here */
 __flatbuffers_define_scalar_field(2, org_apache_arrow_flatbuf_DictionaryEncoding, isOrdered, flatbuffers_bool, flatbuffers_bool_t, UINT8_C(0))
@@ -2678,7 +2678,7 @@ static inline org_apache_arrow_flatbuf_Field_table_t org_apache_arrow_flatbuf_Fi
 __flatbuffers_offset_vec_at(org_apache_arrow_flatbuf_Field_table_t, vec, i, 0)
 __flatbuffers_table_as_root(org_apache_arrow_flatbuf_Field)
 
-/**  Name is not required, in i.e. a List */
+/**  Name is not required (e.g., in a List) */
 __flatbuffers_define_string_field(0, org_apache_arrow_flatbuf_Field, name, 0)
 /**  Whether or not this field can contain nulls. Should be true in general. */
 __flatbuffers_define_scalar_field(1, org_apache_arrow_flatbuf_Field, nullable, flatbuffers_bool, flatbuffers_bool_t, UINT8_C(0))
@@ -5427,7 +5427,7 @@ typedef flatbuffers_uoffset_t *org_apache_arrow_flatbuf_Footer_mutable_vec_t;
 
 
 struct org_apache_arrow_flatbuf_Block {
-    /**  Index to the start of the RecordBlock (note this is past the Message header) */
+    /**  Index to the start of the RecordBatch (note this is past the Message header) */
     alignas(8) int64_t offset;
     /**  Length of the metadata */
     alignas(4) int32_t metaDataLength;
@@ -6235,8 +6235,8 @@ static inline int org_apache_arrow_flatbuf_MetadataVersion_is_known_value(org_ap
  *       forward compatibility guarantees).
  *   2.  A means of negotiating between a client and server
  *       what features a stream is allowed to use. The enums
- *       values here are intented to represent higher level
- *       features, additional details maybe negotiated
+ *       values here are intended to represent higher level
+ *       features, additional details may be negotiated
  *       with key-value pairs specific to the protocol.
  *
  *  Enums added to this list should be assigned power-of-two values
@@ -6561,7 +6561,7 @@ __flatbuffers_define_scalar_field(0, org_apache_arrow_flatbuf_FixedSizeList, lis
  *  may be set in the metadata for this field.
  *
  *  In a field with Map type, the field has a child Struct field, which then
- *  has two children: key type and the second the value type. The names of the
+ *  has two children: the key type and the value type. The names of the
  *  child fields may be respectively "entries", "key", and "value", but this is
  *  not enforced.
  *
@@ -6732,9 +6732,9 @@ __flatbuffers_table_as_root(org_apache_arrow_flatbuf_RunEndEncoded)
 
 
 /**  Exact decimal value represented as an integer value in two's
- *  complement. Currently only 128-bit (16-byte) and 256-bit (32-byte) integers
- *  are used. The representation uses the endianness indicated
- *  in the Schema. */
+ *  complement. Currently 32-bit (4-byte), 64-bit (8-byte),
+ *  128-bit (16-byte) and 256-bit (32-byte) integers are used.
+ *  The representation uses the endianness indicated in the Schema. */
 struct org_apache_arrow_flatbuf_Decimal_table { uint8_t unused__; };
 
 static inline size_t org_apache_arrow_flatbuf_Decimal_vec_len(org_apache_arrow_flatbuf_Decimal_vec_t vec)
@@ -6747,7 +6747,7 @@ __flatbuffers_table_as_root(org_apache_arrow_flatbuf_Decimal)
 __flatbuffers_define_scalar_field(0, org_apache_arrow_flatbuf_Decimal, precision, flatbuffers_int32, int32_t, INT32_C(0))
 /**  Number of digits after the decimal point "." */
 __flatbuffers_define_scalar_field(1, org_apache_arrow_flatbuf_Decimal, scale, flatbuffers_int32, int32_t, INT32_C(0))
-/**  Number of bits per value. The only accepted widths are 128 and 256.
+/**  Number of bits per value. The accepted widths are 32, 64, 128 and 256.
  *  We use bitWidth for consistency with Int::bitWidth. */
 __flatbuffers_define_scalar_field(2, org_apache_arrow_flatbuf_Decimal, bitWidth, flatbuffers_int32, int32_t, INT32_C(128))
 
@@ -7073,7 +7073,7 @@ __flatbuffers_define_scalar_field(0, org_apache_arrow_flatbuf_DictionaryEncoding
  *  and to avoid uint64 indices unless they are required by an application. */
 __flatbuffers_define_table_field(1, org_apache_arrow_flatbuf_DictionaryEncoding, indexType, org_apache_arrow_flatbuf_Int_table_t, 0)
 /**  By default, dictionaries are not ordered, or the order does not have
- *  semantic meaning. In some statistical, applications, dictionary-encoding
+ *  semantic meaning. In some statistical applications, dictionary-encoding
  *  is used to represent ordered categorical data, and we provide a way to
  *  preserve that metadata here */
 __flatbuffers_define_scalar_field(2, org_apache_arrow_flatbuf_DictionaryEncoding, isOrdered, flatbuffers_bool, flatbuffers_bool_t, UINT8_C(0))
@@ -7090,7 +7090,7 @@ static inline org_apache_arrow_flatbuf_Field_table_t org_apache_arrow_flatbuf_Fi
 __flatbuffers_offset_vec_at(org_apache_arrow_flatbuf_Field_table_t, vec, i, 0)
 __flatbuffers_table_as_root(org_apache_arrow_flatbuf_Field)
 
-/**  Name is not required, in i.e. a List */
+/**  Name is not required (e.g., in a List) */
 __flatbuffers_define_string_field(0, org_apache_arrow_flatbuf_Field, name, 0)
 /**  Whether or not this field can contain nulls. Should be true in general. */
 __flatbuffers_define_scalar_field(1, org_apache_arrow_flatbuf_Field, nullable, flatbuffers_bool, flatbuffers_bool_t, UINT8_C(0))
@@ -10236,11 +10236,11 @@ static inline int org_apache_arrow_flatbuf_SparseMatrixCompressedAxis_is_known_v
  *  EXPERIMENTAL: Data structures for sparse tensors
  *  Coordinate (COO) format of sparse tensor index.
  *
- *  COO's index list are represented as a NxM matrix,
+ *  COO's index list is represented as an NxM matrix,
  *  where N is the number of non-zero values,
  *  and M is the number of dimensions of a sparse tensor.
  *
- *  indicesBuffer stores the location and size of the data of this indices
+ *  indicesBuffer stores the location and size of the data of these indices
  *  matrix.  The value type and the stride of the indices matrix is
  *  specified in indicesType and indicesStrides fields.
  *
@@ -10261,7 +10261,7 @@ static inline int org_apache_arrow_flatbuf_SparseMatrixCompressedAxis_is_known_v
  *     [2, 2, 3, 1, 2, 0],
  *     [0, 1, 0, 0, 3, 4]]
  *  ```
- *  When isCanonical is true, the indices is sorted in lexicographical order
+ *  When isCanonical is true, the indices are sorted in lexicographical order
  *  (row-major order), and it does not have duplicated entries.  Otherwise,
  *  the indices may not be sorted, or may have duplicated entries. */
 struct org_apache_arrow_flatbuf_SparseTensorIndexCOO_table { uint8_t unused__; };
@@ -10329,7 +10329,7 @@ __flatbuffers_define_table_field(3, org_apache_arrow_flatbuf_SparseMatrixIndexCS
  *  contains the column indices of the corresponding non-zero values.
  *  The type of index value is long.
  *
- *  For example, the indices of the above X is:
+ *  For example, the indices of the above X are:
  *  ```text
  *    indices(X) = [1, 2, 2, 1, 3, 0, 2, 3, 1].
  *  ```
@@ -10351,7 +10351,7 @@ __flatbuffers_table_as_root(org_apache_arrow_flatbuf_SparseTensorIndexCSF)
  *  CSF index recursively compresses each dimension of a tensor into a set
  *  of prefix trees. Each path from a root to leaf forms one tensor
  *  non-zero index. CSF is implemented with two arrays of buffers and one
- *  arrays of integers.
+ *  array of integers.
  *
  *  For example, let X be a 2x3x4x5 tensor and let it have the following
  *  8 non-zero values:
@@ -10383,7 +10383,7 @@ __flatbuffers_define_table_field(0, org_apache_arrow_flatbuf_SparseTensorIndexCS
  *  and `indptrBuffers[dim][i + 1]` signify a range of nodes in
  *  `indicesBuffers[dim + 1]` who are children of `indicesBuffers[dim][i]` node.
  *
- *  For example, the indptrBuffers for the above X is:
+ *  For example, the indptrBuffers for the above X are:
  *  ```text
  *    indptrBuffer(X) = [
  *                        [0, 2, 3],
@@ -10396,7 +10396,7 @@ __flatbuffers_define_vector_field(1, org_apache_arrow_flatbuf_SparseTensorIndexC
 __flatbuffers_define_table_field(2, org_apache_arrow_flatbuf_SparseTensorIndexCSF, indicesType, org_apache_arrow_flatbuf_Int_table_t, 1)
 /**  indicesBuffers stores values of nodes.
  *  Each tensor dimension corresponds to a buffer in indicesBuffers.
- *  For example, the indicesBuffers for the above X is:
+ *  For example, the indicesBuffers for the above X are:
  *  ```text
  *    indicesBuffer(X) = [
  *                         [0, 1],
@@ -11106,7 +11106,9 @@ __flatbuffers_define_integer_type(org_apache_arrow_flatbuf_BodyCompressionMethod
  *  buffer bytes (and then padding as required by the protocol). The
  *  uncompressed length may be set to -1 to indicate that the data that
  *  follows is not compressed, which can be useful for cases where
- *  compression does not yield appreciable savings. */
+ *  compression does not yield appreciable savings.
+ *  Also, empty buffers can optionally be written out as 0-byte compressed
+ *  buffers, thereby omitting the 8-bytes length header. */
 #define org_apache_arrow_flatbuf_BodyCompressionMethod_BUFFER ((org_apache_arrow_flatbuf_BodyCompressionMethod_enum_t)INT8_C(0))
 
 static inline const char *org_apache_arrow_flatbuf_BodyCompressionMethod_name(org_apache_arrow_flatbuf_BodyCompressionMethod_enum_t value)
@@ -11203,7 +11205,7 @@ __flatbuffers_define_vector_field(2, org_apache_arrow_flatbuf_RecordBatch, buffe
 __flatbuffers_define_table_field(3, org_apache_arrow_flatbuf_RecordBatch, compression, org_apache_arrow_flatbuf_BodyCompression_table_t, 0)
 /**  Some types such as Utf8View are represented using a variable number of buffers.
  *  For each such Field in the pre-ordered flattened logical schema, there will be
- *  an entry in variadicBufferCounts to indicate the number of number of variadic
+ *  an entry in variadicBufferCounts to indicate the number of variadic
  *  buffers which belong to that Field in the current RecordBatch.
  *
  *  For example, the schema
@@ -12389,8 +12391,8 @@ static inline int org_apache_arrow_flatbuf_MetadataVersion_is_known_value(org_ap
  *       forward compatibility guarantees).
  *   2.  A means of negotiating between a client and server
  *       what features a stream is allowed to use. The enums
- *       values here are intented to represent higher level
- *       features, additional details maybe negotiated
+ *       values here are intended to represent higher level
+ *       features, additional details may be negotiated
  *       with key-value pairs specific to the protocol.
  *
  *  Enums added to this list should be assigned power-of-two values
@@ -12715,7 +12717,7 @@ __flatbuffers_define_scalar_field(0, org_apache_arrow_flatbuf_FixedSizeList, lis
  *  may be set in the metadata for this field.
  *
  *  In a field with Map type, the field has a child Struct field, which then
- *  has two children: key type and the second the value type. The names of the
+ *  has two children: the key type and the value type. The names of the
  *  child fields may be respectively "entries", "key", and "value", but this is
  *  not enforced.
  *
@@ -12886,9 +12888,9 @@ __flatbuffers_table_as_root(org_apache_arrow_flatbuf_RunEndEncoded)
 
 
 /**  Exact decimal value represented as an integer value in two's
- *  complement. Currently only 128-bit (16-byte) and 256-bit (32-byte) integers
- *  are used. The representation uses the endianness indicated
- *  in the Schema. */
+ *  complement. Currently 32-bit (4-byte), 64-bit (8-byte),
+ *  128-bit (16-byte) and 256-bit (32-byte) integers are used.
+ *  The representation uses the endianness indicated in the Schema. */
 struct org_apache_arrow_flatbuf_Decimal_table { uint8_t unused__; };
 
 static inline size_t org_apache_arrow_flatbuf_Decimal_vec_len(org_apache_arrow_flatbuf_Decimal_vec_t vec)
@@ -12901,7 +12903,7 @@ __flatbuffers_table_as_root(org_apache_arrow_flatbuf_Decimal)
 __flatbuffers_define_scalar_field(0, org_apache_arrow_flatbuf_Decimal, precision, flatbuffers_int32, int32_t, INT32_C(0))
 /**  Number of digits after the decimal point "." */
 __flatbuffers_define_scalar_field(1, org_apache_arrow_flatbuf_Decimal, scale, flatbuffers_int32, int32_t, INT32_C(0))
-/**  Number of bits per value. The only accepted widths are 128 and 256.
+/**  Number of bits per value. The accepted widths are 32, 64, 128 and 256.
  *  We use bitWidth for consistency with Int::bitWidth. */
 __flatbuffers_define_scalar_field(2, org_apache_arrow_flatbuf_Decimal, bitWidth, flatbuffers_int32, int32_t, INT32_C(128))
 
@@ -13227,7 +13229,7 @@ __flatbuffers_define_scalar_field(0, org_apache_arrow_flatbuf_DictionaryEncoding
  *  and to avoid uint64 indices unless they are required by an application. */
 __flatbuffers_define_table_field(1, org_apache_arrow_flatbuf_DictionaryEncoding, indexType, org_apache_arrow_flatbuf_Int_table_t, 0)
 /**  By default, dictionaries are not ordered, or the order does not have
- *  semantic meaning. In some statistical, applications, dictionary-encoding
+ *  semantic meaning. In some statistical applications, dictionary-encoding
  *  is used to represent ordered categorical data, and we provide a way to
  *  preserve that metadata here */
 __flatbuffers_define_scalar_field(2, org_apache_arrow_flatbuf_DictionaryEncoding, isOrdered, flatbuffers_bool, flatbuffers_bool_t, UINT8_C(0))
@@ -13244,7 +13246,7 @@ static inline org_apache_arrow_flatbuf_Field_table_t org_apache_arrow_flatbuf_Fi
 __flatbuffers_offset_vec_at(org_apache_arrow_flatbuf_Field_table_t, vec, i, 0)
 __flatbuffers_table_as_root(org_apache_arrow_flatbuf_Field)
 
-/**  Name is not required, in i.e. a List */
+/**  Name is not required (e.g., in a List) */
 __flatbuffers_define_string_field(0, org_apache_arrow_flatbuf_Field, name, 0)
 /**  Whether or not this field can contain nulls. Should be true in general. */
 __flatbuffers_define_scalar_field(1, org_apache_arrow_flatbuf_Field, nullable, flatbuffers_bool, flatbuffers_bool_t, UINT8_C(0))
@@ -16495,8 +16497,8 @@ static inline int org_apache_arrow_flatbuf_MetadataVersion_is_known_value(org_ap
  *       forward compatibility guarantees).
  *   2.  A means of negotiating between a client and server
  *       what features a stream is allowed to use. The enums
- *       values here are intented to represent higher level
- *       features, additional details maybe negotiated
+ *       values here are intended to represent higher level
+ *       features, additional details may be negotiated
  *       with key-value pairs specific to the protocol.
  *
  *  Enums added to this list should be assigned power-of-two values
@@ -16821,7 +16823,7 @@ __flatbuffers_define_scalar_field(0, org_apache_arrow_flatbuf_FixedSizeList, lis
  *  may be set in the metadata for this field.
  *
  *  In a field with Map type, the field has a child Struct field, which then
- *  has two children: key type and the second the value type. The names of the
+ *  has two children: the key type and the value type. The names of the
  *  child fields may be respectively "entries", "key", and "value", but this is
  *  not enforced.
  *
@@ -16992,9 +16994,9 @@ __flatbuffers_table_as_root(org_apache_arrow_flatbuf_RunEndEncoded)
 
 
 /**  Exact decimal value represented as an integer value in two's
- *  complement. Currently only 128-bit (16-byte) and 256-bit (32-byte) integers
- *  are used. The representation uses the endianness indicated
- *  in the Schema. */
+ *  complement. Currently 32-bit (4-byte), 64-bit (8-byte),
+ *  128-bit (16-byte) and 256-bit (32-byte) integers are used.
+ *  The representation uses the endianness indicated in the Schema. */
 struct org_apache_arrow_flatbuf_Decimal_table { uint8_t unused__; };
 
 static inline size_t org_apache_arrow_flatbuf_Decimal_vec_len(org_apache_arrow_flatbuf_Decimal_vec_t vec)
@@ -17007,7 +17009,7 @@ __flatbuffers_table_as_root(org_apache_arrow_flatbuf_Decimal)
 __flatbuffers_define_scalar_field(0, org_apache_arrow_flatbuf_Decimal, precision, flatbuffers_int32, int32_t, INT32_C(0))
 /**  Number of digits after the decimal point "." */
 __flatbuffers_define_scalar_field(1, org_apache_arrow_flatbuf_Decimal, scale, flatbuffers_int32, int32_t, INT32_C(0))
-/**  Number of bits per value. The only accepted widths are 128 and 256.
+/**  Number of bits per value. The accepted widths are 32, 64, 128 and 256.
  *  We use bitWidth for consistency with Int::bitWidth. */
 __flatbuffers_define_scalar_field(2, org_apache_arrow_flatbuf_Decimal, bitWidth, flatbuffers_int32, int32_t, INT32_C(128))
 
@@ -17333,7 +17335,7 @@ __flatbuffers_define_scalar_field(0, org_apache_arrow_flatbuf_DictionaryEncoding
  *  and to avoid uint64 indices unless they are required by an application. */
 __flatbuffers_define_table_field(1, org_apache_arrow_flatbuf_DictionaryEncoding, indexType, org_apache_arrow_flatbuf_Int_table_t, 0)
 /**  By default, dictionaries are not ordered, or the order does not have
- *  semantic meaning. In some statistical, applications, dictionary-encoding
+ *  semantic meaning. In some statistical applications, dictionary-encoding
  *  is used to represent ordered categorical data, and we provide a way to
  *  preserve that metadata here */
 __flatbuffers_define_scalar_field(2, org_apache_arrow_flatbuf_DictionaryEncoding, isOrdered, flatbuffers_bool, flatbuffers_bool_t, UINT8_C(0))
@@ -17350,7 +17352,7 @@ static inline org_apache_arrow_flatbuf_Field_table_t org_apache_arrow_flatbuf_Fi
 __flatbuffers_offset_vec_at(org_apache_arrow_flatbuf_Field_table_t, vec, i, 0)
 __flatbuffers_table_as_root(org_apache_arrow_flatbuf_Field)
 
-/**  Name is not required, in i.e. a List */
+/**  Name is not required (e.g., in a List) */
 __flatbuffers_define_string_field(0, org_apache_arrow_flatbuf_Field, name, 0)
 /**  Whether or not this field can contain nulls. Should be true in general. */
 __flatbuffers_define_scalar_field(1, org_apache_arrow_flatbuf_Field, nullable, flatbuffers_bool, flatbuffers_bool_t, UINT8_C(0))
@@ -20496,11 +20498,11 @@ static inline int org_apache_arrow_flatbuf_SparseMatrixCompressedAxis_is_known_v
  *  EXPERIMENTAL: Data structures for sparse tensors
  *  Coordinate (COO) format of sparse tensor index.
  *
- *  COO's index list are represented as a NxM matrix,
+ *  COO's index list is represented as an NxM matrix,
  *  where N is the number of non-zero values,
  *  and M is the number of dimensions of a sparse tensor.
  *
- *  indicesBuffer stores the location and size of the data of this indices
+ *  indicesBuffer stores the location and size of the data of these indices
  *  matrix.  The value type and the stride of the indices matrix is
  *  specified in indicesType and indicesStrides fields.
  *
@@ -20521,7 +20523,7 @@ static inline int org_apache_arrow_flatbuf_SparseMatrixCompressedAxis_is_known_v
  *     [2, 2, 3, 1, 2, 0],
  *     [0, 1, 0, 0, 3, 4]]
  *  ```
- *  When isCanonical is true, the indices is sorted in lexicographical order
+ *  When isCanonical is true, the indices are sorted in lexicographical order
  *  (row-major order), and it does not have duplicated entries.  Otherwise,
  *  the indices may not be sorted, or may have duplicated entries. */
 struct org_apache_arrow_flatbuf_SparseTensorIndexCOO_table { uint8_t unused__; };
@@ -20589,7 +20591,7 @@ __flatbuffers_define_table_field(3, org_apache_arrow_flatbuf_SparseMatrixIndexCS
  *  contains the column indices of the corresponding non-zero values.
  *  The type of index value is long.
  *
- *  For example, the indices of the above X is:
+ *  For example, the indices of the above X are:
  *  ```text
  *    indices(X) = [1, 2, 2, 1, 3, 0, 2, 3, 1].
  *  ```
@@ -20611,7 +20613,7 @@ __flatbuffers_table_as_root(org_apache_arrow_flatbuf_SparseTensorIndexCSF)
  *  CSF index recursively compresses each dimension of a tensor into a set
  *  of prefix trees. Each path from a root to leaf forms one tensor
  *  non-zero index. CSF is implemented with two arrays of buffers and one
- *  arrays of integers.
+ *  array of integers.
  *
  *  For example, let X be a 2x3x4x5 tensor and let it have the following
  *  8 non-zero values:
@@ -20643,7 +20645,7 @@ __flatbuffers_define_table_field(0, org_apache_arrow_flatbuf_SparseTensorIndexCS
  *  and `indptrBuffers[dim][i + 1]` signify a range of nodes in
  *  `indicesBuffers[dim + 1]` who are children of `indicesBuffers[dim][i]` node.
  *
- *  For example, the indptrBuffers for the above X is:
+ *  For example, the indptrBuffers for the above X are:
  *  ```text
  *    indptrBuffer(X) = [
  *                        [0, 2, 3],
@@ -20656,7 +20658,7 @@ __flatbuffers_define_vector_field(1, org_apache_arrow_flatbuf_SparseTensorIndexC
 __flatbuffers_define_table_field(2, org_apache_arrow_flatbuf_SparseTensorIndexCSF, indicesType, org_apache_arrow_flatbuf_Int_table_t, 1)
 /**  indicesBuffers stores values of nodes.
  *  Each tensor dimension corresponds to a buffer in indicesBuffers.
- *  For example, the indicesBuffers for the above X is:
+ *  For example, the indicesBuffers for the above X are:
  *  ```text
  *    indicesBuffer(X) = [
  *                         [0, 1],
@@ -21782,8 +21784,8 @@ static inline int org_apache_arrow_flatbuf_MetadataVersion_is_known_value(org_ap
  *       forward compatibility guarantees).
  *   2.  A means of negotiating between a client and server
  *       what features a stream is allowed to use. The enums
- *       values here are intented to represent higher level
- *       features, additional details maybe negotiated
+ *       values here are intended to represent higher level
+ *       features, additional details may be negotiated
  *       with key-value pairs specific to the protocol.
  *
  *  Enums added to this list should be assigned power-of-two values
@@ -22108,7 +22110,7 @@ __flatbuffers_define_scalar_field(0, org_apache_arrow_flatbuf_FixedSizeList, lis
  *  may be set in the metadata for this field.
  *
  *  In a field with Map type, the field has a child Struct field, which then
- *  has two children: key type and the second the value type. The names of the
+ *  has two children: the key type and the value type. The names of the
  *  child fields may be respectively "entries", "key", and "value", but this is
  *  not enforced.
  *
@@ -22279,9 +22281,9 @@ __flatbuffers_table_as_root(org_apache_arrow_flatbuf_RunEndEncoded)
 
 
 /**  Exact decimal value represented as an integer value in two's
- *  complement. Currently only 128-bit (16-byte) and 256-bit (32-byte) integers
- *  are used. The representation uses the endianness indicated
- *  in the Schema. */
+ *  complement. Currently 32-bit (4-byte), 64-bit (8-byte),
+ *  128-bit (16-byte) and 256-bit (32-byte) integers are used.
+ *  The representation uses the endianness indicated in the Schema. */
 struct org_apache_arrow_flatbuf_Decimal_table { uint8_t unused__; };
 
 static inline size_t org_apache_arrow_flatbuf_Decimal_vec_len(org_apache_arrow_flatbuf_Decimal_vec_t vec)
@@ -22294,7 +22296,7 @@ __flatbuffers_table_as_root(org_apache_arrow_flatbuf_Decimal)
 __flatbuffers_define_scalar_field(0, org_apache_arrow_flatbuf_Decimal, precision, flatbuffers_int32, int32_t, INT32_C(0))
 /**  Number of digits after the decimal point "." */
 __flatbuffers_define_scalar_field(1, org_apache_arrow_flatbuf_Decimal, scale, flatbuffers_int32, int32_t, INT32_C(0))
-/**  Number of bits per value. The only accepted widths are 128 and 256.
+/**  Number of bits per value. The accepted widths are 32, 64, 128 and 256.
  *  We use bitWidth for consistency with Int::bitWidth. */
 __flatbuffers_define_scalar_field(2, org_apache_arrow_flatbuf_Decimal, bitWidth, flatbuffers_int32, int32_t, INT32_C(128))
 
@@ -22620,7 +22622,7 @@ __flatbuffers_define_scalar_field(0, org_apache_arrow_flatbuf_DictionaryEncoding
  *  and to avoid uint64 indices unless they are required by an application. */
 __flatbuffers_define_table_field(1, org_apache_arrow_flatbuf_DictionaryEncoding, indexType, org_apache_arrow_flatbuf_Int_table_t, 0)
 /**  By default, dictionaries are not ordered, or the order does not have
- *  semantic meaning. In some statistical, applications, dictionary-encoding
+ *  semantic meaning. In some statistical applications, dictionary-encoding
  *  is used to represent ordered categorical data, and we provide a way to
  *  preserve that metadata here */
 __flatbuffers_define_scalar_field(2, org_apache_arrow_flatbuf_DictionaryEncoding, isOrdered, flatbuffers_bool, flatbuffers_bool_t, UINT8_C(0))
@@ -22637,7 +22639,7 @@ static inline org_apache_arrow_flatbuf_Field_table_t org_apache_arrow_flatbuf_Fi
 __flatbuffers_offset_vec_at(org_apache_arrow_flatbuf_Field_table_t, vec, i, 0)
 __flatbuffers_table_as_root(org_apache_arrow_flatbuf_Field)
 
-/**  Name is not required, in i.e. a List */
+/**  Name is not required (e.g., in a List) */
 __flatbuffers_define_string_field(0, org_apache_arrow_flatbuf_Field, name, 0)
 /**  Whether or not this field can contain nulls. Should be true in general. */
 __flatbuffers_define_scalar_field(1, org_apache_arrow_flatbuf_Field, nullable, flatbuffers_bool, flatbuffers_bool_t, UINT8_C(0))
