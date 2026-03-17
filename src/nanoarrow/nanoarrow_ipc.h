@@ -49,6 +49,8 @@
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcDecoderDecodeHeader)
 #define ArrowIpcDecoderDecodeSchema \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcDecoderDecodeSchema)
+#define ArrowIpcDecoderDecodeSchemaWithDictionaries \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcDecoderDecodeSchemaWithDictionaries)
 #define ArrowIpcDecoderDecodeArrayView \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcDecoderDecodeArrayView)
 #define ArrowIpcDecoderDecodeArray \
@@ -105,6 +107,12 @@
 #define ArrowIpcFooterReset NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcFooterReset)
 #define ArrowIpcEncoderEncodeFooter \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcEncoderEncodeFooter)
+#define ArrowIpcDictionaryMappingInit \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcDictionaryMappingInit)
+#define ArrowIpcDictionaryMappingAppend \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcDictionaryMappingAppend)
+#define ArrowIpcDictionaryMappingReset \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcDictionaryMappingReset)
 
 #endif
 
