@@ -171,20 +171,22 @@ struct ArrowIpcDictionaryBatch {
   int is_delta;
 };
 
-struct ArrowIpcDictionaries {
+struct ArrowIpcDictionaryMapping {
   int64_t* dictionary_id;
   const struct ArrowSchema** dictionary_schema;
   int64_t length;
   int64_t capacity;
 };
 
-NANOARROW_DLL void ArrowIpcDictionariesInit(struct ArrowIpcDictionaries* dictionaries);
+NANOARROW_DLL void ArrowIpcDictionaryMappingInit(
+    struct ArrowIpcDictionaryMapping* dictionaries);
 
 NANOARROW_DLL ArrowErrorCode
-ArrowIpcDictionariesAppend(struct ArrowIpcDictionaries* dictionaries, int64_t id,
-                           const struct ArrowSchema* schema);
+ArrowIpcDictionaryMappingAppend(struct ArrowIpcDictionaryMapping* dictionaries,
+                                int64_t id, const struct ArrowSchema* schema);
 
-NANOARROW_DLL void ArrowIpcDictionariesReset(struct ArrowIpcDictionaries* dictionaries);
+NANOARROW_DLL void ArrowIpcDictionaryMappingReset(
+    struct ArrowIpcDictionaryMapping* dictionaries);
 
 /// \brief Checks the nanoarrow runtime to make sure the run/build versions match
 NANOARROW_DLL ArrowErrorCode ArrowIpcCheckRuntime(struct ArrowError* error);
@@ -416,7 +418,7 @@ NANOARROW_DLL ArrowErrorCode ArrowIpcDecoderDecodeSchema(struct ArrowIpcDecoder*
 
 NANOARROW_DLL ArrowErrorCode ArrowIpcDecoderDecodeSchemaWithDictionaries(
     struct ArrowIpcDecoder* decoder, struct ArrowSchema* out,
-    struct ArrowIpcDictionaries* dictionaries_out, struct ArrowError* error);
+    struct ArrowIpcDictionaryMapping* dictionaries_out, struct ArrowError* error);
 
 /// \brief Set the ArrowSchema used to decode future record batch messages
 ///
@@ -730,7 +732,7 @@ struct ArrowIpcFooter {
   /// \brief The Footer's embedded Schema
   struct ArrowSchema schema;
   /// \brief Dictionaries present in the footer Schema
-  struct ArrowIpcDictionaries dictionaries;
+  struct ArrowIpcDictionaryMapping dictionaries;
   /// \brief all blocks containing RecordBatch Messages
   struct ArrowBuffer record_batch_blocks;
 };

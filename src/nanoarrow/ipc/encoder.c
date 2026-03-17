@@ -629,7 +629,7 @@ ArrowErrorCode ArrowIpcEncoderEncodeSimpleRecordBatch(
 void ArrowIpcFooterInit(struct ArrowIpcFooter* footer) {
   footer->schema.release = NULL;
   ArrowBufferInit(&footer->record_batch_blocks);
-  ArrowIpcDictionariesInit(&footer->dictionaries);
+  ArrowIpcDictionaryMappingInit(&footer->dictionaries);
 }
 
 void ArrowIpcFooterReset(struct ArrowIpcFooter* footer) {
@@ -637,7 +637,7 @@ void ArrowIpcFooterReset(struct ArrowIpcFooter* footer) {
     ArrowSchemaRelease(&footer->schema);
   }
   ArrowBufferReset(&footer->record_batch_blocks);
-  ArrowIpcDictionariesReset(&footer->dictionaries);
+  ArrowIpcDictionaryMappingReset(&footer->dictionaries);
 }
 
 ArrowErrorCode ArrowIpcEncoderEncodeFooter(struct ArrowIpcEncoder* encoder,

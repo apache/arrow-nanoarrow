@@ -272,13 +272,14 @@ static int ArrowIpcDecoderNeedsSwapEndian(struct ArrowIpcDecoder* decoder) {
   }
 }
 
-void ArrowIpcDictionariesInit(struct ArrowIpcDictionaries* dictionaries) {
+void ArrowIpcDictionaryMappingInit(struct ArrowIpcDictionaryMapping* dictionaries) {
   NANOARROW_DCHECK(dictionaries != NULL);
-  memset(dictionaries, 0, sizeof(struct ArrowIpcDictionaries));
+  memset(dictionaries, 0, sizeof(struct ArrowIpcDictionaryMapping));
 }
 
-ArrowErrorCode ArrowIpcDictionariesAppend(struct ArrowIpcDictionaries* dictionaries,
-                                          int64_t id, const struct ArrowSchema* schema) {
+ArrowErrorCode ArrowIpcDictionaryMappingAppend(
+    struct ArrowIpcDictionaryMapping* dictionaries, int64_t id,
+    const struct ArrowSchema* schema) {
   NANOARROW_DCHECK(dictionaries != NULL);
   if ((dictionaries->length + 1) >= dictionaries->capacity) {
     int64_t min_capacity = dictionaries->length == 0 ? 1 : dictionaries->length * 2;
@@ -305,7 +306,7 @@ ArrowErrorCode ArrowIpcDictionariesAppend(struct ArrowIpcDictionaries* dictionar
   return NANOARROW_OK;
 }
 
-void ArrowIpcDictionariesReset(struct ArrowIpcDictionaries* dictionaries) {
+void ArrowIpcDictionaryMappingReset(struct ArrowIpcDictionaryMapping* dictionaries) {
   NANOARROW_DCHECK(dictionaries != NULL);
   if (dictionaries->dictionary_id != NULL) {
     ArrowFree(dictionaries->dictionary_id);
@@ -315,7 +316,7 @@ void ArrowIpcDictionariesReset(struct ArrowIpcDictionaries* dictionaries) {
     ArrowFree(dictionaries->dictionary_schema);
   }
 
-  ArrowIpcDictionariesInit(dictionaries);
+  ArrowIpcDictionaryMappingInit(dictionaries);
 }
 
 ArrowErrorCode ArrowIpcDecoderInit(struct ArrowIpcDecoder* decoder) {
@@ -989,7 +990,7 @@ static int ArrowIpcMoveNonExtensionFieldMetadataBackToFieldIfNeeded(
 
 static int ArrowIpcSetDictionaryEncoding(
     struct ArrowSchema* schema, ns(DictionaryEncoding_table_t dictionary_encoding),
-    struct ArrowIpcDictionaries* dictionaries, struct ArrowError* error) {
+    struct ArrowIpcDictionaryMapping* dictionaries, struct ArrowError* error) {
   switch (
       org_apache_arrow_flatbuf_DictionaryEncoding_dictionaryKind(dictionary_encoding)) {
     case ns(DictionaryKind_DenseArray):
@@ -1032,18 +1033,18 @@ static int ArrowIpcSetDictionaryEncoding(
   if (dictionaries != NULL) {
     int64_t id = ns(DictionaryEncoding_id(dictionary_encoding));
     NANOARROW_RETURN_NOT_OK_WITH_ERROR(
-        ArrowIpcDictionariesAppend(dictionaries, id, schema), error);
+        ArrowIpcDictionaryMappingAppend(dictionaries, id, schema), error);
   }
 
   return NANOARROW_OK;
 }
 
 static int ArrowIpcDecoderSetChildren(struct ArrowSchema* schema, ns(Field_vec_t) fields,
-                                      struct ArrowIpcDictionaries* dictionaries,
+                                      struct ArrowIpcDictionaryMapping* dictionaries,
                                       struct ArrowError* error);
 
 static int ArrowIpcDecoderSetField(struct ArrowSchema* schema, ns(Field_table_t) field,
-                                   struct ArrowIpcDictionaries* dictionaries,
+                                   struct ArrowIpcDictionaryMapping* dictionaries,
                                    struct ArrowError* error) {
   int result;
   if (ns(Field_name_is_present(field))) {
@@ -1099,7 +1100,7 @@ static int ArrowIpcDecoderSetField(struct ArrowSchema* schema, ns(Field_table_t)
 }
 
 static int ArrowIpcDecoderSetChildren(struct ArrowSchema* schema, ns(Field_vec_t) fields,
-                                      struct ArrowIpcDictionaries* dictionaries,
+                                      struct ArrowIpcDictionaryMapping* dictionaries,
                                       struct ArrowError* error) {
   int64_t n_fields = ns(Schema_vec_len(fields));
 
@@ -1504,7 +1505,7 @@ ArrowErrorCode ArrowIpcDecoderDecodeHeader(struct ArrowIpcDecoder* decoder,
 
 static ArrowErrorCode ArrowIpcDecoderDecodeSchemaImpl(
     ns(Schema_table_t) schema, struct ArrowSchema* out,
-    struct ArrowIpcDictionaries* dictionaries_out, struct ArrowError* error) {
+    struct ArrowIpcDictionaryMapping* dictionaries_out, struct ArrowError* error) {
   ArrowSchemaInit(out);
   // Top-level batch schema is typically non-nullable
   out->flags = 0;
@@ -1528,7 +1529,7 @@ static ArrowErrorCode ArrowIpcDecoderDecodeSchemaImpl(
 
 ArrowErrorCode ArrowIpcDecoderDecodeSchemaWithDictionaries(
     struct ArrowIpcDecoder* decoder, struct ArrowSchema* out,
-    struct ArrowIpcDictionaries* dictionaries_out, struct ArrowError* error) {
+    struct ArrowIpcDictionaryMapping* dictionaries_out, struct ArrowError* error) {
   struct ArrowIpcDecoderPrivate* private_data =
       (struct ArrowIpcDecoderPrivate*)decoder->private_data;
 
@@ -1539,7 +1540,7 @@ ArrowErrorCode ArrowIpcDecoderDecodeSchemaWithDictionaries(
   }
 
   if (dictionaries_out != NULL) {
-    ArrowIpcDictionariesInit(dictionaries_out);
+    ArrowIpcDictionaryMappingInit(dictionaries_out);
   }
 
   struct ArrowSchema tmp;
@@ -1550,7 +1551,7 @@ ArrowErrorCode ArrowIpcDecoderDecodeSchemaWithDictionaries(
     ArrowSchemaRelease(&tmp);
 
     if (dictionaries_out != NULL) {
-      ArrowIpcDictionariesReset(dictionaries_out);
+      ArrowIpcDictionaryMappingReset(dictionaries_out);
     }
 
     return result;
