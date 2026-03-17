@@ -538,6 +538,8 @@ ArrowErrorCode ArrowIpcArrayStreamReaderInit(
     private_data->use_shared_buffers = ArrowIpcSharedBufferIsThreadSafe();
   }
 
+  ArrowIpcDictionaryEncodingsInit(&private_data->dictionary_encodings);
+
   out->private_data = private_data;
   out->get_schema = &ArrowIpcArrayStreamReaderGetSchema;
   out->get_next = &ArrowIpcArrayStreamReaderGetNext;
