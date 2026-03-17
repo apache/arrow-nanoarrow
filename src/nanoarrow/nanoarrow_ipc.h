@@ -178,12 +178,13 @@ struct ArrowIpcDictionaries {
   int64_t capacity;
 };
 
-void ArrowIpcDictionariesInit(struct ArrowIpcDictionaries* dictionaries);
+NANOARROW_DLL void ArrowIpcDictionariesInit(struct ArrowIpcDictionaries* dictionaries);
 
-ArrowErrorCode ArrowIpcDictionariesAppend(struct ArrowIpcDictionaries* dictionaries,
-                                          int64_t id, const struct ArrowSchema* schema);
+NANOARROW_DLL ArrowErrorCode
+ArrowIpcDictionariesAppend(struct ArrowIpcDictionaries* dictionaries, int64_t id,
+                           const struct ArrowSchema* schema);
 
-void ArrowIpcDictionariesReset(struct ArrowIpcDictionaries* dictionaries);
+NANOARROW_DLL void ArrowIpcDictionariesReset(struct ArrowIpcDictionaries* dictionaries);
 
 /// \brief Checks the nanoarrow runtime to make sure the run/build versions match
 NANOARROW_DLL ArrowErrorCode ArrowIpcCheckRuntime(struct ArrowError* error);
@@ -413,10 +414,9 @@ NANOARROW_DLL ArrowErrorCode ArrowIpcDecoderDecodeSchema(struct ArrowIpcDecoder*
                                                          struct ArrowSchema* out,
                                                          struct ArrowError* error);
 
-NANOARROW_DLL ArrowErrorCode ArrowIpcDecoderDecodeSchemaWithDictionaries(struct ArrowIpcDecoder* decoder,
-                                                         struct ArrowSchema* out,
-                                                         struct ArrowIpcDictionaries* dictionaries_out,
-                                                         struct ArrowError* error);
+NANOARROW_DLL ArrowErrorCode ArrowIpcDecoderDecodeSchemaWithDictionaries(
+    struct ArrowIpcDecoder* decoder, struct ArrowSchema* out,
+    struct ArrowIpcDictionaries* dictionaries_out, struct ArrowError* error);
 
 /// \brief Set the ArrowSchema used to decode future record batch messages
 ///
@@ -727,8 +727,10 @@ struct ArrowIpcFileBlock {
 /// This structure is intended to be allocated by the caller, initialized using
 /// ArrowIpcFooterInit(), and released with ArrowIpcFooterReset().
 struct ArrowIpcFooter {
-  /// \brief the Footer's embedded Schema
+  /// \brief The Footer's embedded Schema
   struct ArrowSchema schema;
+  /// \brief Dictionaries present in the footer Schema
+  struct ArrowIpcDictionaries dictionaries;
   /// \brief all blocks containing RecordBatch Messages
   struct ArrowBuffer record_batch_blocks;
 };

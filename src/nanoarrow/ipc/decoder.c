@@ -1580,9 +1580,9 @@ ArrowErrorCode ArrowIpcDecoderDecodeFooter(struct ArrowIpcDecoder* decoder,
   NANOARROW_RETURN_NOT_OK(
       ArrowIpcDecoderDecodeSchemaHeader(decoder, ns(Footer_schema(footer)), error));
 
-  // TODO: include dictionaries in footer
   NANOARROW_RETURN_NOT_OK(ArrowIpcDecoderDecodeSchemaImpl(
-      ns(Footer_schema(footer)), &private_data->footer.schema, NULL, error));
+      ns(Footer_schema(footer)), &private_data->footer.schema,
+      &private_data->footer.dictionaries, error));
 
   ns(Block_vec_t) blocks = ns(Footer_recordBatches(footer));
   int64_t n = ns(Block_vec_len(blocks));
