@@ -589,6 +589,7 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDecodeDictionarySchema) {
   struct ArrowIpcDecoder decoder;
   struct ArrowError error;
   struct ArrowSchema schema;
+  struct ArrowIpcDictionaryEncodings encodings;
 
   struct ArrowBufferView data;
   data.data.as_uint8 = kDictionarySchema;
@@ -599,7 +600,9 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDecodeDictionarySchema) {
   EXPECT_EQ(ArrowIpcDecoderDecodeHeader(&decoder, data, &error), NANOARROW_OK);
   ASSERT_EQ(decoder.message_type, NANOARROW_IPC_MESSAGE_TYPE_SCHEMA);
 
-  ASSERT_EQ(ArrowIpcDecoderDecodeSchema(&decoder, &schema, &error), NANOARROW_OK);
+  ASSERT_EQ(
+      ArrowIpcDecoderDecodeSchemaWithDictionaries(&decoder, &schema, &encodings, &error),
+      NANOARROW_OK);
   ASSERT_EQ(schema.n_children, 1);
   EXPECT_STREQ(schema.children[0]->name, "some_col");
   EXPECT_EQ(schema.children[0]->flags, ARROW_FLAG_NULLABLE);
@@ -608,7 +611,19 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDecodeDictionarySchema) {
   ASSERT_NE(schema.children[0]->dictionary, nullptr);
   EXPECT_STREQ(schema.children[0]->dictionary->format, "u");
 
+  // The dictionary encodings should fail to locate anything except the dictionary-encoded
+  // field
+  ASSERT_EQ(ArrowIpcDictionaryEncodingsFind(&encodings, nullptr), nullptr);
+  ASSERT_EQ(ArrowIpcDictionaryEncodingsFind(&encodings, &schema), nullptr);
+  const struct ArrowIpcDictionaryEncoding* encoding =
+      ArrowIpcDictionaryEncodingsFind(&encodings, schema.children[0]);
+  ASSERT_NE(encoding, nullptr);
+  ASSERT_EQ(encoding->schema, schema.children[0]);
+  ASSERT_EQ(encoding->id, 0);
+  ASSERT_EQ(encoding->kind, NANOARROW_IPC_DICTIONARY_KIND_DENSE_ARRAY);
+
   ArrowSchemaRelease(&schema);
+  ArrowIpcDictionaryEncodingsReset(&encodings);
   ArrowIpcDecoderReset(&decoder);
 }
 
