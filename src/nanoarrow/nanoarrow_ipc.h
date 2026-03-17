@@ -473,6 +473,10 @@ NANOARROW_DLL ArrowErrorCode ArrowIpcDecoderSetSchema(struct ArrowIpcDecoder* de
                                                       struct ArrowSchema* schema,
                                                       struct ArrowError* error);
 
+NANOARROW_DLL ArrowErrorCode ArrowIpcDecoderSetSchemaWithDictionaries(
+    struct ArrowIpcDecoder* decoder, struct ArrowSchema* schema,
+    struct ArrowIpcDictionaryEncodings* dictionary_encodings, struct ArrowError* error);
+
 /// \brief Set the endianness used to decode future record batch messages
 ///
 /// Prepares the decoder for future record batch messages with the specified
