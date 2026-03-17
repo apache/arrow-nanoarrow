@@ -413,6 +413,11 @@ NANOARROW_DLL ArrowErrorCode ArrowIpcDecoderDecodeSchema(struct ArrowIpcDecoder*
                                                          struct ArrowSchema* out,
                                                          struct ArrowError* error);
 
+NANOARROW_DLL ArrowErrorCode ArrowIpcDecoderDecodeSchemaWithDictionaries(struct ArrowIpcDecoder* decoder,
+                                                         struct ArrowSchema* out,
+                                                         struct ArrowIpcDictionaries* dictionaries_out,
+                                                         struct ArrowError* error);
+
 /// \brief Set the ArrowSchema used to decode future record batch messages
 ///
 /// Prepares the decoder for future record batch messages

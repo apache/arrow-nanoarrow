@@ -989,7 +989,7 @@ static int ArrowIpcMoveNonExtensionFieldMetadataBackToFieldIfNeeded(
 
 static int ArrowIpcSetDictionaryEncoding(
     struct ArrowSchema* schema, ns(DictionaryEncoding_table_t dictionary_encoding),
-    struct ArrowError* error) {
+    struct ArrowIpcDictionaries* dictionaries, struct ArrowError* error) {
   switch (
       org_apache_arrow_flatbuf_DictionaryEncoding_dictionaryKind(dictionary_encoding)) {
     case ns(DictionaryKind_DenseArray):
@@ -1028,16 +1028,22 @@ static int ArrowIpcSetDictionaryEncoding(
   NANOARROW_RETURN_NOT_OK_WITH_ERROR(
       ArrowIpcMoveNonExtensionFieldMetadataBackToFieldIfNeeded(schema), error);
 
-  // TODO: Track the dictionary
-  // https://github.com/apache/arrow-nanoarrow/issues/844
+  // Track the identifier if we have a dictionaries object in which to track it
+  if (dictionaries != NULL) {
+    int64_t id = ns(DictionaryEncoding_id(dictionary_encoding));
+    NANOARROW_RETURN_NOT_OK_WITH_ERROR(
+        ArrowIpcDictionariesAppend(dictionaries, id, schema), error);
+  }
 
   return NANOARROW_OK;
 }
 
 static int ArrowIpcDecoderSetChildren(struct ArrowSchema* schema, ns(Field_vec_t) fields,
+                                      struct ArrowIpcDictionaries* dictionaries,
                                       struct ArrowError* error);
 
 static int ArrowIpcDecoderSetField(struct ArrowSchema* schema, ns(Field_table_t) field,
+                                   struct ArrowIpcDictionaries* dictionaries,
                                    struct ArrowError* error) {
   int result;
   if (ns(Field_name_is_present(field))) {
@@ -1078,26 +1084,29 @@ static int ArrowIpcDecoderSetField(struct ArrowSchema* schema, ns(Field_table_t)
     ArrowSchemaInit(schema->children[i]);
   }
 
-  NANOARROW_RETURN_NOT_OK(ArrowIpcDecoderSetChildren(schema, children, error));
+  NANOARROW_RETURN_NOT_OK(
+      ArrowIpcDecoderSetChildren(schema, children, dictionaries, error));
   NANOARROW_RETURN_NOT_OK(
       ArrowIpcDecoderSetMetadata(schema, ns(Field_custom_metadata(field)), error));
 
   // If this is a dictionary encoded field, set the dictionary encoding
   if (ns(Field_dictionary_is_present(field))) {
-    NANOARROW_RETURN_NOT_OK(
-        ArrowIpcSetDictionaryEncoding(schema, ns(Field_dictionary(field)), error));
+    NANOARROW_RETURN_NOT_OK(ArrowIpcSetDictionaryEncoding(
+        schema, ns(Field_dictionary(field)), dictionaries, error));
   }
 
   return NANOARROW_OK;
 }
 
 static int ArrowIpcDecoderSetChildren(struct ArrowSchema* schema, ns(Field_vec_t) fields,
+                                      struct ArrowIpcDictionaries* dictionaries,
                                       struct ArrowError* error) {
   int64_t n_fields = ns(Schema_vec_len(fields));
 
   for (int64_t i = 0; i < n_fields; i++) {
     ns(Field_table_t) field = ns(Field_vec_at(fields, i));
-    NANOARROW_RETURN_NOT_OK(ArrowIpcDecoderSetField(schema->children[i], field, error));
+    NANOARROW_RETURN_NOT_OK(
+        ArrowIpcDecoderSetField(schema->children[i], field, dictionaries, error));
   }
 
   return NANOARROW_OK;
@@ -1493,9 +1502,9 @@ ArrowErrorCode ArrowIpcDecoderDecodeHeader(struct ArrowIpcDecoder* decoder,
   return NANOARROW_OK;
 }
 
-static ArrowErrorCode ArrowIpcDecoderDecodeSchemaImpl(ns(Schema_table_t) schema,
-                                                      struct ArrowSchema* out,
-                                                      struct ArrowError* error) {
+static ArrowErrorCode ArrowIpcDecoderDecodeSchemaImpl(
+    ns(Schema_table_t) schema, struct ArrowSchema* out,
+    struct ArrowIpcDictionaries* dictionaries_out, struct ArrowError* error) {
   ArrowSchemaInit(out);
   // Top-level batch schema is typically non-nullable
   out->flags = 0;
@@ -1510,15 +1519,16 @@ static ArrowErrorCode ArrowIpcDecoderDecodeSchemaImpl(ns(Schema_table_t) schema,
     return result;
   }
 
-  NANOARROW_RETURN_NOT_OK(ArrowIpcDecoderSetChildren(out, fields, error));
+  NANOARROW_RETURN_NOT_OK(
+      ArrowIpcDecoderSetChildren(out, fields, dictionaries_out, error));
   NANOARROW_RETURN_NOT_OK(
       ArrowIpcDecoderSetMetadata(out, ns(Schema_custom_metadata(schema)), error));
   return NANOARROW_OK;
 }
 
-ArrowErrorCode ArrowIpcDecoderDecodeSchema(struct ArrowIpcDecoder* decoder,
-                                           struct ArrowSchema* out,
-                                           struct ArrowError* error) {
+ArrowErrorCode ArrowIpcDecoderDecodeSchemaWithDictionaries(
+    struct ArrowIpcDecoder* decoder, struct ArrowSchema* out,
+    struct ArrowIpcDictionaries* dictionaries_out, struct ArrowError* error) {
   struct ArrowIpcDecoderPrivate* private_data =
       (struct ArrowIpcDecoderPrivate*)decoder->private_data;
 
@@ -1528,16 +1538,31 @@ ArrowErrorCode ArrowIpcDecoderDecodeSchema(struct ArrowIpcDecoder* decoder,
     return EINVAL;
   }
 
+  if (dictionaries_out != NULL) {
+    ArrowIpcDictionariesInit(dictionaries_out);
+  }
+
   struct ArrowSchema tmp;
   ArrowErrorCode result = ArrowIpcDecoderDecodeSchemaImpl(
-      (ns(Schema_table_t))private_data->last_message, &tmp, error);
+      (ns(Schema_table_t))private_data->last_message, &tmp, dictionaries_out, error);
 
   if (result != NANOARROW_OK) {
     ArrowSchemaRelease(&tmp);
+
+    if (dictionaries_out != NULL) {
+      ArrowIpcDictionariesReset(dictionaries_out);
+    }
+
     return result;
   }
   ArrowSchemaMove(&tmp, out);
   return NANOARROW_OK;
+}
+
+ArrowErrorCode ArrowIpcDecoderDecodeSchema(struct ArrowIpcDecoder* decoder,
+                                           struct ArrowSchema* out,
+                                           struct ArrowError* error) {
+  return ArrowIpcDecoderDecodeSchemaWithDictionaries(decoder, out, NULL, error);
 }
 
 ArrowErrorCode ArrowIpcDecoderDecodeFooter(struct ArrowIpcDecoder* decoder,
@@ -1555,8 +1580,9 @@ ArrowErrorCode ArrowIpcDecoderDecodeFooter(struct ArrowIpcDecoder* decoder,
   NANOARROW_RETURN_NOT_OK(
       ArrowIpcDecoderDecodeSchemaHeader(decoder, ns(Footer_schema(footer)), error));
 
+  // TODO: include dictionaries in footer
   NANOARROW_RETURN_NOT_OK(ArrowIpcDecoderDecodeSchemaImpl(
-      ns(Footer_schema(footer)), &private_data->footer.schema, error));
+      ns(Footer_schema(footer)), &private_data->footer.schema, NULL, error));
 
   ns(Block_vec_t) blocks = ns(Footer_recordBatches(footer));
   int64_t n = ns(Block_vec_len(blocks));
