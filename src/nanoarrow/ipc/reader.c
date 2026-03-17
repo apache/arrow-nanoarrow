@@ -191,6 +191,7 @@ struct ArrowIpcArrayStreamReaderPrivate {
   struct ArrowBuffer header;
   struct ArrowBuffer body;
   int32_t expected_header_prefix_size;
+  struct ArrowIpcDictionaryEncodings dictionary_encodings;
   struct ArrowError error;
 };
 
@@ -210,6 +211,7 @@ static void ArrowIpcArrayStreamReaderRelease(struct ArrowArrayStream* stream) {
 
   ArrowBufferReset(&private_data->header);
   ArrowBufferReset(&private_data->body);
+  ArrowIpcDictionaryEncodingsReset(&private_data->dictionary_encodings);
 
   ArrowFree(private_data);
   stream->release = NULL;
@@ -403,8 +405,9 @@ static int ArrowIpcArrayStreamReaderReadSchemaIfNeeded(
       &private_data->error);
 
   struct ArrowSchema tmp;
-  NANOARROW_RETURN_NOT_OK(
-      ArrowIpcDecoderDecodeSchema(&private_data->decoder, &tmp, &private_data->error));
+  NANOARROW_RETURN_NOT_OK(ArrowIpcDecoderDecodeSchemaWithDictionaries(
+      &private_data->decoder, &tmp, &private_data->dictionary_encodings,
+      &private_data->error));
 
   // Only support "read the whole thing" for now
   if (private_data->field_index != -1) {
@@ -414,8 +417,9 @@ static int ArrowIpcArrayStreamReaderReadSchemaIfNeeded(
   }
 
   // Notify the decoder of the schema for forthcoming messages
-  int result =
-      ArrowIpcDecoderSetSchema(&private_data->decoder, &tmp, &private_data->error);
+  int result = ArrowIpcDecoderSetSchemaWithDictionaries(
+      &private_data->decoder, &tmp, &private_data->dictionary_encodings,
+      &private_data->error);
   if (result != NANOARROW_OK) {
     ArrowSchemaRelease(&tmp);
     return result;
