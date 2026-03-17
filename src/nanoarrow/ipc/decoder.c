@@ -272,9 +272,10 @@ static int ArrowIpcDecoderNeedsSwapEndian(struct ArrowIpcDecoder* decoder) {
   }
 }
 
-void ArrowIpcDictionaryEncodingsInit(struct ArrowIpcDictionaryEncodings* dictionaries) {
-  NANOARROW_DCHECK(dictionaries != NULL);
-  ArrowBufferInit(&dictionaries->encodings);
+void ArrowIpcDictionaryEncodingsInit(
+    struct ArrowIpcDictionaryEncodings* dictionary_encodings) {
+  NANOARROW_DCHECK(dictionary_encodings != NULL);
+  ArrowBufferInit(&dictionary_encodings->encodings);
 }
 
 ArrowErrorCode ArrowIpcDictionaryEncodingsAppend(
@@ -287,13 +288,13 @@ ArrowErrorCode ArrowIpcDictionaryEncodingsAppend(
 }
 
 const struct ArrowIpcDictionaryEncoding* ArrowIpcDictionaryEncodingsFind(
-    const struct ArrowIpcDictionaryEncodings* dictionaries,
+    const struct ArrowIpcDictionaryEncodings* dictionary_encodings,
     const struct ArrowSchema* schema) {
-  NANOARROW_DCHECK(dictionaries != NULL);
-  int64_t length =
-      dictionaries->encodings.size_bytes / sizeof(struct ArrowIpcDictionaryEncoding);
+  NANOARROW_DCHECK(dictionary_encodings != NULL);
+  int64_t length = dictionary_encodings->encodings.size_bytes /
+                   sizeof(struct ArrowIpcDictionaryEncoding);
   const struct ArrowIpcDictionaryEncoding* data =
-      (const struct ArrowIpcDictionaryEncoding*)dictionaries->encodings.data;
+      (const struct ArrowIpcDictionaryEncoding*)dictionary_encodings->encodings.data;
 
   for (int64_t i = 0; i < length; i++) {
     const struct ArrowIpcDictionaryEncoding* encoding = data + i;
@@ -305,9 +306,10 @@ const struct ArrowIpcDictionaryEncoding* ArrowIpcDictionaryEncodingsFind(
   return NULL;
 }
 
-void ArrowIpcDictionaryEncodingsReset(struct ArrowIpcDictionaryEncodings* dictionaries) {
-  NANOARROW_DCHECK(dictionaries != NULL);
-  ArrowBufferReset(&dictionaries->encodings);
+void ArrowIpcDictionaryEncodingsReset(
+    struct ArrowIpcDictionaryEncodings* dictionary_encodings) {
+  NANOARROW_DCHECK(dictionary_encodings != NULL);
+  ArrowBufferReset(&dictionary_encodings->encodings);
 }
 
 ArrowErrorCode ArrowIpcDecoderInit(struct ArrowIpcDecoder* decoder) {
@@ -1499,7 +1501,8 @@ ArrowErrorCode ArrowIpcDecoderDecodeHeader(struct ArrowIpcDecoder* decoder,
 
 static ArrowErrorCode ArrowIpcDecoderDecodeSchemaImpl(
     ns(Schema_table_t) schema, struct ArrowSchema* out,
-    struct ArrowIpcDictionaryEncodings* dictionaries_out, struct ArrowError* error) {
+    struct ArrowIpcDictionaryEncodings* dictionary_encodings_out,
+    struct ArrowError* error) {
   ArrowSchemaInit(out);
   // Top-level batch schema is typically non-nullable
   out->flags = 0;
@@ -1515,7 +1518,7 @@ static ArrowErrorCode ArrowIpcDecoderDecodeSchemaImpl(
   }
 
   NANOARROW_RETURN_NOT_OK(
-      ArrowIpcDecoderSetChildren(out, fields, dictionaries_out, error));
+      ArrowIpcDecoderSetChildren(out, fields, dictionary_encodings_out, error));
   NANOARROW_RETURN_NOT_OK(
       ArrowIpcDecoderSetMetadata(out, ns(Schema_custom_metadata(schema)), error));
   return NANOARROW_OK;
@@ -1523,7 +1526,8 @@ static ArrowErrorCode ArrowIpcDecoderDecodeSchemaImpl(
 
 ArrowErrorCode ArrowIpcDecoderDecodeSchemaWithDictionaries(
     struct ArrowIpcDecoder* decoder, struct ArrowSchema* out,
-    struct ArrowIpcDictionaryEncodings* dictionaries_out, struct ArrowError* error) {
+    struct ArrowIpcDictionaryEncodings* dictionary_encodings_out,
+    struct ArrowError* error) {
   struct ArrowIpcDecoderPrivate* private_data =
       (struct ArrowIpcDecoderPrivate*)decoder->private_data;
 
@@ -1533,19 +1537,20 @@ ArrowErrorCode ArrowIpcDecoderDecodeSchemaWithDictionaries(
     return EINVAL;
   }
 
-  if (dictionaries_out != NULL) {
-    ArrowIpcDictionaryEncodingsInit(dictionaries_out);
+  if (dictionary_encodings_out != NULL) {
+    ArrowIpcDictionaryEncodingsInit(dictionary_encodings_out);
   }
 
   struct ArrowSchema tmp;
-  ArrowErrorCode result = ArrowIpcDecoderDecodeSchemaImpl(
-      (ns(Schema_table_t))private_data->last_message, &tmp, dictionaries_out, error);
+  ArrowErrorCode result =
+      ArrowIpcDecoderDecodeSchemaImpl((ns(Schema_table_t))private_data->last_message,
+                                      &tmp, dictionary_encodings_out, error);
 
   if (result != NANOARROW_OK) {
     ArrowSchemaRelease(&tmp);
 
-    if (dictionaries_out != NULL) {
-      ArrowIpcDictionaryEncodingsReset(dictionaries_out);
+    if (dictionary_encodings_out != NULL) {
+      ArrowIpcDictionaryEncodingsReset(dictionary_encodings_out);
     }
 
     return result;
