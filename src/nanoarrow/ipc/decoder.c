@@ -2120,11 +2120,6 @@ static int ArrowIpcDecoderWalkGetArray(struct ArrowArrayView* array_view,
         array_view->children[i], array->children[i], out->children[i], error));
   }
 
-  if (array->dictionary != NULL) {
-    ArrowErrorSet(error, "Decode of dictionary array is not yet supported");
-    return ENOTSUP;
-  }
-
   return NANOARROW_OK;
 }
 
@@ -2198,6 +2193,11 @@ static ArrowErrorCode ArrowIpcDecoderDecodeArrayInternal(
       (struct ArrowIpcDecoderPrivate*)decoder->private_data;
 
   struct ArrowIpcField* root = private_data->fields + field_i + 1;
+
+  if (root->dictionary_id != NANOARROW_IPC_NO_DICTIONARY_ID) {
+    ArrowErrorSet(error, "Decoding a dictionary-encoded field is not yet supported");
+    return ENOTSUP;
+  }
 
   if (field_i == -1) {
     NANOARROW_RETURN_NOT_OK(
