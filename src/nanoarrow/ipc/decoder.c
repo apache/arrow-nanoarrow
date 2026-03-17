@@ -272,6 +272,52 @@ static int ArrowIpcDecoderNeedsSwapEndian(struct ArrowIpcDecoder* decoder) {
   }
 }
 
+void ArrowIpcDictionariesInit(struct ArrowIpcDictionaries* dictionaries) {
+  NANOARROW_DCHECK(dictionaries != NULL);
+  memset(dictionaries, 0, sizeof(struct ArrowIpcDictionaries));
+}
+
+ArrowErrorCode ArrowIpcDictionariesAppend(struct ArrowIpcDictionaries* dictionaries,
+                                          int64_t id, const struct ArrowSchema* schema) {
+  NANOARROW_DCHECK(dictionaries != NULL);
+  if ((dictionaries->length + 1) >= dictionaries->capacity) {
+    int64_t min_capacity = dictionaries->length == 0 ? 1 : dictionaries->length * 2;
+
+    dictionaries->dictionary_id = (int64_t*)ArrowRealloc(dictionaries->dictionary_id,
+                                                         min_capacity * sizeof(int64_t*));
+    if (dictionaries->dictionary_id == NULL) {
+      return ENOMEM;
+    }
+
+    dictionaries->dictionary_schema = (const struct ArrowSchema**)ArrowRealloc(
+        dictionaries->dictionary_id, min_capacity * sizeof(struct ArrowSchema**));
+    if (dictionaries->dictionary_id == NULL) {
+      return ENOMEM;
+    }
+
+    dictionaries->capacity = min_capacity;
+  }
+
+  NANOARROW_DCHECK(dictionaries->capacity > dictionaries->length);
+  dictionaries->dictionary_id[dictionaries->length] = id;
+  dictionaries->dictionary_schema[dictionaries->length] = schema;
+  dictionaries->length++;
+  return NANOARROW_OK;
+}
+
+void ArrowIpcDictionariesReset(struct ArrowIpcDictionaries* dictionaries) {
+  NANOARROW_DCHECK(dictionaries != NULL);
+  if (dictionaries->dictionary_id != NULL) {
+    ArrowFree(dictionaries->dictionary_id);
+  }
+
+  if (dictionaries->dictionary_schema != NULL) {
+    ArrowFree(dictionaries->dictionary_schema);
+  }
+
+  ArrowIpcDictionariesInit(dictionaries);
+}
+
 ArrowErrorCode ArrowIpcDecoderInit(struct ArrowIpcDecoder* decoder) {
   memset(decoder, 0, sizeof(struct ArrowIpcDecoder));
   struct ArrowIpcDecoderPrivate* private_data =

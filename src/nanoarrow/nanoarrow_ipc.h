@@ -171,6 +171,20 @@ struct ArrowIpcDictionaryBatch {
   int is_delta;
 };
 
+struct ArrowIpcDictionaries {
+  int64_t* dictionary_id;
+  const struct ArrowSchema** dictionary_schema;
+  int64_t length;
+  int64_t capacity;
+};
+
+void ArrowIpcDictionariesInit(struct ArrowIpcDictionaries* dictionaries);
+
+ArrowErrorCode ArrowIpcDictionariesAppend(struct ArrowIpcDictionaries* dictionaries,
+                                          int64_t id, const struct ArrowSchema* schema);
+
+void ArrowIpcDictionariesReset(struct ArrowIpcDictionaries* dictionaries);
+
 /// \brief Checks the nanoarrow runtime to make sure the run/build versions match
 NANOARROW_DLL ArrowErrorCode ArrowIpcCheckRuntime(struct ArrowError* error);
 
