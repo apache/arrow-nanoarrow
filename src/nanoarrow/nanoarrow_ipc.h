@@ -212,21 +212,34 @@ struct ArrowIpcDictionaryEncoding {
   enum ArrowIpcDictionaryKind kind;
 };
 
+/// \brief List of ArrowIpcDictionaryEncoding structs
+///
+/// This structure provides a list of dictionary encoded fields extracted
+/// from an ArrowSchema during decoding. Its members refer to pointers
+/// within a specific schema, so care must be taken to keep the schema
+/// containing the pointed-to ArrowSchema fields valid.
 struct ArrowIpcDictionaryEncodings {
   struct ArrowBuffer encodings;
 };
 
+/// \brief Initialize an ArrowIpcDictionaryEncodings list
 NANOARROW_DLL void ArrowIpcDictionaryEncodingsInit(
     struct ArrowIpcDictionaryEncodings* dictionaries);
 
+/// \brief Append a given ArrowIpcDictionaryEncoding to this list
 NANOARROW_DLL ArrowErrorCode
 ArrowIpcDictionaryEncodingsAppend(struct ArrowIpcDictionaryEncodings* dictionaries,
                                   struct ArrowIpcDictionaryEncoding encoding);
 
+/// \brief Resolve a ArrowIpcDictionaryEncoding for a given dictionary encoded field
+///
+/// Returns NULL if the pointed to schema does not match any of the pointed to
+/// schemas contained in this list.
 NANOARROW_DLL const struct ArrowIpcDictionaryEncoding* ArrowIpcDictionaryEncodingsFind(
     const struct ArrowIpcDictionaryEncodings* dictionaries,
     const struct ArrowSchema* schema);
 
+/// \brief Release an encodings list and associated resources
 NANOARROW_DLL void ArrowIpcDictionaryEncodingsReset(
     struct ArrowIpcDictionaryEncodings* dictionaries);
 
@@ -451,6 +464,8 @@ NANOARROW_DLL ArrowErrorCode ArrowIpcDecoderDecodeHeader(struct ArrowIpcDecoder*
 ///
 /// After a successful call to ArrowIpcDecoderDecodeHeader(), retrieve an ArrowSchema.
 /// The caller is responsible for releasing the schema if NANOARROW_OK is returned.
+/// This is equivalent to calling ArrowIpcDecoderDecodeSchemaWithDictionaries() with
+/// dictionaries_out = NULL.
 ///
 /// Returns EINVAL if the decoder did not just decode a schema message or
 /// NANOARROW_OK otherwise.
@@ -458,6 +473,13 @@ NANOARROW_DLL ArrowErrorCode ArrowIpcDecoderDecodeSchema(struct ArrowIpcDecoder*
                                                          struct ArrowSchema* out,
                                                          struct ArrowError* error);
 
+/// \brief Decode an ArrowSchema with dictionary encoding information
+///
+/// After a successful call to ArrowIpcDecoderDecodeHeader(), retrieve an ArrowSchema.
+/// The caller is responsible for releasing the schema if NANOARROW_OK is returned.
+///
+/// Returns EINVAL if the decoder did not just decode a schema message or
+/// NANOARROW_OK otherwise.
 NANOARROW_DLL ArrowErrorCode ArrowIpcDecoderDecodeSchemaWithDictionaries(
     struct ArrowIpcDecoder* decoder, struct ArrowSchema* out,
     struct ArrowIpcDictionaryEncodings* dictionaries_out, struct ArrowError* error);
@@ -470,14 +492,30 @@ NANOARROW_DLL ArrowErrorCode ArrowIpcDecoderDecodeSchemaWithDictionaries(
 /// Schema message (i.e., the decoder does not assume that the last-decoded
 /// schema message applies to future record batch messages).
 ///
+/// This is equivalent to calling ArrowIpcDecoderSetSchemaWithDictionaries() with
+/// dictionary_encodings = NULL.
+///
 /// Returns EINVAL if schema validation fails or NANOARROW_OK otherwise.
 NANOARROW_DLL ArrowErrorCode ArrowIpcDecoderSetSchema(struct ArrowIpcDecoder* decoder,
-                                                      struct ArrowSchema* schema,
+                                                      const struct ArrowSchema* schema,
                                                       struct ArrowError* error);
 
+/// \brief Set the ArrowSchema and dictionary encodings used to decode future record batch
+/// messages
+///
+/// Prepares the decoder for future record batch messages
+/// of this type. The decoder takes ownership of schema if NANOARROW_OK is returned.
+/// Note that you must call this explicitly after decoding a
+/// Schema message (i.e., the decoder does not assume that the last-decoded
+/// schema message applies to future record batch messages).
+///
+/// Returns EINVAL if schema validation fails or if the schema contains
+/// dictionary encodings that could not be resolved in the provided
+/// ArrowIpcDictionaryEncodings object, or NANOARROW_OK otherwise.
 NANOARROW_DLL ArrowErrorCode ArrowIpcDecoderSetSchemaWithDictionaries(
-    struct ArrowIpcDecoder* decoder, struct ArrowSchema* schema,
-    struct ArrowIpcDictionaryEncodings* dictionary_encodings, struct ArrowError* error);
+    struct ArrowIpcDecoder* decoder, const struct ArrowSchema* schema,
+    const struct ArrowIpcDictionaryEncodings* dictionary_encodings,
+    struct ArrowError* error);
 
 /// \brief Set the endianness used to decode future record batch messages
 ///

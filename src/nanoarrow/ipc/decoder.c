@@ -1607,7 +1607,8 @@ ArrowErrorCode ArrowIpcDecoderDecodeFooter(struct ArrowIpcDecoder* decoder,
   return NANOARROW_OK;
 }
 
-static void ArrowIpcDecoderCountFields(struct ArrowSchema* schema, int64_t* n_fields) {
+static void ArrowIpcDecoderCountFields(const struct ArrowSchema* schema,
+                                       int64_t* n_fields) {
   *n_fields += 1;
   for (int64_t i = 0; i < schema->n_children; i++) {
     ArrowIpcDecoderCountFields(schema->children[i], n_fields);
@@ -1672,8 +1673,9 @@ static ArrowErrorCode ArrowIpcDecoderInitFields(
 }
 
 ArrowErrorCode ArrowIpcDecoderSetSchemaWithDictionaries(
-    struct ArrowIpcDecoder* decoder, struct ArrowSchema* schema,
-    struct ArrowIpcDictionaryEncodings* dictionary_encodings, struct ArrowError* error) {
+    struct ArrowIpcDecoder* decoder, const struct ArrowSchema* schema,
+    const struct ArrowIpcDictionaryEncodings* dictionary_encodings,
+    struct ArrowError* error) {
   struct ArrowIpcDecoderPrivate* private_data =
       (struct ArrowIpcDecoderPrivate*)decoder->private_data;
 
@@ -1723,7 +1725,7 @@ ArrowErrorCode ArrowIpcDecoderSetSchemaWithDictionaries(
 }
 
 ArrowErrorCode ArrowIpcDecoderSetSchema(struct ArrowIpcDecoder* decoder,
-                                        struct ArrowSchema* schema,
+                                        const struct ArrowSchema* schema,
                                         struct ArrowError* error) {
   return ArrowIpcDecoderSetSchemaWithDictionaries(decoder, schema, NULL, error);
 }
