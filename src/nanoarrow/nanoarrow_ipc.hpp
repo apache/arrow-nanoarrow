@@ -58,22 +58,6 @@ inline void release_pointer(struct ArrowIpcDecoder* data) {
 }
 
 template <>
-inline void init_pointer(struct ArrowIpcFooter* data) {
-  ArrowIpcFooterInit(data);
-}
-
-template <>
-inline void move_pointer(struct ArrowIpcFooter* src, struct ArrowIpcFooter* dst) {
-  ArrowSchemaMove(&src->schema, &dst->schema);
-  ArrowBufferMove(&src->record_batch_blocks, &dst->record_batch_blocks);
-}
-
-template <>
-inline void release_pointer(struct ArrowIpcFooter* data) {
-  ArrowIpcFooterReset(data);
-}
-
-template <>
 inline void init_pointer(struct ArrowIpcDictionaryEncodings* data) {
   ArrowIpcDictionaryEncodingsInit(data);
 }
@@ -88,6 +72,23 @@ inline void move_pointer(struct ArrowIpcDictionaryEncodings* src,
 template <>
 inline void release_pointer(struct ArrowIpcDictionaryEncodings* data) {
   ArrowIpcDictionaryEncodingsReset(data);
+}
+
+template <>
+inline void init_pointer(struct ArrowIpcFooter* data) {
+  ArrowIpcFooterInit(data);
+}
+
+template <>
+inline void move_pointer(struct ArrowIpcFooter* src, struct ArrowIpcFooter* dst) {
+  ArrowSchemaMove(&src->schema, &dst->schema);
+  ArrowBufferMove(&src->record_batch_blocks, &dst->record_batch_blocks);
+  move_pointer(&src->dictionaries, &dst->dictionaries);
+}
+
+template <>
+inline void release_pointer(struct ArrowIpcFooter* data) {
+  ArrowIpcFooterReset(data);
 }
 
 template <>
