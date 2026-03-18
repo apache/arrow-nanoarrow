@@ -477,6 +477,8 @@ NANOARROW_DLL ArrowErrorCode ArrowIpcDecoderDecodeSchema(struct ArrowIpcDecoder*
 ///
 /// After a successful call to ArrowIpcDecoderDecodeHeader(), retrieve an ArrowSchema.
 /// The caller is responsible for releasing the schema if NANOARROW_OK is returned.
+/// Neither out nor dictionaries_out should be initialized; dictionaries_out may be
+/// null to omit exporting dictionary identifiers.
 ///
 /// Returns EINVAL if the decoder did not just decode a schema message or
 /// NANOARROW_OK otherwise.
