@@ -489,7 +489,7 @@ NANOARROW_DLL ArrowErrorCode ArrowIpcDecoderDecodeSchemaWithDictionaries(
 /// \brief Set the ArrowSchema used to decode future record batch messages
 ///
 /// Prepares the decoder for future record batch messages
-/// of this type. The decoder takes ownership of schema if NANOARROW_OK is returned.
+/// of this type. The decoder does not take ownership of schema.
 /// Note that you must call this explicitly after decoding a
 /// Schema message (i.e., the decoder does not assume that the last-decoded
 /// schema message applies to future record batch messages).
@@ -506,7 +506,7 @@ NANOARROW_DLL ArrowErrorCode ArrowIpcDecoderSetSchema(struct ArrowIpcDecoder* de
 /// messages
 ///
 /// Prepares the decoder for future record batch messages
-/// of this type. The decoder takes ownership of schema if NANOARROW_OK is returned.
+/// of this type. The decoder does not take ownership of schema.
 /// Note that you must call this explicitly after decoding a
 /// Schema message (i.e., the decoder does not assume that the last-decoded
 /// schema message applies to future record batch messages).
