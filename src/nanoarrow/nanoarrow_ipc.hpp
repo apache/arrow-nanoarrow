@@ -202,7 +202,7 @@ using UniqueDecoder = internal::Unique<struct ArrowIpcDecoder>;
 /// \brief Class wrapping a unique struct ArrowIpcFooter
 using UniqueFooter = internal::Unique<struct ArrowIpcFooter>;
 
-/// \brief Class wrapping a unique struct ArrowIpcFooter
+/// \brief Class wrapping a unique struct ArrowIpcDictionaryEncodings
 using UniqueDictionaryEncodings = internal::Unique<struct ArrowIpcDictionaryEncodings>;
 
 /// \brief Class wrapping a unique struct ArrowIpcEncoder
