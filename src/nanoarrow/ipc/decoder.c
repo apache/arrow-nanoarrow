@@ -2125,10 +2125,19 @@ static int ArrowIpcDecoderWalkGetArray(struct ArrowArrayView* array_view,
   return NANOARROW_OK;
 }
 
-static int ArrowIpcDecoderWalkSetArrayView(struct ArrowIpcArraySetter* setter,
+static int ArrowIpcDecoderWalkSetArrayView(struct ArrowIpcDecoder* decoder,
+                                           struct ArrowIpcArraySetter* setter,
                                            struct ArrowArrayView* array_view,
                                            struct ArrowArray* array,
                                            struct ArrowError* error) {
+  struct ArrowIpcDecoderPrivate* private_data =
+      (struct ArrowIpcDecoderPrivate*)decoder->private_data;
+  struct ArrowIpcField* ipc_field = private_data->fields + setter->field_i;
+  if (ipc_field->dictionary_id != NANOARROW_IPC_NO_DICTIONARY_ID) {
+    ArrowErrorSet(error, "Decoding a dictionary-encoding field is not supported");
+    return ENOTSUP;
+  }
+
   ns(FieldNode_struct_t) field =
       ns(FieldNode_vec_at(setter->fields, (size_t)setter->field_i));
   array_view->length = ns(FieldNode_length(field));
@@ -2182,7 +2191,7 @@ static int ArrowIpcDecoderWalkSetArrayView(struct ArrowIpcArraySetter* setter,
 
   for (int64_t i = 0; i < array_view->n_children; i++) {
     NANOARROW_RETURN_NOT_OK(ArrowIpcDecoderWalkSetArrayView(
-        setter, array_view->children[i], array->children[i], error));
+        decoder, setter, array_view->children[i], array->children[i], error));
   }
 
   return NANOARROW_OK;
@@ -2279,12 +2288,13 @@ static ArrowErrorCode ArrowIpcDecoderDecodeArrayViewInternal(
     setter.buffer_i++;
 
     for (int64_t i = 0; i < root->array_view->n_children; i++) {
-      NANOARROW_RETURN_NOT_OK(ArrowIpcDecoderWalkSetArrayView(
-          &setter, root->array_view->children[i], root->array->children[i], error));
+      NANOARROW_RETURN_NOT_OK(
+          ArrowIpcDecoderWalkSetArrayView(decoder, &setter, root->array_view->children[i],
+                                          root->array->children[i], error));
     }
   } else {
-    NANOARROW_RETURN_NOT_OK(
-        ArrowIpcDecoderWalkSetArrayView(&setter, root->array_view, root->array, error));
+    NANOARROW_RETURN_NOT_OK(ArrowIpcDecoderWalkSetArrayView(
+        decoder, &setter, root->array_view, root->array, error));
   }
 
   // If we decoded a compressed message, wait for any pending decompression tasks to
