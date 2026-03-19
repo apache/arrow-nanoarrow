@@ -243,6 +243,20 @@ NANOARROW_DLL const struct ArrowIpcDictionaryEncoding* ArrowIpcDictionaryEncodin
 NANOARROW_DLL void ArrowIpcDictionaryEncodingsReset(
     struct ArrowIpcDictionaryEncodings* dictionaries);
 
+
+struct ArrowIpcDictionaries {
+  void* private_data;
+};
+
+NANOARROW_DLL ArrowErrorCode ArrowIpcDictionariesInit(
+    struct ArrowIpcDictionaries* dictionaries,
+    const struct ArrowIpcDictionaryEncodings* dictionary_encodings);
+
+NANOARROW_DLL void ArrowIpcDictionariesReset(
+    struct ArrowIpcDictionaries* dictionaries);
+
+
+
 /// \brief Checks the nanoarrow runtime to make sure the run/build versions match
 NANOARROW_DLL ArrowErrorCode ArrowIpcCheckRuntime(struct ArrowError* error);
 

@@ -318,6 +318,109 @@ void ArrowIpcDictionaryEncodingsReset(
   ArrowBufferReset(&dictionary_encodings->encodings);
 }
 
+struct ArrowIpcDictionary {
+  int64_t id;
+  struct ArrowIpcDecoder decoder;
+  struct ArrowIpcSharedBuffer buffer;
+};
+
+static ArrowErrorCode ArrowIpcDictionaryInit(struct ArrowIpcDictionary* dictionary) {
+  dictionary->id = NANOARROW_IPC_NO_DICTIONARY_ID;
+  NANOARROW_RETURN_NOT_OK(ArrowIpcDecoderInit(&dictionary->decoder));
+  struct ArrowBuffer empty;
+  ArrowBufferInit(&empty);
+  ArrowErrorCode result = ArrowIpcSharedBufferInit(&dictionary->buffer, &empty);
+  if (result != NANOARROW_OK) {
+    ArrowIpcDecoderReset(&dictionary->decoder);
+    return result;
+  }
+
+  return NANOARROW_OK;
+}
+
+static void ArrowIpcDictionaryReset(struct ArrowIpcDictionary* dictionary) {
+  ArrowIpcDecoderReset(&dictionary->decoder);
+  ArrowIpcSharedBufferReset(&dictionary->buffer);
+}
+
+struct ArrowIpcDictionariesPrivate {
+  struct ArrowIpcDictionary* dictionaries;
+  int64_t num_dictionaries;
+};
+
+static ArrowErrorCode ArrowIpcDictionariesInitDictionaries(
+    struct ArrowIpcDictionariesPrivate* private_data,
+    const struct ArrowIpcDictionaryEncodings* dictionary_encodings,
+    int64_t* num_initialized_decoders_out) {
+  ArrowErrorCode result;
+  for (int64_t i = 0; i < private_data->num_dictionaries; i++) {
+    struct ArrowIpcDictionary* dictionary = private_data->dictionaries + i;
+    result = ArrowIpcDictionaryInit(dictionary);
+    if (result != NANOARROW_OK) {
+      *num_initialized_decoders_out = i;
+      return result;
+    }
+
+    // Set dictionary->decoder schema with encodings, being careful not to
+    // deep copy the schema because this would invalidate dictionary_encodings
+    // pointers and would prevent nested dictionaries from working.
+  }
+
+  *num_initialized_decoders_out = private_data->num_dictionaries;
+  return NANOARROW_OK;
+}
+
+ArrowErrorCode ArrowIpcDictionariesInit(
+    struct ArrowIpcDictionaries* dictionaries,
+    const struct ArrowIpcDictionaryEncodings* dictionary_encodings) {
+  NANOARROW_DCHECK(dictionaries != NULL);
+  NANOARROW_DCHECK(dictionary_encodings != NULL);
+
+  memset(dictionaries, 0, sizeof(struct ArrowIpcDictionaries));
+  struct ArrowIpcDictionariesPrivate* private_data =
+      (struct ArrowIpcDictionariesPrivate*)ArrowMalloc(
+          sizeof(struct ArrowIpcDictionariesPrivate));
+  if (private_data == NULL) {
+    return ENOMEM;
+  }
+
+  private_data->num_dictionaries = dictionary_encodings->encodings.size_bytes /
+                                   sizeof(struct ArrowIpcDictionaryEncoding);
+
+  private_data->dictionaries =
+      ArrowMalloc(private_data->num_dictionaries * sizeof(struct ArrowIpcDictionaries));
+  if (private_data->dictionaries == NULL) {
+    ArrowFree(private_data);
+    return ENOMEM;
+  }
+
+  int64_t num_initialized_dictionaries = 0;
+  ArrowErrorCode result = ArrowIpcDictionariesInitDictionaries(
+      private_data, dictionary_encodings, &num_initialized_dictionaries);
+  if (num_initialized_dictionaries != private_data->num_dictionaries) {
+    for (int64_t i = 0; i < num_initialized_dictionaries; i++) {
+      ArrowIpcDictionaryReset(private_data->dictionaries + i);
+    }
+
+    ArrowFree(private_data->dictionaries);
+    ArrowFree(private_data);
+    return result;
+  }
+
+  return NANOARROW_OK;
+}
+
+void ArrowIpcDictionariesReset(struct ArrowIpcDictionaries* dictionaries) {
+  NANOARROW_DCHECK(dictionaries != NULL);
+  struct ArrowIpcDictionariesPrivate* private_data =
+      (struct ArrowIpcDictionariesPrivate*)dictionaries->private_data;
+
+  for (int64_t i = 0; i < private_data->num_dictionaries; i++) {
+    struct ArrowIpcDictionary* dictionary = private_data->dictionaries + i;
+    ArrowIpcDictionaryReset(dictionary);
+  }
+}
+
 ArrowErrorCode ArrowIpcDecoderInit(struct ArrowIpcDecoder* decoder) {
   memset(decoder, 0, sizeof(struct ArrowIpcDecoder));
   struct ArrowIpcDecoderPrivate* private_data =
