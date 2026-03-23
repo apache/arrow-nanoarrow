@@ -17,6 +17,7 @@
 
 #include <errno.h>
 #include <inttypes.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -54,6 +55,8 @@
 
 #define NANOARROW_IPC_MAGIC "ARROW1"
 
+#define NANOARROW_IPC_NO_DICTIONARY_ID INT64_MIN
+
 // Internal representation of a parsed "Field" from flatbuffers. This
 // represents a field in a depth-first walk of column arrays and their
 // children.
@@ -66,6 +69,9 @@ struct ArrowIpcField {
   struct ArrowArray* array;
   // The cumulative number of buffers preceding this node.
   int64_t buffer_offset;
+  // Dictionary identifier (or NANOARROW_IPC_NO_DICTIONARY_ID if this is not a
+  // dictionary-encoded field)
+  int64_t dictionary_id;
 };
 
 // Internal data specific to the read/decode process
@@ -270,6 +276,46 @@ static int ArrowIpcDecoderNeedsSwapEndian(struct ArrowIpcDecoder* decoder) {
     default:
       return 0;
   }
+}
+
+void ArrowIpcDictionaryEncodingsInit(
+    struct ArrowIpcDictionaryEncodings* dictionary_encodings) {
+  NANOARROW_DCHECK(dictionary_encodings != NULL);
+  ArrowBufferInit(&dictionary_encodings->encodings);
+}
+
+ArrowErrorCode ArrowIpcDictionaryEncodingsAppend(
+    struct ArrowIpcDictionaryEncodings* dictionaries,
+    struct ArrowIpcDictionaryEncoding encoding) {
+  NANOARROW_DCHECK(dictionaries != NULL);
+  NANOARROW_RETURN_NOT_OK(ArrowBufferAppend(&dictionaries->encodings, &encoding,
+                                            sizeof(struct ArrowIpcDictionaryEncoding)));
+  return NANOARROW_OK;
+}
+
+const struct ArrowIpcDictionaryEncoding* ArrowIpcDictionaryEncodingsFind(
+    const struct ArrowIpcDictionaryEncodings* dictionary_encodings,
+    const struct ArrowSchema* schema) {
+  NANOARROW_DCHECK(dictionary_encodings != NULL);
+  int64_t length = dictionary_encodings->encodings.size_bytes /
+                   sizeof(struct ArrowIpcDictionaryEncoding);
+  const struct ArrowIpcDictionaryEncoding* data =
+      (const struct ArrowIpcDictionaryEncoding*)dictionary_encodings->encodings.data;
+
+  for (int64_t i = 0; i < length; i++) {
+    const struct ArrowIpcDictionaryEncoding* encoding = data + i;
+    if (encoding->schema == schema) {
+      return encoding;
+    }
+  }
+
+  return NULL;
+}
+
+void ArrowIpcDictionaryEncodingsReset(
+    struct ArrowIpcDictionaryEncodings* dictionary_encodings) {
+  NANOARROW_DCHECK(dictionary_encodings != NULL);
+  ArrowBufferReset(&dictionary_encodings->encodings);
 }
 
 ArrowErrorCode ArrowIpcDecoderInit(struct ArrowIpcDecoder* decoder) {
@@ -943,7 +989,7 @@ static int ArrowIpcMoveNonExtensionFieldMetadataBackToFieldIfNeeded(
 
 static int ArrowIpcSetDictionaryEncoding(
     struct ArrowSchema* schema, ns(DictionaryEncoding_table_t dictionary_encoding),
-    struct ArrowError* error) {
+    struct ArrowIpcDictionaryEncodings* dictionaries, struct ArrowError* error) {
   switch (
       org_apache_arrow_flatbuf_DictionaryEncoding_dictionaryKind(dictionary_encoding)) {
     case ns(DictionaryKind_DenseArray):
@@ -982,16 +1028,25 @@ static int ArrowIpcSetDictionaryEncoding(
   NANOARROW_RETURN_NOT_OK_WITH_ERROR(
       ArrowIpcMoveNonExtensionFieldMetadataBackToFieldIfNeeded(schema), error);
 
-  // TODO: Track the dictionary
-  // https://github.com/apache/arrow-nanoarrow/issues/844
+  // Track the identifier if we have a dictionaries object in which to track it
+  if (dictionaries != NULL) {
+    int64_t id = ns(DictionaryEncoding_id(dictionary_encoding));
+    struct ArrowIpcDictionaryEncoding encoding = {
+        schema, id, NANOARROW_IPC_DICTIONARY_KIND_DENSE_ARRAY};
+
+    NANOARROW_RETURN_NOT_OK_WITH_ERROR(
+        ArrowIpcDictionaryEncodingsAppend(dictionaries, encoding), error);
+  }
 
   return NANOARROW_OK;
 }
 
 static int ArrowIpcDecoderSetChildren(struct ArrowSchema* schema, ns(Field_vec_t) fields,
+                                      struct ArrowIpcDictionaryEncodings* dictionaries,
                                       struct ArrowError* error);
 
 static int ArrowIpcDecoderSetField(struct ArrowSchema* schema, ns(Field_table_t) field,
+                                   struct ArrowIpcDictionaryEncodings* dictionaries,
                                    struct ArrowError* error) {
   int result;
   if (ns(Field_name_is_present(field))) {
@@ -1032,26 +1087,29 @@ static int ArrowIpcDecoderSetField(struct ArrowSchema* schema, ns(Field_table_t)
     ArrowSchemaInit(schema->children[i]);
   }
 
-  NANOARROW_RETURN_NOT_OK(ArrowIpcDecoderSetChildren(schema, children, error));
+  NANOARROW_RETURN_NOT_OK(
+      ArrowIpcDecoderSetChildren(schema, children, dictionaries, error));
   NANOARROW_RETURN_NOT_OK(
       ArrowIpcDecoderSetMetadata(schema, ns(Field_custom_metadata(field)), error));
 
   // If this is a dictionary encoded field, set the dictionary encoding
   if (ns(Field_dictionary_is_present(field))) {
-    NANOARROW_RETURN_NOT_OK(
-        ArrowIpcSetDictionaryEncoding(schema, ns(Field_dictionary(field)), error));
+    NANOARROW_RETURN_NOT_OK(ArrowIpcSetDictionaryEncoding(
+        schema, ns(Field_dictionary(field)), dictionaries, error));
   }
 
   return NANOARROW_OK;
 }
 
 static int ArrowIpcDecoderSetChildren(struct ArrowSchema* schema, ns(Field_vec_t) fields,
+                                      struct ArrowIpcDictionaryEncodings* dictionaries,
                                       struct ArrowError* error) {
   int64_t n_fields = ns(Schema_vec_len(fields));
 
   for (int64_t i = 0; i < n_fields; i++) {
     ns(Field_table_t) field = ns(Field_vec_at(fields, i));
-    NANOARROW_RETURN_NOT_OK(ArrowIpcDecoderSetField(schema->children[i], field, error));
+    NANOARROW_RETURN_NOT_OK(
+        ArrowIpcDecoderSetField(schema->children[i], field, dictionaries, error));
   }
 
   return NANOARROW_OK;
@@ -1447,9 +1505,10 @@ ArrowErrorCode ArrowIpcDecoderDecodeHeader(struct ArrowIpcDecoder* decoder,
   return NANOARROW_OK;
 }
 
-static ArrowErrorCode ArrowIpcDecoderDecodeSchemaImpl(ns(Schema_table_t) schema,
-                                                      struct ArrowSchema* out,
-                                                      struct ArrowError* error) {
+static ArrowErrorCode ArrowIpcDecoderDecodeSchemaImpl(
+    ns(Schema_table_t) schema, struct ArrowSchema* out,
+    struct ArrowIpcDictionaryEncodings* dictionary_encodings_out,
+    struct ArrowError* error) {
   ArrowSchemaInit(out);
   // Top-level batch schema is typically non-nullable
   out->flags = 0;
@@ -1464,15 +1523,17 @@ static ArrowErrorCode ArrowIpcDecoderDecodeSchemaImpl(ns(Schema_table_t) schema,
     return result;
   }
 
-  NANOARROW_RETURN_NOT_OK(ArrowIpcDecoderSetChildren(out, fields, error));
+  NANOARROW_RETURN_NOT_OK(
+      ArrowIpcDecoderSetChildren(out, fields, dictionary_encodings_out, error));
   NANOARROW_RETURN_NOT_OK(
       ArrowIpcDecoderSetMetadata(out, ns(Schema_custom_metadata(schema)), error));
   return NANOARROW_OK;
 }
 
-ArrowErrorCode ArrowIpcDecoderDecodeSchema(struct ArrowIpcDecoder* decoder,
-                                           struct ArrowSchema* out,
-                                           struct ArrowError* error) {
+ArrowErrorCode ArrowIpcDecoderDecodeSchemaWithDictionaries(
+    struct ArrowIpcDecoder* decoder, struct ArrowSchema* out,
+    struct ArrowIpcDictionaryEncodings* dictionary_encodings_out,
+    struct ArrowError* error) {
   struct ArrowIpcDecoderPrivate* private_data =
       (struct ArrowIpcDecoderPrivate*)decoder->private_data;
 
@@ -1482,16 +1543,32 @@ ArrowErrorCode ArrowIpcDecoderDecodeSchema(struct ArrowIpcDecoder* decoder,
     return EINVAL;
   }
 
+  if (dictionary_encodings_out != NULL) {
+    ArrowIpcDictionaryEncodingsInit(dictionary_encodings_out);
+  }
+
   struct ArrowSchema tmp;
-  ArrowErrorCode result = ArrowIpcDecoderDecodeSchemaImpl(
-      (ns(Schema_table_t))private_data->last_message, &tmp, error);
+  ArrowErrorCode result =
+      ArrowIpcDecoderDecodeSchemaImpl((ns(Schema_table_t))private_data->last_message,
+                                      &tmp, dictionary_encodings_out, error);
 
   if (result != NANOARROW_OK) {
     ArrowSchemaRelease(&tmp);
+
+    if (dictionary_encodings_out != NULL) {
+      ArrowIpcDictionaryEncodingsReset(dictionary_encodings_out);
+    }
+
     return result;
   }
   ArrowSchemaMove(&tmp, out);
   return NANOARROW_OK;
+}
+
+ArrowErrorCode ArrowIpcDecoderDecodeSchema(struct ArrowIpcDecoder* decoder,
+                                           struct ArrowSchema* out,
+                                           struct ArrowError* error) {
+  return ArrowIpcDecoderDecodeSchemaWithDictionaries(decoder, out, NULL, error);
 }
 
 ArrowErrorCode ArrowIpcDecoderDecodeFooter(struct ArrowIpcDecoder* decoder,
@@ -1510,7 +1587,8 @@ ArrowErrorCode ArrowIpcDecoderDecodeFooter(struct ArrowIpcDecoder* decoder,
       ArrowIpcDecoderDecodeSchemaHeader(decoder, ns(Footer_schema(footer)), error));
 
   NANOARROW_RETURN_NOT_OK(ArrowIpcDecoderDecodeSchemaImpl(
-      ns(Footer_schema(footer)), &private_data->footer.schema, error));
+      ns(Footer_schema(footer)), &private_data->footer.schema,
+      &private_data->footer.dictionaries, error));
 
   ns(Block_vec_t) blocks = ns(Footer_recordBatches(footer));
   int64_t n = ns(Block_vec_len(blocks));
@@ -1529,21 +1607,53 @@ ArrowErrorCode ArrowIpcDecoderDecodeFooter(struct ArrowIpcDecoder* decoder,
   return NANOARROW_OK;
 }
 
-static void ArrowIpcDecoderCountFields(struct ArrowSchema* schema, int64_t* n_fields) {
+static void ArrowIpcDecoderCountFields(const struct ArrowSchema* schema,
+                                       int64_t* n_fields) {
   *n_fields += 1;
   for (int64_t i = 0; i < schema->n_children; i++) {
     ArrowIpcDecoderCountFields(schema->children[i], n_fields);
   }
 }
 
-static void ArrowIpcDecoderInitFields(struct ArrowIpcField* fields,
-                                      struct ArrowArrayView* array_view,
-                                      struct ArrowArray* array, int64_t* n_fields,
-                                      int64_t* n_buffers, int64_t* n_union_fields) {
+static ArrowErrorCode ArrowIpcDecoderInitFields(
+    struct ArrowIpcField* fields, const struct ArrowSchema* schema,
+    const struct ArrowIpcDictionaryEncodings* dictionary_encodings,
+    struct ArrowArrayView* array_view, struct ArrowArray* array, int64_t* n_fields,
+    int64_t* n_buffers, int64_t* n_union_fields, struct ArrowError* error) {
   struct ArrowIpcField* field = fields + (*n_fields);
   field->array_view = array_view;
   field->array = array;
   field->buffer_offset = *n_buffers;
+  field->dictionary_id = NANOARROW_IPC_NO_DICTIONARY_ID;
+
+  if (schema->dictionary != NULL) {
+    if (dictionary_encodings == NULL) {
+      const char* name = schema->name;
+      if (name == NULL) {
+        name = "<unnamed field>";
+      }
+
+      ArrowErrorSet(error,
+                    "Can't resolve dictionary ID for field '%s' (dictionary encodings "
+                    "not provided)",
+                    name);
+      return EINVAL;
+    }
+
+    const struct ArrowIpcDictionaryEncoding* dictionary_encoding =
+        ArrowIpcDictionaryEncodingsFind(dictionary_encodings, schema);
+    if (dictionary_encoding == NULL) {
+      const char* name = schema->name;
+      if (name == NULL) {
+        name = "<unnamed field>";
+      }
+
+      ArrowErrorSet(error, "Can't resolve dictionary ID for field '%s'", name);
+      return EINVAL;
+    }
+
+    field->dictionary_id = dictionary_encoding->id;
+  }
 
   for (int i = 0; i < NANOARROW_MAX_FIXED_BUFFERS; i++) {
     *n_buffers += array_view->layout.buffer_type[i] != NANOARROW_BUFFER_TYPE_NONE;
@@ -1554,14 +1664,18 @@ static void ArrowIpcDecoderInitFields(struct ArrowIpcField* fields,
   *n_fields += 1;
 
   for (int64_t i = 0; i < array_view->n_children; i++) {
-    ArrowIpcDecoderInitFields(fields, array_view->children[i], array->children[i],
-                              n_fields, n_buffers, n_union_fields);
+    NANOARROW_RETURN_NOT_OK(ArrowIpcDecoderInitFields(
+        fields, schema->children[i], dictionary_encodings, array_view->children[i],
+        array->children[i], n_fields, n_buffers, n_union_fields, error));
   }
+
+  return NANOARROW_OK;
 }
 
-ArrowErrorCode ArrowIpcDecoderSetSchema(struct ArrowIpcDecoder* decoder,
-                                        struct ArrowSchema* schema,
-                                        struct ArrowError* error) {
+ArrowErrorCode ArrowIpcDecoderSetSchemaWithDictionaries(
+    struct ArrowIpcDecoder* decoder, const struct ArrowSchema* schema,
+    const struct ArrowIpcDictionaryEncodings* dictionary_encodings,
+    struct ArrowError* error) {
   struct ArrowIpcDecoderPrivate* private_data =
       (struct ArrowIpcDecoderPrivate*)decoder->private_data;
 
@@ -1602,11 +1716,18 @@ ArrowErrorCode ArrowIpcDecoderSetSchema(struct ArrowIpcDecoder* decoder,
 
   // Init field information and calculate starting buffer offset for each
   int64_t field_i = 0;
-  ArrowIpcDecoderInitFields(private_data->fields, &private_data->array_view,
-                            &private_data->array, &field_i, &private_data->n_buffers,
-                            &private_data->n_union_fields);
+  NANOARROW_RETURN_NOT_OK(ArrowIpcDecoderInitFields(
+      private_data->fields, schema, dictionary_encodings, &private_data->array_view,
+      &private_data->array, &field_i, &private_data->n_buffers,
+      &private_data->n_union_fields, error));
 
   return NANOARROW_OK;
+}
+
+ArrowErrorCode ArrowIpcDecoderSetSchema(struct ArrowIpcDecoder* decoder,
+                                        const struct ArrowSchema* schema,
+                                        struct ArrowError* error) {
+  return ArrowIpcDecoderSetSchemaWithDictionaries(decoder, schema, NULL, error);
 }
 
 ArrowErrorCode ArrowIpcDecoderSetEndianness(struct ArrowIpcDecoder* decoder,
@@ -2001,18 +2122,22 @@ static int ArrowIpcDecoderWalkGetArray(struct ArrowArrayView* array_view,
         array_view->children[i], array->children[i], out->children[i], error));
   }
 
-  if (array->dictionary != NULL) {
-    ArrowErrorSet(error, "Decode of dictionary array is not yet supported");
-    return ENOTSUP;
-  }
-
   return NANOARROW_OK;
 }
 
-static int ArrowIpcDecoderWalkSetArrayView(struct ArrowIpcArraySetter* setter,
+static int ArrowIpcDecoderWalkSetArrayView(struct ArrowIpcDecoder* decoder,
+                                           struct ArrowIpcArraySetter* setter,
                                            struct ArrowArrayView* array_view,
                                            struct ArrowArray* array,
                                            struct ArrowError* error) {
+  struct ArrowIpcDecoderPrivate* private_data =
+      (struct ArrowIpcDecoderPrivate*)decoder->private_data;
+  struct ArrowIpcField* ipc_field = private_data->fields + setter->field_i;
+  if (ipc_field->dictionary_id != NANOARROW_IPC_NO_DICTIONARY_ID) {
+    ArrowErrorSet(error, "Decoding a dictionary-encoding field is not supported");
+    return ENOTSUP;
+  }
+
   ns(FieldNode_struct_t) field =
       ns(FieldNode_vec_at(setter->fields, (size_t)setter->field_i));
   array_view->length = ns(FieldNode_length(field));
@@ -2066,7 +2191,7 @@ static int ArrowIpcDecoderWalkSetArrayView(struct ArrowIpcArraySetter* setter,
 
   for (int64_t i = 0; i < array_view->n_children; i++) {
     NANOARROW_RETURN_NOT_OK(ArrowIpcDecoderWalkSetArrayView(
-        setter, array_view->children[i], array->children[i], error));
+        decoder, setter, array_view->children[i], array->children[i], error));
   }
 
   return NANOARROW_OK;
@@ -2158,12 +2283,13 @@ static ArrowErrorCode ArrowIpcDecoderDecodeArrayViewInternal(
     setter.buffer_i++;
 
     for (int64_t i = 0; i < root->array_view->n_children; i++) {
-      NANOARROW_RETURN_NOT_OK(ArrowIpcDecoderWalkSetArrayView(
-          &setter, root->array_view->children[i], root->array->children[i], error));
+      NANOARROW_RETURN_NOT_OK(
+          ArrowIpcDecoderWalkSetArrayView(decoder, &setter, root->array_view->children[i],
+                                          root->array->children[i], error));
     }
   } else {
-    NANOARROW_RETURN_NOT_OK(
-        ArrowIpcDecoderWalkSetArrayView(&setter, root->array_view, root->array, error));
+    NANOARROW_RETURN_NOT_OK(ArrowIpcDecoderWalkSetArrayView(
+        decoder, &setter, root->array_view, root->array, error));
   }
 
   // If we decoded a compressed message, wait for any pending decompression tasks to

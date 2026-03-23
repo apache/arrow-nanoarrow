@@ -44,6 +44,7 @@ struct ArrowIpcField {
   struct ArrowArrayView* array_view;
   struct ArrowArray* array;
   int64_t buffer_offset;
+  int64_t dictionary_id;
 };
 
 struct ArrowIpcDecoderPrivate {
@@ -589,6 +590,7 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDecodeDictionarySchema) {
   struct ArrowIpcDecoder decoder;
   struct ArrowError error;
   struct ArrowSchema schema;
+  struct ArrowIpcDictionaryEncodings dictionary_encodings;
 
   struct ArrowBufferView data;
   data.data.as_uint8 = kDictionarySchema;
@@ -599,7 +601,9 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDecodeDictionarySchema) {
   EXPECT_EQ(ArrowIpcDecoderDecodeHeader(&decoder, data, &error), NANOARROW_OK);
   ASSERT_EQ(decoder.message_type, NANOARROW_IPC_MESSAGE_TYPE_SCHEMA);
 
-  ASSERT_EQ(ArrowIpcDecoderDecodeSchema(&decoder, &schema, &error), NANOARROW_OK);
+  ASSERT_EQ(ArrowIpcDecoderDecodeSchemaWithDictionaries(&decoder, &schema,
+                                                        &dictionary_encodings, &error),
+            NANOARROW_OK);
   ASSERT_EQ(schema.n_children, 1);
   EXPECT_STREQ(schema.children[0]->name, "some_col");
   EXPECT_EQ(schema.children[0]->flags, ARROW_FLAG_NULLABLE);
@@ -608,7 +612,33 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDecodeDictionarySchema) {
   ASSERT_NE(schema.children[0]->dictionary, nullptr);
   EXPECT_STREQ(schema.children[0]->dictionary->format, "u");
 
+  // The dictionary encodings should fail to locate anything except the dictionary-encoded
+  // field
+  ASSERT_EQ(ArrowIpcDictionaryEncodingsFind(&dictionary_encodings, nullptr), nullptr);
+  ASSERT_EQ(ArrowIpcDictionaryEncodingsFind(&dictionary_encodings, &schema), nullptr);
+  const struct ArrowIpcDictionaryEncoding* encoding =
+      ArrowIpcDictionaryEncodingsFind(&dictionary_encodings, schema.children[0]);
+  ASSERT_NE(encoding, nullptr);
+  ASSERT_EQ(encoding->schema, schema.children[0]);
+  ASSERT_EQ(encoding->id, 0);
+  ASSERT_EQ(encoding->kind, NANOARROW_IPC_DICTIONARY_KIND_DENSE_ARRAY);
+
+  // If we try to set the schema without the dictionaries, we should get an error
+  ASSERT_EQ(ArrowIpcDecoderSetSchema(&decoder, &schema, &error), EINVAL);
+  ASSERT_STREQ(error.message,
+               "Can't resolve dictionary ID for field 'some_col' (dictionary encodings "
+               "not provided)");
+
+  // When we do set the schema, the ID should propagate into the fields
+  ASSERT_EQ(ArrowIpcDecoderSetSchemaWithDictionaries(&decoder, &schema,
+                                                     &dictionary_encodings, &error),
+            NANOARROW_OK);
+  auto decoder_private =
+      reinterpret_cast<struct ArrowIpcDecoderPrivate*>(decoder.private_data);
+  ASSERT_EQ(decoder_private->fields[1].dictionary_id, 0);
+
   ArrowSchemaRelease(&schema);
+  ArrowIpcDictionaryEncodingsReset(&dictionary_encodings);
   ArrowIpcDecoderReset(&decoder);
 }
 

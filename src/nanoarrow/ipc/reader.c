@@ -403,19 +403,22 @@ static int ArrowIpcArrayStreamReaderReadSchemaIfNeeded(
       &private_data->error);
 
   struct ArrowSchema tmp;
-  NANOARROW_RETURN_NOT_OK(
-      ArrowIpcDecoderDecodeSchema(&private_data->decoder, &tmp, &private_data->error));
+  struct ArrowIpcDictionaryEncodings dictionary_encodings;
+  NANOARROW_RETURN_NOT_OK(ArrowIpcDecoderDecodeSchemaWithDictionaries(
+      &private_data->decoder, &tmp, &dictionary_encodings, &private_data->error));
 
   // Only support "read the whole thing" for now
   if (private_data->field_index != -1) {
     ArrowSchemaRelease(&tmp);
+    ArrowIpcDictionaryEncodingsReset(&dictionary_encodings);
     ArrowErrorSet(&private_data->error, "Field index != -1 is not yet supported");
     return ENOTSUP;
   }
 
   // Notify the decoder of the schema for forthcoming messages
-  int result =
-      ArrowIpcDecoderSetSchema(&private_data->decoder, &tmp, &private_data->error);
+  int result = ArrowIpcDecoderSetSchemaWithDictionaries(
+      &private_data->decoder, &tmp, &dictionary_encodings, &private_data->error);
+  ArrowIpcDictionaryEncodingsReset(&dictionary_encodings);
   if (result != NANOARROW_OK) {
     ArrowSchemaRelease(&tmp);
     return result;

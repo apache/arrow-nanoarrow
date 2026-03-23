@@ -86,3 +86,18 @@ TEST(NanoarrowIpcHppTest, NanoarrowIpcHppTestUniqueOutputStream) {
   EXPECT_NE(output2->release, nullptr);
   EXPECT_EQ(output->release, nullptr);  // NOLINT(clang-analyzer-cplusplus.Move)
 }
+
+TEST(NanoarrowIpcHppTest, NanoarrowIpcHppTestUniqueDictionaryEncodings) {
+  nanoarrow::ipc::UniqueDictionaryEncodings dictionary_encodings;
+  ASSERT_EQ(ArrowIpcDictionaryEncodingsAppend(
+                dictionary_encodings.get(),
+                {nullptr, 1, NANOARROW_IPC_DICTIONARY_KIND_DENSE_ARRAY}),
+            NANOARROW_OK);
+
+  nanoarrow::ipc::UniqueDictionaryEncodings dictionary_encodings2 =
+      std::move(dictionary_encodings);
+  EXPECT_NE(dictionary_encodings2->encodings.data, nullptr);
+  EXPECT_EQ(
+      dictionary_encodings->encodings.data,  // NOLINT(clang-analyzer-cplusplus.Move)
+      nullptr);
+}

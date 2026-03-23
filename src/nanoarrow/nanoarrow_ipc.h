@@ -49,6 +49,8 @@
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcDecoderDecodeHeader)
 #define ArrowIpcDecoderDecodeSchema \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcDecoderDecodeSchema)
+#define ArrowIpcDecoderDecodeSchemaWithDictionaries \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcDecoderDecodeSchemaWithDictionaries)
 #define ArrowIpcDecoderDecodeArrayView \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcDecoderDecodeArrayView)
 #define ArrowIpcDecoderDecodeArray \
@@ -57,6 +59,8 @@
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcDecoderDecodeArrayFromShared)
 #define ArrowIpcDecoderSetSchema \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcDecoderSetSchema)
+#define ArrowIpcDecoderSetSchemaWithDictionaries \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcDecoderSetSchemaWithDictionaries)
 #define ArrowIpcDecoderSetEndianness \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcDecoderSetEndianness)
 #define ArrowIpcDecoderPeekFooter \
@@ -105,6 +109,14 @@
 #define ArrowIpcFooterReset NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcFooterReset)
 #define ArrowIpcEncoderEncodeFooter \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcEncoderEncodeFooter)
+#define ArrowIpcDictionaryEncodingsInit \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcDictionaryEncodingsInit)
+#define ArrowIpcDictionaryEncodingsAppend \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcDictionaryEncodingsAppend)
+#define ArrowIpcDictionaryEncodingsFind \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcDictionaryEncodingsFind)
+#define ArrowIpcDictionaryEncodingsReset \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcDictionaryEncodingsReset)
 
 #endif
 
@@ -156,6 +168,12 @@ enum ArrowIpcCompressionType {
   NANOARROW_IPC_COMPRESSION_TYPE_ZSTD
 };
 
+/// \brief Dictionary kind enumerator
+enum ArrowIpcDictionaryKind {
+  NANOARROW_IPC_DICTIONARY_KIND_UNINITIALIZED,
+  NANOARROW_IPC_DICTIONARY_KIND_DENSE_ARRAY
+};
+
 /// \brief Feature flag for a stream that uses dictionary replacement
 #define NANOARROW_IPC_FEATURE_DICTIONARY_REPLACEMENT 1
 
@@ -170,6 +188,60 @@ struct ArrowIpcDictionaryBatch {
   /// Otherwise, values should replace the existing dictionary.
   int is_delta;
 };
+
+/// \brief Description of a dictionary-encoded field
+///
+/// This struct is intended to be passed by value; however, its data is invalidated
+/// if the underlying ArrowSchema that contains the dictionary-encoded field is
+/// released.
+struct ArrowIpcDictionaryEncoding {
+  /// \brief A pointer to the ArrowSchema node of the dictionary-encoded field
+  ///
+  /// This is a reference into another object and care must be taken to ensure
+  /// that if that object is copied that the schema pointers are updated
+  /// appropriately.
+  const struct ArrowSchema* schema;
+
+  /// \brief The identifier used that will appear in dictionary batch messages
+  int64_t id;
+
+  /// \brief The dictionary kind
+  ///
+  /// Currently only one dictionary kind is permitted by the Arrow specification
+  /// (DenseArray).
+  enum ArrowIpcDictionaryKind kind;
+};
+
+/// \brief List of ArrowIpcDictionaryEncoding structs
+///
+/// This structure provides a list of dictionary encoded fields extracted
+/// from an ArrowSchema during decoding. Its members refer to pointers
+/// within a specific schema, so care must be taken to keep the schema
+/// containing the pointed-to ArrowSchema fields valid.
+struct ArrowIpcDictionaryEncodings {
+  struct ArrowBuffer encodings;
+};
+
+/// \brief Initialize an ArrowIpcDictionaryEncodings list
+NANOARROW_DLL void ArrowIpcDictionaryEncodingsInit(
+    struct ArrowIpcDictionaryEncodings* dictionaries);
+
+/// \brief Append a given ArrowIpcDictionaryEncoding to this list
+NANOARROW_DLL ArrowErrorCode
+ArrowIpcDictionaryEncodingsAppend(struct ArrowIpcDictionaryEncodings* dictionaries,
+                                  struct ArrowIpcDictionaryEncoding encoding);
+
+/// \brief Resolve a ArrowIpcDictionaryEncoding for a given dictionary encoded field
+///
+/// Returns NULL if the pointed to schema does not match any of the pointed to
+/// schemas contained in this list.
+NANOARROW_DLL const struct ArrowIpcDictionaryEncoding* ArrowIpcDictionaryEncodingsFind(
+    const struct ArrowIpcDictionaryEncodings* dictionaries,
+    const struct ArrowSchema* schema);
+
+/// \brief Release an encodings list and associated resources
+NANOARROW_DLL void ArrowIpcDictionaryEncodingsReset(
+    struct ArrowIpcDictionaryEncodings* dictionaries);
 
 /// \brief Checks the nanoarrow runtime to make sure the run/build versions match
 NANOARROW_DLL ArrowErrorCode ArrowIpcCheckRuntime(struct ArrowError* error);
@@ -392,6 +464,8 @@ NANOARROW_DLL ArrowErrorCode ArrowIpcDecoderDecodeHeader(struct ArrowIpcDecoder*
 ///
 /// After a successful call to ArrowIpcDecoderDecodeHeader(), retrieve an ArrowSchema.
 /// The caller is responsible for releasing the schema if NANOARROW_OK is returned.
+/// This is equivalent to calling ArrowIpcDecoderDecodeSchemaWithDictionaries() with
+/// dictionaries_out = NULL.
 ///
 /// Returns EINVAL if the decoder did not just decode a schema message or
 /// NANOARROW_OK otherwise.
@@ -399,18 +473,51 @@ NANOARROW_DLL ArrowErrorCode ArrowIpcDecoderDecodeSchema(struct ArrowIpcDecoder*
                                                          struct ArrowSchema* out,
                                                          struct ArrowError* error);
 
+/// \brief Decode an ArrowSchema with dictionary encoding information
+///
+/// After a successful call to ArrowIpcDecoderDecodeHeader(), retrieve an ArrowSchema.
+/// The caller is responsible for releasing the schema if NANOARROW_OK is returned.
+/// Neither out nor dictionaries_out should be initialized; dictionaries_out may be
+/// null to omit exporting dictionary identifiers.
+///
+/// Returns EINVAL if the decoder did not just decode a schema message or
+/// NANOARROW_OK otherwise.
+NANOARROW_DLL ArrowErrorCode ArrowIpcDecoderDecodeSchemaWithDictionaries(
+    struct ArrowIpcDecoder* decoder, struct ArrowSchema* out,
+    struct ArrowIpcDictionaryEncodings* dictionaries_out, struct ArrowError* error);
+
 /// \brief Set the ArrowSchema used to decode future record batch messages
 ///
 /// Prepares the decoder for future record batch messages
-/// of this type. The decoder takes ownership of schema if NANOARROW_OK is returned.
+/// of this type. The decoder does not take ownership of schema.
 /// Note that you must call this explicitly after decoding a
 /// Schema message (i.e., the decoder does not assume that the last-decoded
 /// schema message applies to future record batch messages).
 ///
+/// This is equivalent to calling ArrowIpcDecoderSetSchemaWithDictionaries() with
+/// dictionary_encodings = NULL.
+///
 /// Returns EINVAL if schema validation fails or NANOARROW_OK otherwise.
 NANOARROW_DLL ArrowErrorCode ArrowIpcDecoderSetSchema(struct ArrowIpcDecoder* decoder,
-                                                      struct ArrowSchema* schema,
+                                                      const struct ArrowSchema* schema,
                                                       struct ArrowError* error);
+
+/// \brief Set the ArrowSchema and dictionary encodings used to decode future record batch
+/// messages
+///
+/// Prepares the decoder for future record batch messages
+/// of this type. The decoder does not take ownership of schema.
+/// Note that you must call this explicitly after decoding a
+/// Schema message (i.e., the decoder does not assume that the last-decoded
+/// schema message applies to future record batch messages).
+///
+/// Returns EINVAL if schema validation fails or if the schema contains
+/// dictionary encodings that could not be resolved in the provided
+/// ArrowIpcDictionaryEncodings object, or NANOARROW_OK otherwise.
+NANOARROW_DLL ArrowErrorCode ArrowIpcDecoderSetSchemaWithDictionaries(
+    struct ArrowIpcDecoder* decoder, const struct ArrowSchema* schema,
+    const struct ArrowIpcDictionaryEncodings* dictionary_encodings,
+    struct ArrowError* error);
 
 /// \brief Set the endianness used to decode future record batch messages
 ///
@@ -708,8 +815,10 @@ struct ArrowIpcFileBlock {
 /// This structure is intended to be allocated by the caller, initialized using
 /// ArrowIpcFooterInit(), and released with ArrowIpcFooterReset().
 struct ArrowIpcFooter {
-  /// \brief the Footer's embedded Schema
+  /// \brief The Footer's embedded Schema
   struct ArrowSchema schema;
+  /// \brief Dictionaries present in the footer Schema
+  struct ArrowIpcDictionaryEncodings dictionaries;
   /// \brief all blocks containing RecordBatch Messages
   struct ArrowBuffer record_batch_blocks;
 };
