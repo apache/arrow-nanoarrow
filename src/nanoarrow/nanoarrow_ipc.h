@@ -239,23 +239,30 @@ NANOARROW_DLL const struct ArrowIpcDictionaryEncoding* ArrowIpcDictionaryEncodin
     const struct ArrowIpcDictionaryEncodings* dictionaries,
     const struct ArrowSchema* schema);
 
+/// \brief Resolve the first ArrowIpcDictionaryEncoding for a given identifier
+///
+/// Note that there may be multiple dictionary-encoded fields with the same
+/// identifier in a given schema; however, all of them should have an identical
+/// value and index data type.
+///
+/// Returns NULL if id does not refer to any of the encodings in this list.
+const struct ArrowIpcDictionaryEncoding* ArrowIpcDictionaryEncodingsFindById(
+    const struct ArrowIpcDictionaryEncodings* dictionary_encodings, int64_t id);
+
 /// \brief Release an encodings list and associated resources
 NANOARROW_DLL void ArrowIpcDictionaryEncodingsReset(
     struct ArrowIpcDictionaryEncodings* dictionaries);
-
 
 struct ArrowIpcDictionaries {
   void* private_data;
 };
 
-NANOARROW_DLL ArrowErrorCode ArrowIpcDictionariesInit(
-    struct ArrowIpcDictionaries* dictionaries,
-    const struct ArrowIpcDictionaryEncodings* dictionary_encodings);
+NANOARROW_DLL ArrowErrorCode
+ArrowIpcDictionariesInit(struct ArrowIpcDictionaries* dictionaries,
+                         const struct ArrowIpcDictionaryEncodings* dictionary_encodings,
+                         struct ArrowError* error);
 
-NANOARROW_DLL void ArrowIpcDictionariesReset(
-    struct ArrowIpcDictionaries* dictionaries);
-
-
+NANOARROW_DLL void ArrowIpcDictionariesReset(struct ArrowIpcDictionaries* dictionaries);
 
 /// \brief Checks the nanoarrow runtime to make sure the run/build versions match
 NANOARROW_DLL ArrowErrorCode ArrowIpcCheckRuntime(struct ArrowError* error);
