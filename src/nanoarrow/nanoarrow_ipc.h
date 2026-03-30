@@ -115,8 +115,16 @@
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcDictionaryEncodingsAppend)
 #define ArrowIpcDictionaryEncodingsFind \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcDictionaryEncodingsFind)
+#define ArrowIpcDictionaryEncodingsFindById \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcDictionaryEncodingsFindById)
+#define ArrowIpcDictionaryEncodingsUniqueIds \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcDictionaryEncodingsUniqueIds)
 #define ArrowIpcDictionaryEncodingsReset \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcDictionaryEncodingsReset)
+#define ArrowIpcDictionariesInit \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcDictionariesInit)
+#define ArrowIpcDictionariesReset \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcDictionariesReset)
 
 #endif
 
@@ -246,10 +254,11 @@ NANOARROW_DLL const struct ArrowIpcDictionaryEncoding* ArrowIpcDictionaryEncodin
 /// value and index data type.
 ///
 /// Returns NULL if id does not refer to any of the encodings in this list.
-const struct ArrowIpcDictionaryEncoding* ArrowIpcDictionaryEncodingsFindById(
+NANOARROW_DLL const struct ArrowIpcDictionaryEncoding*
+ArrowIpcDictionaryEncodingsFindById(
     const struct ArrowIpcDictionaryEncodings* dictionary_encodings, int64_t id);
 
-ArrowErrorCode ArrowIpcDictionaryEncodingsUniqueIds(
+NANOARROW_DLL ArrowErrorCode ArrowIpcDictionaryEncodingsUniqueIds(
     const struct ArrowIpcDictionaryEncodings* dictionary_encodings,
     struct ArrowBuffer* out);
 
