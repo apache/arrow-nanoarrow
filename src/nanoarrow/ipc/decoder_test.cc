@@ -642,7 +642,7 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDecodeDictionarySchema) {
   ArrowIpcDecoderReset(&decoder);
 }
 
-TEST(NanoarrowIpcTest, NanoarrowIpcDecodeDictionaryBatch) {
+TEST(NanoarrowIpcTest, NanoarrowIpcDecodeDictionaryBatchInfo) {
   struct ArrowIpcDecoder decoder;
   struct ArrowError error;
 
@@ -659,10 +659,38 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDecodeDictionaryBatch) {
   EXPECT_EQ(decoder.dictionary->id, 0);
   EXPECT_FALSE(decoder.dictionary->is_delta);
 
-  // TODO: Access RecordBatch content
-  // https://github.com/apache/arrow-nanoarrow/issues/845
-
   ArrowIpcDecoderReset(&decoder);
+}
+
+TEST(NanoarrowIpcTest, NanoarrowIpcDictionariesDecode) {
+  struct ArrowIpcDictionaryEncodings dictionary_encodings;
+  struct ArrowIpcDictionaries dictionaries;
+  struct ArrowError error;
+  struct ArrowSchema schema;
+
+  // Make a dictionary encoded schema that matches that of the dictionary example batch
+  ArrowSchemaInit(&schema);
+  ASSERT_EQ(ArrowSchemaSetTypeStruct(&schema, 1), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaSetType(schema.children[0], NANOARROW_TYPE_INT32), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaAllocateDictionary(schema.children[0]), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaSetType(schema.children[0]->dictionary, NANOARROW_TYPE_STRING),
+            NANOARROW_OK);
+
+  // Initialize the dictionary encodings with a single dictionary
+  ArrowIpcDictionaryEncodingsInit(&dictionary_encodings);
+  ASSERT_EQ(ArrowIpcDictionaryEncodingsAppend(
+                &dictionary_encodings, {.id = 0,
+                                        .kind = NANOARROW_IPC_DICTIONARY_KIND_DENSE_ARRAY,
+                                        .schema = schema.children[0]}),
+            NANOARROW_OK);
+
+  // Initialize the dictionaires with the encodings
+  ASSERT_EQ(ArrowIpcDictionariesInit(&dictionaries, &dictionary_encodings, &error),
+            NANOARROW_OK);
+
+  ArrowIpcDictionariesReset(&dictionaries);
+  ArrowIpcDictionaryEncodingsReset(&dictionary_encodings);
+  ArrowSchemaRelease(&schema);
 }
 
 TEST(NanoarrowIpcTest, NanoarrowIpcSetSchema) {

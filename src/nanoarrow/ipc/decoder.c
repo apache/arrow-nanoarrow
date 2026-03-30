@@ -450,7 +450,7 @@ static ArrowErrorCode ArrowIpcDictionariesInitDictionaries(
     if (encoding == NULL) {
       ArrowErrorSet(error,
                     "Internal error (dictionary with id not present in encodings list)");
-      *num_initialized_decoders_out = i;
+      *num_initialized_decoders_out = i + 1;
       return EINVAL;
     }
 
@@ -461,7 +461,7 @@ static ArrowErrorCode ArrowIpcDictionariesInitDictionaries(
     result = ArrowIpcDecoderSetSchemaWithDictionaries(
         &dictionary->decoder, &decoder_schema, dictionary_encodings, error);
     if (result != NANOARROW_OK) {
-      *num_initialized_decoders_out = i;
+      *num_initialized_decoders_out = i + 1;
       return result;
     }
 
@@ -500,9 +500,10 @@ ArrowErrorCode ArrowIpcDictionariesInit(
     return result;
   }
 
-  private_data->num_dictionaries = dictionary_encodings->encodings.size_bytes /
-                                   sizeof(struct ArrowIpcDictionaryEncoding);
+  // unique_ids is a buffer of int64_t
+  private_data->num_dictionaries = unique_ids.size_bytes / sizeof(int64_t);
 
+  // Allocate the array of ArrowIpcDictionary
   private_data->dictionaries =
       ArrowMalloc(private_data->num_dictionaries * sizeof(struct ArrowIpcDictionary));
   if (private_data->dictionaries == NULL) {
@@ -540,6 +541,9 @@ void ArrowIpcDictionariesReset(struct ArrowIpcDictionaries* dictionaries) {
     struct ArrowIpcDictionary* dictionary = private_data->dictionaries + i;
     ArrowIpcDictionaryReset(dictionary);
   }
+
+  ArrowFree(private_data->dictionaries);
+  ArrowFree(private_data);
 }
 
 ArrowErrorCode ArrowIpcDecoderInit(struct ArrowIpcDecoder* decoder) {
