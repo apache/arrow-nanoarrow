@@ -249,6 +249,10 @@ NANOARROW_DLL const struct ArrowIpcDictionaryEncoding* ArrowIpcDictionaryEncodin
 const struct ArrowIpcDictionaryEncoding* ArrowIpcDictionaryEncodingsFindById(
     const struct ArrowIpcDictionaryEncodings* dictionary_encodings, int64_t id);
 
+ArrowErrorCode ArrowIpcDictionaryEncodingsUniqueIds(
+    const struct ArrowIpcDictionaryEncodings* dictionary_encodings,
+    struct ArrowBuffer* out);
+
 /// \brief Release an encodings list and associated resources
 NANOARROW_DLL void ArrowIpcDictionaryEncodingsReset(
     struct ArrowIpcDictionaryEncodings* dictionaries);
