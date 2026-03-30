@@ -388,7 +388,7 @@ ArrowErrorCode ArrowIpcDictionariesInit(
                                    sizeof(struct ArrowIpcDictionaryEncoding);
 
   private_data->dictionaries =
-      ArrowMalloc(private_data->num_dictionaries * sizeof(struct ArrowIpcDictionaries));
+      ArrowMalloc(private_data->num_dictionaries * sizeof(struct ArrowIpcDictionary));
   if (private_data->dictionaries == NULL) {
     ArrowFree(private_data);
     return ENOMEM;
@@ -407,6 +407,7 @@ ArrowErrorCode ArrowIpcDictionariesInit(
     return result;
   }
 
+  dictionaries->private_data = private_data;
   return NANOARROW_OK;
 }
 
