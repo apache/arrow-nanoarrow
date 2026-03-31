@@ -675,10 +675,11 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDecodeDictionaryBatchDecode) {
 
   // Initialize the dictionary encodings with a single dictionary
   ArrowIpcDictionaryEncodingsInit(&dictionary_encodings);
-  ASSERT_EQ(ArrowIpcDictionaryEncodingsAppend(
-                &dictionary_encodings, {.id = 0,
-                                        .kind = NANOARROW_IPC_DICTIONARY_KIND_DENSE_ARRAY,
-                                        .schema = schema.children[0]}),
+  struct ArrowIpcDictionaryEncoding encoding;
+  encoding.id = 0;
+  encoding.kind = NANOARROW_IPC_DICTIONARY_KIND_DENSE_ARRAY;
+  encoding.schema = schema.children[0];
+  ASSERT_EQ(ArrowIpcDictionaryEncodingsAppend(&dictionary_encodings, encoding),
             NANOARROW_OK);
 
   // Initialize the dictionaires with the encodings
