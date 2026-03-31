@@ -123,8 +123,12 @@
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcDictionaryEncodingsReset)
 #define ArrowIpcDictionariesInit \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcDictionariesInit)
+#define ArrowIpcDictionariesFindCurrentValue \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcDictionariesFindCurrentValue)
 #define ArrowIpcDictionariesReset \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcDictionariesReset)
+#define ArrowIpcDecoderDecodeDictionary \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcDecoderDecodeDictionary)
 
 #endif
 
@@ -274,6 +278,10 @@ NANOARROW_DLL ArrowErrorCode
 ArrowIpcDictionariesInit(struct ArrowIpcDictionaries* dictionaries,
                          const struct ArrowIpcDictionaryEncodings* dictionary_encodings,
                          struct ArrowError* error);
+
+NANOARROW_DLL ArrowErrorCode ArrowIpcDictionariesFindCurrentValue(
+    struct ArrowIpcDictionaries* dictionaries, int64_t id, const struct ArrowArray** out,
+    struct ArrowError* error);
 
 NANOARROW_DLL void ArrowIpcDictionariesReset(struct ArrowIpcDictionaries* dictionaries);
 
@@ -606,6 +614,11 @@ NANOARROW_DLL ArrowErrorCode ArrowIpcDecoderDecodeArray(
 NANOARROW_DLL ArrowErrorCode ArrowIpcDecoderDecodeArrayFromShared(
     struct ArrowIpcDecoder* decoder, struct ArrowIpcSharedBuffer* shared, int64_t i,
     struct ArrowArray* out, enum ArrowValidationLevel validation_level,
+    struct ArrowError* error);
+
+NANOARROW_DLL ArrowErrorCode ArrowIpcDecoderDecodeDictionary(
+    struct ArrowIpcDecoder* decoder, struct ArrowIpcSharedBuffer* shared,
+    enum ArrowValidationLevel validation_level, struct ArrowIpcDictionaries* out,
     struct ArrowError* error);
 
 /// \brief An user-extensible input data source

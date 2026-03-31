@@ -57,6 +57,8 @@
 
 #define NANOARROW_IPC_NO_DICTIONARY_ID INT64_MIN
 
+#define ns(x) FLATBUFFERS_WRAP_NAMESPACE(org_apache_arrow_flatbuf, x)
+
 // Internal representation of a parsed "Field" from flatbuffers. This
 // represents a field in a depth-first walk of column arrays and their
 // children.
@@ -381,26 +383,46 @@ void ArrowIpcDictionaryEncodingsReset(
 struct ArrowIpcDictionary {
   int64_t id;
   struct ArrowIpcDecoder decoder;
-  struct ArrowIpcSharedBuffer buffer;
+  struct ArrowArray current_value;
 };
 
 static ArrowErrorCode ArrowIpcDictionaryInit(struct ArrowIpcDictionary* dictionary) {
   dictionary->id = NANOARROW_IPC_NO_DICTIONARY_ID;
   NANOARROW_RETURN_NOT_OK(ArrowIpcDecoderInit(&dictionary->decoder));
-  struct ArrowBuffer empty;
-  ArrowBufferInit(&empty);
-  ArrowErrorCode result = ArrowIpcSharedBufferInit(&dictionary->buffer, &empty);
-  if (result != NANOARROW_OK) {
-    ArrowIpcDecoderReset(&dictionary->decoder);
-    return result;
+  memset(&dictionary->current_value, 0, sizeof(struct ArrowArray));
+  return NANOARROW_OK;
+}
+
+static ArrowErrorCode ArrowIpcDictionaryReplace(struct ArrowIpcDictionary* dictionary,
+                                                struct ArrowArray* value,
+                                                struct ArrowError* error) {
+  NANOARROW_UNUSED(error);
+
+  if (dictionary->current_value.release != NULL) {
+    ArrowArrayRelease(&dictionary->current_value);
   }
 
+  ArrowArrayMove(value, &dictionary->current_value);
+  return NANOARROW_OK;
+}
+
+static ArrowErrorCode ArrowIpcDictionaryAppend(struct ArrowIpcDictionary* dictionary,
+                                               struct ArrowArray* value,
+                                               struct ArrowError* error) {
+  if (dictionary->current_value.release != NULL) {
+    ArrowErrorSet(error, "Dictionary concatenation is not yet supported");
+    return ENOTSUP;
+  }
+
+  ArrowArrayMove(value, &dictionary->current_value);
   return NANOARROW_OK;
 }
 
 static void ArrowIpcDictionaryReset(struct ArrowIpcDictionary* dictionary) {
   ArrowIpcDecoderReset(&dictionary->decoder);
-  ArrowIpcSharedBufferReset(&dictionary->buffer);
+  if (dictionary->current_value.release) {
+    ArrowArrayRelease(&dictionary->current_value);
+  }
 }
 
 struct ArrowIpcDictionariesPrivate {
@@ -518,7 +540,7 @@ ArrowErrorCode ArrowIpcDictionariesInit(
                                                 &unique_ids,
                                                 &num_initialized_dictionaries, error);
   ArrowBufferReset(&unique_ids);
-  if (num_initialized_dictionaries != private_data->num_dictionaries) {
+  if (result != NANOARROW_OK) {
     for (int64_t i = 0; i < num_initialized_dictionaries; i++) {
       ArrowIpcDictionaryReset(private_data->dictionaries + i);
     }
@@ -529,6 +551,38 @@ ArrowErrorCode ArrowIpcDictionariesInit(
   }
 
   dictionaries->private_data = private_data;
+  return NANOARROW_OK;
+}
+
+static struct ArrowIpcDictionary* ArrowIpcDictionariesFindById(
+    struct ArrowIpcDictionaries* dictionaries, int64_t id) {
+  NANOARROW_DCHECK(dictionaries != NULL);
+
+  struct ArrowIpcDictionariesPrivate* private_data =
+      (struct ArrowIpcDictionariesPrivate*)dictionaries->private_data;
+  for (int64_t i = 0; i < private_data->num_dictionaries; i++) {
+    struct ArrowIpcDictionary* dictionary = private_data->dictionaries + i;
+    if (dictionary->id == id) {
+      return dictionary;
+    }
+  }
+
+  return NULL;
+}
+
+ArrowErrorCode ArrowIpcDictionariesFindCurrentValue(
+    struct ArrowIpcDictionaries* dictionaries, int64_t id, const struct ArrowArray** out,
+    struct ArrowError* error) {
+  struct ArrowIpcDictionary* dictionary = ArrowIpcDictionariesFindById(dictionaries, id);
+  if (dictionary == NULL) {
+    ArrowErrorSet(error,
+                  "Can't find value for dictionary with ID %" PRId64
+                  " (dictionary definition not found)",
+                  id);
+    return EINVAL;
+  }
+
+  *out = &dictionary->current_value;
   return NANOARROW_OK;
 }
 
@@ -624,8 +678,6 @@ static inline int32_t ArrowIpcReadInt32LE(struct ArrowBufferView* data, int swap
   data->size_bytes -= sizeof(int32_t);
   return value;
 }
-
-#define ns(x) FLATBUFFERS_WRAP_NAMESPACE(org_apache_arrow_flatbuf, x)
 
 static int ArrowIpcDecoderSetMetadata(struct ArrowSchema* schema,
                                       ns(KeyValue_vec_t) kv_vec,
@@ -2601,5 +2653,64 @@ ArrowErrorCode ArrowIpcDecoderDecodeArrayFromShared(
   }
 
   ArrowArrayMove(&temp, out);
+  return NANOARROW_OK;
+}
+
+NANOARROW_DLL ArrowErrorCode ArrowIpcDecoderDecodeDictionary(
+    struct ArrowIpcDecoder* decoder, struct ArrowIpcSharedBuffer* shared,
+    enum ArrowValidationLevel validation_level, struct ArrowIpcDictionaries* dictionaries,
+    struct ArrowError* error) {
+  NANOARROW_DCHECK(decoder != NULL);
+  NANOARROW_DCHECK(shared != NULL);
+  NANOARROW_DCHECK(dictionaries != NULL);
+
+  struct ArrowIpcDecoderPrivate* private_data =
+      (struct ArrowIpcDecoderPrivate*)decoder->private_data;
+
+  if (decoder->message_type != NANOARROW_IPC_MESSAGE_TYPE_DICTIONARY_BATCH) {
+    ArrowErrorSet(error, "decoder did not just decode a DictionaryBatch message");
+    return EINVAL;
+  }
+
+  struct ArrowIpcDictionary* dictionary =
+      ArrowIpcDictionariesFindById(dictionaries, decoder->dictionary->id);
+  if (dictionary == NULL) {
+    ArrowErrorSet(error,
+                  "Can't decode DictionaryBatch with ID %" PRId64
+                  " (dictionary definition not found)",
+                  decoder->dictionary->id);
+    return EINVAL;
+  }
+
+  // Set the dictionary->decoder's last message type and last message so that we can
+  // decode the value.
+  ns(DictionaryBatch_table_t) dictionary_batch =
+      (ns(DictionaryBatch_table_t))private_data->last_message;
+  ns(RecordBatch_table_t) record_batch = ns(DictionaryBatch_data(dictionary_batch));
+
+  struct ArrowIpcDecoderPrivate* dictionary_decoder_private_data =
+      (struct ArrowIpcDecoderPrivate*)dictionary->decoder.private_data;
+  dictionary->decoder.message_type = NANOARROW_IPC_MESSAGE_TYPE_RECORD_BATCH;
+  dictionary_decoder_private_data->last_message = record_batch;
+
+  struct ArrowArray tmp;
+
+  // TODO: provide ArrowIpcDecoderDecodeArrayInternalWithDictionaries to handle nested
+  // dictionaries
+  NANOARROW_RETURN_NOT_OK(ArrowIpcDecoderDecodeArrayInternal(
+      &dictionary->decoder, 0, &tmp, validation_level, error));
+
+  ArrowErrorCode result;
+  if (decoder->dictionary->is_delta) {
+    result = ArrowIpcDictionaryAppend(dictionary, &tmp, error);
+  } else {
+    result = ArrowIpcDictionaryReplace(dictionary, &tmp, error);
+  }
+
+  if (result != NANOARROW_OK) {
+    ArrowArrayRelease(&tmp);
+    return result;
+  }
+
   return NANOARROW_OK;
 }

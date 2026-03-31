@@ -642,10 +642,13 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDecodeDictionarySchema) {
   ArrowIpcDecoderReset(&decoder);
 }
 
-TEST(NanoarrowIpcTest, NanoarrowIpcDecodeDictionaryBatchInfo) {
+TEST(NanoarrowIpcTest, NanoarrowIpcDecodeDictionaryBatchDecode) {
+  struct ArrowIpcDictionaryEncodings dictionary_encodings;
+  struct ArrowIpcDictionaries dictionaries;
   struct ArrowIpcDecoder decoder;
   struct ArrowError error;
 
+  // Decode a dictionary batch and inspect metadata
   struct ArrowBufferView data;
   data.data.as_uint8 = kDictionaryBatch;
   data.size_bytes = sizeof(kDictionaryBatch);
@@ -659,13 +662,6 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDecodeDictionaryBatchInfo) {
   EXPECT_EQ(decoder.dictionary->id, 0);
   EXPECT_FALSE(decoder.dictionary->is_delta);
 
-  ArrowIpcDecoderReset(&decoder);
-}
-
-TEST(NanoarrowIpcTest, NanoarrowIpcDictionariesDecode) {
-  struct ArrowIpcDictionaryEncodings dictionary_encodings;
-  struct ArrowIpcDictionaries dictionaries;
-  struct ArrowError error;
   struct ArrowSchema schema;
 
   // Make a dictionary encoded schema that matches that of the dictionary example batch
@@ -673,8 +669,9 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDictionariesDecode) {
   ASSERT_EQ(ArrowSchemaSetTypeStruct(&schema, 1), NANOARROW_OK);
   ASSERT_EQ(ArrowSchemaSetType(schema.children[0], NANOARROW_TYPE_INT32), NANOARROW_OK);
   ASSERT_EQ(ArrowSchemaAllocateDictionary(schema.children[0]), NANOARROW_OK);
-  ASSERT_EQ(ArrowSchemaSetType(schema.children[0]->dictionary, NANOARROW_TYPE_STRING),
-            NANOARROW_OK);
+  ASSERT_EQ(
+      ArrowSchemaInitFromType(schema.children[0]->dictionary, NANOARROW_TYPE_STRING),
+      NANOARROW_OK);
 
   // Initialize the dictionary encodings with a single dictionary
   ArrowIpcDictionaryEncodingsInit(&dictionary_encodings);
@@ -686,11 +683,35 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDictionariesDecode) {
 
   // Initialize the dictionaires with the encodings
   ASSERT_EQ(ArrowIpcDictionariesInit(&dictionaries, &dictionary_encodings, &error),
-            NANOARROW_OK);
+            NANOARROW_OK)
+      << error.message;
 
+  // Decode the dictionary batch
+  data.data.as_uint8 += decoder.header_size_bytes;
+  data.size_bytes -= decoder.header_size_bytes;
+  struct ArrowBuffer body;
+  ArrowBufferInit(&body);
+  ASSERT_EQ(ArrowBufferAppendBufferView(&body, data), NANOARROW_OK);
+
+  struct ArrowIpcSharedBuffer shared;
+  ASSERT_EQ(ArrowIpcSharedBufferInit(&shared, &body), NANOARROW_OK);
+  ASSERT_EQ(
+      ArrowIpcDecoderDecodeDictionary(&decoder, &shared, NANOARROW_VALIDATION_LEVEL_FULL,
+                                      &dictionaries, &error),
+      NANOARROW_OK)
+      << error.message;
+
+  const struct ArrowArray* dictionary_value;
+  ASSERT_EQ(
+      ArrowIpcDictionariesFindCurrentValue(&dictionaries, 0, &dictionary_value, &error),
+      NANOARROW_OK);
+  ASSERT_NE(dictionary_value->release, nullptr);
+
+  ArrowIpcSharedBufferReset(&shared);
   ArrowIpcDictionariesReset(&dictionaries);
   ArrowIpcDictionaryEncodingsReset(&dictionary_encodings);
   ArrowSchemaRelease(&schema);
+  ArrowIpcDecoderReset(&decoder);
 }
 
 TEST(NanoarrowIpcTest, NanoarrowIpcSetSchema) {
