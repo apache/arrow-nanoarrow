@@ -32,6 +32,7 @@
 // For bswap32()
 #include "flatcc/portable/pendian.h"
 
+#include "nanoarrow/nanoarrow_gtest_util.hpp"
 #include "nanoarrow/nanoarrow_ipc.hpp"
 
 #if defined(NANOARROW_BUILD_TESTS_WITH_ARROW)
@@ -662,9 +663,8 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDecodeDictionaryBatchDecode) {
   EXPECT_EQ(decoder.dictionary->id, 0);
   EXPECT_FALSE(decoder.dictionary->is_delta);
 
-  struct ArrowSchema schema;
-
   // Make a dictionary encoded schema that matches that of the dictionary example batch
+  struct ArrowSchema schema;
   ArrowSchemaInit(&schema);
   ASSERT_EQ(ArrowSchemaSetTypeStruct(&schema, 1), NANOARROW_OK);
   ASSERT_EQ(ArrowSchemaSetType(schema.children[0], NANOARROW_TYPE_INT32), NANOARROW_OK);
@@ -706,8 +706,19 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDecodeDictionaryBatchDecode) {
   ASSERT_EQ(
       ArrowIpcDictionariesFindCurrentValue(&dictionaries, 0, &dictionary_value, &error),
       NANOARROW_OK);
-  ASSERT_NE(dictionary_value->release, nullptr);
 
+  struct ArrowArrayView array_view;
+  ArrowArrayViewInitFromType(&array_view, NANOARROW_TYPE_STRING);
+  ASSERT_EQ(ArrowArrayViewSetArray(&array_view, dictionary_value, &error), NANOARROW_OK);
+
+  using namespace nanoarrow::literals;
+
+  ASSERT_EQ(array_view.length, 3);
+  ASSERT_EQ(ArrowArrayViewGetStringUnsafe(&array_view, 0), "zero"_asv);
+  ASSERT_EQ(ArrowArrayViewGetStringUnsafe(&array_view, 1), "one"_asv);
+  ASSERT_EQ(ArrowArrayViewGetStringUnsafe(&array_view, 2), "two"_asv);
+
+  ArrowArrayViewReset(&array_view);
   ArrowIpcSharedBufferReset(&shared);
   ArrowIpcDictionariesReset(&dictionaries);
   ArrowIpcDictionaryEncodingsReset(&dictionary_encodings);
