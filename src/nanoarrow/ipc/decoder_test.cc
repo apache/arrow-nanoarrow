@@ -648,8 +648,6 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDecodeDictionarySchema) {
 }
 
 TEST(NanoarrowIpcTest, NanoarrowIpcDictionaryEncodingsUniqueIds) {
-  struct ArrowError error;
-
   // Create dictionary encodings there is at least one duplicated identifier
   struct ArrowIpcDictionaryEncodings dictionary_encodings;
   ArrowIpcDictionaryEncodingsInit(&dictionary_encodings);
