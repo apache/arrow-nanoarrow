@@ -2070,12 +2070,12 @@ struct ArrowIpcBufferFactory {
 
   /// \brief Buffer factory provided buffer length
   ///
-  /// Rather than use the body length declared by the flatbuffer messsage, this is the
+  /// Rather than use the body length declared by the flatbuffer message, this is the
   /// length that should be used to check the bounds of a buffer source (i.e., this is
   /// the actual available length as opposed to the theoretical length).
   int64_t buffer_length;
 
-  /// \brief Caller-defined private data to be used in the callback.
+  /// \brief User-defined private data to be used in the callback.
   ///
   /// Usually this would be a description of where the body has been read into memory or
   /// information required to do so.
