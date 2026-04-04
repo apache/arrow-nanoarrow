@@ -262,6 +262,11 @@ NANOARROW_DLL const struct ArrowIpcDictionaryEncoding*
 ArrowIpcDictionaryEncodingsFindById(
     const struct ArrowIpcDictionaryEncodings* dictionary_encodings, int64_t id);
 
+/// \brief Append a list of unique int64_t identifiers to out
+///
+/// Walk all dictionary encodings in this list to find a set of unique identifiers.
+/// This is primarily for internal use to initialize the ArrowIpcDictionaries but
+/// is exposed for testing purposes.
 NANOARROW_DLL ArrowErrorCode ArrowIpcDictionaryEncodingsUniqueIds(
     const struct ArrowIpcDictionaryEncodings* dictionary_encodings,
     struct ArrowBuffer* out);
@@ -270,19 +275,30 @@ NANOARROW_DLL ArrowErrorCode ArrowIpcDictionaryEncodingsUniqueIds(
 NANOARROW_DLL void ArrowIpcDictionaryEncodingsReset(
     struct ArrowIpcDictionaryEncodings* dictionaries);
 
+/// \brief Dictionaries and their current values
+///
+/// This structure is the basis for decoding dictionary batches and decoding
+/// record batch messages where some columns are dictionary-encoded. This
+/// structure stores a dictionary-specific ArrowIpcDecoder for each dictionary
+/// identifier and its last seen value.
 struct ArrowIpcDictionaries {
   void* private_data;
 };
 
+/// \brief Initialize an ArrowIpcDictionaries
+///
+/// Initialize the structure with the dictionaries from an ArrowIpcDictionaryEncodings.
 NANOARROW_DLL ArrowErrorCode
 ArrowIpcDictionariesInit(struct ArrowIpcDictionaries* dictionaries,
                          const struct ArrowIpcDictionaryEncodings* dictionary_encodings,
                          struct ArrowError* error);
 
+/// \brief Find the current value of a dictionary with the given ID as an ArrowArray
 NANOARROW_DLL ArrowErrorCode ArrowIpcDictionariesFindCurrentValue(
     struct ArrowIpcDictionaries* dictionaries, int64_t id, const struct ArrowArray** out,
     struct ArrowError* error);
 
+/// \brief Release resources associated with an ArrowIpcDictionaries
 NANOARROW_DLL void ArrowIpcDictionariesReset(struct ArrowIpcDictionaries* dictionaries);
 
 /// \brief Checks the nanoarrow runtime to make sure the run/build versions match

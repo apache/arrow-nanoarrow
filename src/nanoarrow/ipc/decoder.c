@@ -380,6 +380,10 @@ void ArrowIpcDictionaryEncodingsReset(
   ArrowBufferReset(&dictionary_encodings->encodings);
 }
 
+/// \brief Internal member of an ArrowIpcDictionaries
+///
+/// This structure stores a dictionary-specific decoder and the current value
+/// of the dictionary (if one exists).
 struct ArrowIpcDictionary {
   int64_t id;
   struct ArrowIpcDecoder decoder;
