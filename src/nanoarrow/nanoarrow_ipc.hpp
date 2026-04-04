@@ -75,6 +75,25 @@ inline void release_pointer(struct ArrowIpcDictionaryEncodings* data) {
 }
 
 template <>
+inline void init_pointer(struct ArrowIpcDictionaries* data) {
+  data->private_data = nullptr;
+}
+
+template <>
+inline void move_pointer(struct ArrowIpcDictionaries* src,
+                         struct ArrowIpcDictionaries* dst) {
+  memcpy(dst, src, sizeof(struct ArrowIpcDictionaries));
+  src->private_data = nullptr;
+}
+
+template <>
+inline void release_pointer(struct ArrowIpcDictionaries* data) {
+  if (data->private_data != nullptr) {
+    ArrowIpcDictionariesReset(data);
+  }
+}
+
+template <>
 inline void init_pointer(struct ArrowIpcFooter* data) {
   ArrowIpcFooterInit(data);
 }
@@ -205,6 +224,9 @@ using UniqueFooter = internal::Unique<struct ArrowIpcFooter>;
 
 /// \brief Class wrapping a unique struct ArrowIpcDictionaryEncodings
 using UniqueDictionaryEncodings = internal::Unique<struct ArrowIpcDictionaryEncodings>;
+
+/// \brief Class wrapping a unique struct UniqueDictionaries
+using UniqueDictionaries = internal::Unique<struct ArrowIpcDictionaries>;
 
 /// \brief Class wrapping a unique struct ArrowIpcEncoder
 using UniqueEncoder = internal::Unique<struct ArrowIpcEncoder>;
