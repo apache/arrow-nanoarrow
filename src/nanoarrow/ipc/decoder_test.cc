@@ -626,7 +626,6 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDecodeDictionarySchema) {
 
   // The dictionary encodings should fail to locate anything except the decoded ID
   ASSERT_EQ(ArrowIpcDictionaryEncodingsFindById(&dictionary_encodings, 100), nullptr);
-  encoding = ArrowIpcDictionaryEncodingsFindById(&dictionary_encodings, 0);
 
   // If we try to set the schema without the dictionaries, we should get an error
   ASSERT_EQ(ArrowIpcDecoderSetSchema(&decoder, &schema, &error), EINVAL);
