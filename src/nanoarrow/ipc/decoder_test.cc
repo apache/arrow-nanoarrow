@@ -566,7 +566,7 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDecodeSimpleRecordBatchErrors) {
   ArrowArrayRelease(&array);
 
   // Field extract should fail if body is too small
-  decoder.body_size_bytes = 0;
+  body.size_bytes = 0;
   EXPECT_EQ(ArrowIpcDecoderDecodeArray(&decoder, body, 0, &array,
                                        NANOARROW_VALIDATION_LEVEL_FULL, &error),
             EINVAL);
@@ -689,7 +689,7 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDecodeDictionaryBatchDecode) {
 
   // Decode the dictionary batch
   data.data.as_uint8 += decoder.header_size_bytes;
-  data.size_bytes -= decoder.header_size_bytes;
+  data.size_bytes = decoder.body_size_bytes;
   struct ArrowBuffer body;
   ArrowBufferInit(&body);
   ASSERT_EQ(ArrowBufferAppendBufferView(&body, data), NANOARROW_OK);

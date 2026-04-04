@@ -2068,6 +2068,13 @@ struct ArrowIpcBufferFactory {
   /// should be made.
   struct ArrowIpcDecompressor* decompressor;
 
+  /// \brief Buffer factory provided buffer length
+  ///
+  /// Rather than use the body length declared by the flatbuffer messsage, this is the
+  /// length that should be used to check the bounds of a buffer source (i.e., this is
+  /// the actual available length as opposed to the theoretical length).
+  int64_t buffer_length;
+
   /// \brief Caller-defined private data to be used in the callback.
   ///
   /// Usually this would be a description of where the body has been read into memory or
@@ -2158,6 +2165,7 @@ static struct ArrowIpcBufferFactory ArrowIpcBufferFactoryFromView(
   struct ArrowIpcBufferFactory out;
   out.make_buffer = &ArrowIpcMakeBufferFromView;
   out.decompressor = NULL;
+  out.buffer_length = buffer_view->size_bytes;
   out.private_data = buffer_view;
   return out;
 }
@@ -2198,6 +2206,7 @@ static struct ArrowIpcBufferFactory ArrowIpcBufferFactoryFromShared(
   struct ArrowIpcBufferFactory out;
   out.make_buffer = &ArrowIpcMakeBufferFromShared;
   out.decompressor = NULL;
+  out.buffer_length = shared->private_src.size_bytes;
   out.private_data = shared;
   return out;
 }
@@ -2332,7 +2341,6 @@ struct ArrowIpcArraySetter {
   int64_t field_i;
   ns(Buffer_vec_t) buffers;
   int64_t buffer_i;
-  int64_t body_size_bytes;
   struct ArrowIpcBufferSource src;
   struct ArrowIpcBufferFactory factory;
   enum ArrowIpcMetadataVersion version;
@@ -2351,11 +2359,11 @@ static int ArrowIpcDecoderMakeBuffer(struct ArrowIpcArraySetter* setter, int64_t
   // Check that this buffer fits within the body
   int64_t buffer_start = offset;
   int64_t buffer_end = buffer_start + length;
-  if (buffer_start < 0 || buffer_end > setter->body_size_bytes) {
+  if (buffer_start < 0 || buffer_end > setter->factory.buffer_length) {
     ArrowErrorSet(error,
                   "Buffer requires body offsets [%" PRId64 "..%" PRId64
                   ") but body has size %" PRId64,
-                  buffer_start, buffer_end, setter->body_size_bytes);
+                  buffer_start, buffer_end, setter->factory.buffer_length);
     return EINVAL;
   }
 
@@ -2541,7 +2549,6 @@ static ArrowErrorCode ArrowIpcDecoderDecodeArrayViewInternal(
   setter.field_i = field_i;
   setter.buffers = ns(RecordBatch_buffers(batch));
   setter.buffer_i = root->buffer_offset - 1;
-  setter.body_size_bytes = decoder->body_size_bytes;
   setter.factory = factory;
   setter.src.codec = decoder->codec;
   setter.src.swap_endian = ArrowIpcDecoderNeedsSwapEndian(decoder);
@@ -2697,8 +2704,8 @@ NANOARROW_DLL ArrowErrorCode ArrowIpcDecoderDecodeDictionary(
 
   // TODO: provide ArrowIpcDecoderDecodeArrayInternalWithDictionaries to handle nested
   // dictionaries
-  NANOARROW_RETURN_NOT_OK(ArrowIpcDecoderDecodeArrayInternal(
-      &dictionary->decoder, 0, &tmp, validation_level, error));
+  NANOARROW_RETURN_NOT_OK(ArrowIpcDecoderDecodeArrayFromShared(
+      &dictionary->decoder, shared, 0, &tmp, validation_level, error));
 
   ArrowErrorCode result;
   if (decoder->dictionary->is_delta) {
