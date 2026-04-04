@@ -624,6 +624,10 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDecodeDictionarySchema) {
   ASSERT_EQ(encoding->id, 0);
   ASSERT_EQ(encoding->kind, NANOARROW_IPC_DICTIONARY_KIND_DENSE_ARRAY);
 
+  // The dictionary encodings should fail to locate anything except the decoded ID
+  ASSERT_EQ(ArrowIpcDictionaryEncodingsFindById(&dictionary_encodings, 100), nullptr);
+  encoding = ArrowIpcDictionaryEncodingsFindById(&dictionary_encodings, 0);
+
   // If we try to set the schema without the dictionaries, we should get an error
   ASSERT_EQ(ArrowIpcDecoderSetSchema(&decoder, &schema, &error), EINVAL);
   ASSERT_STREQ(error.message,
@@ -643,11 +647,88 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDecodeDictionarySchema) {
   ArrowIpcDecoderReset(&decoder);
 }
 
-TEST(NanoarrowIpcTest, NanoarrowIpcDecodeDictionaryBatchDecode) {
+TEST(NanoarrowIpcTest, NanoarrowIpcDictionaryEncodingsUniqueIds) {
+  struct ArrowError error;
+
+  // Create dictionary encodings there is at least one duplicated identifier
   struct ArrowIpcDictionaryEncodings dictionary_encodings;
+  ArrowIpcDictionaryEncodingsInit(&dictionary_encodings);
+
+  struct ArrowIpcDictionaryEncoding encoding;
+  encoding.id = 42;
+  encoding.kind = NANOARROW_IPC_DICTIONARY_KIND_DENSE_ARRAY;
+  encoding.schema = nullptr;
+
+  struct ArrowIpcDictionaryEncoding encoding2;
+  encoding2.id = 142;
+  encoding2.kind = NANOARROW_IPC_DICTIONARY_KIND_DENSE_ARRAY;
+  encoding2.schema = nullptr;
+
+  // Add the encodings a few times to simulate sharedness
+  ASSERT_EQ(ArrowIpcDictionaryEncodingsAppend(&dictionary_encodings, encoding),
+            NANOARROW_OK);
+  ASSERT_EQ(ArrowIpcDictionaryEncodingsAppend(&dictionary_encodings, encoding2),
+            NANOARROW_OK);
+  ASSERT_EQ(ArrowIpcDictionaryEncodingsAppend(&dictionary_encodings, encoding),
+            NANOARROW_OK);
+  ASSERT_EQ(ArrowIpcDictionaryEncodingsAppend(&dictionary_encodings, encoding2),
+            NANOARROW_OK);
+
+  struct ArrowBuffer unique_ids;
+  ArrowBufferInit(&unique_ids);
+  ASSERT_EQ(ArrowIpcDictionaryEncodingsUniqueIds(&dictionary_encodings, &unique_ids),
+            NANOARROW_OK);
+
+  // 4 encodings (IDs: 42, 42, 7) should produce 2 unique IDs
+  ASSERT_EQ(unique_ids.size_bytes, 2 * sizeof(int64_t));
+  const int64_t* ids = reinterpret_cast<const int64_t*>(unique_ids.data);
+  EXPECT_EQ(ids[0], 42);
+  EXPECT_EQ(ids[1], 142);
+
+  ArrowBufferReset(&unique_ids);
+  ArrowIpcDictionaryEncodingsReset(&dictionary_encodings);
+}
+
+TEST(NanoarrowIpcTest, NanoarrowIpcDecodeDictionaryBatchDecode) {
+  using namespace nanoarrow::literals;
+
+  struct ArrowIpcDictionaryEncodings dictionary_encodings;
+  struct ArrowSchema schema;
   struct ArrowIpcDictionaries dictionaries;
   struct ArrowIpcDecoder decoder;
   struct ArrowError error;
+
+  // Make a dictionary encoded schema that matches that of the dictionary example batch
+  ArrowSchemaInit(&schema);
+  ASSERT_EQ(ArrowSchemaSetTypeStruct(&schema, 1), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaSetType(schema.children[0], NANOARROW_TYPE_INT32), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaAllocateDictionary(schema.children[0]), NANOARROW_OK);
+  ASSERT_EQ(
+      ArrowSchemaInitFromType(schema.children[0]->dictionary, NANOARROW_TYPE_STRING),
+      NANOARROW_OK);
+
+  // Initialize the dictionary encodings with the single dictionary
+  ArrowIpcDictionaryEncodingsInit(&dictionary_encodings);
+  struct ArrowIpcDictionaryEncoding encoding;
+  encoding.id = 0;
+  encoding.kind = NANOARROW_IPC_DICTIONARY_KIND_DENSE_ARRAY;
+  encoding.schema = schema.children[0];
+  ASSERT_EQ(ArrowIpcDictionaryEncodingsAppend(&dictionary_encodings, encoding),
+            NANOARROW_OK);
+
+  // Initialize the dictionaires with the encodings
+  ASSERT_EQ(ArrowIpcDictionariesInit(&dictionaries, &dictionary_encodings, &error),
+            NANOARROW_OK)
+      << error.message;
+
+  // Check that we can't decode a dictionary batch if we haven't read a dictionary batch
+  // message
+  struct ArrowIpcSharedBuffer shared;
+  ASSERT_EQ(
+      ArrowIpcDecoderDecodeDictionary(&decoder, &shared, NANOARROW_VALIDATION_LEVEL_FULL,
+                                      &dictionaries, &error),
+      EINVAL);
+  ASSERT_STREQ(error.message, "decoder did not just decode a DictionaryBatch message");
 
   // Decode a dictionary batch and inspect metadata
   struct ArrowBufferView data;
@@ -663,30 +744,6 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDecodeDictionaryBatchDecode) {
   EXPECT_EQ(decoder.dictionary->id, 0);
   EXPECT_FALSE(decoder.dictionary->is_delta);
 
-  // Make a dictionary encoded schema that matches that of the dictionary example batch
-  struct ArrowSchema schema;
-  ArrowSchemaInit(&schema);
-  ASSERT_EQ(ArrowSchemaSetTypeStruct(&schema, 1), NANOARROW_OK);
-  ASSERT_EQ(ArrowSchemaSetType(schema.children[0], NANOARROW_TYPE_INT32), NANOARROW_OK);
-  ASSERT_EQ(ArrowSchemaAllocateDictionary(schema.children[0]), NANOARROW_OK);
-  ASSERT_EQ(
-      ArrowSchemaInitFromType(schema.children[0]->dictionary, NANOARROW_TYPE_STRING),
-      NANOARROW_OK);
-
-  // Initialize the dictionary encodings with a single dictionary
-  ArrowIpcDictionaryEncodingsInit(&dictionary_encodings);
-  struct ArrowIpcDictionaryEncoding encoding;
-  encoding.id = 0;
-  encoding.kind = NANOARROW_IPC_DICTIONARY_KIND_DENSE_ARRAY;
-  encoding.schema = schema.children[0];
-  ASSERT_EQ(ArrowIpcDictionaryEncodingsAppend(&dictionary_encodings, encoding),
-            NANOARROW_OK);
-
-  // Initialize the dictionaires with the encodings
-  ASSERT_EQ(ArrowIpcDictionariesInit(&dictionaries, &dictionary_encodings, &error),
-            NANOARROW_OK)
-      << error.message;
-
   // Decode the dictionary batch
   data.data.as_uint8 += decoder.header_size_bytes;
   data.size_bytes = decoder.body_size_bytes;
@@ -694,14 +751,13 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDecodeDictionaryBatchDecode) {
   ArrowBufferInit(&body);
   ASSERT_EQ(ArrowBufferAppendBufferView(&body, data), NANOARROW_OK);
 
-  struct ArrowIpcSharedBuffer shared;
   ASSERT_EQ(ArrowIpcSharedBufferInit(&shared, &body), NANOARROW_OK);
   ASSERT_EQ(
       ArrowIpcDecoderDecodeDictionary(&decoder, &shared, NANOARROW_VALIDATION_LEVEL_FULL,
                                       &dictionaries, &error),
-      NANOARROW_OK)
-      << error.message;
+      NANOARROW_OK);
 
+  // If we find the current value of the dictionary we should get the correct array
   const struct ArrowArray* dictionary_value;
   ASSERT_EQ(
       ArrowIpcDictionariesFindCurrentValue(&dictionaries, 0, &dictionary_value, &error),
@@ -711,12 +767,36 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDecodeDictionaryBatchDecode) {
   ArrowArrayViewInitFromType(&array_view, NANOARROW_TYPE_STRING);
   ASSERT_EQ(ArrowArrayViewSetArray(&array_view, dictionary_value, &error), NANOARROW_OK);
 
-  using namespace nanoarrow::literals;
+  ASSERT_EQ(array_view.length, 3);
+  ASSERT_EQ(ArrowArrayViewGetStringUnsafe(&array_view, 0), "zero"_asv);
+  ASSERT_EQ(ArrowArrayViewGetStringUnsafe(&array_view, 1), "one"_asv);
+  ASSERT_EQ(ArrowArrayViewGetStringUnsafe(&array_view, 2), "two"_asv);
+
+  // If we try to find the current value of a different dictionary we should get an error
+  ASSERT_EQ(ArrowIpcDictionariesFindCurrentValue(&dictionaries, 9999, &dictionary_value,
+                                                 &error),
+            EINVAL);
+
+  // If we try to decode the dictionary again it should succeed (because the dictionary
+  // is in replacement mode)
+  ASSERT_EQ(
+      ArrowIpcDecoderDecodeDictionary(&decoder, &shared, NANOARROW_VALIDATION_LEVEL_FULL,
+                                      &dictionaries, &error),
+      NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayViewSetArray(&array_view, dictionary_value, &error), NANOARROW_OK);
 
   ASSERT_EQ(array_view.length, 3);
   ASSERT_EQ(ArrowArrayViewGetStringUnsafe(&array_view, 0), "zero"_asv);
   ASSERT_EQ(ArrowArrayViewGetStringUnsafe(&array_view, 1), "one"_asv);
   ASSERT_EQ(ArrowArrayViewGetStringUnsafe(&array_view, 2), "two"_asv);
+
+  // If we try to decode a delta dictionary, we should fail with a reasonable message
+  const_cast<struct ArrowIpcDictionaryBatch*>(decoder.dictionary)->is_delta = 1;
+  ASSERT_EQ(
+      ArrowIpcDecoderDecodeDictionary(&decoder, &shared, NANOARROW_VALIDATION_LEVEL_FULL,
+                                      &dictionaries, &error),
+      ENOTSUP);
+  ASSERT_STREQ(error.message, "Dictionary concatenation is not yet supported");
 
   ArrowArrayViewReset(&array_view);
   ArrowIpcSharedBufferReset(&shared);
