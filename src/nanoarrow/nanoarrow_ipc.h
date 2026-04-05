@@ -604,6 +604,11 @@ NANOARROW_DLL ArrowErrorCode ArrowIpcDecoderDecodeArrayView(
     struct ArrowIpcDecoder* decoder, struct ArrowBufferView body, int64_t i,
     struct ArrowArrayView** out, struct ArrowError* error);
 
+NANOARROW_DLL ArrowErrorCode ArrowIpcDecoderDecodeArrayViewWithDictionaries(
+    struct ArrowIpcDecoder* decoder, struct ArrowBufferView body, int64_t i,
+    struct ArrowIpcDictionaries* dictionaries, struct ArrowArrayView** out,
+    struct ArrowError* error);
+
 /// \brief Decode an ArrowArray
 ///
 /// After a successful call to ArrowIpcDecoderDecodeHeader(), assemble an ArrowArray given

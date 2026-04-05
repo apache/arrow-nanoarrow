@@ -2354,6 +2354,7 @@ struct ArrowIpcArraySetter {
   struct ArrowIpcBufferSource src;
   struct ArrowIpcBufferFactory factory;
   enum ArrowIpcMetadataVersion version;
+  struct ArrowIpcDictionaries* dictionaries;
 };
 
 static int ArrowIpcDecoderMakeBuffer(struct ArrowIpcArraySetter* setter, int64_t offset,
@@ -2420,6 +2421,13 @@ static int ArrowIpcDecoderWalkGetArray(struct ArrowArrayView* array_view,
         array_view->children[i], array->children[i], out->children[i], error));
   }
 
+  // TODO: set dictionary array. For now we probably just have to copy the view into the
+  // output because we don't have ref-counted arrays yet.
+  if (array_view->dictionary != NULL) {
+    ArrowErrorSet(error, "Dictionary array decode is not supported");
+    return ENOTSUP;
+  }
+
   return NANOARROW_OK;
 }
 
@@ -2430,10 +2438,26 @@ static int ArrowIpcDecoderWalkSetArrayView(struct ArrowIpcDecoder* decoder,
                                            struct ArrowError* error) {
   struct ArrowIpcDecoderPrivate* private_data =
       (struct ArrowIpcDecoderPrivate*)decoder->private_data;
-  struct ArrowIpcField* ipc_field = private_data->fields + setter->field_i;
+
+  // setter->field_i indexes the flatbuffer FieldNode vector (which excludes the root
+  // struct), but private_data->fields includes the root at index 0, so add 1.
+  struct ArrowIpcField* ipc_field = private_data->fields + setter->field_i + 1;
   if (ipc_field->dictionary_id != NANOARROW_IPC_NO_DICTIONARY_ID) {
-    ArrowErrorSet(error, "Decoding a dictionary-encoding field is not supported");
-    return ENOTSUP;
+    if (setter->dictionaries == NULL) {
+      ArrowErrorSet(
+          error, "Can't decode a dictionary-encoded field without ArrowIpcDictionaries");
+      return ENOTSUP;
+    }
+
+    const struct ArrowArray* dictionary;
+    NANOARROW_RETURN_NOT_OK(ArrowIpcDictionariesFindCurrentValue(
+        setter->dictionaries, ipc_field->dictionary_id, &dictionary, error));
+
+    // Set the dictionary array view from the value. We may be able to skip this
+    // if we can somehow detect that the dictionary hasn't changed since the last
+    // decode.
+    NANOARROW_RETURN_NOT_OK(
+        ArrowArrayViewSetArray(array_view->dictionary, dictionary, error));
   }
 
   ns(FieldNode_struct_t) field =
@@ -2538,7 +2562,8 @@ static ArrowErrorCode ArrowIpcDecoderDecodeArrayInternal(
 
 static ArrowErrorCode ArrowIpcDecoderDecodeArrayViewInternal(
     struct ArrowIpcDecoder* decoder, struct ArrowIpcBufferFactory factory,
-    int64_t field_i, struct ArrowArrayView** out_view, struct ArrowError* error) {
+    int64_t field_i, struct ArrowIpcDictionaries* dictionaries,
+    struct ArrowArrayView** out_view, struct ArrowError* error) {
   struct ArrowIpcDecoderPrivate* private_data =
       (struct ArrowIpcDecoderPrivate*)decoder->private_data;
 
@@ -2563,6 +2588,7 @@ static ArrowErrorCode ArrowIpcDecoderDecodeArrayViewInternal(
   setter.src.codec = decoder->codec;
   setter.src.swap_endian = ArrowIpcDecoderNeedsSwapEndian(decoder);
   setter.version = decoder->metadata_version;
+  setter.dictionaries = dictionaries;
 
   // If we are going to need a decompressor here, ensure the default one is
   // initialized.
@@ -2600,10 +2626,10 @@ static ArrowErrorCode ArrowIpcDecoderDecodeArrayViewInternal(
   return NANOARROW_OK;
 }
 
-ArrowErrorCode ArrowIpcDecoderDecodeArrayView(struct ArrowIpcDecoder* decoder,
-                                              struct ArrowBufferView body, int64_t i,
-                                              struct ArrowArrayView** out,
-                                              struct ArrowError* error) {
+NANOARROW_DLL ArrowErrorCode ArrowIpcDecoderDecodeArrayViewWithDictionaries(
+    struct ArrowIpcDecoder* decoder, struct ArrowBufferView body, int64_t i,
+    struct ArrowIpcDictionaries* dictionaries, struct ArrowArrayView** out,
+    struct ArrowError* error) {
   struct ArrowIpcDecoderPrivate* private_data =
       (struct ArrowIpcDecoderPrivate*)decoder->private_data;
   if (private_data->last_message == NULL ||
@@ -2613,7 +2639,15 @@ ArrowErrorCode ArrowIpcDecoderDecodeArrayView(struct ArrowIpcDecoder* decoder,
   }
 
   return ArrowIpcDecoderDecodeArrayViewInternal(
-      decoder, ArrowIpcBufferFactoryFromView(&body), i, out, error);
+      decoder, ArrowIpcBufferFactoryFromView(&body), i, dictionaries, out, error);
+}
+
+ArrowErrorCode ArrowIpcDecoderDecodeArrayView(struct ArrowIpcDecoder* decoder,
+                                              struct ArrowBufferView body, int64_t i,
+                                              struct ArrowArrayView** out,
+                                              struct ArrowError* error) {
+  return ArrowIpcDecoderDecodeArrayViewWithDictionaries(decoder, body, i, NULL, out,
+                                                        error);
 }
 
 ArrowErrorCode ArrowIpcDecoderDecodeArray(struct ArrowIpcDecoder* decoder,
@@ -2631,7 +2665,7 @@ ArrowErrorCode ArrowIpcDecoderDecodeArray(struct ArrowIpcDecoder* decoder,
 
   struct ArrowArrayView* array_view;
   NANOARROW_RETURN_NOT_OK(ArrowIpcDecoderDecodeArrayViewInternal(
-      decoder, ArrowIpcBufferFactoryFromView(&body), i, &array_view, error));
+      decoder, ArrowIpcBufferFactoryFromView(&body), i, NULL, &array_view, error));
 
   NANOARROW_RETURN_NOT_OK(ArrowArrayViewValidate(array_view, validation_level, error));
 
@@ -2655,7 +2689,7 @@ ArrowErrorCode ArrowIpcDecoderDecodeArrayFromShared(
     struct ArrowError* error) {
   struct ArrowArrayView* array_view;
   NANOARROW_RETURN_NOT_OK(ArrowIpcDecoderDecodeArrayViewInternal(
-      decoder, ArrowIpcBufferFactoryFromShared(body), i, &array_view, error));
+      decoder, ArrowIpcBufferFactoryFromShared(body), i, NULL, &array_view, error));
 
   NANOARROW_RETURN_NOT_OK(ArrowArrayViewValidate(array_view, validation_level, error));
 
