@@ -236,19 +236,19 @@ struct ArrowIpcDictionaryEncodings {
 
 /// \brief Initialize an ArrowIpcDictionaryEncodings list
 NANOARROW_DLL void ArrowIpcDictionaryEncodingsInit(
-    struct ArrowIpcDictionaryEncodings* dictionaries);
+    struct ArrowIpcDictionaryEncodings* dictionary_encodings);
 
 /// \brief Append a given ArrowIpcDictionaryEncoding to this list
-NANOARROW_DLL ArrowErrorCode
-ArrowIpcDictionaryEncodingsAppend(struct ArrowIpcDictionaryEncodings* dictionaries,
-                                  struct ArrowIpcDictionaryEncoding encoding);
+NANOARROW_DLL ArrowErrorCode ArrowIpcDictionaryEncodingsAppend(
+    struct ArrowIpcDictionaryEncodings* dictionary_encodings,
+    struct ArrowIpcDictionaryEncoding encoding);
 
 /// \brief Resolve a ArrowIpcDictionaryEncoding for a given dictionary encoded field
 ///
 /// Returns NULL if the pointed to schema does not match any of the pointed to
 /// schemas contained in this list.
 NANOARROW_DLL const struct ArrowIpcDictionaryEncoding* ArrowIpcDictionaryEncodingsFind(
-    const struct ArrowIpcDictionaryEncodings* dictionaries,
+    const struct ArrowIpcDictionaryEncodings* dictionary_encodings,
     const struct ArrowSchema* schema);
 
 /// \brief Resolve the first ArrowIpcDictionaryEncoding for a given identifier
@@ -273,7 +273,7 @@ NANOARROW_DLL ArrowErrorCode ArrowIpcDictionaryEncodingsUniqueIds(
 
 /// \brief Release an encodings list and associated resources
 NANOARROW_DLL void ArrowIpcDictionaryEncodingsReset(
-    struct ArrowIpcDictionaryEncodings* dictionaries);
+    struct ArrowIpcDictionaryEncodings* dictionary_encodings);
 
 /// \brief Dictionaries and their current values
 ///

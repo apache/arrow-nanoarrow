@@ -287,10 +287,10 @@ void ArrowIpcDictionaryEncodingsInit(
 }
 
 ArrowErrorCode ArrowIpcDictionaryEncodingsAppend(
-    struct ArrowIpcDictionaryEncodings* dictionaries,
+    struct ArrowIpcDictionaryEncodings* dictionary_encodings,
     struct ArrowIpcDictionaryEncoding encoding) {
-  NANOARROW_DCHECK(dictionaries != NULL);
-  NANOARROW_RETURN_NOT_OK(ArrowBufferAppend(&dictionaries->encodings, &encoding,
+  NANOARROW_DCHECK(dictionary_encodings != NULL);
+  NANOARROW_RETURN_NOT_OK(ArrowBufferAppend(&dictionary_encodings->encodings, &encoding,
                                             sizeof(struct ArrowIpcDictionaryEncoding)));
   return NANOARROW_OK;
 }
@@ -347,6 +347,7 @@ static int ArrowIpcIdsListContains(const struct ArrowBuffer* ids_buffer, int64_t
 ArrowErrorCode ArrowIpcDictionaryEncodingsUniqueIds(
     const struct ArrowIpcDictionaryEncodings* dictionary_encodings,
     struct ArrowBuffer* out) {
+  NANOARROW_DCHECK(dictionary_encodings != NULL);
   int64_t length = dictionary_encodings->encodings.size_bytes /
                    sizeof(struct ArrowIpcDictionaryEncoding);
   const struct ArrowIpcDictionaryEncoding* data =
@@ -530,13 +531,17 @@ ArrowErrorCode ArrowIpcDictionariesInit(
   private_data->num_dictionaries = unique_ids.size_bytes / sizeof(int64_t);
 
   // Allocate the array of ArrowIpcDictionary
-  private_data->dictionaries =
-      ArrowMalloc(private_data->num_dictionaries * sizeof(struct ArrowIpcDictionary));
-  if (private_data->dictionaries == NULL) {
-    ArrowErrorSet(error, "Failed to allocate ArrowIpcDictionary array");
-    ArrowBufferReset(&unique_ids);
-    ArrowFree(private_data);
-    return ENOMEM;
+  if (private_data->num_dictionaries > 0) {
+    private_data->dictionaries =
+        ArrowMalloc(private_data->num_dictionaries * sizeof(struct ArrowIpcDictionary));
+    if (private_data->dictionaries == NULL) {
+      ArrowErrorSet(error, "Failed to allocate ArrowIpcDictionary array");
+      ArrowBufferReset(&unique_ids);
+      ArrowFree(private_data);
+      return ENOMEM;
+    }
+  } else {
+    private_data->dictionaries = NULL;
   }
 
   int64_t num_initialized_dictionaries = 0;
@@ -602,6 +607,7 @@ void ArrowIpcDictionariesReset(struct ArrowIpcDictionaries* dictionaries) {
 
   ArrowFree(private_data->dictionaries);
   ArrowFree(private_data);
+  dictionaries->private_data = NULL;
 }
 
 ArrowErrorCode ArrowIpcDecoderInit(struct ArrowIpcDecoder* decoder) {

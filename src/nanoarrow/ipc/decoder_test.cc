@@ -676,7 +676,7 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDictionaryEncodingsUniqueIds) {
   ASSERT_EQ(ArrowIpcDictionaryEncodingsUniqueIds(&dictionary_encodings, &unique_ids),
             NANOARROW_OK);
 
-  // 4 encodings (IDs: 42, 42, 7) should produce 2 unique IDs
+  // 4 encodings (IDs: 42, 142, 42, 142) should produce 2 unique IDs
   ASSERT_EQ(unique_ids.size_bytes, 2 * sizeof(int64_t));
   const int64_t* ids = reinterpret_cast<const int64_t*>(unique_ids.data);
   EXPECT_EQ(ids[0], 42);
@@ -720,6 +720,7 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDecodeDictionaryBatchDecode) {
 
   // Check that we can't decode a dictionary batch if we haven't read a dictionary batch
   // message
+  ASSERT_EQ(ArrowIpcDecoderInit(&decoder), NANOARROW_OK);
   struct ArrowIpcSharedBuffer shared;
   ASSERT_EQ(
       ArrowIpcDecoderDecodeDictionary(&decoder, &shared, NANOARROW_VALIDATION_LEVEL_FULL,
@@ -731,8 +732,6 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDecodeDictionaryBatchDecode) {
   struct ArrowBufferView data;
   data.data.as_uint8 = kDictionaryBatch;
   data.size_bytes = sizeof(kDictionaryBatch);
-
-  ASSERT_EQ(ArrowIpcDecoderInit(&decoder), NANOARROW_OK);
 
   EXPECT_EQ(ArrowIpcDecoderDecodeHeader(&decoder, data, &error), NANOARROW_OK);
   ASSERT_EQ(decoder.message_type, NANOARROW_IPC_MESSAGE_TYPE_DICTIONARY_BATCH);
