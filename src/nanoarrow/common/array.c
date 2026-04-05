@@ -23,6 +23,29 @@
 #include <stdlib.h>
 #include <string.h>
 
+// For thread-safe reference counting we need C11 + stdatomic.h.
+// Can compile with -DNANOARROW_USE_STDATOMIC=0 or 1 to override
+// automatic detection.
+#if !defined(NANOARROW_USE_STDATOMIC)
+#define NANOARROW_USE_STDATOMIC 0
+
+// Check for C11
+#if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L
+
+// Check for GCC 4.8, which doesn't include stdatomic.h but does
+// not define __STDC_NO_ATOMICS__
+#if defined(__clang__) || !defined(__GNUC__) || __GNUC__ >= 5
+
+#if !defined(__STDC_NO_ATOMICS__)
+#include <stdatomic.h>
+#undef NANOARROW_USE_STDATOMIC
+#define NANOARROW_USE_STDATOMIC 1
+#endif
+#endif
+#endif
+
+#endif
+
 #include "nanoarrow/nanoarrow.h"
 
 static void ArrowArrayReleaseInternal(struct ArrowArray* array) {
@@ -566,6 +589,99 @@ ArrowErrorCode ArrowArrayFinishBuilding(struct ArrowArray* array,
 ArrowErrorCode ArrowArrayFinishBuildingDefault(struct ArrowArray* array,
                                                struct ArrowError* error) {
   return ArrowArrayFinishBuilding(array, NANOARROW_VALIDATION_LEVEL_DEFAULT, error);
+}
+
+// --- Reference-counted ArrowArray clone support ---
+
+#if NANOARROW_USE_STDATOMIC
+struct ArrowArrayClonePrivate {
+  struct ArrowArray array;
+  atomic_long reference_count;
+};
+
+static int64_t ArrowArrayCloneUpdateRefCount(struct ArrowArrayClonePrivate* private_data,
+                                             int delta) {
+  int64_t old_count = atomic_fetch_add(&private_data->reference_count, delta);
+  return old_count + delta;
+}
+
+static void ArrowArrayCloneSetRefCount(struct ArrowArrayClonePrivate* private_data,
+                                       int64_t count) {
+  atomic_store(&private_data->reference_count, count);
+}
+
+int ArrowArrayCloneIsThreadSafe(void) { return 1; }
+#else
+struct ArrowArrayClonePrivate {
+  struct ArrowArray array;
+  int64_t reference_count;
+};
+
+static int64_t ArrowArrayCloneUpdateRefCount(struct ArrowArrayClonePrivate* private_data,
+                                             int delta) {
+  private_data->reference_count += delta;
+  return private_data->reference_count;
+}
+
+static void ArrowArrayCloneSetRefCount(struct ArrowArrayClonePrivate* private_data,
+                                       int64_t count) {
+  private_data->reference_count = count;
+}
+
+int ArrowArrayCloneIsThreadSafe(void) { return 0; }
+#endif
+
+static void ArrowArrayReleaseClone(struct ArrowArray* array) {
+  struct ArrowArrayClonePrivate* private_data =
+      (struct ArrowArrayClonePrivate*)array->private_data;
+
+  if (ArrowArrayCloneUpdateRefCount(private_data, -1) == 0) {
+    ArrowArrayRelease(&private_data->array);
+    ArrowFree(private_data);
+  }
+
+  array->release = NULL;
+}
+
+static int ArrowArrayIsClone(struct ArrowArray* array) {
+  return array->release == &ArrowArrayReleaseClone;
+}
+
+ArrowErrorCode ArrowArrayClone(struct ArrowArray* src, struct ArrowArray* out) {
+  if (src->release == NULL) {
+    return EINVAL;
+  }
+
+  struct ArrowArrayClonePrivate* private_data;
+
+  if (ArrowArrayIsClone(src)) {
+    // Source is already a clone: just increment the existing refcount
+    private_data = (struct ArrowArrayClonePrivate*)src->private_data;
+    ArrowArrayCloneUpdateRefCount(private_data, 1);
+  } else {
+    // First clone: allocate shared state and move the source array into it
+    private_data = (struct ArrowArrayClonePrivate*)ArrowMalloc(
+        sizeof(struct ArrowArrayClonePrivate));
+    if (private_data == NULL) {
+      return ENOMEM;
+    }
+
+    ArrowArrayMove(src, &private_data->array);
+    // Two references: one for src (which we'll restore) and one for out
+    ArrowArrayCloneSetRefCount(private_data, 2);
+
+    // Restore src as a clone handle pointing at the shared state
+    memcpy(src, &private_data->array, sizeof(struct ArrowArray));
+    src->release = &ArrowArrayReleaseClone;
+    src->private_data = private_data;
+  }
+
+  // Set up out as another clone handle
+  memcpy(out, &private_data->array, sizeof(struct ArrowArray));
+  out->release = &ArrowArrayReleaseClone;
+  out->private_data = private_data;
+
+  return NANOARROW_OK;
 }
 
 void ArrowArrayViewInitFromType(struct ArrowArrayView* array_view,
