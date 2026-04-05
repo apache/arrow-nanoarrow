@@ -114,9 +114,6 @@
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowArrayFinishBuilding)
 #define ArrowArrayFinishBuildingDefault \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowArrayFinishBuildingDefault)
-#define ArrowArrayClone NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowArrayClone)
-#define ArrowArrayCloneIsThreadSafe \
-  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowArrayCloneIsThreadSafe)
 #define ArrowArrayViewInitFromType \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowArrayViewInitFromType)
 #define ArrowArrayViewInitFromSchema \
@@ -879,21 +876,6 @@ NANOARROW_DLL ArrowErrorCode ArrowArrayInitFromSchema(struct ArrowArray* array,
 NANOARROW_DLL ArrowErrorCode ArrowArrayInitFromArrayView(
     struct ArrowArray* array, const struct ArrowArrayView* array_view,
     struct ArrowError* error);
-
-/// \brief Create a cheap reference-counted clone of an ArrowArray
-///
-/// Both src and out will share the same underlying data. When the last
-/// clone is released, the original array's release callback is invoked.
-/// The clone is read-only; appender functions must not be used on it.
-/// src must be a valid (non-released) ArrowArray.
-NANOARROW_DLL ArrowErrorCode ArrowArrayClone(struct ArrowArray* src,
-                                             struct ArrowArray* out);
-
-/// \brief Check if ArrowArrayClone() uses thread-safe atomic reference counting
-///
-/// Returns 1 if the implementation was compiled with C11 stdatomic.h support
-/// and 0 otherwise.
-NANOARROW_DLL int ArrowArrayCloneIsThreadSafe(void);
 
 /// \brief Allocate the array->children array
 ///

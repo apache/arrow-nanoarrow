@@ -407,8 +407,7 @@ static ArrowErrorCode ArrowIpcDictionaryReplace(struct ArrowIpcDictionary* dicti
     ArrowArrayRelease(&dictionary->current_value);
   }
 
-  NANOARROW_RETURN_NOT_OK(ArrowArrayClone(value, &dictionary->current_value));
-  ArrowArrayRelease(value);
+  ArrowArrayMove(value, &dictionary->current_value);
   return NANOARROW_OK;
 }
 
@@ -420,8 +419,7 @@ static ArrowErrorCode ArrowIpcDictionaryAppend(struct ArrowIpcDictionary* dictio
     return ENOTSUP;
   }
 
-  NANOARROW_RETURN_NOT_OK(ArrowArrayClone(value, &dictionary->current_value));
-  ArrowArrayRelease(value);
+  ArrowArrayMove(value, &dictionary->current_value);
   return NANOARROW_OK;
 }
 
