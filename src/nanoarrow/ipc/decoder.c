@@ -2422,6 +2422,7 @@ static int ArrowIpcDecoderWalkGetArray(struct ArrowArrayView* array_view,
   }
 
   if (array_view->dictionary != NULL) {
+    // TODO: this currently copies the array for every output.
     NANOARROW_RETURN_NOT_OK(ArrowIpcDecoderWalkGetArray(
         array_view->dictionary, array->dictionary, out->dictionary, error));
   }
