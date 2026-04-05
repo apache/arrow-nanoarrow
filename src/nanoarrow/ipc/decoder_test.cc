@@ -711,7 +711,7 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDecodeDictionaryBatchDecode) {
   // Make a dictionary encoded schema that matches that of the dictionary example batch
   ArrowSchemaInit(&schema);
   ASSERT_EQ(ArrowSchemaSetTypeStruct(&schema, 1), NANOARROW_OK);
-  ASSERT_EQ(ArrowSchemaSetType(schema.children[0], NANOARROW_TYPE_INT32), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaSetType(schema.children[0], NANOARROW_TYPE_INT8), NANOARROW_OK);
   ASSERT_EQ(ArrowSchemaAllocateDictionary(schema.children[0]), NANOARROW_OK);
   ASSERT_EQ(
       ArrowSchemaInitFromType(schema.children[0]->dictionary, NANOARROW_TYPE_STRING),
@@ -840,8 +840,17 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDecodeDictionaryBatchDecode) {
   ASSERT_EQ(column_view->dictionary->length, 3);
   ASSERT_EQ(ArrowArrayViewGetStringUnsafe(column_view->dictionary, 0), "zero"_asv);
 
-  // TODO decode the array
+  // Decode the array
+  struct ArrowArray batch;
+  ASSERT_EQ(ArrowIpcDecoderDecodeArrayWithDictionaries(
+                &decoder, data, -1, &dictionaries, &batch,
+                NANOARROW_VALIDATION_LEVEL_FULL, &error),
+            NANOARROW_OK)
+      << error.message;
+  ASSERT_NE(batch.children[0]->dictionary, nullptr);
+  ASSERT_EQ(batch.children[0]->dictionary->length, 3);
 
+  ArrowArrayRelease(&batch);
   ArrowArrayViewReset(&array_view);
   ArrowIpcSharedBufferReset(&shared);
   ArrowIpcDictionariesReset(&dictionaries);

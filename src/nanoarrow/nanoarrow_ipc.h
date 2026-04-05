@@ -625,6 +625,11 @@ NANOARROW_DLL ArrowErrorCode ArrowIpcDecoderDecodeArray(
     struct ArrowArray* out, enum ArrowValidationLevel validation_level,
     struct ArrowError* error);
 
+NANOARROW_DLL ArrowErrorCode ArrowIpcDecoderDecodeArrayWithDictionaries(
+    struct ArrowIpcDecoder* decoder, struct ArrowBufferView body, int64_t i,
+    struct ArrowIpcDictionaries* dictionaries, struct ArrowArray* out,
+    enum ArrowValidationLevel validation_level, struct ArrowError* error);
+
 /// \brief Decode an ArrowArray from an owned buffer
 ///
 /// This implementation takes advantage of the fact that it can avoid copying individual
