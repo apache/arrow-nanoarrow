@@ -45,10 +45,7 @@
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowBufferAllocatorDefault)
 #define ArrowBufferDeallocator \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowBufferDeallocator)
-#define ArrowSharedBufferInit \
-  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowSharedBufferInit)
-#define ArrowSharedBufferReset \
-  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowSharedBufferReset)
+#define ArrowSharedBufferInit NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowSharedBufferInit)
 #define ArrowSharedBufferIsThreadSafe \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowSharedBufferIsThreadSafe)
 #define ArrowSharedBufferClone \
@@ -219,24 +216,14 @@ NANOARROW_DLL struct ArrowBufferAllocator ArrowBufferDeallocator(
 ///
 /// @{
 
-/// \brief A structure representing a reference-counted buffer
-struct ArrowSharedBuffer {
-  struct ArrowBuffer private_src;
-};
-
-/// \brief Initialize the contents of an ArrowSharedBuffer struct
+/// \brief Initialize a shared buffer from an ArrowBuffer
 ///
-/// If NANOARROW_OK is returned, the ArrowSharedBuffer takes ownership of
-/// src.
-NANOARROW_DLL ArrowErrorCode ArrowSharedBufferInit(struct ArrowSharedBuffer* shared,
+/// If NANOARROW_OK is returned, shared is a reference-counted buffer that
+/// took ownership of src. The caller should release the shared buffer
+/// using ArrowBufferReset() when finished. The underlying data will persist
+/// until all clones have also been released.
+NANOARROW_DLL ArrowErrorCode ArrowSharedBufferInit(struct ArrowBuffer* shared,
                                                    struct ArrowBuffer* src);
-
-/// \brief Release the caller's copy of the shared buffer
-///
-/// When finished, the caller must relinquish its own copy of the shared data
-/// using this function. The original buffer will continue to exist until all
-/// ArrowArray objects that refer to it have also been released.
-NANOARROW_DLL void ArrowSharedBufferReset(struct ArrowSharedBuffer* shared);
 
 /// \brief Check for shared buffer thread safety
 ///
@@ -248,9 +235,10 @@ NANOARROW_DLL int ArrowSharedBufferIsThreadSafe(void);
 /// \brief Clone a shared buffer, incrementing its reference count
 ///
 /// This creates a new ArrowBuffer that shares the same underlying data with the
-/// original shared buffer. The reference count is incremented.
-NANOARROW_DLL void ArrowSharedBufferClone(struct ArrowSharedBuffer* shared,
-                                          struct ArrowBuffer* shared_out);
+/// original shared buffer. The reference count is incremented. Returns EINVAL
+/// if shared is not a shared buffer created by ArrowSharedBufferInit().
+NANOARROW_DLL ArrowErrorCode ArrowSharedBufferClone(struct ArrowBuffer* shared,
+                                                    struct ArrowBuffer* shared_out);
 
 /// @}
 

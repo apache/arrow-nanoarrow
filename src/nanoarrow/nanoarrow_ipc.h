@@ -25,7 +25,6 @@
 #define ArrowIpcCheckRuntime NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcCheckRuntime)
 #define ArrowIpcSharedBufferIsThreadSafe ArrowSharedBufferIsThreadSafe
 #define ArrowIpcSharedBufferInit ArrowSharedBufferInit
-#define ArrowIpcSharedBufferReset ArrowSharedBufferReset
 #define ArrowIpcGetZstdDecompressionFunction \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcGetZstdDecompressionFunction)
 #define ArrowIpcGetLZ4DecompressionFunction \
@@ -120,7 +119,6 @@
 // Backward-compatible aliases (non-namespaced builds)
 #define ArrowIpcSharedBufferIsThreadSafe ArrowSharedBufferIsThreadSafe
 #define ArrowIpcSharedBufferInit ArrowSharedBufferInit
-#define ArrowIpcSharedBufferReset ArrowSharedBufferReset
 
 #endif
 
@@ -261,12 +259,6 @@ static inline enum ArrowIpcEndianness ArrowIpcSystemEndianness(void) {
     return NANOARROW_IPC_ENDIANNESS_BIG;
   }
 }
-
-/// \brief A structure representing a reference-counted buffer that may be passed to
-/// ArrowIpcDecoderDecodeArrayFromShared().
-///
-/// \deprecated Use ArrowSharedBuffer instead.
-#define ArrowIpcSharedBuffer ArrowSharedBuffer
 
 /// \brief A user-extensible decompressor
 ///
@@ -548,12 +540,12 @@ NANOARROW_DLL ArrowErrorCode ArrowIpcDecoderDecodeArray(
 /// \brief Decode an ArrowArray from an owned buffer
 ///
 /// This implementation takes advantage of the fact that it can avoid copying individual
-/// buffers. In all cases the caller must ArrowIpcSharedBufferReset() body after one or
+/// buffers. In all cases the caller must ArrowBufferReset() body after one or
 /// more calls to ArrowIpcDecoderDecodeArrayFromShared(). If
-/// ArrowIpcSharedBufferIsThreadSafe() returns 0, out must not be released by another
+/// ArrowSharedBufferIsThreadSafe() returns 0, out must not be released by another
 /// thread.
 NANOARROW_DLL ArrowErrorCode ArrowIpcDecoderDecodeArrayFromShared(
-    struct ArrowIpcDecoder* decoder, struct ArrowIpcSharedBuffer* shared, int64_t i,
+    struct ArrowIpcDecoder* decoder, struct ArrowBuffer* shared, int64_t i,
     struct ArrowArray* out, enum ArrowValidationLevel validation_level,
     struct ArrowError* error);
 

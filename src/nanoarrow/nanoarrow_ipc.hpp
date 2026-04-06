@@ -178,10 +178,6 @@ namespace ipc {
 ///
 /// @{
 
-/// \brief Class wrapping a unique struct ArrowSharedBuffer
-/// \deprecated Use nanoarrow::UniqueSharedBuffer instead.
-using UniqueSharedBuffer = internal::Unique<struct ArrowIpcSharedBuffer>;
-
 /// \brief Class wrapping a unique struct ArrowIpcDecoder
 using UniqueDecoder = internal::Unique<struct ArrowIpcDecoder>;
 

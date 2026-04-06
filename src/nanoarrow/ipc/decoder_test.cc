@@ -761,7 +761,7 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDecodeSimpleRecordBatchFromShared) {
                               decoder.body_size_bytes),
             NANOARROW_OK);
 
-  struct ArrowIpcSharedBuffer shared;
+  struct ArrowBuffer shared;
   ASSERT_EQ(ArrowIpcSharedBufferInit(&shared, &body), NANOARROW_OK);
 
   // Check full struct extract
@@ -787,7 +787,7 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDecodeSimpleRecordBatchFromShared) {
             NANOARROW_OK);
 
   // Release the original shared (forthcoming array buffers should still be valid)
-  ArrowIpcSharedBufferReset(&shared);
+  ArrowBufferReset(&shared);
 
   ASSERT_EQ(array.n_buffers, 2);
   ASSERT_EQ(array.length, 3);
@@ -830,7 +830,7 @@ TEST(NanoarrowIpcTest, NanoarrowIpcSharedBufferThreadSafeDecode) {
                               decoder.body_size_bytes),
             NANOARROW_OK);
 
-  struct ArrowIpcSharedBuffer shared;
+  struct ArrowBuffer shared;
   ASSERT_EQ(ArrowIpcSharedBufferInit(&shared, &body), NANOARROW_OK);
 
   struct ArrowArray arrays[10];
@@ -842,7 +842,7 @@ TEST(NanoarrowIpcTest, NanoarrowIpcSharedBufferThreadSafeDecode) {
   }
 
   // Clean up
-  ArrowIpcSharedBufferReset(&shared);
+  ArrowBufferReset(&shared);
   ArrowIpcDecoderReset(&decoder);
   ArrowSchemaRelease(&schema);
 
