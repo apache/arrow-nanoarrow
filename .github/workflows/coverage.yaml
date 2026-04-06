@@ -54,6 +54,6 @@ jobs:
           path: _coverage
 
       - name: Upload coverage to codecov
-        uses: codecov/codecov-action@v3
+        uses: codecov/codecov-action@v6
         with:
           files: '_coverage/coverage.info,_coverage/r_coverage.json,_coverage/python_coverage.xml'
