@@ -427,6 +427,11 @@ ArrowErrorCode ArrowSharedBufferInit(struct ArrowBuffer* shared,
   return NANOARROW_OK;
 }
 
+int ArrowIsSharedBuffer(struct ArrowBuffer* buffer) {
+  return buffer->allocator.free == &ArrowSharedBufferFree ||
+         buffer->allocator.free == &ArrowSharedArrayBufferFree;
+}
+
 ArrowErrorCode ArrowSharedBufferClone(struct ArrowBuffer* shared,
                                       struct ArrowBuffer* shared_out) {
   if (shared->size_bytes == 0) {
@@ -486,8 +491,8 @@ void ArrowSharedArrayRelease(struct ArrowSharedArray* shared) {
   shared->private_data = NULL;
 }
 
-ArrowErrorCode ArrowSharedArrayBuffer(struct ArrowSharedArray* shared,
-                                      int64_t i, struct ArrowBuffer* out) {
+ArrowErrorCode ArrowSharedArrayBuffer(struct ArrowSharedArray* shared, int64_t i,
+                                      struct ArrowBuffer* out) {
   struct ArrowSharedArrayPrivate* private_data =
       (struct ArrowSharedArrayPrivate*)shared->private_data;
   NANOARROW_DCHECK(i >= 0 && i < private_data->src.n_buffers);
@@ -511,8 +516,6 @@ ArrowErrorCode ArrowSharedArrayBuffer(struct ArrowSharedArray* shared,
   out->allocator = ArrowBufferDeallocator(&ArrowSharedArrayBufferFree, private_data);
   return NANOARROW_OK;
 }
-
-
 
 static const int kInt32DecimalDigits = 9;
 
