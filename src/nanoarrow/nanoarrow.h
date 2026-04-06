@@ -45,6 +45,14 @@
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowBufferAllocatorDefault)
 #define ArrowBufferDeallocator \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowBufferDeallocator)
+#define ArrowSharedBufferInit \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowSharedBufferInit)
+#define ArrowSharedBufferReset \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowSharedBufferReset)
+#define ArrowSharedBufferIsThreadSafe \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowSharedBufferIsThreadSafe)
+#define ArrowSharedBufferClone \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowSharedBufferClone)
 #define ArrowErrorSet NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowErrorSet)
 #define ArrowLayoutInit NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowLayoutInit)
 #define ArrowDecimalSetDigits NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowDecimalSetDigits)
@@ -200,6 +208,49 @@ NANOARROW_DLL struct ArrowBufferAllocator ArrowBufferAllocatorDefault(void);
 /// infrastructure provided here (e.g., by an R or Python object).
 NANOARROW_DLL struct ArrowBufferAllocator ArrowBufferDeallocator(
     ArrowBufferDeallocatorCallback, void* private_data);
+
+/// @}
+
+/// \defgroup nanoarrow-shared-buffer Shared buffers
+///
+/// A shared buffer is a reference-counted ArrowBuffer that may be shared
+/// across multiple ArrowArray objects. This avoids copying when decoding
+/// arrays from a single source buffer.
+///
+/// @{
+
+/// \brief A structure representing a reference-counted buffer
+struct ArrowSharedBuffer {
+  struct ArrowBuffer private_src;
+};
+
+/// \brief Initialize the contents of an ArrowSharedBuffer struct
+///
+/// If NANOARROW_OK is returned, the ArrowSharedBuffer takes ownership of
+/// src.
+NANOARROW_DLL ArrowErrorCode ArrowSharedBufferInit(struct ArrowSharedBuffer* shared,
+                                                   struct ArrowBuffer* src);
+
+/// \brief Release the caller's copy of the shared buffer
+///
+/// When finished, the caller must relinquish its own copy of the shared data
+/// using this function. The original buffer will continue to exist until all
+/// ArrowArray objects that refer to it have also been released.
+NANOARROW_DLL void ArrowSharedBufferReset(struct ArrowSharedBuffer* shared);
+
+/// \brief Check for shared buffer thread safety
+///
+/// Thread-safe shared buffers require C11 and the stdatomic.h header.
+/// If either are unavailable, shared buffers are still possible but
+/// the resulting arrays must not be passed to other threads to be released.
+NANOARROW_DLL int ArrowSharedBufferIsThreadSafe(void);
+
+/// \brief Clone a shared buffer, incrementing its reference count
+///
+/// This creates a new ArrowBuffer that shares the same underlying data with the
+/// original shared buffer. The reference count is incremented.
+NANOARROW_DLL void ArrowSharedBufferClone(struct ArrowSharedBuffer* shared,
+                                          struct ArrowBuffer* shared_out);
 
 /// @}
 
