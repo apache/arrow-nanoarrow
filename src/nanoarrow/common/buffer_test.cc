@@ -17,7 +17,6 @@
 
 #include <cerrno>
 #include <cstring>
-#include <string>
 #include <thread>
 
 #include <gtest/gtest.h>
