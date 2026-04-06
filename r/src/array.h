@@ -24,7 +24,6 @@
 #include <nanoarrow/r.h>
 #include "buffer.h"
 #include "nanoarrow.h"
-#include "util.h"
 
 // Returns an external pointer to an array child with a schema attached.
 // The returned pointer will keep its parent alive unless passed through
@@ -65,8 +64,41 @@ static inline struct ArrowSchema* schema_from_array_xptr(SEXP array_xptr) {
   }
 }
 
-static inline SEXP array_ensure_independent(struct ArrowArray* array);
-static inline SEXP array_xptr_ensure_independent(SEXP array_xptr);
+// When arrays arrive as a nanoarrow_array, they are responsible for
+// releasing their children. This is fine until we need to keep one
+// child alive (e.g., a column of a data frame that we attach to an
+// ALTREP array) or until we need to export it (i.e., comply with
+// https://arrow.apache.org/docs/format/CDataInterface.html#moving-child-arrays
+// where child arrays must be movable). To make this work we need to do a shuffle: we
+// move the child array to a new owning external pointer and
+// give an exported version back to the original object. This only
+// applies if the array_xptr has the external pointer 'prot' field
+// set (if it doesn't have that set, it is already independent).
+static inline void array_ensure_independent(struct ArrowArray* array) {
+  SEXP shelter_xptr = PROTECT(nanoarrow_array_owning_xptr());
+  struct ArrowArray* tmp = nanoarrow_output_array_from_xptr(shelter_xptr);
+
+  ArrowErrorCode result = ArrowArrayMoveShared(array, tmp);
+  if (result != NANOARROW_OK) {
+    Rf_error("ArrowArrayMoveShared() failed");
+  }
+
+  ArrowArrayMove(tmp, array);
+  UNPROTECT(1);
+}
+
+// This version is like the version that operates on a raw struct ArrowArray*
+// except it checks if this array has any array dependencies by inspecing the 'Protected'
+// field of the external pointer: if it that field is R_NilValue, it is already
+// independent.
+static inline void array_xptr_ensure_independent(SEXP array_xptr) {
+  struct ArrowArray* array = nanoarrow_array_from_xptr(array_xptr);
+  if (R_ExternalPtrProtected(array_xptr) == R_NilValue) {
+    return;
+  }
+
+  array_ensure_independent(array);
+}
 
 // Exports a version of the array pointed to by array_xptr to array_copy
 // such that (1) any R references to array_xptr are not invalidated if they exist
@@ -81,109 +113,13 @@ static inline void array_export(SEXP array_xptr, struct ArrowArray* array_copy) 
   // If array_xptr has SEXP dependencies (most commonly this would occur if it's
   // a borrowed child of a struct array), this will ensure a version that can be
   // released independently of its parent.
-  SEXP independent_array_xptr = PROTECT(array_xptr_ensure_independent(array_xptr));
-  struct ArrowArray* array = nanoarrow_array_from_xptr(independent_array_xptr);
-
-  int result = ArrowArrayInitFromType(array_copy, NANOARROW_TYPE_UNINITIALIZED);
-  if (result != NANOARROW_OK) {
-    Rf_error("ArrowArrayInitFromType() failed");
-  }
-
-  array_copy->length = array->length;
-  array_copy->null_count = array->null_count;
-  array_copy->offset = array->offset;
-
-  // Get buffer references, each of which preserve a reference to independent_array_xptr
-
-  // We might need some more buffers to be allocated for string views
-  if (array->n_buffers > 3) {
-    result = ArrowArrayAddVariadicBuffers(array_copy, array->n_buffers - 3);
-    if (result != NANOARROW_OK) {
-      Rf_error("ArrowArrayAddVariadicBuffers() failed");
-    }
-  }
-
-  array_copy->n_buffers = array->n_buffers;
-  for (int64_t i = 0; i < array->n_buffers; i++) {
-    SEXP borrowed_buffer =
-        PROTECT(buffer_borrowed_xptr(array->buffers[i], 0, independent_array_xptr));
-    result = ArrowArraySetBuffer(array_copy, i,
-                                 (struct ArrowBuffer*)R_ExternalPtrAddr(borrowed_buffer));
-    if (result != NANOARROW_OK) {
-      array_copy->release(array_copy);
-      Rf_error("ArrowArraySetBuffer() failed");
-    }
-    UNPROTECT(1);
-  }
-
-  // Swap out any children for independently releasable children and export them
-  // into array_copy->children
-  result = ArrowArrayAllocateChildren(array_copy, array->n_children);
-  if (result != NANOARROW_OK) {
-    array_copy->release(array_copy);
-    Rf_error("ArrowArrayAllocateChildren() failed");
-  }
-
-  for (int64_t i = 0; i < array->n_children; i++) {
-    SEXP independent_child = PROTECT(array_ensure_independent(array->children[i]));
-    array_export(independent_child, array_copy->children[i]);
-    UNPROTECT(1);
-  }
-
-  if (array->dictionary != NULL) {
-    result = ArrowArrayAllocateDictionary(array_copy);
-    if (result != NANOARROW_OK) {
-      array_copy->release(array_copy);
-      Rf_error("ArrowArrayAllocateDictionary() failed");
-    }
-
-    SEXP independent_dictionary = PROTECT(array_ensure_independent(array->dictionary));
-    array_export(independent_dictionary, array_copy->dictionary);
-    UNPROTECT(1);
-  }
-
-  UNPROTECT(1);
-}
-
-// When arrays arrive as a nanoarrow_array, they are responsible for
-// releasing their children. This is fine until we need to keep one
-// child alive (e.g., a column of a data frame that we attach to an
-// ALTREP array) or until we need to export it (i.e., comply with
-// https://arrow.apache.org/docs/format/CDataInterface.html#moving-child-arrays
-// where child arrays must be movable). To make this work we need to do a shuffle: we
-// move the child array to a new owning external pointer and
-// give an exported version back to the original object. This only
-// applies if the array_xptr has the external pointer 'prot' field
-// set (if it doesn't have that set, it is already independent).
-static inline SEXP array_ensure_independent(struct ArrowArray* array) {
-  SEXP original_array_xptr = PROTECT(nanoarrow_array_owning_xptr());
-
-  // Move array to the newly created owner
-  struct ArrowArray* original_array =
-      nanoarrow_output_array_from_xptr(original_array_xptr);
-  memcpy(original_array, array, sizeof(struct ArrowArray));
-  array->release = NULL;
-
-  // Export the independent array (which keeps a reference to original_array_xptr)
-  // back to the original home
-  array_export(original_array_xptr, array);
-
-  // Return the external pointer of the independent array
-  UNPROTECT(1);
-  return original_array_xptr;
-}
-
-// This version is like the version that operates on a raw struct ArrowArray*
-// except it checks if this array has any array dependencies by inspecing the 'Protected'
-// field of the external pointer: if it that field is R_NilValue, it is already
-// independent.
-static inline SEXP array_xptr_ensure_independent(SEXP array_xptr) {
   struct ArrowArray* array = nanoarrow_array_from_xptr(array_xptr);
-  if (R_ExternalPtrProtected(array_xptr) == R_NilValue) {
-    return array_xptr;
-  }
+  array_ensure_independent(array);
 
-  return array_ensure_independent(array);
+  ArrowErrorCode result = ArrowArrayCloneShared(array, array_copy);
+  if (result != NANOARROW_OK) {
+    Rf_error("ArrowArrayCloneShared() failed");
+  }
 }
 
 #endif
