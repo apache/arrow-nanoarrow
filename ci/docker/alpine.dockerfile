@@ -20,7 +20,7 @@ ARG NANOARROW_ARCH
 FROM --platform=linux/${NANOARROW_ARCH} alpine:latest
 
 RUN apk add bash linux-headers git cmake R R-dev g++ gfortran gnupg \
-    curl py3-virtualenv python3-dev lz4-dev
+    curl py3-virtualenv python3-dev lz4-dev libuv-dev
 
 # For Arrow C++
 COPY ci/scripts/build-arrow-cpp-minimal.sh /
