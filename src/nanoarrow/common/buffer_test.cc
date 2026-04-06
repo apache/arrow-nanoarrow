@@ -18,6 +18,7 @@
 #include <cerrno>
 #include <cstring>
 #include <string>
+#include <thread>
 
 #include <gtest/gtest.h>
 
@@ -703,4 +704,103 @@ TEST(BitmapTest, BitmapTestAppendInt32Unsafe) {
   }
 
   ArrowBitmapReset(&bitmap);
+}
+
+TEST(SharedBufferTest, SharedBufferInitResetEmpty) {
+  struct ArrowBuffer src;
+  ArrowBufferInit(&src);
+
+  struct ArrowSharedBuffer shared;
+  ASSERT_EQ(ArrowSharedBufferInit(&shared, &src), NANOARROW_OK);
+  EXPECT_EQ(shared.private_src.data, nullptr);
+  ArrowSharedBufferReset(&shared);
+}
+
+TEST(SharedBufferTest, SharedBufferInitReset) {
+  struct ArrowBuffer src;
+  ArrowBufferInit(&src);
+  ASSERT_EQ(ArrowBufferAppend(&src, "1234", 4), NANOARROW_OK);
+
+  struct ArrowSharedBuffer shared;
+  ASSERT_EQ(ArrowSharedBufferInit(&shared, &src), NANOARROW_OK);
+  EXPECT_NE(shared.private_src.data, nullptr);
+  EXPECT_EQ(shared.private_src.size_bytes, 4);
+  EXPECT_EQ(memcmp(shared.private_src.data, "1234", 4), 0);
+
+  ArrowSharedBufferReset(&shared);
+  EXPECT_EQ(shared.private_src.data, nullptr);
+  EXPECT_EQ(shared.private_src.size_bytes, 0);
+}
+
+TEST(SharedBufferTest, SharedBufferClone) {
+  struct ArrowBuffer src;
+  ArrowBufferInit(&src);
+  ASSERT_EQ(ArrowBufferAppend(&src, "abcdef", 6), NANOARROW_OK);
+
+  struct ArrowSharedBuffer shared;
+  ASSERT_EQ(ArrowSharedBufferInit(&shared, &src), NANOARROW_OK);
+
+  // Clone the shared buffer
+  struct ArrowBuffer clone;
+  ArrowSharedBufferClone(&shared, &clone);
+  EXPECT_EQ(clone.data, shared.private_src.data);
+  EXPECT_EQ(clone.size_bytes, 6);
+  EXPECT_EQ(memcmp(clone.data, "abcdef", 6), 0);
+
+  // Release the original shared buffer; clone should still be valid
+  ArrowSharedBufferReset(&shared);
+  EXPECT_EQ(memcmp(clone.data, "abcdef", 6), 0);
+
+  ArrowBufferReset(&clone);
+}
+
+TEST(SharedBufferTest, SharedBufferCloneEmpty) {
+  struct ArrowBuffer src;
+  ArrowBufferInit(&src);
+
+  struct ArrowSharedBuffer shared;
+  ASSERT_EQ(ArrowSharedBufferInit(&shared, &src), NANOARROW_OK);
+
+  struct ArrowBuffer clone;
+  ArrowSharedBufferClone(&shared, &clone);
+  EXPECT_EQ(clone.data, nullptr);
+  EXPECT_EQ(clone.size_bytes, 0);
+
+  ArrowSharedBufferReset(&shared);
+  ArrowBufferReset(&clone);
+}
+
+TEST(SharedBufferTest, SharedBufferThreadSafeClone) {
+  if (!ArrowSharedBufferIsThreadSafe()) {
+    GTEST_SKIP() << "ArrowSharedBufferIsThreadSafe() returned false";
+  }
+
+  struct ArrowBuffer src;
+  ArrowBufferInit(&src);
+  ASSERT_EQ(ArrowBufferAppend(&src, "abcdef", 6), NANOARROW_OK);
+
+  struct ArrowSharedBuffer shared;
+  ASSERT_EQ(ArrowSharedBufferInit(&shared, &src), NANOARROW_OK);
+
+  // Clone into multiple buffers
+  struct ArrowBuffer clones[10];
+  for (int i = 0; i < 10; i++) {
+    ArrowSharedBufferClone(&shared, &clones[i]);
+  }
+
+  // Release the original
+  ArrowSharedBufferReset(&shared);
+
+  // Release clones from separate threads
+  std::thread threads[10];
+  for (int i = 0; i < 10; i++) {
+    threads[i] = std::thread([&clones, i] {
+      EXPECT_EQ(memcmp(clones[i].data, "abcdef", 6), 0);
+      ArrowBufferReset(&clones[i]);
+    });
+  }
+
+  for (int i = 0; i < 10; i++) {
+    threads[i].join();
+  }
 }
