@@ -85,7 +85,7 @@ jobs:
             apache-arrow-nanoarrow-${VERSION} \
             $(git log -n 1 --format=%h)
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: source
           retention-days: 7
@@ -123,7 +123,7 @@ jobs:
           tar -czf docs.tgz nanoarrow-docs
 
       - name: Upload docs
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: docs
           retention-days: 2
