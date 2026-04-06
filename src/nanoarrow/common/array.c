@@ -612,7 +612,8 @@ static ArrowErrorCode ArrowArrayMoveSharedInternal(struct ArrowArray* src,
   // Allocate dictionary if needed and move source dictionary to dst dictionary
   if (src->dictionary != NULL) {
     NANOARROW_RETURN_NOT_OK(ArrowArrayAllocateDictionary(dst));
-    NANOARROW_RETURN_NOT_OK(ArrowArrayMoveSharedInternal(src, dst));
+    NANOARROW_RETURN_NOT_OK(
+        ArrowArrayMoveSharedInternal(src->dictionary, dst->dictionary));
   }
 
   // We might need some more buffers if we are shallowly copying a string/binary view
@@ -639,6 +640,15 @@ static ArrowErrorCode ArrowArrayMoveSharedInternal(struct ArrowArray* src,
   }
 
   ArrowSharedArrayRelease(&shared_array);
+
+  dst->n_buffers = src->n_buffers;
+  dst->length = src->length;
+  dst->null_count = src->null_count;
+  dst->offset = src->offset;
+
+  // Flush internal buffer pointers to array->buffers
+  NANOARROW_RETURN_NOT_OK(ArrowArrayFlushInternalPointers(dst));
+
   return NANOARROW_OK;
 }
 
@@ -656,7 +666,8 @@ static ArrowErrorCode ArrowArrayCloneSharedInternal(struct ArrowArray* src,
   // Allocate dictionary if needed and move source dictionary to dst dictionary
   if (src->dictionary != NULL) {
     NANOARROW_RETURN_NOT_OK(ArrowArrayAllocateDictionary(dst));
-    NANOARROW_RETURN_NOT_OK(ArrowArrayMoveSharedInternal(src, dst));
+    NANOARROW_RETURN_NOT_OK(
+        ArrowArrayMoveSharedInternal(src->dictionary, dst->dictionary));
   }
 
   // We might need some more buffers if we are shallowly copying a string/binary view
@@ -674,6 +685,14 @@ static ArrowErrorCode ArrowArrayCloneSharedInternal(struct ArrowArray* src,
     struct ArrowBuffer* dst_buffer = ArrowArrayBuffer(dst, i);
     NANOARROW_RETURN_NOT_OK(ArrowSharedBufferClone(src_buffer, dst_buffer));
   }
+
+  dst->n_buffers = src->n_buffers;
+  dst->length = src->length;
+  dst->null_count = src->null_count;
+  dst->offset = src->offset;
+
+  // Flush internal buffer pointers to array->buffers
+  NANOARROW_RETURN_NOT_OK(ArrowArrayFlushInternalPointers(dst));
 
   return NANOARROW_OK;
 }
