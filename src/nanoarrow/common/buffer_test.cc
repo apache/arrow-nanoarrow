@@ -814,3 +814,153 @@ TEST(SharedBufferTest, SharedBufferThreadSafeClone) {
     threads[i].join();
   }
 }
+
+// Helper to build a simple int32 array with known data for shared array tests
+static void MakeInt32Array(struct ArrowArray* array, const int32_t* values, int64_t n) {
+  ASSERT_EQ(ArrowArrayInitFromType(array, NANOARROW_TYPE_INT32), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayStartAppending(array), NANOARROW_OK);
+  for (int64_t i = 0; i < n; i++) {
+    ASSERT_EQ(ArrowArrayAppendInt(array, values[i]), NANOARROW_OK);
+  }
+  ASSERT_EQ(ArrowArrayFinishBuildingDefault(array, nullptr), NANOARROW_OK);
+}
+
+TEST(SharedArrayTest, SharedArrayInitRelease) {
+  int32_t values[] = {1, 2, 3, 4};
+  struct ArrowArray src;
+  MakeInt32Array(&src, values, 4);
+  ASSERT_NE(src.release, nullptr);
+
+  struct ArrowSharedArray shared;
+  ASSERT_EQ(ArrowSharedArrayInit(&shared, &src), NANOARROW_OK);
+  // src should have been moved
+  EXPECT_EQ(src.release, nullptr);
+
+  ArrowSharedArrayRelease(&shared);
+  EXPECT_EQ(shared.private_data, nullptr);
+}
+
+TEST(SharedArrayTest, SharedArrayReleaseNull) {
+  struct ArrowSharedArray shared;
+  shared.private_data = nullptr;
+  // Should not crash
+  ArrowSharedArrayRelease(&shared);
+}
+
+TEST(SharedArrayTest, SharedArrayBuffer) {
+  int32_t values[] = {10, 20, 30};
+  struct ArrowArray src;
+  MakeInt32Array(&src, values, 3);
+
+  struct ArrowSharedArray shared;
+  ASSERT_EQ(ArrowSharedArrayInit(&shared, &src), NANOARROW_OK);
+
+  // Buffer 1 is the data buffer for int32
+  struct ArrowBuffer buf;
+  ASSERT_EQ(ArrowSharedArrayBuffer(&shared, 1, &buf), NANOARROW_OK);
+  EXPECT_NE(buf.data, nullptr);
+  // Internal array: size should be known
+  EXPECT_EQ(buf.size_bytes, 3 * sizeof(int32_t));
+  const int32_t* data = reinterpret_cast<const int32_t*>(buf.data);
+  EXPECT_EQ(data[0], 10);
+  EXPECT_EQ(data[1], 20);
+  EXPECT_EQ(data[2], 30);
+
+  // Release the shared array; buffer should still be valid
+  ArrowSharedArrayRelease(&shared);
+  EXPECT_EQ(reinterpret_cast<const int32_t*>(buf.data)[0], 10);
+
+  ArrowBufferReset(&buf);
+}
+
+TEST(SharedArrayTest, SharedArrayBufferClone) {
+  int32_t values[] = {100, 200};
+  struct ArrowArray src;
+  MakeInt32Array(&src, values, 2);
+
+  struct ArrowSharedArray shared;
+  ASSERT_EQ(ArrowSharedArrayInit(&shared, &src), NANOARROW_OK);
+
+  struct ArrowBuffer buf;
+  ASSERT_EQ(ArrowSharedArrayBuffer(&shared, 1, &buf), NANOARROW_OK);
+
+  // Clone the buffer obtained from the shared array
+  struct ArrowBuffer clone;
+  ASSERT_EQ(ArrowSharedBufferClone(&buf, &clone), NANOARROW_OK);
+  EXPECT_EQ(clone.data, buf.data);
+  EXPECT_EQ(clone.size_bytes, buf.size_bytes);
+
+  // Release original shared array and buffer; clone should still be valid
+  ArrowSharedArrayRelease(&shared);
+  ArrowBufferReset(&buf);
+  const int32_t* data = reinterpret_cast<const int32_t*>(clone.data);
+  EXPECT_EQ(data[0], 100);
+  EXPECT_EQ(data[1], 200);
+
+  ArrowBufferReset(&clone);
+}
+
+TEST(SharedArrayTest, SharedArrayMultipleBuffers) {
+  int32_t values[] = {1, 2, 3, 4};
+  struct ArrowArray src;
+  MakeInt32Array(&src, values, 4);
+
+  struct ArrowSharedArray shared;
+  ASSERT_EQ(ArrowSharedArrayInit(&shared, &src), NANOARROW_OK);
+
+  // Extract both buffers
+  struct ArrowBuffer buf0, buf1;
+  ASSERT_EQ(ArrowSharedArrayBuffer(&shared, 0, &buf0), NANOARROW_OK);
+  ASSERT_EQ(ArrowSharedArrayBuffer(&shared, 1, &buf1), NANOARROW_OK);
+
+  // Release shared array; buffers should keep data alive
+  ArrowSharedArrayRelease(&shared);
+
+  EXPECT_EQ(buf1.size_bytes, 4 * sizeof(int32_t));
+  const int32_t* data = reinterpret_cast<const int32_t*>(buf1.data);
+  EXPECT_EQ(data[0], 1);
+  EXPECT_EQ(data[3], 4);
+
+  // Release one buffer; remaining buffer should still be valid
+  ArrowBufferReset(&buf0);
+  EXPECT_EQ(reinterpret_cast<const int32_t*>(buf1.data)[2], 3);
+
+  ArrowBufferReset(&buf1);
+}
+
+TEST(SharedArrayTest, SharedArrayThreadSafeBuffer) {
+  if (!ArrowSharedBufferIsThreadSafe()) {
+    GTEST_SKIP() << "ArrowSharedBufferIsThreadSafe() returned false";
+  }
+
+  int32_t values[] = {42, 43, 44, 45};
+  struct ArrowArray src;
+  MakeInt32Array(&src, values, 4);
+
+  struct ArrowSharedArray shared;
+  ASSERT_EQ(ArrowSharedArrayInit(&shared, &src), NANOARROW_OK);
+
+  // Extract multiple buffer clones
+  struct ArrowBuffer buffers[10];
+  for (int i = 0; i < 10; i++) {
+    ASSERT_EQ(ArrowSharedArrayBuffer(&shared, 1, &buffers[i]), NANOARROW_OK);
+  }
+
+  // Release the shared array
+  ArrowSharedArrayRelease(&shared);
+
+  // Release buffers from separate threads
+  std::thread threads[10];
+  for (int i = 0; i < 10; i++) {
+    threads[i] = std::thread([&buffers, i] {
+      const int32_t* data = reinterpret_cast<const int32_t*>(buffers[i].data);
+      EXPECT_EQ(data[0], 42);
+      EXPECT_EQ(data[3], 45);
+      ArrowBufferReset(&buffers[i]);
+    });
+  }
+
+  for (int i = 0; i < 10; i++) {
+    threads[i].join();
+  }
+}
