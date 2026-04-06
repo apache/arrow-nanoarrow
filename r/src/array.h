@@ -24,6 +24,7 @@
 #include <nanoarrow/r.h>
 #include "buffer.h"
 #include "nanoarrow.h"
+#include "util.h"
 
 // Returns an external pointer to an array child with a schema attached.
 // The returned pointer will keep its parent alive unless passed through
@@ -111,14 +112,70 @@ static inline void array_xptr_ensure_independent(SEXP array_xptr) {
 // we can modify them safely (i.e., using ArrowArraySetBuffer()).
 static inline void array_export(SEXP array_xptr, struct ArrowArray* array_copy) {
   // If array_xptr has SEXP dependencies (most commonly this would occur if it's
-  // a borrowed child of a struct array), this will ensure a version that can be
-  // released independently of its parent.
+  // a borrowed child of a struct array), ensure a version that can be released
+  // independently. For non-borrowed arrays this is a no-op.
+  array_xptr_ensure_independent(array_xptr);
   struct ArrowArray* array = nanoarrow_array_from_xptr(array_xptr);
-  array_ensure_independent(array);
 
-  ArrowErrorCode result = ArrowArrayCloneShared(array, array_copy);
+  int result = ArrowArrayInitFromType(array_copy, NANOARROW_TYPE_UNINITIALIZED);
   if (result != NANOARROW_OK) {
-    Rf_error("ArrowArrayCloneShared() failed");
+    Rf_error("ArrowArrayInitFromType() failed");
+  }
+
+  array_copy->length = array->length;
+  array_copy->null_count = array->null_count;
+  array_copy->offset = array->offset;
+
+  // We might need some more buffers to be allocated for string views
+  if (array->n_buffers > 3) {
+    result = ArrowArrayAddVariadicBuffers(array_copy, array->n_buffers - 3);
+    if (result != NANOARROW_OK) {
+      Rf_error("ArrowArrayAddVariadicBuffers() failed");
+    }
+  }
+
+  // Get buffer references, each of which preserve a reference to array_xptr
+  array_copy->n_buffers = array->n_buffers;
+  for (int64_t i = 0; i < array->n_buffers; i++) {
+    SEXP borrowed_buffer =
+        PROTECT(buffer_borrowed_xptr(array->buffers[i], 0, array_xptr));
+    result = ArrowArraySetBuffer(array_copy, i,
+                                 (struct ArrowBuffer*)R_ExternalPtrAddr(borrowed_buffer));
+    if (result != NANOARROW_OK) {
+      array_copy->release(array_copy);
+      Rf_error("ArrowArraySetBuffer() failed");
+    }
+    UNPROTECT(1);
+  }
+
+  // Swap out any children for independently releasable children and export them
+  // into array_copy->children
+  result = ArrowArrayAllocateChildren(array_copy, array->n_children);
+  if (result != NANOARROW_OK) {
+    array_copy->release(array_copy);
+    Rf_error("ArrowArrayAllocateChildren() failed");
+  }
+
+  for (int64_t i = 0; i < array->n_children; i++) {
+    array_ensure_independent(array->children[i]);
+    SEXP child_xptr = PROTECT(borrow_array_child_xptr(array_xptr, i));
+    array_export(child_xptr, array_copy->children[i]);
+    UNPROTECT(1);
+  }
+
+  if (array->dictionary != NULL) {
+    result = ArrowArrayAllocateDictionary(array_copy);
+    if (result != NANOARROW_OK) {
+      array_copy->release(array_copy);
+      Rf_error("ArrowArrayAllocateDictionary() failed");
+    }
+
+    array_ensure_independent(array->dictionary);
+    // Create a temporary xptr for the dictionary to recurse
+    SEXP dict_xptr = PROTECT(R_MakeExternalPtr(array->dictionary, R_NilValue, array_xptr));
+    Rf_setAttrib(dict_xptr, R_ClassSymbol, nanoarrow_cls_array);
+    array_export(dict_xptr, array_copy->dictionary);
+    UNPROTECT(1);
   }
 }
 
