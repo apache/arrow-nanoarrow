@@ -73,7 +73,7 @@ static void ArrowArrayReleaseInternal(struct ArrowArray* array) {
   array->release = NULL;
 }
 
-static int ArrowArrayIsInternal(struct ArrowArray* array) {
+int ArrowArrayIsInternal(struct ArrowArray* array) {
   return array->release == &ArrowArrayReleaseInternal;
 }
 
