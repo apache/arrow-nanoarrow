@@ -62,7 +62,7 @@ jobs:
 
       - name: Set up Python
         if: matrix.config.label == 'with-cuda'
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           # cupy-cuda12x does not have a PyPI distribution for Python 3.14
           python-version: "3.13"
