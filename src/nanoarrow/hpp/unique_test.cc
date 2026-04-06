@@ -180,3 +180,19 @@ TEST(HppUnique, UniqueArrayView) {
   EXPECT_EQ(array_view2->storage_type, NANOARROW_TYPE_UNINITIALIZED);
   EXPECT_EQ(array_view3->storage_type, NANOARROW_TYPE_STRUCT);
 }
+
+TEST(HppUnique, UniqueSharedBuffer) {
+  nanoarrow::UniqueSharedBuffer shared_buffer;
+
+  nanoarrow::UniqueBuffer buffer;
+  ASSERT_EQ(ArrowBufferAppend(buffer.get(), "1234", 4), NANOARROW_OK);
+
+  EXPECT_EQ(shared_buffer->private_src.data, nullptr);
+  ASSERT_EQ(ArrowSharedBufferInit(shared_buffer.get(), buffer.get()), NANOARROW_OK);
+  EXPECT_NE(shared_buffer->private_src.data, nullptr);
+
+  nanoarrow::UniqueSharedBuffer shared_buffer2 = std::move(shared_buffer);
+  EXPECT_NE(shared_buffer2->private_src.data, nullptr);
+  EXPECT_EQ(shared_buffer->private_src.data,  // NOLINT(clang-analyzer-cplusplus.Move)
+            nullptr);
+}
