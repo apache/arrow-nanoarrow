@@ -656,18 +656,18 @@ static ArrowErrorCode ArrowArrayCloneSharedInternal(struct ArrowArray* src,
                                                     struct ArrowArray* dst) {
   NANOARROW_RETURN_NOT_OK(ArrowArrayInitFromType(dst, NANOARROW_TYPE_UNINITIALIZED));
 
-  // Allocate children and copy source children to dst children
+  // Allocate children and clone source children to dst children
   NANOARROW_RETURN_NOT_OK(ArrowArrayAllocateChildren(dst, src->n_children));
   for (int64_t i = 0; i < src->n_children; i++) {
     NANOARROW_RETURN_NOT_OK(
-        ArrowArrayMoveSharedInternal(src->children[i], dst->children[i]));
+        ArrowArrayCloneSharedInternal(src->children[i], dst->children[i]));
   }
 
-  // Allocate dictionary if needed and move source dictionary to dst dictionary
+  // Allocate dictionary if needed and clone source dictionary to dst dictionary
   if (src->dictionary != NULL) {
     NANOARROW_RETURN_NOT_OK(ArrowArrayAllocateDictionary(dst));
     NANOARROW_RETURN_NOT_OK(
-        ArrowArrayMoveSharedInternal(src->dictionary, dst->dictionary));
+        ArrowArrayCloneSharedInternal(src->dictionary, dst->dictionary));
   }
 
   // We might need some more buffers if we are shallowly copying a string/binary view
