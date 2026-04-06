@@ -459,14 +459,14 @@ static int ArrowIpcArrayStreamReaderProcessRecordBatch(
   NANOARROW_RETURN_NOT_OK(ArrowIpcArrayStreamReaderNextBody(private_data));
 
   if (private_data->use_shared_buffers) {
-    struct ArrowIpcSharedBuffer shared;
+    struct ArrowBuffer shared;
     NANOARROW_RETURN_NOT_OK_WITH_ERROR(
-        ArrowIpcSharedBufferInit(&shared, &private_data->body), &private_data->error);
-    int result = ArrowIpcDecoderDecodeArrayFromSharedWithDictionaries(
+        ArrowSharedBufferInit(&shared, &private_data->body), &private_data->error);
+    ArrowErrorCode result = ArrowIpcDecoderDecodeArrayFromSharedWithDictionaries(
         &private_data->decoder, &shared, private_data->field_index,
         &private_data->dictionaries, out, NANOARROW_VALIDATION_LEVEL_FULL,
         &private_data->error);
-    ArrowIpcSharedBufferReset(&shared);
+    ArrowBufferReset(&shared);
     NANOARROW_RETURN_NOT_OK(result);
   } else {
     struct ArrowBufferView body_view;
@@ -489,7 +489,7 @@ static int ArrowIpcArrayStreamReaderProcessDictionary(
 
   if (private_data->use_shared_buffers) {
     // Decode the dictionary
-    struct ArrowIpcSharedBuffer shared;
+    struct ArrowBuffer shared;
     NANOARROW_RETURN_NOT_OK_WITH_ERROR(
         ArrowIpcSharedBufferInit(&shared, &private_data->body), &private_data->error);
     int result = ArrowIpcDecoderDecodeDictionaryFromShared(

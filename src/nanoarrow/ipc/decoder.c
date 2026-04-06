@@ -1930,7 +1930,7 @@ struct ArrowIpcBufferSource {
 /// has been read into memory. This abstraction is currently internal and exists
 /// to support the two obvious ways a user might go about this: (1) using a
 /// non-owned view of memory that must be copied slice-wise or (2) adding a reference
-/// to an ArrowIpcSharedBuffer and returning a slice of that memory.
+/// to an ArrowBuffer (shared buffer) and returning a slice of that memory.
 struct ArrowIpcBufferFactory {
   /// \brief User-defined callback to populate a buffer view
   ///
@@ -2056,14 +2056,13 @@ static ArrowErrorCode ArrowIpcMakeBufferFromShared(struct ArrowIpcBufferFactory*
                                                    struct ArrowBufferView* dst_view,
                                                    struct ArrowBuffer* dst,
                                                    struct ArrowError* error) {
-  struct ArrowIpcSharedBuffer* shared =
-      (struct ArrowIpcSharedBuffer*)factory->private_data;
+  struct ArrowBuffer* shared = (struct ArrowBuffer*)factory->private_data;
 
   int needs_decompression = 0;
   int uncompressed_data_offset = 0;
   if (src->codec != NANOARROW_IPC_COMPRESSION_TYPE_NONE) {
     struct ArrowBufferView src_view;
-    src_view.data.as_uint8 = shared->private_src.data + src->body_offset_bytes;
+    src_view.data.as_uint8 = shared->data + src->body_offset_bytes;
     src_view.size_bytes = src->buffer_length_bytes;
     NANOARROW_RETURN_NOT_OK(ArrowIpcDecompressBufferFromView(
         factory->decompressor, src->codec, src_view, dst, &needs_decompression, error));
@@ -2072,7 +2071,7 @@ static ArrowErrorCode ArrowIpcMakeBufferFromShared(struct ArrowIpcBufferFactory*
 
   if (!needs_decompression) {
     ArrowBufferReset(dst);
-    ArrowSharedBufferClone(shared, dst);
+    NANOARROW_RETURN_NOT_OK(ArrowSharedBufferClone(shared, dst));
     dst->data += src->body_offset_bytes + uncompressed_data_offset;
     dst->size_bytes = src->buffer_length_bytes - uncompressed_data_offset;
   }
@@ -2083,7 +2082,7 @@ static ArrowErrorCode ArrowIpcMakeBufferFromShared(struct ArrowIpcBufferFactory*
 }
 
 static struct ArrowIpcBufferFactory ArrowIpcBufferFactoryFromShared(
-    struct ArrowIpcSharedBuffer* shared) {
+    struct ArrowBuffer* shared) {
   struct ArrowIpcBufferFactory out;
   out.make_buffer = &ArrowIpcMakeBufferFromShared;
   out.decompressor = NULL;
@@ -2594,7 +2593,7 @@ ArrowErrorCode ArrowIpcDecoderDecodeArrayFromSharedWithDictionaries(
 }
 
 ArrowErrorCode ArrowIpcDecoderDecodeArrayFromShared(
-    struct ArrowIpcDecoder* decoder, struct ArrowIpcSharedBuffer* body, int64_t i,
+    struct ArrowIpcDecoder* decoder, struct ArrowBuffer* body, int64_t i,
     struct ArrowArray* out, enum ArrowValidationLevel validation_level,
     struct ArrowError* error) {
   return ArrowIpcDecoderDecodeArrayFromSharedWithDictionaries(decoder, body, i, NULL, out,

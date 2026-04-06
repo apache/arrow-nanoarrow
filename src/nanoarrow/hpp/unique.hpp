@@ -135,22 +135,6 @@ inline void release_pointer(struct ArrowArrayView* data) {
   ArrowArrayViewReset(data);
 }
 
-template <>
-inline void init_pointer(struct ArrowSharedBuffer* data) {
-  init_pointer(&data->private_src);
-}
-
-template <>
-inline void move_pointer(struct ArrowSharedBuffer* src,
-                         struct ArrowSharedBuffer* dst) {
-  move_pointer(&src->private_src, &dst->private_src);
-}
-
-template <>
-inline void release_pointer(struct ArrowSharedBuffer* data) {
-  ArrowSharedBufferReset(data);
-}
-
 /// \brief A unique_ptr-like base class for stack-allocatable objects
 /// \tparam T The object type
 template <typename T>
@@ -234,9 +218,6 @@ using UniqueBitmap = internal::Unique<struct ArrowBitmap>;
 
 /// \brief Class wrapping a unique struct ArrowArrayView
 using UniqueArrayView = internal::Unique<struct ArrowArrayView>;
-
-/// \brief Class wrapping a unique struct ArrowSharedBuffer
-using UniqueSharedBuffer = internal::Unique<struct ArrowSharedBuffer>;
 
 /// @}
 

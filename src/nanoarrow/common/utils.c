@@ -352,10 +352,10 @@ static void ArrowSharedBufferFree(struct ArrowBufferAllocator* allocator, uint8_
   }
 }
 
-ArrowErrorCode ArrowSharedBufferInit(struct ArrowSharedBuffer* shared,
+ArrowErrorCode ArrowSharedBufferInit(struct ArrowBuffer* shared,
                                      struct ArrowBuffer* src) {
   if (src->data == NULL) {
-    ArrowBufferMove(src, &shared->private_src);
+    ArrowBufferMove(src, shared);
     return NANOARROW_OK;
   }
 
@@ -369,32 +369,32 @@ ArrowErrorCode ArrowSharedBufferInit(struct ArrowSharedBuffer* shared,
   ArrowBufferMove(src, &private_data->src);
   ArrowSharedBufferSet(private_data, 1);
 
-  ArrowBufferInit(&shared->private_src);
-  shared->private_src.data = private_data->src.data;
-  shared->private_src.size_bytes = private_data->src.size_bytes;
+  ArrowBufferInit(shared);
+  shared->data = private_data->src.data;
+  shared->size_bytes = private_data->src.size_bytes;
   // Don't expose any extra capcity from src so that any calls to ArrowBufferAppend
   // on this buffer will fail.
-  shared->private_src.capacity_bytes = private_data->src.size_bytes;
-  shared->private_src.allocator =
-      ArrowBufferDeallocator(&ArrowSharedBufferFree, private_data);
+  shared->capacity_bytes = private_data->src.size_bytes;
+  shared->allocator = ArrowBufferDeallocator(&ArrowSharedBufferFree, private_data);
   return NANOARROW_OK;
 }
 
-void ArrowSharedBufferClone(struct ArrowSharedBuffer* shared,
-                            struct ArrowBuffer* shared_out) {
-  if (shared->private_src.size_bytes == 0) {
+ArrowErrorCode ArrowSharedBufferClone(struct ArrowBuffer* shared,
+                                      struct ArrowBuffer* shared_out) {
+  if (shared->size_bytes == 0) {
     ArrowBufferInit(shared_out);
-    return;
+    return NANOARROW_OK;
+  }
+
+  if (shared->allocator.free != &ArrowSharedBufferFree) {
+    return EINVAL;
   }
 
   struct ArrowSharedBufferPrivate* private_data =
-      (struct ArrowSharedBufferPrivate*)shared->private_src.allocator.private_data;
+      (struct ArrowSharedBufferPrivate*)shared->allocator.private_data;
   ArrowSharedBufferUpdate(private_data, 1);
   memcpy(shared_out, shared, sizeof(struct ArrowBuffer));
-}
-
-void ArrowSharedBufferReset(struct ArrowSharedBuffer* shared) {
-  ArrowBufferReset(&shared->private_src);
+  return NANOARROW_OK;
 }
 
 static const int kInt32DecimalDigits = 9;
