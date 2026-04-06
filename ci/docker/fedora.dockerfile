@@ -20,7 +20,7 @@ ARG NANOARROW_ARCH
 FROM --platform=linux/${NANOARROW_ARCH} fedora:latest
 
 RUN dnf install -y git cmake R gnupg curl libarrow-devel glibc-langpack-en \
-   python3-devel python3-virtualenv awk
+   python3-devel python3-virtualenv awk libuv-devel
 
 # For Python
 RUN python3 -m venv --upgrade-deps /venv
