@@ -26,22 +26,6 @@ namespace nanoarrow {
 namespace internal {
 
 template <>
-inline void init_pointer(struct ArrowIpcSharedBuffer* data) {
-  init_pointer(&data->private_src);
-}
-
-template <>
-inline void move_pointer(struct ArrowIpcSharedBuffer* src,
-                         struct ArrowIpcSharedBuffer* dst) {
-  move_pointer(&src->private_src, &dst->private_src);
-}
-
-template <>
-inline void release_pointer(struct ArrowIpcSharedBuffer* data) {
-  ArrowIpcSharedBufferReset(data);
-}
-
-template <>
 inline void init_pointer(struct ArrowIpcDecoder* data) {
   data->private_data = nullptr;
 }
@@ -194,7 +178,8 @@ namespace ipc {
 ///
 /// @{
 
-/// \brief Class wrapping a unique struct ArrowIpcSharedBuffer
+/// \brief Class wrapping a unique struct ArrowSharedBuffer
+/// \deprecated Use nanoarrow::UniqueSharedBuffer instead.
 using UniqueSharedBuffer = internal::Unique<struct ArrowIpcSharedBuffer>;
 
 /// \brief Class wrapping a unique struct ArrowIpcDecoder
