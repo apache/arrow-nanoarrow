@@ -1303,7 +1303,7 @@ static int ArrowIpcMoveNonExtensionFieldMetadataBackToFieldIfNeeded(
         key.size_bytes == extension_metadata_key.size_bytes &&
         strncmp(key.data, extension_metadata_key.data, key.size_bytes) == 0;
 
-    // Extension metadata stays on the dictionary
+    // Extension metadata stays on the dictionary (value type)
     if (key_is_extension_name || key_is_extension_metadata) {
       result = ArrowMetadataBuilderAppend(&extension_metadata, key, value);
       if (result != NANOARROW_OK) {
