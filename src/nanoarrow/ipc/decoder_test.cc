@@ -1259,6 +1259,14 @@ TEST_P(ArrowTypeParameterizedTestFixture, NanoarrowIpcNanoarrowTypeRoundtrip) {
 #if defined(NANOARROW_BUILD_TESTS_WITH_ARROW)
 TEST_P(ArrowTypeParameterizedTestFixture, NanoarrowIpcArrowArrayRoundtrip) {
   const std::shared_ptr<arrow::DataType>& data_type = GetParam();
+
+  if (data_type->id() == arrow::Type::DICTIONARY &&
+      std::static_pointer_cast<arrow::DictionaryType>(data_type)->value_type()->id() ==
+          Type::EXTENSION) {
+    GTEST_SKIP()
+        << "Arrow C++ MakeEmpty() doesn't support dictionary with extension value types";
+  }
+
   std::shared_ptr<arrow::Schema> dummy_schema =
       arrow::schema({arrow::field("dummy_name", data_type)});
 
@@ -1314,7 +1322,14 @@ TEST_P(ArrowTypeParameterizedTestFixture, NanoarrowIpcArrowArrayRoundtrip) {
   auto maybe_batch = arrow::ImportRecordBatch(&array, dummy_schema);
   ASSERT_TRUE(maybe_batch.ok());
   EXPECT_EQ(maybe_batch.ValueUnsafe()->ToString(), empty->ToString());
-  EXPECT_TRUE(maybe_batch.ValueUnsafe()->Equals(*empty)) << empty->ToString();
+
+  // Arrow C++ MakeEmpty() loses the ordered=1 flag for dictionary types.
+  // https://github.com/apache/arrow/issues/49674
+  // So for ordered dictionaries, we only check ToString() equality for empty batches.
+  if (data_type->id() != arrow::Type::DICTIONARY ||
+      !std::static_pointer_cast<arrow::DictionaryType>(data_type)->ordered()) {
+    EXPECT_TRUE(maybe_batch.ValueUnsafe()->Equals(*empty)) << empty->ToString();
+  }
 
   // Check the array with 3 null values
   maybe_serialized = arrow::ipc::SerializeRecordBatch(*nulls, options);
