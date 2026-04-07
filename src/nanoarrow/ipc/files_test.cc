@@ -24,6 +24,7 @@
 #if defined(NANOARROW_BUILD_TESTS_WITH_ARROW)
 #include <arrow/buffer.h>
 #include <arrow/c/bridge.h>
+#include <arrow/extension_type.h>
 #include <arrow/io/api.h>
 #include <arrow/ipc/api.h>
 #include <arrow/table.h>
@@ -421,7 +422,13 @@ class TestEndianFileFixture : public ::testing::TestWithParam<TestFile> {
   TestFile test_file;
 };
 
+bool EnsureUuidIsNotRegistered() {
+  return arrow::UnregisterExtensionType("arrow.uuid").ok();
+}
+
 TEST_P(TestEndianFileFixture, NanoarrowIpcTestFileNativeEndian) {
+  EnsureUuidIsNotRegistered();
+
   std::stringstream dir_builder;
   ArrowError error;
   ArrowErrorInit(&error);
@@ -439,6 +446,8 @@ TEST_P(TestEndianFileFixture, NanoarrowIpcTestFileNativeEndian) {
 }
 
 TEST_P(TestEndianFileFixture, NanoarrowIpcTestFileSwapEndian) {
+  EnsureUuidIsNotRegistered();
+
   std::stringstream dir_builder;
   ArrowError error;
   ArrowErrorInit(&error);
@@ -456,6 +465,8 @@ TEST_P(TestEndianFileFixture, NanoarrowIpcTestFileSwapEndian) {
 }
 
 TEST_P(TestEndianFileFixture, NanoarrowIpcTestFileCheckJSON) {
+  EnsureUuidIsNotRegistered();
+
   std::stringstream dir_builder;
   ArrowError error;
   ArrowErrorInit(&error);
