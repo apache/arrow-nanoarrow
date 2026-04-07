@@ -23,29 +23,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-// For thread-safe reference counting we need C11 + stdatomic.h.
-// Can compile with -DNANOARROW_USE_STDATOMIC=0 or 1 to override
-// automatic detection.
-#if !defined(NANOARROW_USE_STDATOMIC)
-#define NANOARROW_USE_STDATOMIC 0
-
-// Check for C11
-#if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L
-
-// Check for GCC 4.8, which doesn't include stdatomic.h but does
-// not define __STDC_NO_ATOMICS__
-#if defined(__clang__) || !defined(__GNUC__) || __GNUC__ >= 5
-
-#if !defined(__STDC_NO_ATOMICS__)
-#include <stdatomic.h>
-#undef NANOARROW_USE_STDATOMIC
-#define NANOARROW_USE_STDATOMIC 1
-#endif
-#endif
-#endif
-
-#endif
-
 #include "nanoarrow/nanoarrow.h"
 
 static void ArrowArrayReleaseInternal(struct ArrowArray* array) {
