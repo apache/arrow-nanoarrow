@@ -558,27 +558,61 @@
 <p class="breathe-sectiondef-title rubric" id="breathe-section-title-functions">Functions</p>
 <dl class="cpp function">
 <dt class="sig sig-object cpp">
-<span class="target" id="group__nanoarrow__ipc_1ga53c67de4e3bac4dd3f897c5d34489db5"></span><span class="sig-name descname"><span class="pre">NANOARROW_DLL</span> <span class="pre">void</span> <span class="pre">ArrowIpcDictionaryEncodingsInit</span> <span class="pre">(struct</span> <span class="pre">ArrowIpcDictionaryEncodings</span> <span class="pre">*dictionaries)</span></span></dt>
+<span class="target" id="group__nanoarrow__ipc_1ga888acb35d842daddd2506ab8853ff91d"></span><span class="sig-name descname"><span class="pre">NANOARROW_DLL</span> <span class="pre">void</span> <span class="pre">ArrowIpcDictionaryEncodingsInit</span> <span class="pre">(struct</span> <span class="pre">ArrowIpcDictionaryEncodings</span> <span class="pre">*dictionary_encodings)</span></span></dt>
 <dd><p>Initialize an <a class="reference internal" href="#struct_arrow_ipc_dictionary_encodings"><span class="std std-ref">ArrowIpcDictionaryEncodings</span></a> list. </p>
 </dd></dl>
 
 <dl class="cpp function">
 <dt class="sig sig-object cpp">
-<span class="target" id="group__nanoarrow__ipc_1gace746f3d986cc443ae187f53788165da"></span><span class="sig-name descname"><span class="pre">NANOARROW_DLL</span> <span class="pre">ArrowErrorCode</span> <span class="pre">ArrowIpcDictionaryEncodingsAppend</span> <span class="pre">(struct</span> <span class="pre">ArrowIpcDictionaryEncodings</span> <span class="pre">*dictionaries,</span> <span class="pre">struct</span> <span class="pre">ArrowIpcDictionaryEncoding</span> <span class="pre">encoding)</span></span></dt>
+<span class="target" id="group__nanoarrow__ipc_1ga2da676349921ff7360da8e486660b58a"></span><span class="sig-name descname"><span class="pre">NANOARROW_DLL</span> <span class="pre">ArrowErrorCode</span> <span class="pre">ArrowIpcDictionaryEncodingsAppend</span> <span class="pre">(struct</span> <span class="pre">ArrowIpcDictionaryEncodings</span> <span class="pre">*dictionary_encodings,</span> <span class="pre">struct</span> <span class="pre">ArrowIpcDictionaryEncoding</span> <span class="pre">encoding)</span></span></dt>
 <dd><p>Append a given <a class="reference internal" href="#struct_arrow_ipc_dictionary_encoding"><span class="std std-ref">ArrowIpcDictionaryEncoding</span></a> to this list. </p>
 </dd></dl>
 
 <dl class="cpp function">
 <dt class="sig sig-object cpp">
-<span class="target" id="group__nanoarrow__ipc_1ga702c7c97263cfcd89cf5b160aa3afc1b"></span><span class="sig-name descname"><span class="pre">NANOARROW_DLL</span> <span class="pre">const</span> <span class="pre">struct</span> <span class="pre">ArrowIpcDictionaryEncoding</span> <span class="pre">*</span> <span class="pre">ArrowIpcDictionaryEncodingsFind</span> <span class="pre">(const</span> <span class="pre">struct</span> <span class="pre">ArrowIpcDictionaryEncodings</span> <span class="pre">*dictionaries,</span> <span class="pre">const</span> <span class="pre">struct</span> <span class="pre">ArrowSchema</span> <span class="pre">*schema)</span></span></dt>
+<span class="target" id="group__nanoarrow__ipc_1gad96d56b20ad02a5cb1525d296aaee4d1"></span><span class="sig-name descname"><span class="pre">NANOARROW_DLL</span> <span class="pre">const</span> <span class="pre">struct</span> <span class="pre">ArrowIpcDictionaryEncoding</span> <span class="pre">*</span> <span class="pre">ArrowIpcDictionaryEncodingsFind</span> <span class="pre">(const</span> <span class="pre">struct</span> <span class="pre">ArrowIpcDictionaryEncodings</span> <span class="pre">*dictionary_encodings,</span> <span class="pre">const</span> <span class="pre">struct</span> <span class="pre">ArrowSchema</span> <span class="pre">*schema)</span></span></dt>
 <dd><p>Resolve a <a class="reference internal" href="#struct_arrow_ipc_dictionary_encoding"><span class="std std-ref">ArrowIpcDictionaryEncoding</span></a> for a given dictionary encoded field. </p>
 <p>Returns NULL if the pointed to schema does not match any of the pointed to schemas contained in this list. </p>
 </dd></dl>
 
 <dl class="cpp function">
 <dt class="sig sig-object cpp">
-<span class="target" id="group__nanoarrow__ipc_1gad45c65a7ca79aa1fc6fa1f8f900e217b"></span><span class="sig-name descname"><span class="pre">NANOARROW_DLL</span> <span class="pre">void</span> <span class="pre">ArrowIpcDictionaryEncodingsReset</span> <span class="pre">(struct</span> <span class="pre">ArrowIpcDictionaryEncodings</span> <span class="pre">*dictionaries)</span></span></dt>
+<span class="target" id="group__nanoarrow__ipc_1gaab2b696c1c6b5157c3bc4d75ea158689"></span><span class="sig-name descname"><span class="pre">NANOARROW_DLL</span> <span class="pre">const</span> <span class="pre">struct</span> <span class="pre">ArrowIpcDictionaryEncoding</span> <span class="pre">*</span> <span class="pre">ArrowIpcDictionaryEncodingsFindById</span> <span class="pre">(const</span> <span class="pre">struct</span> <span class="pre">ArrowIpcDictionaryEncodings</span> <span class="pre">*dictionary_encodings,</span> <span class="pre">int64_t</span> <span class="pre">id)</span></span></dt>
+<dd><p>Resolve the first <a class="reference internal" href="#struct_arrow_ipc_dictionary_encoding"><span class="std std-ref">ArrowIpcDictionaryEncoding</span></a> for a given identifier. </p>
+<p>Note that there may be multiple dictionary-encoded fields with the same identifier in a given schema; however, all of them should have an identical value and index data type.</p>
+<p>Returns NULL if id does not refer to any of the encodings in this list. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp">
+<span class="target" id="group__nanoarrow__ipc_1ga390314ef629856ece0cb9f093035c2ae"></span><span class="sig-name descname"><span class="pre">NANOARROW_DLL</span> <span class="pre">ArrowErrorCode</span> <span class="pre">ArrowIpcDictionaryEncodingsUniqueIds</span> <span class="pre">(const</span> <span class="pre">struct</span> <span class="pre">ArrowIpcDictionaryEncodings</span> <span class="pre">*dictionary_encodings,</span> <span class="pre">struct</span> <span class="pre">ArrowBuffer</span> <span class="pre">*out)</span></span></dt>
+<dd><p>Append a list of unique int64_t identifiers to out. </p>
+<p>Walk all dictionary encodings in this list to find a set of unique identifiers. This is primarily for internal use to initialize the <a class="reference internal" href="#struct_arrow_ipc_dictionaries"><span class="std std-ref">ArrowIpcDictionaries</span></a> but is exposed for testing purposes. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp">
+<span class="target" id="group__nanoarrow__ipc_1gade308ed303e6ec975559dab8c586585f"></span><span class="sig-name descname"><span class="pre">NANOARROW_DLL</span> <span class="pre">void</span> <span class="pre">ArrowIpcDictionaryEncodingsReset</span> <span class="pre">(struct</span> <span class="pre">ArrowIpcDictionaryEncodings</span> <span class="pre">*dictionary_encodings)</span></span></dt>
 <dd><p>Release an encodings list and associated resources. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp">
+<span class="target" id="group__nanoarrow__ipc_1ga96662d37f0988faccb77a05bc957c57c"></span><span class="sig-name descname"><span class="pre">NANOARROW_DLL</span> <span class="pre">ArrowErrorCode</span> <span class="pre">ArrowIpcDictionariesInit</span> <span class="pre">(struct</span> <span class="pre">ArrowIpcDictionaries</span> <span class="pre">*dictionaries,</span> <span class="pre">const</span> <span class="pre">struct</span> <span class="pre">ArrowIpcDictionaryEncodings</span> <span class="pre">*dictionary_encodings,</span> <span class="pre">struct</span> <span class="pre">ArrowError</span> <span class="pre">*error)</span></span></dt>
+<dd><p>Initialize an <a class="reference internal" href="#struct_arrow_ipc_dictionaries"><span class="std std-ref">ArrowIpcDictionaries</span></a>. </p>
+<p>Initialize the structure with the dictionaries from an <a class="reference internal" href="#struct_arrow_ipc_dictionary_encodings"><span class="std std-ref">ArrowIpcDictionaryEncodings</span></a>. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp">
+<span class="target" id="group__nanoarrow__ipc_1ga1c64d962f5502c71d570e70865ab718f"></span><span class="sig-name descname"><span class="pre">NANOARROW_DLL</span> <span class="pre">ArrowErrorCode</span> <span class="pre">ArrowIpcDictionariesFindCurrentValue</span> <span class="pre">(struct</span> <span class="pre">ArrowIpcDictionaries</span> <span class="pre">*dictionaries,</span> <span class="pre">int64_t</span> <span class="pre">id,</span> <span class="pre">const</span> <span class="pre">struct</span> <span class="pre">ArrowArray</span> <span class="pre">**out,</span> <span class="pre">struct</span> <span class="pre">ArrowError</span> <span class="pre">*error)</span></span></dt>
+<dd><p>Find the current value of a dictionary with the given ID as an <a class="reference internal" href="c.html#struct_arrow_array"><span class="std std-ref">ArrowArray</span></a>. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp">
+<span class="target" id="group__nanoarrow__ipc_1ga166b57c2e4e87229dccec68e8c3e7dbc"></span><span class="sig-name descname"><span class="pre">NANOARROW_DLL</span> <span class="pre">void</span> <span class="pre">ArrowIpcDictionariesReset</span> <span class="pre">(struct</span> <span class="pre">ArrowIpcDictionaries</span> <span class="pre">*dictionaries)</span></span></dt>
+<dd><p>Release resources associated with an <a class="reference internal" href="#struct_arrow_ipc_dictionaries"><span class="std std-ref">ArrowIpcDictionaries</span></a>. </p>
 </dd></dl>
 
 <dl class="cpp function">
@@ -747,6 +781,11 @@
 <dd><p>Decode an <a class="reference internal" href="c.html#struct_arrow_array"><span class="std std-ref">ArrowArray</span></a> from an owned buffer. </p>
 <p>This implementation takes advantage of the fact that it can avoid copying individual buffers. In all cases the caller must <a class="reference internal" href="#group__nanoarrow__ipc_1ga4271f51dd56896bb76770dcb4084fbbe"><span class="std std-ref">ArrowIpcSharedBufferReset()</span></a> body after one or more calls to <a class="reference internal" href="#group__nanoarrow__ipc_1gadd4ab41285a9a217664286b6abba0037"><span class="std std-ref">ArrowIpcDecoderDecodeArrayFromShared()</span></a>. If <a class="reference internal" href="#group__nanoarrow__ipc_1ga106d89801147cc32a5a1cdb43dec1431"><span class="std std-ref">ArrowIpcSharedBufferIsThreadSafe()</span></a> returns 0, out must not be released by another thread. </p>
 </dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp">
+<span class="target" id="group__nanoarrow__ipc_1ga0c96fd00412554c2ed9fe9257dde2498"></span><span class="sig-name descname"><span class="pre">NANOARROW_DLL</span> <span class="pre">ArrowErrorCode</span> <span class="pre">ArrowIpcDecoderDecodeDictionary</span> <span class="pre">(struct</span> <span class="pre">ArrowIpcDecoder</span> <span class="pre">*decoder,</span> <span class="pre">struct</span> <span class="pre">ArrowIpcSharedBuffer</span> <span class="pre">*shared,</span> <span class="pre">enum</span> <span class="pre">ArrowValidationLevel</span> <span class="pre">validation_level,</span> <span class="pre">struct</span> <span class="pre">ArrowIpcDictionaries</span> <span class="pre">*out,</span> <span class="pre">struct</span> <span class="pre">ArrowError</span> <span class="pre">*error)</span></span></dt>
+<dd></dd></dl>
 
 <dl class="cpp function">
 <dt class="sig sig-object cpp">
@@ -949,6 +988,15 @@
 <em>#include &lt;nanoarrow_ipc.h&gt;</em></div>
 <p>List of <a class="reference internal" href="#struct_arrow_ipc_dictionary_encoding"><span class="std std-ref">ArrowIpcDictionaryEncoding</span></a> structs. </p>
 <p>This structure provides a list of dictionary encoded fields extracted from an <a class="reference internal" href="c.html#struct_arrow_schema"><span class="std std-ref">ArrowSchema</span></a> during decoding. Its members refer to pointers within a specific schema, so care must be taken to keep the schema containing the pointed-to <a class="reference internal" href="c.html#struct_arrow_schema"><span class="std std-ref">ArrowSchema</span></a> fields valid. </p>
+</dd></dl>
+
+<dl class="cpp struct">
+<dt class="sig sig-object cpp" id="_CPPv420ArrowIpcDictionaries">
+<span id="_CPPv320ArrowIpcDictionaries"></span><span id="_CPPv220ArrowIpcDictionaries"></span><span id="ArrowIpcDictionaries"></span><span class="target" id="struct_arrow_ipc_dictionaries"></span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">ArrowIpcDictionaries</span></span></span><a class="headerlink" href="#_CPPv420ArrowIpcDictionaries" title="Link to this definition">#</a><br /></dt>
+<dd><div class="docutils container">
+<em>#include &lt;nanoarrow_ipc.h&gt;</em></div>
+<p>Dictionaries and their current values. </p>
+<p>This structure is the basis for decoding dictionary batches and decoding record batch messages where some columns are dictionary-encoded. This structure stores a dictionary-specific <a class="reference internal" href="#struct_arrow_ipc_decoder"><span class="std std-ref">ArrowIpcDecoder</span></a> for each dictionary identifier and its last seen value. </p>
 </dd></dl>
 
 <dl class="cpp struct">
@@ -1234,6 +1282,12 @@
 </dd></dl>
 
 <dl class="cpp type">
+<dt class="sig sig-object cpp" id="_CPPv418UniqueDictionaries">
+<span id="_CPPv318UniqueDictionaries"></span><span id="_CPPv218UniqueDictionaries"></span><span class="target" id="group__nanoarrow__ipc__hpp-unique_1ga1c958388e5331ede39a789dab2e82554"></span><span class="k"><span class="pre">using</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">UniqueDictionaries</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="n"><span class="pre">internal</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">Unique</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv420ArrowIpcDictionaries" title="ArrowIpcDictionaries"><span class="n"><span class="pre">ArrowIpcDictionaries</span></span></a><span class="p"><span class="pre">&gt;</span></span><a class="headerlink" href="#_CPPv418UniqueDictionaries" title="Link to this definition">#</a><br /></dt>
+<dd><p>Class wrapping a unique struct UniqueDictionaries. </p>
+</dd></dl>
+
+<dl class="cpp type">
 <dt class="sig sig-object cpp" id="_CPPv413UniqueEncoder">
 <span id="_CPPv313UniqueEncoder"></span><span id="_CPPv213UniqueEncoder"></span><span class="target" id="group__nanoarrow__ipc__hpp-unique_1ga7d8001dff97da64dce4f8a13521bbaa5"></span><span class="k"><span class="pre">using</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">UniqueEncoder</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="n"><span class="pre">internal</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">Unique</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv415ArrowIpcEncoder" title="ArrowIpcEncoder"><span class="n"><span class="pre">ArrowIpcEncoder</span></span></a><span class="p"><span class="pre">&gt;</span></span><a class="headerlink" href="#_CPPv413UniqueEncoder" title="Link to this definition">#</a><br /></dt>
 <dd><p>Class wrapping a unique struct <a class="reference internal" href="#struct_arrow_ipc_encoder"><span class="std std-ref">ArrowIpcEncoder</span></a>. </p>
@@ -1368,6 +1422,7 @@
 </ul>
 </li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv427ArrowIpcDictionaryEncodings"><code class="docutils literal notranslate"><span class="pre">ArrowIpcDictionaryEncodings</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv420ArrowIpcDictionaries"><code class="docutils literal notranslate"><span class="pre">ArrowIpcDictionaries</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv420ArrowIpcSharedBuffer"><code class="docutils literal notranslate"><span class="pre">ArrowIpcSharedBuffer</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv420ArrowIpcDecompressor"><code class="docutils literal notranslate"><span class="pre">ArrowIpcDecompressor</span></code></a><ul class="nav section-nav flex-column">
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N20ArrowIpcDecompressor14decompress_addE"><code class="docutils literal notranslate"><span class="pre">decompress_add</span></code></a></li>
@@ -1421,6 +1476,7 @@
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv413UniqueDecoder"><code class="docutils literal notranslate"><span class="pre">UniqueDecoder</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv412UniqueFooter"><code class="docutils literal notranslate"><span class="pre">UniqueFooter</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv425UniqueDictionaryEncodings"><code class="docutils literal notranslate"><span class="pre">UniqueDictionaryEncodings</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv418UniqueDictionaries"><code class="docutils literal notranslate"><span class="pre">UniqueDictionaries</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv413UniqueEncoder"><code class="docutils literal notranslate"><span class="pre">UniqueEncoder</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv418UniqueDecompressor"><code class="docutils literal notranslate"><span class="pre">UniqueDecompressor</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv417UniqueInputStream"><code class="docutils literal notranslate"><span class="pre">UniqueInputStream</span></code></a></li>
