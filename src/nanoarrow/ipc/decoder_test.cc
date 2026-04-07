@@ -1438,6 +1438,43 @@ TEST_P(ArrowTypeParameterizedTestFixture, NanoarrowIpcNanoarrowArrayRoundtrip) {
   }
 }
 
+// Extension type with dictionary storage for testing
+class DictExtensionType : public ExtensionType {
+ public:
+  explicit DictExtensionType() : ExtensionType(dictionary(int32(), utf8())) {}
+
+  std::string extension_name() const override { return "test.dict_extension"; }
+
+  bool ExtensionEquals(const ExtensionType& other) const override {
+    return other.extension_name() == extension_name();
+  }
+
+  std::shared_ptr<Array> MakeArray(std::shared_ptr<ArrayData> data) const override {
+    return std::make_shared<ExtensionArray>(data);
+  }
+
+  Result<std::shared_ptr<DataType>> Deserialize(
+      std::shared_ptr<DataType> storage_type,
+      const std::string& serialized) const override {
+    return std::make_shared<DictExtensionType>();
+  }
+
+  std::string Serialize() const override { return ""; }
+};
+
+std::shared_ptr<DataType> dict_extension() {
+  static bool registered = false;
+  auto type = std::make_shared<DictExtensionType>();
+  if (!registered) {
+    auto status = RegisterExtensionType(type);
+    if (!status.ok() && !status.IsKeyError()) {
+      status.Abort();
+    }
+    registered = true;
+  }
+  return type;
+}
+
 INSTANTIATE_TEST_SUITE_P(
     NanoarrowIpcTest, ArrowTypeParameterizedTestFixture,
     ::testing::Values(
@@ -1487,6 +1524,8 @@ INSTANTIATE_TEST_SUITE_P(
         arrow::dictionary(arrow::int32(), arrow::utf8(), true),
         // Extension type
         arrow::extension::uuid(),
+        // Extension type with dictionary as the storage type
+        dict_extension(),
         // Dictionary-encoded extension
         arrow::dictionary(arrow::int32(), arrow::extension::uuid())));
 
