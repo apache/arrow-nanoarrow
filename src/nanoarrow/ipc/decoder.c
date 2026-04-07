@@ -57,6 +57,8 @@
 
 #define NANOARROW_IPC_NO_DICTIONARY_ID INT64_MIN
 
+#define ns(x) FLATBUFFERS_WRAP_NAMESPACE(org_apache_arrow_flatbuf, x)
+
 // Internal representation of a parsed "Field" from flatbuffers. This
 // represents a field in a depth-first walk of column arrays and their
 // children.
@@ -285,10 +287,10 @@ void ArrowIpcDictionaryEncodingsInit(
 }
 
 ArrowErrorCode ArrowIpcDictionaryEncodingsAppend(
-    struct ArrowIpcDictionaryEncodings* dictionaries,
+    struct ArrowIpcDictionaryEncodings* dictionary_encodings,
     struct ArrowIpcDictionaryEncoding encoding) {
-  NANOARROW_DCHECK(dictionaries != NULL);
-  NANOARROW_RETURN_NOT_OK(ArrowBufferAppend(&dictionaries->encodings, &encoding,
+  NANOARROW_DCHECK(dictionary_encodings != NULL);
+  NANOARROW_RETURN_NOT_OK(ArrowBufferAppend(&dictionary_encodings->encodings, &encoding,
                                             sizeof(struct ArrowIpcDictionaryEncoding)));
   return NANOARROW_OK;
 }
@@ -312,10 +314,300 @@ const struct ArrowIpcDictionaryEncoding* ArrowIpcDictionaryEncodingsFind(
   return NULL;
 }
 
+const struct ArrowIpcDictionaryEncoding* ArrowIpcDictionaryEncodingsFindById(
+    const struct ArrowIpcDictionaryEncodings* dictionary_encodings, int64_t id) {
+  NANOARROW_DCHECK(dictionary_encodings != NULL);
+  int64_t length = dictionary_encodings->encodings.size_bytes /
+                   sizeof(struct ArrowIpcDictionaryEncoding);
+  const struct ArrowIpcDictionaryEncoding* data =
+      (const struct ArrowIpcDictionaryEncoding*)dictionary_encodings->encodings.data;
+
+  for (int64_t i = 0; i < length; i++) {
+    const struct ArrowIpcDictionaryEncoding* encoding = data + i;
+    if (encoding->id == id) {
+      return encoding;
+    }
+  }
+
+  return NULL;
+}
+
+static int ArrowIpcIdsListContains(const struct ArrowBuffer* ids_buffer, int64_t num_ids,
+                                   int64_t id) {
+  const int64_t* ids = (const int64_t*)ids_buffer->data;
+  for (int64_t i = 0; i < num_ids; i++) {
+    if (ids[i] == id) {
+      return 1;
+    }
+  }
+
+  return 0;
+}
+
+ArrowErrorCode ArrowIpcDictionaryEncodingsUniqueIds(
+    const struct ArrowIpcDictionaryEncodings* dictionary_encodings,
+    struct ArrowBuffer* out) {
+  NANOARROW_DCHECK(dictionary_encodings != NULL);
+  int64_t length = dictionary_encodings->encodings.size_bytes /
+                   sizeof(struct ArrowIpcDictionaryEncoding);
+  const struct ArrowIpcDictionaryEncoding* data =
+      (const struct ArrowIpcDictionaryEncoding*)dictionary_encodings->encodings.data;
+
+  struct ArrowBuffer tmp;
+  ArrowBufferInit(&tmp);
+
+  ArrowErrorCode result;
+  int64_t num_ids = 0;
+  for (int64_t i = 0; i < length; i++) {
+    const struct ArrowIpcDictionaryEncoding* encoding = data + i;
+    if (!ArrowIpcIdsListContains(&tmp, num_ids, encoding->id)) {
+      result = ArrowBufferAppendInt64(&tmp, encoding->id);
+      if (result != NANOARROW_OK) {
+        ArrowBufferReset(&tmp);
+        return result;
+      }
+
+      ++num_ids;
+    }
+  }
+
+  ArrowBufferMove(&tmp, out);
+  return NANOARROW_OK;
+}
+
 void ArrowIpcDictionaryEncodingsReset(
     struct ArrowIpcDictionaryEncodings* dictionary_encodings) {
   NANOARROW_DCHECK(dictionary_encodings != NULL);
   ArrowBufferReset(&dictionary_encodings->encodings);
+}
+
+/// \brief Internal member of an ArrowIpcDictionaries
+///
+/// This structure stores a dictionary-specific decoder and the current value
+/// of the dictionary (if one exists).
+struct ArrowIpcDictionary {
+  int64_t id;
+  struct ArrowIpcDecoder decoder;
+  struct ArrowArray current_value;
+};
+
+static ArrowErrorCode ArrowIpcDictionaryInit(struct ArrowIpcDictionary* dictionary) {
+  dictionary->id = NANOARROW_IPC_NO_DICTIONARY_ID;
+  NANOARROW_RETURN_NOT_OK(ArrowIpcDecoderInit(&dictionary->decoder));
+  memset(&dictionary->current_value, 0, sizeof(struct ArrowArray));
+  return NANOARROW_OK;
+}
+
+static ArrowErrorCode ArrowIpcDictionaryReplace(struct ArrowIpcDictionary* dictionary,
+                                                struct ArrowArray* value,
+                                                struct ArrowError* error) {
+  NANOARROW_UNUSED(error);
+
+  if (dictionary->current_value.release != NULL) {
+    ArrowArrayRelease(&dictionary->current_value);
+  }
+
+  ArrowArrayMove(value, &dictionary->current_value);
+  return NANOARROW_OK;
+}
+
+static ArrowErrorCode ArrowIpcDictionaryAppend(struct ArrowIpcDictionary* dictionary,
+                                               struct ArrowArray* value,
+                                               struct ArrowError* error) {
+  if (dictionary->current_value.release != NULL) {
+    ArrowErrorSet(error, "Dictionary concatenation is not yet supported");
+    return ENOTSUP;
+  }
+
+  ArrowArrayMove(value, &dictionary->current_value);
+  return NANOARROW_OK;
+}
+
+static void ArrowIpcDictionaryReset(struct ArrowIpcDictionary* dictionary) {
+  ArrowIpcDecoderReset(&dictionary->decoder);
+  if (dictionary->current_value.release) {
+    ArrowArrayRelease(&dictionary->current_value);
+  }
+}
+
+struct ArrowIpcDictionariesPrivate {
+  struct ArrowIpcDictionary* dictionaries;
+  int64_t num_dictionaries;
+};
+
+static void ArrowIpcDictionariesNoOpSchemaRelease(struct ArrowSchema* schema) {
+  NANOARROW_UNUSED(schema);
+}
+
+static ArrowErrorCode ArrowIpcDictionariesInitDictionaries(
+    struct ArrowIpcDictionariesPrivate* private_data,
+    const struct ArrowIpcDictionaryEncodings* dictionary_encodings,
+    const struct ArrowBuffer* unique_ids_buffer, int64_t* num_initialized_decoders_out,
+    struct ArrowError* error) {
+  ArrowErrorCode result;
+  const int64_t* unique_ids = (const int64_t*)unique_ids_buffer->data;
+
+  // To set the schema of each ArrowIpcDictionary's encoder, we need to construct a
+  // const ArrowSchema* that points to a struct with exactly one child that is the
+  // value type. To support nested dictionaries that may exist within
+  // ArrowIpcDictionaryEncodings, we can't deep copy the value type because it would
+  // invalidate pointer references within dictionary_encodings (i.e., nested dictionaries
+  // would fail to resolve when we call ArrowIpcDecoderSetSchemaWithDictionaries()).
+  // To make this work, we create an ArrowSchema with a noop release to pass to
+  // ArrowIpcDecoderSetSchemaWithDictionaries(). This works because that function
+  // accepts a const value (i.e., never releases the schema argument).
+  struct ArrowSchema decoder_schema;
+  memset(&decoder_schema, 0, sizeof(struct ArrowSchema));
+  decoder_schema.name = "";
+  decoder_schema.format = "+s";
+  decoder_schema.n_children = 1;
+  decoder_schema.release = &ArrowIpcDictionariesNoOpSchemaRelease;
+
+  for (int64_t i = 0; i < private_data->num_dictionaries; i++) {
+    struct ArrowIpcDictionary* dictionary = private_data->dictionaries + i;
+    result = ArrowIpcDictionaryInit(dictionary);
+    if (result != NANOARROW_OK) {
+      ArrowErrorSet(error, "Internal error (failed to initialize dictionary)");
+      *num_initialized_decoders_out = i;
+      return result;
+    }
+
+    const struct ArrowIpcDictionaryEncoding* encoding =
+        ArrowIpcDictionaryEncodingsFindById(dictionary_encodings, unique_ids[i]);
+    if (encoding == NULL) {
+      ArrowErrorSet(error,
+                    "Internal error (dictionary with id not present in encodings list)");
+      *num_initialized_decoders_out = i + 1;
+      return EINVAL;
+    }
+
+    // The decoder's schema will be a struct with one column (the value type of
+    // the dictionary-encoded field)
+    decoder_schema.children = (struct ArrowSchema**)&encoding->schema->dictionary;
+
+    result = ArrowIpcDecoderSetSchemaWithDictionaries(
+        &dictionary->decoder, &decoder_schema, dictionary_encodings, error);
+    if (result != NANOARROW_OK) {
+      *num_initialized_decoders_out = i + 1;
+      return result;
+    }
+
+    dictionary->id = unique_ids[i];
+  }
+
+  *num_initialized_decoders_out = private_data->num_dictionaries;
+  return NANOARROW_OK;
+}
+
+ArrowErrorCode ArrowIpcDictionariesInit(
+    struct ArrowIpcDictionaries* dictionaries,
+    const struct ArrowIpcDictionaryEncodings* dictionary_encodings,
+    struct ArrowError* error) {
+  NANOARROW_DCHECK(dictionaries != NULL);
+  NANOARROW_DCHECK(dictionary_encodings != NULL);
+
+  memset(dictionaries, 0, sizeof(struct ArrowIpcDictionaries));
+  struct ArrowIpcDictionariesPrivate* private_data =
+      (struct ArrowIpcDictionariesPrivate*)ArrowMalloc(
+          sizeof(struct ArrowIpcDictionariesPrivate));
+  if (private_data == NULL) {
+    ArrowErrorSet(error, "Failed to allocate ArrowIpcDictionariesPrivate");
+    return ENOMEM;
+  }
+
+  // Count the number of unique IDs. This will usually be the number of dictionary
+  // encodings but may be much smaller if there are a lot of dictionary encoded fields
+  // that use the same dictionary.
+  struct ArrowBuffer unique_ids;
+  ArrowErrorCode result =
+      ArrowIpcDictionaryEncodingsUniqueIds(dictionary_encodings, &unique_ids);
+  if (result != NANOARROW_OK) {
+    ArrowErrorSet(error, "Failed to extract unique identifiers");
+    ArrowFree(private_data);
+    return result;
+  }
+
+  // unique_ids is a buffer of int64_t
+  private_data->num_dictionaries = unique_ids.size_bytes / sizeof(int64_t);
+
+  // Allocate the array of ArrowIpcDictionary
+  if (private_data->num_dictionaries > 0) {
+    private_data->dictionaries =
+        ArrowMalloc(private_data->num_dictionaries * sizeof(struct ArrowIpcDictionary));
+    if (private_data->dictionaries == NULL) {
+      ArrowErrorSet(error, "Failed to allocate ArrowIpcDictionary array");
+      ArrowBufferReset(&unique_ids);
+      ArrowFree(private_data);
+      return ENOMEM;
+    }
+  } else {
+    private_data->dictionaries = NULL;
+  }
+
+  int64_t num_initialized_dictionaries = 0;
+  result = ArrowIpcDictionariesInitDictionaries(private_data, dictionary_encodings,
+                                                &unique_ids,
+                                                &num_initialized_dictionaries, error);
+  ArrowBufferReset(&unique_ids);
+  if (result != NANOARROW_OK) {
+    for (int64_t i = 0; i < num_initialized_dictionaries; i++) {
+      ArrowIpcDictionaryReset(private_data->dictionaries + i);
+    }
+
+    ArrowFree(private_data->dictionaries);
+    ArrowFree(private_data);
+    return result;
+  }
+
+  dictionaries->private_data = private_data;
+  return NANOARROW_OK;
+}
+
+static struct ArrowIpcDictionary* ArrowIpcDictionariesFindById(
+    struct ArrowIpcDictionaries* dictionaries, int64_t id) {
+  NANOARROW_DCHECK(dictionaries != NULL);
+
+  struct ArrowIpcDictionariesPrivate* private_data =
+      (struct ArrowIpcDictionariesPrivate*)dictionaries->private_data;
+  for (int64_t i = 0; i < private_data->num_dictionaries; i++) {
+    struct ArrowIpcDictionary* dictionary = private_data->dictionaries + i;
+    if (dictionary->id == id) {
+      return dictionary;
+    }
+  }
+
+  return NULL;
+}
+
+ArrowErrorCode ArrowIpcDictionariesFindCurrentValue(
+    struct ArrowIpcDictionaries* dictionaries, int64_t id, const struct ArrowArray** out,
+    struct ArrowError* error) {
+  struct ArrowIpcDictionary* dictionary = ArrowIpcDictionariesFindById(dictionaries, id);
+  if (dictionary == NULL) {
+    ArrowErrorSet(error,
+                  "Can't find value for dictionary with ID %" PRId64
+                  " (dictionary definition not found)",
+                  id);
+    return EINVAL;
+  }
+
+  *out = &dictionary->current_value;
+  return NANOARROW_OK;
+}
+
+void ArrowIpcDictionariesReset(struct ArrowIpcDictionaries* dictionaries) {
+  NANOARROW_DCHECK(dictionaries != NULL);
+  struct ArrowIpcDictionariesPrivate* private_data =
+      (struct ArrowIpcDictionariesPrivate*)dictionaries->private_data;
+
+  for (int64_t i = 0; i < private_data->num_dictionaries; i++) {
+    struct ArrowIpcDictionary* dictionary = private_data->dictionaries + i;
+    ArrowIpcDictionaryReset(dictionary);
+  }
+
+  ArrowFree(private_data->dictionaries);
+  ArrowFree(private_data);
+  dictionaries->private_data = NULL;
 }
 
 ArrowErrorCode ArrowIpcDecoderInit(struct ArrowIpcDecoder* decoder) {
@@ -396,8 +688,6 @@ static inline int32_t ArrowIpcReadInt32LE(struct ArrowBufferView* data, int swap
   data->size_bytes -= sizeof(int32_t);
   return value;
 }
-
-#define ns(x) FLATBUFFERS_WRAP_NAMESPACE(org_apache_arrow_flatbuf, x)
 
 static int ArrowIpcDecoderSetMetadata(struct ArrowSchema* schema,
                                       ns(KeyValue_vec_t) kv_vec,
@@ -1788,7 +2078,14 @@ struct ArrowIpcBufferFactory {
   /// should be made.
   struct ArrowIpcDecompressor* decompressor;
 
-  /// \brief Caller-defined private data to be used in the callback.
+  /// \brief Buffer factory provided buffer length
+  ///
+  /// Rather than use the body length declared by the flatbuffer message, this is the
+  /// length that should be used to check the bounds of a buffer source (i.e., this is
+  /// the actual available length as opposed to the theoretical length).
+  int64_t buffer_length;
+
+  /// \brief User-defined private data to be used in the callback.
   ///
   /// Usually this would be a description of where the body has been read into memory or
   /// information required to do so.
@@ -1878,6 +2175,7 @@ static struct ArrowIpcBufferFactory ArrowIpcBufferFactoryFromView(
   struct ArrowIpcBufferFactory out;
   out.make_buffer = &ArrowIpcMakeBufferFromView;
   out.decompressor = NULL;
+  out.buffer_length = buffer_view->size_bytes;
   out.private_data = buffer_view;
   return out;
 }
@@ -1918,6 +2216,7 @@ static struct ArrowIpcBufferFactory ArrowIpcBufferFactoryFromShared(
   struct ArrowIpcBufferFactory out;
   out.make_buffer = &ArrowIpcMakeBufferFromShared;
   out.decompressor = NULL;
+  out.buffer_length = shared->private_src.size_bytes;
   out.private_data = shared;
   return out;
 }
@@ -2052,7 +2351,6 @@ struct ArrowIpcArraySetter {
   int64_t field_i;
   ns(Buffer_vec_t) buffers;
   int64_t buffer_i;
-  int64_t body_size_bytes;
   struct ArrowIpcBufferSource src;
   struct ArrowIpcBufferFactory factory;
   enum ArrowIpcMetadataVersion version;
@@ -2071,11 +2369,11 @@ static int ArrowIpcDecoderMakeBuffer(struct ArrowIpcArraySetter* setter, int64_t
   // Check that this buffer fits within the body
   int64_t buffer_start = offset;
   int64_t buffer_end = buffer_start + length;
-  if (buffer_start < 0 || buffer_end > setter->body_size_bytes) {
+  if (buffer_start < 0 || buffer_end > setter->factory.buffer_length) {
     ArrowErrorSet(error,
                   "Buffer requires body offsets [%" PRId64 "..%" PRId64
                   ") but body has size %" PRId64,
-                  buffer_start, buffer_end, setter->body_size_bytes);
+                  buffer_start, buffer_end, setter->factory.buffer_length);
     return EINVAL;
   }
 
@@ -2261,7 +2559,6 @@ static ArrowErrorCode ArrowIpcDecoderDecodeArrayViewInternal(
   setter.field_i = field_i;
   setter.buffers = ns(RecordBatch_buffers(batch));
   setter.buffer_i = root->buffer_offset - 1;
-  setter.body_size_bytes = decoder->body_size_bytes;
   setter.factory = factory;
   setter.src.codec = decoder->codec;
   setter.src.swap_endian = ArrowIpcDecoderNeedsSwapEndian(decoder);
@@ -2373,5 +2670,64 @@ ArrowErrorCode ArrowIpcDecoderDecodeArrayFromShared(
   }
 
   ArrowArrayMove(&temp, out);
+  return NANOARROW_OK;
+}
+
+NANOARROW_DLL ArrowErrorCode ArrowIpcDecoderDecodeDictionary(
+    struct ArrowIpcDecoder* decoder, struct ArrowIpcSharedBuffer* shared,
+    enum ArrowValidationLevel validation_level, struct ArrowIpcDictionaries* dictionaries,
+    struct ArrowError* error) {
+  NANOARROW_DCHECK(decoder != NULL);
+  NANOARROW_DCHECK(shared != NULL);
+  NANOARROW_DCHECK(dictionaries != NULL);
+
+  struct ArrowIpcDecoderPrivate* private_data =
+      (struct ArrowIpcDecoderPrivate*)decoder->private_data;
+
+  if (decoder->message_type != NANOARROW_IPC_MESSAGE_TYPE_DICTIONARY_BATCH) {
+    ArrowErrorSet(error, "decoder did not just decode a DictionaryBatch message");
+    return EINVAL;
+  }
+
+  struct ArrowIpcDictionary* dictionary =
+      ArrowIpcDictionariesFindById(dictionaries, decoder->dictionary->id);
+  if (dictionary == NULL) {
+    ArrowErrorSet(error,
+                  "Can't decode DictionaryBatch with ID %" PRId64
+                  " (dictionary definition not found)",
+                  decoder->dictionary->id);
+    return EINVAL;
+  }
+
+  // Set the dictionary->decoder's last message type and last message so that we can
+  // decode the value.
+  ns(DictionaryBatch_table_t) dictionary_batch =
+      (ns(DictionaryBatch_table_t))private_data->last_message;
+  ns(RecordBatch_table_t) record_batch = ns(DictionaryBatch_data(dictionary_batch));
+
+  struct ArrowIpcDecoderPrivate* dictionary_decoder_private_data =
+      (struct ArrowIpcDecoderPrivate*)dictionary->decoder.private_data;
+  dictionary->decoder.message_type = NANOARROW_IPC_MESSAGE_TYPE_RECORD_BATCH;
+  dictionary_decoder_private_data->last_message = record_batch;
+
+  struct ArrowArray tmp;
+
+  // TODO: provide ArrowIpcDecoderDecodeArrayInternalWithDictionaries to handle nested
+  // dictionaries
+  NANOARROW_RETURN_NOT_OK(ArrowIpcDecoderDecodeArrayFromShared(
+      &dictionary->decoder, shared, 0, &tmp, validation_level, error));
+
+  ArrowErrorCode result;
+  if (decoder->dictionary->is_delta) {
+    result = ArrowIpcDictionaryAppend(dictionary, &tmp, error);
+  } else {
+    result = ArrowIpcDictionaryReplace(dictionary, &tmp, error);
+  }
+
+  if (result != NANOARROW_OK) {
+    ArrowArrayRelease(&tmp);
+    return result;
+  }
+
   return NANOARROW_OK;
 }

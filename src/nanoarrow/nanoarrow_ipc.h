@@ -115,8 +115,20 @@
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcDictionaryEncodingsAppend)
 #define ArrowIpcDictionaryEncodingsFind \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcDictionaryEncodingsFind)
+#define ArrowIpcDictionaryEncodingsFindById \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcDictionaryEncodingsFindById)
+#define ArrowIpcDictionaryEncodingsUniqueIds \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcDictionaryEncodingsUniqueIds)
 #define ArrowIpcDictionaryEncodingsReset \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcDictionaryEncodingsReset)
+#define ArrowIpcDictionariesInit \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcDictionariesInit)
+#define ArrowIpcDictionariesFindCurrentValue \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcDictionariesFindCurrentValue)
+#define ArrowIpcDictionariesReset \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcDictionariesReset)
+#define ArrowIpcDecoderDecodeDictionary \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcDecoderDecodeDictionary)
 
 #endif
 
@@ -224,24 +236,70 @@ struct ArrowIpcDictionaryEncodings {
 
 /// \brief Initialize an ArrowIpcDictionaryEncodings list
 NANOARROW_DLL void ArrowIpcDictionaryEncodingsInit(
-    struct ArrowIpcDictionaryEncodings* dictionaries);
+    struct ArrowIpcDictionaryEncodings* dictionary_encodings);
 
 /// \brief Append a given ArrowIpcDictionaryEncoding to this list
-NANOARROW_DLL ArrowErrorCode
-ArrowIpcDictionaryEncodingsAppend(struct ArrowIpcDictionaryEncodings* dictionaries,
-                                  struct ArrowIpcDictionaryEncoding encoding);
+NANOARROW_DLL ArrowErrorCode ArrowIpcDictionaryEncodingsAppend(
+    struct ArrowIpcDictionaryEncodings* dictionary_encodings,
+    struct ArrowIpcDictionaryEncoding encoding);
 
 /// \brief Resolve a ArrowIpcDictionaryEncoding for a given dictionary encoded field
 ///
 /// Returns NULL if the pointed to schema does not match any of the pointed to
 /// schemas contained in this list.
 NANOARROW_DLL const struct ArrowIpcDictionaryEncoding* ArrowIpcDictionaryEncodingsFind(
-    const struct ArrowIpcDictionaryEncodings* dictionaries,
+    const struct ArrowIpcDictionaryEncodings* dictionary_encodings,
     const struct ArrowSchema* schema);
+
+/// \brief Resolve the first ArrowIpcDictionaryEncoding for a given identifier
+///
+/// Note that there may be multiple dictionary-encoded fields with the same
+/// identifier in a given schema; however, all of them should have an identical
+/// value and index data type.
+///
+/// Returns NULL if id does not refer to any of the encodings in this list.
+NANOARROW_DLL const struct ArrowIpcDictionaryEncoding*
+ArrowIpcDictionaryEncodingsFindById(
+    const struct ArrowIpcDictionaryEncodings* dictionary_encodings, int64_t id);
+
+/// \brief Append a list of unique int64_t identifiers to out
+///
+/// Walk all dictionary encodings in this list to find a set of unique identifiers.
+/// This is primarily for internal use to initialize the ArrowIpcDictionaries but
+/// is exposed for testing purposes.
+NANOARROW_DLL ArrowErrorCode ArrowIpcDictionaryEncodingsUniqueIds(
+    const struct ArrowIpcDictionaryEncodings* dictionary_encodings,
+    struct ArrowBuffer* out);
 
 /// \brief Release an encodings list and associated resources
 NANOARROW_DLL void ArrowIpcDictionaryEncodingsReset(
-    struct ArrowIpcDictionaryEncodings* dictionaries);
+    struct ArrowIpcDictionaryEncodings* dictionary_encodings);
+
+/// \brief Dictionaries and their current values
+///
+/// This structure is the basis for decoding dictionary batches and decoding
+/// record batch messages where some columns are dictionary-encoded. This
+/// structure stores a dictionary-specific ArrowIpcDecoder for each dictionary
+/// identifier and its last seen value.
+struct ArrowIpcDictionaries {
+  void* private_data;
+};
+
+/// \brief Initialize an ArrowIpcDictionaries
+///
+/// Initialize the structure with the dictionaries from an ArrowIpcDictionaryEncodings.
+NANOARROW_DLL ArrowErrorCode
+ArrowIpcDictionariesInit(struct ArrowIpcDictionaries* dictionaries,
+                         const struct ArrowIpcDictionaryEncodings* dictionary_encodings,
+                         struct ArrowError* error);
+
+/// \brief Find the current value of a dictionary with the given ID as an ArrowArray
+NANOARROW_DLL ArrowErrorCode ArrowIpcDictionariesFindCurrentValue(
+    struct ArrowIpcDictionaries* dictionaries, int64_t id, const struct ArrowArray** out,
+    struct ArrowError* error);
+
+/// \brief Release resources associated with an ArrowIpcDictionaries
+NANOARROW_DLL void ArrowIpcDictionariesReset(struct ArrowIpcDictionaries* dictionaries);
 
 /// \brief Checks the nanoarrow runtime to make sure the run/build versions match
 NANOARROW_DLL ArrowErrorCode ArrowIpcCheckRuntime(struct ArrowError* error);
@@ -572,6 +630,11 @@ NANOARROW_DLL ArrowErrorCode ArrowIpcDecoderDecodeArray(
 NANOARROW_DLL ArrowErrorCode ArrowIpcDecoderDecodeArrayFromShared(
     struct ArrowIpcDecoder* decoder, struct ArrowIpcSharedBuffer* shared, int64_t i,
     struct ArrowArray* out, enum ArrowValidationLevel validation_level,
+    struct ArrowError* error);
+
+NANOARROW_DLL ArrowErrorCode ArrowIpcDecoderDecodeDictionary(
+    struct ArrowIpcDecoder* decoder, struct ArrowIpcSharedBuffer* shared,
+    enum ArrowValidationLevel validation_level, struct ArrowIpcDictionaries* out,
     struct ArrowError* error);
 
 /// \brief An user-extensible input data source

@@ -101,3 +101,30 @@ TEST(NanoarrowIpcHppTest, NanoarrowIpcHppTestUniqueDictionaryEncodings) {
       dictionary_encodings->encodings.data,  // NOLINT(clang-analyzer-cplusplus.Move)
       nullptr);
 }
+
+TEST(NanoarrowIpcHppTest, NanoarrowIpcHppTestUniqueDictionaries) {
+  nanoarrow::UniqueSchema schema;
+  ArrowSchemaInit(schema.get());
+  ASSERT_EQ(ArrowSchemaAllocateDictionary(schema.get()), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaInitFromType(schema->dictionary, NANOARROW_TYPE_STRING),
+            NANOARROW_OK);
+
+  nanoarrow::ipc::UniqueDictionaryEncodings dictionary_encodings;
+  ASSERT_EQ(ArrowIpcDictionaryEncodingsAppend(
+                dictionary_encodings.get(),
+                {schema.get(), 1, NANOARROW_IPC_DICTIONARY_KIND_DENSE_ARRAY}),
+            NANOARROW_OK);
+
+  nanoarrow::ipc::UniqueDictionaries dictionaries;
+  struct ArrowError error;
+  ASSERT_EQ(
+      ArrowIpcDictionariesInit(dictionaries.get(), dictionary_encodings.get(), &error),
+      NANOARROW_OK)
+      << error.message;
+  ASSERT_NE(dictionaries->private_data, nullptr);
+
+  nanoarrow::ipc::UniqueDictionaries dictionaries2 = std::move(dictionaries);
+  EXPECT_NE(dictionaries2->private_data, nullptr);
+  EXPECT_EQ(dictionaries->private_data,  // NOLINT(clang-analyzer-cplusplus.Move)
+            nullptr);
+}
