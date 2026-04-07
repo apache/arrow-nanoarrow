@@ -53,7 +53,7 @@ jobs:
           - {runner: "runs-on=${{ github.run_id }}/family=g4dn.xlarge/image=ubuntu24-gpu-x64/spot=capacity-optimized", label: with-cuda, cmake_args: "-DNANOARROW_DEVICE_WITH_CUDA=ON"}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Install memcheck dependencies
         if: matrix.config.label == 'default-build'

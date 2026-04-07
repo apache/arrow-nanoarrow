@@ -65,7 +65,7 @@ jobs:
           - {os: ubuntu-latest, label: ubuntu, extra_cmake_config: "-DNANOARROW_BUILD_TESTS_WITH_ARROW=ON"}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           path: src
           fetch-depth: 0
@@ -151,7 +151,7 @@ jobs:
           - {platform: "alpine", arch: "s390x", compose_args: "-e TEST_C_BUNDLED=0"}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           path: src
           fetch-depth: 0

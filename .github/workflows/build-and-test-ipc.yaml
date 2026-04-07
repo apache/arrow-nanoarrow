@@ -54,10 +54,10 @@ jobs:
       NANOARROW_ARROW_TESTING_DIR: '${{ github.workspace }}/arrow-testing'
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Checkout arrow-testing
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: apache/arrow-testing
           path: arrow-testing
