@@ -1216,7 +1216,7 @@ std::string ArrowSchemaToString(const struct ArrowSchema* schema) {
 #if defined(NANOARROW_BUILD_TESTS_WITH_ARROW)
 TEST_P(ArrowTypeParameterizedTestFixture, NanoarrowIpcNanoarrowTypeRoundtrip) {
   if (GetParam()->id() == arrow::Type::DICTIONARY) {
-    GTEST_SKIP() << "Dictionary array decode is not yet supported";
+    GTEST_SKIP() << "Dictionary array encode is not yet supported";
   }
 
   nanoarrow::UniqueSchema schema;
@@ -1258,16 +1258,12 @@ TEST_P(ArrowTypeParameterizedTestFixture, NanoarrowIpcNanoarrowTypeRoundtrip) {
 
 #if defined(NANOARROW_BUILD_TESTS_WITH_ARROW)
 TEST_P(ArrowTypeParameterizedTestFixture, NanoarrowIpcArrowArrayRoundtrip) {
-  if (GetParam()->id() == arrow::Type::DICTIONARY) {
-    GTEST_SKIP() << "Dictionary array decode is not yet supported";
-  }
-
   const std::shared_ptr<arrow::DataType>& data_type = GetParam();
   std::shared_ptr<arrow::Schema> dummy_schema =
       arrow::schema({arrow::field("dummy_name", data_type)});
 
   auto maybe_empty = arrow::RecordBatch::MakeEmpty(dummy_schema);
-  ASSERT_TRUE(maybe_empty.ok());
+  ASSERT_TRUE(maybe_empty.ok()) << maybe_empty.status();
   auto empty = maybe_empty.ValueUnsafe();
 
   auto maybe_nulls_array = arrow::MakeArrayOfNull(data_type, 3);
@@ -1282,10 +1278,24 @@ TEST_P(ArrowTypeParameterizedTestFixture, NanoarrowIpcArrowArrayRoundtrip) {
   struct ArrowBufferView buffer_view;
   struct ArrowArray array;
 
-  // Initialize the decoder
+  // Initialize the schema
   ASSERT_TRUE(arrow::ExportSchema(*dummy_schema, &schema).ok());
+
+  // Initialize the dictionaries
+  struct ArrowIpcDictionaryEncodings dictionary_encodings;
+  struct ArrowIpcDictionaries dictionaries;
+  ArrowIpcDictionaryEncodingsInit(&dictionary_encodings);
+  ASSERT_EQ(ArrowIpcDictionaryEncodingsAppendSchema(&dictionary_encodings, &schema),
+            NANOARROW_OK);
+  ASSERT_EQ(ArrowIpcDictionariesInit(&dictionaries, &dictionary_encodings, nullptr),
+            NANOARROW_OK);
+
+  // Initialize the decoder
   ArrowIpcDecoderInit(&decoder);
-  ASSERT_EQ(ArrowIpcDecoderSetSchema(&decoder, &schema, nullptr), NANOARROW_OK);
+  ASSERT_EQ(ArrowIpcDecoderSetSchemaWithDictionaries(&decoder, &schema,
+                                                     &dictionary_encodings, nullptr),
+            NANOARROW_OK);
+  ArrowIpcDictionaryEncodingsReset(&dictionary_encodings);
 
   // Check the empty array
   auto maybe_serialized = arrow::ipc::SerializeRecordBatch(*empty, options);
@@ -1296,14 +1306,15 @@ TEST_P(ArrowTypeParameterizedTestFixture, NanoarrowIpcArrowArrayRoundtrip) {
   ASSERT_EQ(ArrowIpcDecoderDecodeHeader(&decoder, buffer_view, nullptr), NANOARROW_OK);
   buffer_view.data.as_uint8 += decoder.header_size_bytes;
   buffer_view.size_bytes -= decoder.header_size_bytes;
-  ASSERT_EQ(ArrowIpcDecoderDecodeArray(&decoder, buffer_view, -1, &array,
-                                       NANOARROW_VALIDATION_LEVEL_FULL, nullptr),
+  ASSERT_EQ(ArrowIpcDecoderDecodeArrayWithDictionaries(
+                &decoder, buffer_view, -1, &dictionaries, &array,
+                NANOARROW_VALIDATION_LEVEL_FULL, nullptr),
             NANOARROW_OK);
 
   auto maybe_batch = arrow::ImportRecordBatch(&array, dummy_schema);
   ASSERT_TRUE(maybe_batch.ok());
   EXPECT_EQ(maybe_batch.ValueUnsafe()->ToString(), empty->ToString());
-  EXPECT_TRUE(maybe_batch.ValueUnsafe()->Equals(*empty));
+  EXPECT_TRUE(maybe_batch.ValueUnsafe()->Equals(*empty)) << empty->ToString();
 
   // Check the array with 3 null values
   maybe_serialized = arrow::ipc::SerializeRecordBatch(*nulls, options);
@@ -1314,8 +1325,9 @@ TEST_P(ArrowTypeParameterizedTestFixture, NanoarrowIpcArrowArrayRoundtrip) {
   ASSERT_EQ(ArrowIpcDecoderDecodeHeader(&decoder, buffer_view, nullptr), NANOARROW_OK);
   buffer_view.data.as_uint8 += decoder.header_size_bytes;
   buffer_view.size_bytes -= decoder.header_size_bytes;
-  ASSERT_EQ(ArrowIpcDecoderDecodeArray(&decoder, buffer_view, -1, &array,
-                                       NANOARROW_VALIDATION_LEVEL_FULL, nullptr),
+  ASSERT_EQ(ArrowIpcDecoderDecodeArrayWithDictionaries(
+                &decoder, buffer_view, -1, &dictionaries, &array,
+                NANOARROW_VALIDATION_LEVEL_FULL, nullptr),
             NANOARROW_OK);
 
   maybe_batch = arrow::ImportRecordBatch(&array, dummy_schema);
@@ -1324,6 +1336,7 @@ TEST_P(ArrowTypeParameterizedTestFixture, NanoarrowIpcArrowArrayRoundtrip) {
   EXPECT_TRUE(maybe_batch.ValueUnsafe()->Equals(*nulls));
 
   ArrowSchemaRelease(&schema);
+  ArrowIpcDictionariesReset(&dictionaries);
   ArrowIpcDecoderReset(&decoder);
 }
 #endif

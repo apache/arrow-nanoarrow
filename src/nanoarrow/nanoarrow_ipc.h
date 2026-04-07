@@ -250,6 +250,12 @@ NANOARROW_DLL ArrowErrorCode ArrowIpcDictionaryEncodingsAppend(
     struct ArrowIpcDictionaryEncodings* dictionary_encodings,
     struct ArrowIpcDictionaryEncoding encoding);
 
+/// \brief Append all dictionaries in schema identified according to a depth-first
+/// recursive search starting at 0
+NANOARROW_DLL ArrowErrorCode ArrowIpcDictionaryEncodingsAppendSchema(
+    struct ArrowIpcDictionaryEncodings* dictionary_encodings,
+    const struct ArrowSchema* schema);
+
 /// \brief Resolve a ArrowIpcDictionaryEncoding for a given dictionary encoded field
 ///
 /// Returns NULL if the pointed to schema does not match any of the pointed to

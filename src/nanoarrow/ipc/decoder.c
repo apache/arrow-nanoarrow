@@ -295,6 +295,44 @@ ArrowErrorCode ArrowIpcDictionaryEncodingsAppend(
   return NANOARROW_OK;
 }
 
+static ArrowErrorCode ArrowIpcDictionaryEncodingsAppendSchemaInternal(
+    struct ArrowIpcDictionaryEncodings* dictionary_encodings,
+    const struct ArrowSchema* schema, int64_t* next_id) {
+  if (schema->dictionary != NULL) {
+    struct ArrowIpcDictionaryEncoding encoding;
+    encoding.schema = schema;
+    encoding.id = (*next_id)++;
+    encoding.kind = NANOARROW_IPC_DICTIONARY_KIND_DENSE_ARRAY;
+    NANOARROW_RETURN_NOT_OK(
+        ArrowIpcDictionaryEncodingsAppend(dictionary_encodings, encoding));
+  }
+
+  for (int64_t i = 0; i < schema->n_children; i++) {
+    NANOARROW_DCHECK(schema->children != NULL && schema->children[i] != NULL);
+    NANOARROW_RETURN_NOT_OK(ArrowIpcDictionaryEncodingsAppendSchemaInternal(
+        dictionary_encodings, schema->children[i], next_id));
+  }
+
+  if (schema->dictionary != NULL) {
+    NANOARROW_RETURN_NOT_OK(ArrowIpcDictionaryEncodingsAppendSchemaInternal(
+        dictionary_encodings, schema->dictionary, next_id));
+  }
+
+  return NANOARROW_OK;
+}
+
+ArrowErrorCode ArrowIpcDictionaryEncodingsAppendSchema(
+    struct ArrowIpcDictionaryEncodings* dictionary_encodings,
+    const struct ArrowSchema* schema) {
+  NANOARROW_DCHECK(dictionary_encodings != NULL);
+
+  int64_t next_id = 0;
+  NANOARROW_RETURN_NOT_OK(ArrowIpcDictionaryEncodingsAppendSchemaInternal(
+      dictionary_encodings, schema, &next_id));
+
+  return NANOARROW_OK;
+}
+
 const struct ArrowIpcDictionaryEncoding* ArrowIpcDictionaryEncodingsFind(
     const struct ArrowIpcDictionaryEncodings* dictionary_encodings,
     const struct ArrowSchema* schema) {
@@ -414,12 +452,13 @@ static ArrowErrorCode ArrowIpcDictionaryReplace(struct ArrowIpcDictionary* dicti
 static ArrowErrorCode ArrowIpcDictionaryAppend(struct ArrowIpcDictionary* dictionary,
                                                struct ArrowArray* value,
                                                struct ArrowError* error) {
-  if (dictionary->current_value.release != NULL) {
+  if (dictionary->current_value.release != NULL &&
+      dictionary->current_value.length != 0) {
     ArrowErrorSet(error, "Dictionary concatenation is not yet supported");
     return ENOTSUP;
   }
 
-  ArrowArrayMove(value, &dictionary->current_value);
+  NANOARROW_RETURN_NOT_OK(ArrowIpcDictionaryReplace(dictionary, value, error));
   return NANOARROW_OK;
 }
 
@@ -492,7 +531,24 @@ static ArrowErrorCode ArrowIpcDictionariesInitDictionaries(
       return result;
     }
 
+    // Set the ID
     dictionary->id = unique_ids[i];
+
+    // Set the initial array value to a valid array with zero length. This is
+    // needed because empty and/or all null columns may not have a dictionary
+    // message emitted before a record batch arrives.
+    result = ArrowArrayInitFromSchema(&dictionary->current_value,
+                                      encoding->schema->dictionary, error);
+    if (result != NANOARROW_OK) {
+      *num_initialized_decoders_out = i + 1;
+      return result;
+    }
+
+    result = ArrowArrayFinishBuildingDefault(&dictionary->current_value, error);
+    if (result != NANOARROW_OK) {
+      *num_initialized_decoders_out = i + 1;
+      return result;
+    }
   }
 
   *num_initialized_decoders_out = private_data->num_dictionaries;
@@ -2451,6 +2507,12 @@ static int ArrowIpcDecoderWalkSetArrayView(struct ArrowIpcDecoder* decoder,
     const struct ArrowArray* dictionary;
     NANOARROW_RETURN_NOT_OK(ArrowIpcDictionariesFindCurrentValue(
         setter->dictionaries, ipc_field->dictionary_id, &dictionary, error));
+
+    if (dictionary->release == NULL) {
+      ArrowErrorSet(error, "Dictionary with ID %" PRId64 " is marked as released",
+                    ipc_field->dictionary_id);
+      return EINVAL;
+    }
 
     // Set the dictionary array view from the value. We may be able to skip this
     // if we can somehow detect that the dictionary hasn't changed since the last
