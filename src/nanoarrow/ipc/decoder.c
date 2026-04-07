@@ -1260,8 +1260,8 @@ static int ArrowIpcDecoderSetType(struct ArrowSchema* schema, ns(Field_table_t) 
 }
 
 // A fun corner case when decoding dictionaries: the extension metadata lives with
-// the dictionary (i.e., the non-index type); however, the field metadata still
-// needs to exist on the field.
+// the dictionary (i.e., the non-index type); however, non-extension field metadata
+// still needs to exist on the field.
 static int ArrowIpcMoveNonExtensionFieldMetadataBackToFieldIfNeeded(
     struct ArrowSchema* schema) {
   NANOARROW_DCHECK(schema->dictionary != NULL);
@@ -1302,15 +1302,18 @@ static int ArrowIpcMoveNonExtensionFieldMetadataBackToFieldIfNeeded(
     int key_is_extension_metadata =
         key.size_bytes == extension_metadata_key.size_bytes &&
         strncmp(key.data, extension_metadata_key.data, key.size_bytes) == 0;
-    if (!key_is_extension_name && !key_is_extension_metadata) {
-      result = ArrowMetadataBuilderAppend(&field_metadata, key, value);
+
+    // Extension metadata stays on the dictionary
+    if (key_is_extension_name || key_is_extension_metadata) {
+      result = ArrowMetadataBuilderAppend(&extension_metadata, key, value);
       if (result != NANOARROW_OK) {
         ArrowBufferReset(&field_metadata);
         ArrowBufferReset(&extension_metadata);
         return result;
       }
     } else {
-      result = ArrowMetadataBuilderAppend(&extension_metadata, key, value);
+      // Non-extension metadata goes to the field
+      result = ArrowMetadataBuilderAppend(&field_metadata, key, value);
       if (result != NANOARROW_OK) {
         ArrowBufferReset(&field_metadata);
         ArrowBufferReset(&extension_metadata);
@@ -2822,6 +2825,8 @@ NANOARROW_DLL ArrowErrorCode ArrowIpcDecoderDecodeDictionary(
       (struct ArrowIpcDecoderPrivate*)dictionary->decoder.private_data;
   dictionary->decoder.message_type = NANOARROW_IPC_MESSAGE_TYPE_RECORD_BATCH;
   dictionary_decoder_private_data->last_message = record_batch;
+  // Transfer the endianness setting so that buffers are byte-swapped if needed
+  dictionary_decoder_private_data->endianness = private_data->endianness;
 
   struct ArrowArray tmp;
 
