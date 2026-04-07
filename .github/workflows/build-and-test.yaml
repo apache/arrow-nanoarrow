@@ -52,7 +52,7 @@ jobs:
           - {label: bundled-cpp-build, cmake_args: "-DNANOARROW_BUNDLE=ON -DNANOARROW_BUNDLE_AS_CPP=ON"}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Install memcheck dependencies
         if: matrix.config.label == 'default-build'
@@ -129,7 +129,7 @@ jobs:
   meson-build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: actions/setup-python@v6
         with:
           python-version: '3.x'
@@ -169,7 +169,7 @@ jobs:
   meson-build-windows:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: actions/setup-python@v6
         with:
           python-version: '3.x'
@@ -196,7 +196,7 @@ jobs:
     name: test-no-arrow
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Build nanoarrow
         run: |
