@@ -477,20 +477,10 @@ INSTANTIATE_TEST_SUITE_P(
         TestFile::OK("generated_primitive.stream"),
         TestFile::OK("generated_recursive_nested.stream"),
         TestFile::OK("generated_union.stream"),
-
-        // Files with features that are not yet supported (Dictionary encoding)
-        TestFile::NotSupported(
-            "generated_dictionary_unsigned.stream",
-            "Found valid dictionary batch but dictionary encoding is not yet supported"),
-        TestFile::NotSupported(
-            "generated_dictionary.stream",
-            "Found valid dictionary batch but dictionary encoding is not yet supported"),
-        TestFile::NotSupported(
-            "generated_nested_dictionary.stream",
-            "Found valid dictionary batch but dictionary encoding is not yet supported"),
-        TestFile::NotSupported(
-            "generated_extension.stream",
-            "Found valid dictionary batch but dictionary encoding is not yet supported")
+        TestFile::OK("generated_dictionary_unsigned.stream"),
+        TestFile::OK("generated_dictionary.stream"),
+        TestFile::OK("generated_nested_dictionary.stream"),
+        TestFile::OK("generated_extension.stream")
         // Comment to keep last line from wrapping
         ));
 

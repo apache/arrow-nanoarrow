@@ -335,7 +335,8 @@ TEST(NanoarrowIpcReader, StreamReaderExpectedRecordBatch) {
   struct ArrowArray array;
   struct ArrowError error;
   ASSERT_EQ(ArrowArrayStreamGetNext(&stream, &array, &error), EINVAL);
-  EXPECT_STREQ(error.message, "Unexpected message type (expected RecordBatch)");
+  EXPECT_STREQ(error.message,
+               "Unexpected message type (expected RecordBatch or DictionaryBatch)");
 
   ArrowArrayStreamRelease(&stream);
 }
