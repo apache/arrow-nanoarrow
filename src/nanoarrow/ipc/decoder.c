@@ -2825,10 +2825,8 @@ NANOARROW_DLL ArrowErrorCode ArrowIpcDecoderDecodeDictionary(
 
   struct ArrowArray tmp;
 
-  // TODO: provide ArrowIpcDecoderDecodeArrayInternalWithDictionaries to handle nested
-  // dictionaries
-  NANOARROW_RETURN_NOT_OK(ArrowIpcDecoderDecodeArrayFromShared(
-      &dictionary->decoder, shared, 0, &tmp, validation_level, error));
+  NANOARROW_RETURN_NOT_OK(ArrowIpcDecoderDecodeArrayFromSharedWithDictionaries(
+      &dictionary->decoder, shared, 0, dictionaries, &tmp, validation_level, error));
 
   ArrowErrorCode result;
   if (decoder->dictionary->is_delta) {
