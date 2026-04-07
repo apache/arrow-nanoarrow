@@ -840,7 +840,7 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDecodeDictionaryBatchDecode) {
   ASSERT_EQ(column_view->dictionary->length, 3);
   ASSERT_EQ(ArrowArrayViewGetStringUnsafe(column_view->dictionary, 0), "zero"_asv);
 
-  // Decode the array
+  // Decode the array from the ArrowBufferView
   struct ArrowArray batch;
   ASSERT_EQ(ArrowIpcDecoderDecodeArrayWithDictionaries(
                 &decoder, data, -1, &dictionaries, &batch,
@@ -849,8 +849,27 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDecodeDictionaryBatchDecode) {
       << error.message;
   ASSERT_NE(batch.children[0]->dictionary, nullptr);
   ASSERT_EQ(batch.children[0]->dictionary->length, 3);
-
   ArrowArrayRelease(&batch);
+
+  // Decode the array from a shared buffer
+  struct ArrowBuffer record_batch_body;
+  ArrowBufferInit(&record_batch_body);
+  ASSERT_EQ(ArrowBufferAppendBufferView(&record_batch_body, data), NANOARROW_OK);
+
+  struct ArrowIpcSharedBuffer record_batch_shared;
+  ASSERT_EQ(ArrowIpcSharedBufferInit(&record_batch_shared, &record_batch_body),
+            NANOARROW_OK);
+
+  ASSERT_EQ(ArrowIpcDecoderDecodeArrayFromSharedWithDictionaries(
+                &decoder, &record_batch_shared, -1, &dictionaries, &batch,
+                NANOARROW_VALIDATION_LEVEL_FULL, &error),
+            NANOARROW_OK)
+      << error.message;
+  ASSERT_NE(batch.children[0]->dictionary, nullptr);
+  ASSERT_EQ(batch.children[0]->dictionary->length, 3);
+  ArrowArrayRelease(&batch);
+  ArrowIpcSharedBufferReset(&record_batch_shared);
+
   ArrowArrayViewReset(&array_view);
   ArrowIpcSharedBufferReset(&shared);
   ArrowIpcDictionariesReset(&dictionaries);
