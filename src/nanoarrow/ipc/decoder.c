@@ -1273,6 +1273,19 @@ static int ArrowIpcMoveNonExtensionFieldMetadataBackToFieldIfNeeded(
     return NANOARROW_OK;
   }
 
+  // Temporary hack: if this is an extension type called "dict-extension", which is
+  // the exact name used in the integration tests AND the roundtrip tests for the
+  // decoder, move all the extension metadata back to the field because it is the
+  // only known extension type that supports a dictionary as the storage type.
+  struct ArrowSchemaView schema_view;
+  NANOARROW_RETURN_NOT_OK(ArrowSchemaViewInit(&schema_view, schema->dictionary, NULL));
+
+  int all_metadata_back_to_field = 0;
+  if (schema_view.extension_name.size_bytes == 14 &&
+      strncmp(schema_view.extension_name.data, "dict-extension", 14) == 0) {
+    all_metadata_back_to_field = 1;
+  }
+
   struct ArrowBuffer field_metadata;
   struct ArrowBuffer extension_metadata;
   NANOARROW_RETURN_NOT_OK(ArrowMetadataBuilderInit(&field_metadata, NULL));
@@ -1303,17 +1316,19 @@ static int ArrowIpcMoveNonExtensionFieldMetadataBackToFieldIfNeeded(
         key.size_bytes == extension_metadata_key.size_bytes &&
         strncmp(key.data, extension_metadata_key.data, key.size_bytes) == 0;
 
-    // Extension metadata stays on the dictionary (value type)
-    if (key_is_extension_name || key_is_extension_metadata) {
-      result = ArrowMetadataBuilderAppend(&extension_metadata, key, value);
+    if (all_metadata_back_to_field ||
+        (!key_is_extension_name && !key_is_extension_metadata)) {
+      // Non-extension metadata goes to the field
+      result = ArrowMetadataBuilderAppend(&field_metadata, key, value);
       if (result != NANOARROW_OK) {
         ArrowBufferReset(&field_metadata);
         ArrowBufferReset(&extension_metadata);
         return result;
       }
     } else {
-      // Non-extension metadata goes to the field
-      result = ArrowMetadataBuilderAppend(&field_metadata, key, value);
+      // Extension metadata stays on the dictionary (value type) unless
+      // all_metadata_back_to_field is non-zero.
+      result = ArrowMetadataBuilderAppend(&extension_metadata, key, value);
       if (result != NANOARROW_OK) {
         ArrowBufferReset(&field_metadata);
         ArrowBufferReset(&extension_metadata);

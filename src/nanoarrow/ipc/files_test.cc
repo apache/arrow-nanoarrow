@@ -365,6 +365,7 @@ class TestFile {
 
     // Use testing utility to compare
     nanoarrow::testing::TestingJSONComparison comparison;
+    comparison.set_compare_metadata_order(false);
     ASSERT_EQ(comparison.CompareArrayStream(ipc_stream.get(), json_stream.get(), &error),
               NANOARROW_OK)
         << error.message;

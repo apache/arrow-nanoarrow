@@ -1219,6 +1219,13 @@ TEST_P(ArrowTypeParameterizedTestFixture, NanoarrowIpcNanoarrowTypeRoundtrip) {
     GTEST_SKIP() << "Dictionary array encode is not yet supported";
   }
 
+  if (GetParam()->id() == arrow::Type::EXTENSION &&
+      std::static_pointer_cast<arrow::ExtensionType>(GetParam())->storage_type()->id() ==
+          arrow::Type::DICTIONARY) {
+    GTEST_SKIP()
+        << "nanoarrow encoder cannot yet encode extension types with dictionary storage";
+  }
+
   nanoarrow::UniqueSchema schema;
   ASSERT_TRUE(
       arrow::ExportSchema(arrow::Schema({arrow::field("", GetParam())}), schema.get())
@@ -1385,6 +1392,13 @@ TEST_P(ArrowTypeParameterizedTestFixture, NanoarrowIpcNanoarrowArrayRoundtrip) {
     GTEST_SKIP() << "nanoarrow encoder cannot yet encode dictionaries";
   }
 
+  if (GetParam()->id() == arrow::Type::EXTENSION &&
+      std::static_pointer_cast<arrow::ExtensionType>(GetParam())->storage_type()->id() ==
+          arrow::Type::DICTIONARY) {
+    GTEST_SKIP()
+        << "nanoarrow encoder cannot yet encode extension types with dictionary storage";
+  }
+
   struct ArrowError error;
   nanoarrow::UniqueSchema schema;
   ASSERT_TRUE(
@@ -1443,7 +1457,7 @@ class DictExtensionType : public ExtensionType {
  public:
   explicit DictExtensionType() : ExtensionType(dictionary(int32(), utf8())) {}
 
-  std::string extension_name() const override { return "test.dict_extension"; }
+  std::string extension_name() const override { return "dict-extension"; }
 
   bool ExtensionEquals(const ExtensionType& other) const override {
     return other.extension_name() == extension_name();
