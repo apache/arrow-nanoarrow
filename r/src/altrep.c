@@ -168,17 +168,16 @@ SEXP nanoarrow_c_make_altrep_chr(SEXP array_xptr) {
   // Ensure the array that we're attaching to this ALTREP object does not keep its
   // parent struct alive unnecessarily (i.e., a user can select only a few columns
   // and the memory for the unused columns will be released).
-  SEXP array_xptr_independent = PROTECT(array_xptr_ensure_independent(array_xptr));
+  array_xptr_ensure_independent(array_xptr);
 
-  if (nanoarrow_converter_set_array(converter_xptr, array_xptr_independent) !=
-      NANOARROW_OK) {
+  if (nanoarrow_converter_set_array(converter_xptr, array_xptr) != NANOARROW_OK) {
     nanoarrow_converter_stop(converter_xptr);
   }
 
   Rf_setAttrib(converter_xptr, R_ClassSymbol, nanoarrow_cls_altrep_chr);
   SEXP out = PROTECT(R_new_altrep(nanoarrow_altrep_chr_cls, converter_xptr, R_NilValue));
   MARK_NOT_MUTABLE(out);
-  UNPROTECT(3);
+  UNPROTECT(2);
   return out;
 }
 

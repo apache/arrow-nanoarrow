@@ -22,6 +22,29 @@
 #include <stdlib.h>
 #include <string.h>
 
+// For thread safe shared buffers we need C11 + stdatomic.h
+// Can compile with -DNANOARROW_USE_STDATOMIC=0 or 1 to override
+// automatic detection
+#if !defined(NANOARROW_USE_STDATOMIC)
+#define NANOARROW_USE_STDATOMIC 0
+
+// Check for C11
+#if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L
+
+// Check for GCC 4.8, which doesn't include stdatomic.h but does
+// not define __STDC_NO_ATOMICS__
+#if defined(__clang__) || !defined(__GNUC__) || __GNUC__ >= 5
+
+#if !defined(__STDC_NO_ATOMICS__)
+#include <stdatomic.h>
+#undef NANOARROW_USE_STDATOMIC
+#define NANOARROW_USE_STDATOMIC 1
+#endif
+#endif
+#endif
+
+#endif
+
 #include "nanoarrow/nanoarrow.h"
 
 const char* ArrowNanoarrowVersion(void) { return NANOARROW_VERSION; }
@@ -274,6 +297,224 @@ struct ArrowBufferAllocator ArrowBufferDeallocator(
   allocator.free = custom_free;
   allocator.private_data = private_data;
   return allocator;
+}
+
+#if NANOARROW_USE_STDATOMIC
+struct ArrowSharedBufferPrivate {
+  struct ArrowBuffer src;
+  atomic_long reference_count;
+};
+
+static int64_t ArrowSharedBufferUpdate(struct ArrowSharedBufferPrivate* private_data,
+                                       int delta) {
+  int64_t old_count = atomic_fetch_add(&private_data->reference_count, delta);
+  return old_count + delta;
+}
+
+static void ArrowSharedBufferSet(struct ArrowSharedBufferPrivate* private_data,
+                                 int64_t count) {
+  atomic_store(&private_data->reference_count, count);
+}
+
+int ArrowSharedBufferIsThreadSafe(void) { return 1; }
+
+struct ArrowSharedArrayPrivate {
+  struct ArrowArray src;
+  atomic_long reference_count;
+};
+
+static int64_t ArrowSharedArrayUpdate(struct ArrowSharedArrayPrivate* private_data,
+                                      int delta) {
+  int64_t old_count = atomic_fetch_add(&private_data->reference_count, delta);
+  return old_count + delta;
+}
+
+static void ArrowSharedArraySet(struct ArrowSharedArrayPrivate* private_data,
+                                int64_t count) {
+  atomic_store(&private_data->reference_count, count);
+}
+#else
+struct ArrowSharedBufferPrivate {
+  struct ArrowBuffer src;
+  int64_t reference_count;
+};
+
+static int64_t ArrowSharedBufferUpdate(struct ArrowSharedBufferPrivate* private_data,
+                                       int delta) {
+  private_data->reference_count += delta;
+  return private_data->reference_count;
+}
+
+static void ArrowSharedBufferSet(struct ArrowSharedBufferPrivate* private_data,
+                                 int64_t count) {
+  private_data->reference_count = count;
+}
+
+int ArrowSharedBufferIsThreadSafe(void) { return 0; }
+
+struct ArrowSharedArrayPrivate {
+  struct ArrowArray src;
+  int64_t reference_count;
+};
+
+static int64_t ArrowSharedArrayUpdate(struct ArrowSharedArrayPrivate* private_data,
+                                      int delta) {
+  private_data->reference_count += delta;
+  return private_data->reference_count;
+}
+
+static void ArrowSharedArraySet(struct ArrowSharedArrayPrivate* private_data,
+                                int64_t count) {
+  private_data->reference_count = count;
+}
+#endif
+
+static void ArrowSharedBufferFree(struct ArrowBufferAllocator* allocator, uint8_t* ptr,
+                                  int64_t size) {
+  NANOARROW_UNUSED(allocator);
+  NANOARROW_UNUSED(ptr);
+  NANOARROW_UNUSED(size);
+
+  struct ArrowSharedBufferPrivate* private_data =
+      (struct ArrowSharedBufferPrivate*)allocator->private_data;
+
+  if (ArrowSharedBufferUpdate(private_data, -1) == 0) {
+    ArrowBufferReset(&private_data->src);
+    ArrowFree(private_data);
+  }
+}
+
+static void ArrowSharedArrayBufferFree(struct ArrowBufferAllocator* allocator,
+                                       uint8_t* ptr, int64_t size) {
+  NANOARROW_UNUSED(ptr);
+  NANOARROW_UNUSED(size);
+
+  struct ArrowSharedArrayPrivate* private_data =
+      (struct ArrowSharedArrayPrivate*)allocator->private_data;
+
+  if (ArrowSharedArrayUpdate(private_data, -1) == 0) {
+    if (private_data->src.release != NULL) {
+      ArrowArrayRelease(&private_data->src);
+    }
+    ArrowFree(private_data);
+  }
+}
+
+ArrowErrorCode ArrowSharedBufferInit(struct ArrowBuffer* shared,
+                                     struct ArrowBuffer* src) {
+  if (src->data == NULL) {
+    ArrowBufferMove(src, shared);
+    return NANOARROW_OK;
+  }
+
+  struct ArrowSharedBufferPrivate* private_data =
+      (struct ArrowSharedBufferPrivate*)ArrowMalloc(
+          sizeof(struct ArrowSharedBufferPrivate));
+  if (private_data == NULL) {
+    return ENOMEM;
+  }
+
+  ArrowBufferMove(src, &private_data->src);
+  ArrowSharedBufferSet(private_data, 1);
+
+  ArrowBufferInit(shared);
+  shared->data = private_data->src.data;
+  shared->size_bytes = private_data->src.size_bytes;
+  // Don't expose any extra capcity from src so that any calls to ArrowBufferAppend
+  // on this buffer will fail.
+  shared->capacity_bytes = private_data->src.size_bytes;
+  shared->allocator = ArrowBufferDeallocator(&ArrowSharedBufferFree, private_data);
+  return NANOARROW_OK;
+}
+
+int ArrowIsSharedBuffer(struct ArrowBuffer* buffer) {
+  return buffer->allocator.free == &ArrowSharedBufferFree ||
+         buffer->allocator.free == &ArrowSharedArrayBufferFree;
+}
+
+ArrowErrorCode ArrowSharedBufferClone(struct ArrowBuffer* shared,
+                                      struct ArrowBuffer* shared_out) {
+  if (shared->size_bytes == 0) {
+    ArrowBufferInit(shared_out);
+    return NANOARROW_OK;
+  }
+
+  if (shared->allocator.free == &ArrowSharedBufferFree) {
+    struct ArrowSharedBufferPrivate* private_data =
+        (struct ArrowSharedBufferPrivate*)shared->allocator.private_data;
+    ArrowSharedBufferUpdate(private_data, 1);
+    memcpy(shared_out, shared, sizeof(struct ArrowBuffer));
+    return NANOARROW_OK;
+  }
+
+  if (shared->allocator.free == &ArrowSharedArrayBufferFree) {
+    struct ArrowSharedArrayPrivate* private_data =
+        (struct ArrowSharedArrayPrivate*)shared->allocator.private_data;
+    ArrowSharedArrayUpdate(private_data, 1);
+    memcpy(shared_out, shared, sizeof(struct ArrowBuffer));
+    return NANOARROW_OK;
+  }
+
+  return EINVAL;
+}
+
+ArrowErrorCode ArrowSharedArrayInit(struct ArrowSharedArray* shared,
+                                    struct ArrowArray* src) {
+  struct ArrowSharedArrayPrivate* private_data =
+      (struct ArrowSharedArrayPrivate*)ArrowMalloc(
+          sizeof(struct ArrowSharedArrayPrivate));
+  if (private_data == NULL) {
+    return ENOMEM;
+  }
+
+  ArrowArrayMove(src, &private_data->src);
+  ArrowSharedArraySet(private_data, 1);
+  shared->private_data = private_data;
+  return NANOARROW_OK;
+}
+
+void ArrowSharedArrayRelease(struct ArrowSharedArray* shared) {
+  if (shared->private_data == NULL) {
+    return;
+  }
+
+  struct ArrowSharedArrayPrivate* private_data =
+      (struct ArrowSharedArrayPrivate*)shared->private_data;
+
+  if (ArrowSharedArrayUpdate(private_data, -1) == 0) {
+    if (private_data->src.release != NULL) {
+      ArrowArrayRelease(&private_data->src);
+    }
+    ArrowFree(private_data);
+  }
+
+  shared->private_data = NULL;
+}
+
+ArrowErrorCode ArrowSharedArrayBuffer(struct ArrowSharedArray* shared, int64_t i,
+                                      struct ArrowBuffer* out) {
+  struct ArrowSharedArrayPrivate* private_data =
+      (struct ArrowSharedArrayPrivate*)shared->private_data;
+  NANOARROW_DCHECK(i >= 0 && i < private_data->src.n_buffers);
+
+  ArrowSharedArrayUpdate(private_data, 1);
+  ArrowBufferInit(out);
+
+  if (ArrowArrayIsInternal(&private_data->src)) {
+    // The source array was built with nanoarrow, so we can get buffer size info
+    struct ArrowBuffer* src = ArrowArrayBuffer(&private_data->src, i);
+    out->data = src->data;
+    out->size_bytes = src->size_bytes;
+    out->capacity_bytes = src->size_bytes;
+  } else {
+    // Generic C Data Interface array: buffer sizes are not known
+    out->data = (uint8_t*)private_data->src.buffers[i];
+    out->size_bytes = 0;
+    out->capacity_bytes = 0;
+  }
+
+  out->allocator = ArrowBufferDeallocator(&ArrowSharedArrayBufferFree, private_data);
+  return NANOARROW_OK;
 }
 
 static const int kInt32DecimalDigits = 9;

@@ -23,12 +23,8 @@
 #ifdef NANOARROW_NAMESPACE
 
 #define ArrowIpcCheckRuntime NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcCheckRuntime)
-#define ArrowIpcSharedBufferIsThreadSafe \
-  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcSharedBufferIsThreadSafe)
-#define ArrowIpcSharedBufferInit \
-  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcSharedBufferInit)
-#define ArrowIpcSharedBufferReset \
-  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcSharedBufferReset)
+#define ArrowIpcSharedBufferIsThreadSafe ArrowSharedBufferIsThreadSafe
+#define ArrowIpcSharedBufferInit ArrowSharedBufferInit
 #define ArrowIpcGetZstdDecompressionFunction \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcGetZstdDecompressionFunction)
 #define ArrowIpcGetLZ4DecompressionFunction \
@@ -129,6 +125,12 @@
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcDictionariesReset)
 #define ArrowIpcDecoderDecodeDictionary \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcDecoderDecodeDictionary)
+
+#else
+
+// Backward-compatible aliases (non-namespaced builds)
+#define ArrowIpcSharedBufferIsThreadSafe ArrowSharedBufferIsThreadSafe
+#define ArrowIpcSharedBufferInit ArrowSharedBufferInit
 
 #endif
 
@@ -315,33 +317,6 @@ static inline enum ArrowIpcEndianness ArrowIpcSystemEndianness(void) {
     return NANOARROW_IPC_ENDIANNESS_BIG;
   }
 }
-
-/// \brief A structure representing a reference-counted buffer that may be passed to
-/// ArrowIpcDecoderDecodeArrayFromShared().
-struct ArrowIpcSharedBuffer {
-  struct ArrowBuffer private_src;
-};
-
-/// \brief Initialize the contents of a ArrowIpcSharedBuffer struct
-///
-/// If NANOARROW_OK is returned, the ArrowIpcSharedBuffer takes ownership of
-/// src.
-NANOARROW_DLL ArrowErrorCode ArrowIpcSharedBufferInit(struct ArrowIpcSharedBuffer* shared,
-                                                      struct ArrowBuffer* src);
-
-/// \brief Release the caller's copy of the shared buffer
-///
-/// When finished, the caller must relinquish its own copy of the shared data
-/// using this function. The original buffer will continue to exist until all
-/// ArrowArray objects that refer to it have also been released.
-NANOARROW_DLL void ArrowIpcSharedBufferReset(struct ArrowIpcSharedBuffer* shared);
-
-/// \brief Check for shared buffer thread safety
-///
-/// Thread-safe shared buffers require C11 and the stdatomic.h header.
-/// If either are unavailable, shared buffers are still possible but
-/// the resulting arrays must not be passed to other threads to be released.
-NANOARROW_DLL int ArrowIpcSharedBufferIsThreadSafe(void);
 
 /// \brief A user-extensible decompressor
 ///
@@ -623,12 +598,12 @@ NANOARROW_DLL ArrowErrorCode ArrowIpcDecoderDecodeArray(
 /// \brief Decode an ArrowArray from an owned buffer
 ///
 /// This implementation takes advantage of the fact that it can avoid copying individual
-/// buffers. In all cases the caller must ArrowIpcSharedBufferReset() body after one or
+/// buffers. In all cases the caller must ArrowBufferReset() body after one or
 /// more calls to ArrowIpcDecoderDecodeArrayFromShared(). If
-/// ArrowIpcSharedBufferIsThreadSafe() returns 0, out must not be released by another
+/// ArrowSharedBufferIsThreadSafe() returns 0, out must not be released by another
 /// thread.
 NANOARROW_DLL ArrowErrorCode ArrowIpcDecoderDecodeArrayFromShared(
-    struct ArrowIpcDecoder* decoder, struct ArrowIpcSharedBuffer* shared, int64_t i,
+    struct ArrowIpcDecoder* decoder, struct ArrowBuffer* shared, int64_t i,
     struct ArrowArray* out, enum ArrowValidationLevel validation_level,
     struct ArrowError* error);
 

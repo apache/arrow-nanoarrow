@@ -73,7 +73,7 @@ static void ArrowArrayReleaseInternal(struct ArrowArray* array) {
   array->release = NULL;
 }
 
-static int ArrowArrayIsInternal(struct ArrowArray* array) {
+int ArrowArrayIsInternal(struct ArrowArray* array) {
   return array->release == &ArrowArrayReleaseInternal;
 }
 
@@ -566,6 +566,162 @@ ArrowErrorCode ArrowArrayFinishBuilding(struct ArrowArray* array,
 ArrowErrorCode ArrowArrayFinishBuildingDefault(struct ArrowArray* array,
                                                struct ArrowError* error) {
   return ArrowArrayFinishBuilding(array, NANOARROW_VALIDATION_LEVEL_DEFAULT, error);
+}
+
+static int ArrowArrayIsShared(struct ArrowArray* array) {
+  if (!ArrowArrayIsInternal(array)) {
+    return 0;
+  }
+
+  for (int64_t i = 0; i < array->n_buffers; i++) {
+    struct ArrowBuffer* buffer = ArrowArrayBuffer(array, i);
+    if (buffer->data != NULL && !ArrowIsSharedBuffer(buffer)) {
+      return 0;
+    }
+  }
+
+  for (int64_t i = 0; i < array->n_children; i++) {
+    if (!ArrowArrayIsShared(array->children[i])) {
+      return 0;
+    }
+  }
+
+  if (array->dictionary != NULL && !ArrowArrayIsShared(array->dictionary)) {
+    return 0;
+  }
+
+  return 1;
+}
+
+static ArrowErrorCode ArrowArrayMoveSharedInternal(struct ArrowArray* src,
+                                                   struct ArrowArray* dst) {
+  if (ArrowArrayIsShared(src)) {
+    ArrowArrayMove(src, dst);
+    return NANOARROW_OK;
+  }
+
+  NANOARROW_RETURN_NOT_OK(ArrowArrayInitFromType(dst, NANOARROW_TYPE_UNINITIALIZED));
+
+  // Allocate children and move source children to dst children
+  NANOARROW_RETURN_NOT_OK(ArrowArrayAllocateChildren(dst, src->n_children));
+  for (int64_t i = 0; i < src->n_children; i++) {
+    NANOARROW_RETURN_NOT_OK(
+        ArrowArrayMoveSharedInternal(src->children[i], dst->children[i]));
+  }
+
+  // Allocate dictionary if needed and move source dictionary to dst dictionary
+  if (src->dictionary != NULL) {
+    NANOARROW_RETURN_NOT_OK(ArrowArrayAllocateDictionary(dst));
+    NANOARROW_RETURN_NOT_OK(
+        ArrowArrayMoveSharedInternal(src->dictionary, dst->dictionary));
+  }
+
+  // We might need some more buffers if we are shallowly copying a string/binary view
+  if (src->n_buffers > 3) {
+    if (src->n_buffers > INT_MAX) {
+      return EINVAL;
+    }
+
+    NANOARROW_RETURN_NOT_OK(
+        ArrowArrayAddVariadicBuffers(dst, (int32_t)src->n_buffers - 3));
+  }
+
+  // Move src into a shared array and set dst's buffers using the ref-counted version
+  struct ArrowSharedArray shared_array;
+  NANOARROW_RETURN_NOT_OK(ArrowSharedArrayInit(&shared_array, src));
+
+  for (int64_t i = 0; i < src->n_buffers; i++) {
+    struct ArrowBuffer* dst_buffer = ArrowArrayBuffer(dst, i);
+    ArrowErrorCode result = ArrowSharedArrayBuffer(&shared_array, i, dst_buffer);
+    if (result != NANOARROW_OK) {
+      ArrowSharedArrayRelease(&shared_array);
+      return result;
+    }
+  }
+
+  ArrowSharedArrayRelease(&shared_array);
+
+  dst->n_buffers = src->n_buffers;
+  dst->length = src->length;
+  dst->null_count = src->null_count;
+  dst->offset = src->offset;
+
+  // Flush internal buffer pointers to array->buffers
+  NANOARROW_RETURN_NOT_OK(ArrowArrayFlushInternalPointers(dst));
+
+  return NANOARROW_OK;
+}
+
+static ArrowErrorCode ArrowArrayCloneSharedInternal(struct ArrowArray* src,
+                                                    struct ArrowArray* dst) {
+  NANOARROW_RETURN_NOT_OK(ArrowArrayInitFromType(dst, NANOARROW_TYPE_UNINITIALIZED));
+
+  // Allocate children and clone source children to dst children
+  NANOARROW_RETURN_NOT_OK(ArrowArrayAllocateChildren(dst, src->n_children));
+  for (int64_t i = 0; i < src->n_children; i++) {
+    NANOARROW_RETURN_NOT_OK(
+        ArrowArrayCloneSharedInternal(src->children[i], dst->children[i]));
+  }
+
+  // Allocate dictionary if needed and clone source dictionary to dst dictionary
+  if (src->dictionary != NULL) {
+    NANOARROW_RETURN_NOT_OK(ArrowArrayAllocateDictionary(dst));
+    NANOARROW_RETURN_NOT_OK(
+        ArrowArrayCloneSharedInternal(src->dictionary, dst->dictionary));
+  }
+
+  // We might need some more buffers if we are shallowly copying a string/binary view
+  if (src->n_buffers > 3) {
+    if (src->n_buffers > INT_MAX) {
+      return EINVAL;
+    }
+
+    NANOARROW_RETURN_NOT_OK(
+        ArrowArrayAddVariadicBuffers(dst, (int32_t)src->n_buffers - 3));
+  }
+
+  for (int64_t i = 0; i < src->n_buffers; i++) {
+    struct ArrowBuffer* src_buffer = ArrowArrayBuffer(src, i);
+    struct ArrowBuffer* dst_buffer = ArrowArrayBuffer(dst, i);
+    NANOARROW_RETURN_NOT_OK(ArrowSharedBufferClone(src_buffer, dst_buffer));
+  }
+
+  dst->n_buffers = src->n_buffers;
+  dst->length = src->length;
+  dst->null_count = src->null_count;
+  dst->offset = src->offset;
+
+  // Flush internal buffer pointers to array->buffers
+  NANOARROW_RETURN_NOT_OK(ArrowArrayFlushInternalPointers(dst));
+
+  return NANOARROW_OK;
+}
+
+ArrowErrorCode ArrowArrayMoveShared(struct ArrowArray* array, struct ArrowArray* shared) {
+  struct ArrowArray tmp;
+  tmp.release = NULL;
+  ArrowErrorCode result = ArrowArrayMoveSharedInternal(array, shared);
+  if (result != NANOARROW_OK && tmp.release != NULL) {
+    ArrowArrayRelease(&tmp);
+  }
+
+  return result;
+}
+
+ArrowErrorCode ArrowArrayCloneShared(struct ArrowArray* shared,
+                                     struct ArrowArray* array) {
+  if (!ArrowArrayIsShared(shared)) {
+    return EINVAL;
+  }
+
+  struct ArrowArray tmp;
+  tmp.release = NULL;
+  ArrowErrorCode result = ArrowArrayCloneSharedInternal(shared, array);
+  if (result != NANOARROW_OK && tmp.release != NULL) {
+    ArrowArrayRelease(&tmp);
+  }
+
+  return result;
 }
 
 void ArrowArrayViewInitFromType(struct ArrowArrayView* array_view,
