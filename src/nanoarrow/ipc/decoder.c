@@ -1259,96 +1259,15 @@ static int ArrowIpcDecoderSetType(struct ArrowSchema* schema, ns(Field_table_t) 
   }
 }
 
-// A fun corner case when decoding dictionaries: the extension metadata lives with
-// the dictionary (i.e., the non-index type); however, non-extension field metadata
-// still needs to exist on the field.
-static int ArrowIpcMoveNonExtensionFieldMetadataBackToFieldIfNeeded(
-    struct ArrowSchema* schema) {
+// When decoding dictionaries, we move the value type to the schema->dictionary
+// member, but we need to move the field metadata back because in IPC there
+// is no such thing as dictionary metadata (even extension metadata)
+// https://github.com/apache/arrow/issues/49704
+static int ArrowIpcMoveDictionaryMetadataBackToField(struct ArrowSchema* schema) {
   NANOARROW_DCHECK(schema->dictionary != NULL);
-  struct ArrowMetadataReader reader;
-  NANOARROW_RETURN_NOT_OK(ArrowMetadataReaderInit(&reader, schema->dictionary->metadata));
-
-  // For the most common case (no metadata), nothing needs to be done here
-  if (reader.remaining_keys == 0) {
-    return NANOARROW_OK;
-  }
-
-  // Temporary hack: if this is an extension type called "dict-extension", which is
-  // the exact name used in the integration tests AND the roundtrip tests for the
-  // decoder, move all the extension metadata back to the field because it is the
-  // only known extension type that supports a dictionary as the storage type.
-  struct ArrowSchemaView schema_view;
-  NANOARROW_RETURN_NOT_OK(ArrowSchemaViewInit(&schema_view, schema->dictionary, NULL));
-
-  int all_metadata_back_to_field = 0;
-  if (schema_view.extension_name.size_bytes == 14 &&
-      strncmp(schema_view.extension_name.data, "dict-extension", 14) == 0) {
-    all_metadata_back_to_field = 1;
-  }
-
-  struct ArrowBuffer field_metadata;
-  struct ArrowBuffer extension_metadata;
-  NANOARROW_RETURN_NOT_OK(ArrowMetadataBuilderInit(&field_metadata, NULL));
-  ArrowErrorCode result = ArrowMetadataBuilderInit(&extension_metadata, NULL);
-  if (result != NANOARROW_OK) {
-    ArrowBufferReset(&field_metadata);
-    return result;
-  }
-
-  const struct ArrowStringView extension_name_key = ArrowCharView("ARROW:extension:name");
-  const struct ArrowStringView extension_metadata_key =
-      ArrowCharView("ARROW:extension:metadata");
-
-  struct ArrowStringView key;
-  struct ArrowStringView value;
-  while (reader.remaining_keys > 0) {
-    result = ArrowMetadataReaderRead(&reader, &key, &value);
-    if (result != NANOARROW_OK) {
-      ArrowBufferReset(&field_metadata);
-      ArrowBufferReset(&extension_metadata);
-      return result;
-    }
-
-    int key_is_extension_name =
-        key.size_bytes == extension_name_key.size_bytes &&
-        strncmp(key.data, extension_name_key.data, key.size_bytes) == 0;
-    int key_is_extension_metadata =
-        key.size_bytes == extension_metadata_key.size_bytes &&
-        strncmp(key.data, extension_metadata_key.data, key.size_bytes) == 0;
-
-    if (all_metadata_back_to_field ||
-        (!key_is_extension_name && !key_is_extension_metadata)) {
-      // Non-extension metadata goes to the field
-      result = ArrowMetadataBuilderAppend(&field_metadata, key, value);
-      if (result != NANOARROW_OK) {
-        ArrowBufferReset(&field_metadata);
-        ArrowBufferReset(&extension_metadata);
-        return result;
-      }
-    } else {
-      // Extension metadata stays on the dictionary (value type) unless
-      // all_metadata_back_to_field is non-zero.
-      result = ArrowMetadataBuilderAppend(&extension_metadata, key, value);
-      if (result != NANOARROW_OK) {
-        ArrowBufferReset(&field_metadata);
-        ArrowBufferReset(&extension_metadata);
-        return result;
-      }
-    }
-  }
-
-  result = ArrowSchemaSetMetadata(schema, (char*)field_metadata.data);
-  if (result != NANOARROW_OK) {
-    ArrowBufferReset(&field_metadata);
-    ArrowBufferReset(&extension_metadata);
-    return result;
-  }
-
-  result = ArrowSchemaSetMetadata(schema->dictionary, (char*)extension_metadata.data);
-  ArrowBufferReset(&field_metadata);
-  ArrowBufferReset(&extension_metadata);
-
-  return result;
+  NANOARROW_RETURN_NOT_OK(ArrowSchemaSetMetadata(schema, schema->dictionary->metadata));
+  NANOARROW_RETURN_NOT_OK(ArrowSchemaSetMetadata(schema->dictionary, NULL));
+  return NANOARROW_OK;
 }
 
 static int ArrowIpcSetDictionaryEncoding(
@@ -1387,10 +1306,9 @@ static int ArrowIpcSetDictionaryEncoding(
     schema->flags |= ARROW_FLAG_DICTIONARY_ORDERED;
   }
 
-  // Field metadata should stay with the field; however, we need the extension metadata
-  // to stay with the dictionary.
-  NANOARROW_RETURN_NOT_OK_WITH_ERROR(
-      ArrowIpcMoveNonExtensionFieldMetadataBackToFieldIfNeeded(schema), error);
+  // Sort out field metadata between the schema and the dictionary member
+  NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowIpcMoveDictionaryMetadataBackToField(schema),
+                                     error);
 
   // Track the identifier if we have a dictionaries object in which to track it
   if (dictionaries != NULL) {

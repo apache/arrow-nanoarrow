@@ -1539,9 +1539,11 @@ INSTANTIATE_TEST_SUITE_P(
         // Extension type
         arrow::extension::uuid(),
         // Extension type with dictionary as the storage type
-        dict_extension(),
-        // Dictionary-encoded extension
-        arrow::dictionary(arrow::int32(), arrow::extension::uuid())));
+        dict_extension()
+        // Dictionary-encoded extension is not supported in IPC
+        // https://github.com/apache/arrow/issues/49704
+        // arrow::dictionary(arrow::int32(), arrow::extension::uuid()))
+        ));
 
 class ArrowSchemaParameterizedTestFixture
     : public ::testing::TestWithParam<std::shared_ptr<arrow::Schema>> {
@@ -1702,11 +1704,12 @@ INSTANTIATE_TEST_SUITE_P(
         // Dictionary with field metadata
         arrow::schema({arrow::field(
             "some_name", arrow::dictionary(arrow::int32(), arrow::utf8()),
-            arrow::KeyValueMetadata::Make({"key1", "key2"}, {"value1", "value2"}))}),
-        // Dictionary with field metadata
-        arrow::schema({arrow::field(
-            "some_name", arrow::dictionary(arrow::int32(), arrow::extension::uuid()),
-            arrow::KeyValueMetadata::Make({"key1", "key2"}, {"value1", "value2"}))})));
+            arrow::KeyValueMetadata::Make({"key1", "key2"}, {"value1", "value2"}))})
+        // Dictionary with extension storage and field metadata is not supported in IPC
+        // arrow::schema({arrow::field(
+        //     "some_name", arrow::dictionary(arrow::int32(), arrow::extension::uuid()),
+        //     arrow::KeyValueMetadata::Make({"key1", "key2"}, {"value1", "value2"}))})
+        ));
 
 class ArrowTypeIdParameterizedTestFixture
     : public ::testing::TestWithParam<enum ArrowType> {

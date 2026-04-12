@@ -120,6 +120,8 @@
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcDictionaryEncodingsInit)
 #define ArrowIpcDictionaryEncodingsAppend \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcDictionaryEncodingsAppend)
+#define ArrowIpcDictionaryEncodingsAppendSchema \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcDictionaryEncodingsAppendSchema)
 #define ArrowIpcDictionaryEncodingsFind \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcDictionaryEncodingsFind)
 #define ArrowIpcDictionaryEncodingsFindById \
