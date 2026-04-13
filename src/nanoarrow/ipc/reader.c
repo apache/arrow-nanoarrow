@@ -472,9 +472,10 @@ static int ArrowIpcArrayStreamReaderProcessRecordBatch(
     body_view.data.data = private_data->body.data;
     body_view.size_bytes = private_data->body.size_bytes;
 
-    NANOARROW_RETURN_NOT_OK(ArrowIpcDecoderDecodeArray(
-        &private_data->decoder, body_view, private_data->field_index, out,
-        NANOARROW_VALIDATION_LEVEL_FULL, &private_data->error));
+    NANOARROW_RETURN_NOT_OK(ArrowIpcDecoderDecodeArrayWithDictionaries(
+        &private_data->decoder, body_view, private_data->field_index,
+        &private_data->dictionaries, out, NANOARROW_VALIDATION_LEVEL_FULL,
+        &private_data->error));
   }
 
   return NANOARROW_OK;
