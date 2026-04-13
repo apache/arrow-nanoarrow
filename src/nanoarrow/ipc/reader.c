@@ -482,24 +482,27 @@ static int ArrowIpcArrayStreamReaderProcessRecordBatch(
 
 static int ArrowIpcArrayStreamReaderProcessDictionary(
     struct ArrowIpcArrayStreamReaderPrivate* private_data) {
-  if (!private_data->use_shared_buffers) {
-    ArrowErrorSet(&private_data->error,
-                  "Dictionary decode without shared buffers is not supported");
-    return ENOTSUP;
-  }
-
   // Read in the body
   NANOARROW_RETURN_NOT_OK(ArrowIpcArrayStreamReaderNextBody(private_data));
 
-  // Decode the dictionary
-  struct ArrowIpcSharedBuffer shared;
-  NANOARROW_RETURN_NOT_OK_WITH_ERROR(
-      ArrowIpcSharedBufferInit(&shared, &private_data->body), &private_data->error);
-  int result = ArrowIpcDecoderDecodeDictionaryFromShared(
-      &private_data->decoder, &shared, NANOARROW_VALIDATION_LEVEL_FULL,
-      &private_data->dictionaries, &private_data->error);
-  ArrowIpcSharedBufferReset(&shared);
-  NANOARROW_RETURN_NOT_OK(result);
+  if (private_data->use_shared_buffers) {
+    // Decode the dictionary
+    struct ArrowIpcSharedBuffer shared;
+    NANOARROW_RETURN_NOT_OK_WITH_ERROR(
+        ArrowIpcSharedBufferInit(&shared, &private_data->body), &private_data->error);
+    int result = ArrowIpcDecoderDecodeDictionaryFromShared(
+        &private_data->decoder, &shared, NANOARROW_VALIDATION_LEVEL_FULL,
+        &private_data->dictionaries, &private_data->error);
+    ArrowIpcSharedBufferReset(&shared);
+    NANOARROW_RETURN_NOT_OK(result);
+  } else {
+    struct ArrowBufferView body_view;
+    body_view.data.data = private_data->body.data;
+    body_view.size_bytes = private_data->body.size_bytes;
+    NANOARROW_RETURN_NOT_OK(ArrowIpcDecoderDecodeDictionary(
+        &private_data->decoder, body_view, NANOARROW_VALIDATION_LEVEL_FULL,
+        &private_data->dictionaries, &private_data->error));
+  }
 
   return NANOARROW_OK;
 }
