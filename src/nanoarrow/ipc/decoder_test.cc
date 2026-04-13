@@ -734,11 +734,12 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDecodeDictionaryBatchDecode) {
   // Check that we can't decode a dictionary batch if we haven't read a dictionary batch
   // message
   ASSERT_EQ(ArrowIpcDecoderInit(&decoder), NANOARROW_OK);
-  struct ArrowIpcSharedBuffer shared;
-  ASSERT_EQ(
-      ArrowIpcDecoderDecodeDictionaryFromShared(
-          &decoder, &shared, NANOARROW_VALIDATION_LEVEL_FULL, &dictionaries, &error),
-      EINVAL);
+  struct ArrowBufferView body;
+  body.data.data = nullptr;
+  body.size_bytes = 0;
+  ASSERT_EQ(ArrowIpcDecoderDecodeDictionary(
+                &decoder, body, NANOARROW_VALIDATION_LEVEL_FULL, &dictionaries, &error),
+            EINVAL);
   ASSERT_STREQ(error.message, "decoder did not just decode a DictionaryBatch message");
 
   // Decode a dictionary batch and inspect metadata
@@ -754,17 +755,12 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDecodeDictionaryBatchDecode) {
   EXPECT_FALSE(decoder.dictionary->is_delta);
 
   // Decode the dictionary batch
-  data.data.as_uint8 += decoder.header_size_bytes;
-  data.size_bytes = decoder.body_size_bytes;
-  struct ArrowBuffer body;
-  ArrowBufferInit(&body);
-  ASSERT_EQ(ArrowBufferAppendBufferView(&body, data), NANOARROW_OK);
+  body.data.as_uint8 = data.data.as_uint8 + decoder.header_size_bytes;
+  body.size_bytes = decoder.body_size_bytes;
 
-  ASSERT_EQ(ArrowIpcSharedBufferInit(&shared, &body), NANOARROW_OK);
-  ASSERT_EQ(
-      ArrowIpcDecoderDecodeDictionaryFromShared(
-          &decoder, &shared, NANOARROW_VALIDATION_LEVEL_FULL, &dictionaries, &error),
-      NANOARROW_OK);
+  ASSERT_EQ(ArrowIpcDecoderDecodeDictionary(
+                &decoder, body, NANOARROW_VALIDATION_LEVEL_FULL, &dictionaries, &error),
+            NANOARROW_OK);
 
   // If we find the current value of the dictionary we should get the correct array
   const struct ArrowArray* dictionary_value;
@@ -788,10 +784,9 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDecodeDictionaryBatchDecode) {
 
   // If we try to decode the dictionary again it should succeed (because the dictionary
   // is in replacement mode)
-  ASSERT_EQ(
-      ArrowIpcDecoderDecodeDictionaryFromShared(
-          &decoder, &shared, NANOARROW_VALIDATION_LEVEL_FULL, &dictionaries, &error),
-      NANOARROW_OK);
+  ASSERT_EQ(ArrowIpcDecoderDecodeDictionary(
+                &decoder, body, NANOARROW_VALIDATION_LEVEL_FULL, &dictionaries, &error),
+            NANOARROW_OK);
   ASSERT_EQ(ArrowArrayViewSetArray(&array_view, dictionary_value, &error), NANOARROW_OK);
 
   ASSERT_EQ(array_view.length, 3);
@@ -801,10 +796,9 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDecodeDictionaryBatchDecode) {
 
   // If we try to decode a delta dictionary, we should fail with a reasonable message
   const_cast<struct ArrowIpcDictionaryBatch*>(decoder.dictionary)->is_delta = 1;
-  ASSERT_EQ(
-      ArrowIpcDecoderDecodeDictionaryFromShared(
-          &decoder, &shared, NANOARROW_VALIDATION_LEVEL_FULL, &dictionaries, &error),
-      ENOTSUP);
+  ASSERT_EQ(ArrowIpcDecoderDecodeDictionary(
+                &decoder, body, NANOARROW_VALIDATION_LEVEL_FULL, &dictionaries, &error),
+            ENOTSUP);
   ASSERT_STREQ(error.message, "Dictionary concatenation is not yet supported");
 
   // After all of this, we should be able to actually decode a RecordBatch
@@ -871,7 +865,6 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDecodeDictionaryBatchDecode) {
   ArrowIpcSharedBufferReset(&record_batch_shared);
 
   ArrowArrayViewReset(&array_view);
-  ArrowIpcSharedBufferReset(&shared);
   ArrowIpcDictionariesReset(&dictionaries);
   ArrowIpcDictionaryEncodingsReset(&dictionary_encodings);
   ArrowSchemaRelease(&schema);
