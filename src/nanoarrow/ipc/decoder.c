@@ -2722,14 +2722,10 @@ ArrowErrorCode ArrowIpcDecoderDecodeArrayFromShared(
                                                               validation_level, error);
 }
 
-NANOARROW_DLL ArrowErrorCode ArrowIpcDecoderDecodeDictionaryFromShared(
-    struct ArrowIpcDecoder* decoder, struct ArrowIpcSharedBuffer* shared,
+static ArrowErrorCode ArrowIpcDecoderDecodeDictionaryInternal(
+    struct ArrowIpcDecoder* decoder, struct ArrowIpcBufferFactory factory,
     enum ArrowValidationLevel validation_level, struct ArrowIpcDictionaries* dictionaries,
     struct ArrowError* error) {
-  NANOARROW_DCHECK(decoder != NULL);
-  NANOARROW_DCHECK(shared != NULL);
-  NANOARROW_DCHECK(dictionaries != NULL);
-
   struct ArrowIpcDecoderPrivate* private_data =
       (struct ArrowIpcDecoderPrivate*)decoder->private_data;
 
@@ -2761,12 +2757,23 @@ NANOARROW_DLL ArrowErrorCode ArrowIpcDecoderDecodeDictionaryFromShared(
   // Transfer the endianness setting so that buffers are byte-swapped if needed
   dictionary_decoder_private_data->endianness = private_data->endianness;
 
+  struct ArrowArrayView* array_view;
+  NANOARROW_RETURN_NOT_OK(ArrowIpcDecoderDecodeArrayViewInternal(
+      &dictionary->decoder, factory, 0, dictionaries, &array_view, error));
+
+  NANOARROW_RETURN_NOT_OK(ArrowArrayViewValidate(array_view, validation_level, error));
+
   struct ArrowArray tmp;
+  tmp.release = NULL;
+  int result = ArrowIpcDecoderDecodeArrayInternal(&dictionary->decoder, 0, &tmp,
+                                                  validation_level, error);
+  if (result != NANOARROW_OK && tmp.release != NULL) {
+    ArrowArrayRelease(&tmp);
+    return result;
+  } else if (result != NANOARROW_OK) {
+    return result;
+  }
 
-  NANOARROW_RETURN_NOT_OK(ArrowIpcDecoderDecodeArrayFromSharedWithDictionaries(
-      &dictionary->decoder, shared, 0, dictionaries, &tmp, validation_level, error));
-
-  ArrowErrorCode result;
   if (decoder->dictionary->is_delta) {
     result = ArrowIpcDictionaryAppend(dictionary, &tmp, error);
   } else {
@@ -2779,4 +2786,29 @@ NANOARROW_DLL ArrowErrorCode ArrowIpcDecoderDecodeDictionaryFromShared(
   }
 
   return NANOARROW_OK;
+}
+
+NANOARROW_DLL ArrowErrorCode ArrowIpcDecoderDecodeDictionary(
+    struct ArrowIpcDecoder* decoder, struct ArrowBufferView body,
+    enum ArrowValidationLevel validation_level, struct ArrowIpcDictionaries* dictionaries,
+    struct ArrowError* error) {
+  NANOARROW_DCHECK(decoder != NULL);
+  NANOARROW_DCHECK(dictionaries != NULL);
+
+  return ArrowIpcDecoderDecodeDictionaryInternal(decoder,
+                                                 ArrowIpcBufferFactoryFromView(&body),
+                                                 validation_level, dictionaries, error);
+}
+
+NANOARROW_DLL ArrowErrorCode ArrowIpcDecoderDecodeDictionaryFromShared(
+    struct ArrowIpcDecoder* decoder, struct ArrowIpcSharedBuffer* shared,
+    enum ArrowValidationLevel validation_level, struct ArrowIpcDictionaries* dictionaries,
+    struct ArrowError* error) {
+  NANOARROW_DCHECK(decoder != NULL);
+  NANOARROW_DCHECK(shared != NULL);
+  NANOARROW_DCHECK(dictionaries != NULL);
+
+  return ArrowIpcDecoderDecodeDictionaryInternal(decoder,
+                                                 ArrowIpcBufferFactoryFromShared(shared),
+                                                 validation_level, dictionaries, error);
 }

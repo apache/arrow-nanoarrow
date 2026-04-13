@@ -691,7 +691,7 @@ NANOARROW_DLL ArrowErrorCode ArrowIpcDecoderDecodeArrayFromShared(
 /// in this stream. The decoded value may be obtained with
 /// ArrowIpcDictionariesFindCurrentValue.
 NANOARROW_DLL ArrowErrorCode ArrowIpcDecoderDecodeDictionary(
-    struct ArrowIpcDecoder* decoder, struct ArrowIpcSharedBuffer* shared,
+    struct ArrowIpcDecoder* decoder, struct ArrowBufferView body,
     enum ArrowValidationLevel validation_level, struct ArrowIpcDictionaries* out,
     struct ArrowError* error);
 
