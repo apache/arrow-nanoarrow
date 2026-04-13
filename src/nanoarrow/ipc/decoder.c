@@ -2722,7 +2722,7 @@ ArrowErrorCode ArrowIpcDecoderDecodeArrayFromShared(
                                                               validation_level, error);
 }
 
-NANOARROW_DLL ArrowErrorCode ArrowIpcDecoderDecodeDictionary(
+NANOARROW_DLL ArrowErrorCode ArrowIpcDecoderDecodeDictionaryFromShared(
     struct ArrowIpcDecoder* decoder, struct ArrowIpcSharedBuffer* shared,
     enum ArrowValidationLevel validation_level, struct ArrowIpcDictionaries* dictionaries,
     struct ArrowError* error) {

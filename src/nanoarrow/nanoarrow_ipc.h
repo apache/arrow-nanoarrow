@@ -138,6 +138,8 @@
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcDictionariesReset)
 #define ArrowIpcDecoderDecodeDictionary \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcDecoderDecodeDictionary)
+#define ArrowIpcDecoderDecodeDictionaryFromShared \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcDecoderDecodeDictionaryFromShared)
 
 #endif
 
@@ -680,7 +682,27 @@ NANOARROW_DLL ArrowErrorCode ArrowIpcDecoderDecodeArrayFromShared(
     struct ArrowArray* out, enum ArrowValidationLevel validation_level,
     struct ArrowError* error);
 
+/// \brief Decode an ArrowArray from a dictionary batch into the given
+/// ArrowIpcDictionaries
+///
+/// After a successful call to ArrowIpcDecoderDecodeHeader(), assemble an ArrowArray given
+/// and place it into out for the decoding of future dictionaries. Note that other
+/// dictionaries in out may be used during the decoding if there are nested dictionaries
+/// in this stream. The decoded value may be obtained with
+/// ArrowIpcDictionariesFindCurrentValue.
 NANOARROW_DLL ArrowErrorCode ArrowIpcDecoderDecodeDictionary(
+    struct ArrowIpcDecoder* decoder, struct ArrowIpcSharedBuffer* shared,
+    enum ArrowValidationLevel validation_level, struct ArrowIpcDictionaries* out,
+    struct ArrowError* error);
+
+/// \brief Decode an ArrowArray from a dictionary batch from an owned buffer
+///
+/// This implementation takes advantage of the fact that it can avoid copying individual
+/// buffers. In all cases the caller must ArrowIpcSharedBufferReset() body after one or
+/// more calls to ArrowIpcDecoderDecodeArrayFromShared(). If
+/// ArrowIpcSharedBufferIsThreadSafe() returns 0, no batches decoded using out may
+/// be released from another thread.
+NANOARROW_DLL ArrowErrorCode ArrowIpcDecoderDecodeDictionaryFromShared(
     struct ArrowIpcDecoder* decoder, struct ArrowIpcSharedBuffer* shared,
     enum ArrowValidationLevel validation_level, struct ArrowIpcDictionaries* out,
     struct ArrowError* error);

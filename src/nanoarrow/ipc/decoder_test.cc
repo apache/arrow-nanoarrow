@@ -736,8 +736,8 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDecodeDictionaryBatchDecode) {
   ASSERT_EQ(ArrowIpcDecoderInit(&decoder), NANOARROW_OK);
   struct ArrowIpcSharedBuffer shared;
   ASSERT_EQ(
-      ArrowIpcDecoderDecodeDictionary(&decoder, &shared, NANOARROW_VALIDATION_LEVEL_FULL,
-                                      &dictionaries, &error),
+      ArrowIpcDecoderDecodeDictionaryFromShared(
+          &decoder, &shared, NANOARROW_VALIDATION_LEVEL_FULL, &dictionaries, &error),
       EINVAL);
   ASSERT_STREQ(error.message, "decoder did not just decode a DictionaryBatch message");
 
@@ -762,8 +762,8 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDecodeDictionaryBatchDecode) {
 
   ASSERT_EQ(ArrowIpcSharedBufferInit(&shared, &body), NANOARROW_OK);
   ASSERT_EQ(
-      ArrowIpcDecoderDecodeDictionary(&decoder, &shared, NANOARROW_VALIDATION_LEVEL_FULL,
-                                      &dictionaries, &error),
+      ArrowIpcDecoderDecodeDictionaryFromShared(
+          &decoder, &shared, NANOARROW_VALIDATION_LEVEL_FULL, &dictionaries, &error),
       NANOARROW_OK);
 
   // If we find the current value of the dictionary we should get the correct array
@@ -789,8 +789,8 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDecodeDictionaryBatchDecode) {
   // If we try to decode the dictionary again it should succeed (because the dictionary
   // is in replacement mode)
   ASSERT_EQ(
-      ArrowIpcDecoderDecodeDictionary(&decoder, &shared, NANOARROW_VALIDATION_LEVEL_FULL,
-                                      &dictionaries, &error),
+      ArrowIpcDecoderDecodeDictionaryFromShared(
+          &decoder, &shared, NANOARROW_VALIDATION_LEVEL_FULL, &dictionaries, &error),
       NANOARROW_OK);
   ASSERT_EQ(ArrowArrayViewSetArray(&array_view, dictionary_value, &error), NANOARROW_OK);
 
@@ -802,8 +802,8 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDecodeDictionaryBatchDecode) {
   // If we try to decode a delta dictionary, we should fail with a reasonable message
   const_cast<struct ArrowIpcDictionaryBatch*>(decoder.dictionary)->is_delta = 1;
   ASSERT_EQ(
-      ArrowIpcDecoderDecodeDictionary(&decoder, &shared, NANOARROW_VALIDATION_LEVEL_FULL,
-                                      &dictionaries, &error),
+      ArrowIpcDecoderDecodeDictionaryFromShared(
+          &decoder, &shared, NANOARROW_VALIDATION_LEVEL_FULL, &dictionaries, &error),
       ENOTSUP);
   ASSERT_STREQ(error.message, "Dictionary concatenation is not yet supported");
 

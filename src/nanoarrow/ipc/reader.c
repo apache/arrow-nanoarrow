@@ -495,7 +495,7 @@ static int ArrowIpcArrayStreamReaderProcessDictionary(
   struct ArrowIpcSharedBuffer shared;
   NANOARROW_RETURN_NOT_OK_WITH_ERROR(
       ArrowIpcSharedBufferInit(&shared, &private_data->body), &private_data->error);
-  int result = ArrowIpcDecoderDecodeDictionary(
+  int result = ArrowIpcDecoderDecodeDictionaryFromShared(
       &private_data->decoder, &shared, NANOARROW_VALIDATION_LEVEL_FULL,
       &private_data->dictionaries, &private_data->error);
   ArrowIpcSharedBufferReset(&shared);
