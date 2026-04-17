@@ -435,6 +435,7 @@ static int ArrowIpcArrayStreamReaderReadSchemaIfNeeded(
       &private_data->decoder, &tmp, &dictionary_encodings, &private_data->error);
   ArrowIpcDictionaryEncodingsReset(&dictionary_encodings);
   if (result != NANOARROW_OK) {
+    ArrowIpcDictionariesReset(&private_data->dictionaries);
     ArrowSchemaRelease(&tmp);
     return result;
   }
