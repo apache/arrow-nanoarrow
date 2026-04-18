@@ -64,6 +64,9 @@ RUN git clone https://github.com/apache/arrow-rs.git /arrow-integration/rust --d
 # (the conda C compiler referenced by $CC doesn't exist in this image)
 ENV ZSTD_SYS_USE_PKG_CONFIG=1
 
+# Install Go (the base image sets GOROOT=/opt/conda/go but doesn't install it)
+RUN conda install -y go
+
 # Build all the integrations except nanoarrow (since we'll do that ourselves on each run)
 RUN ARCHERY_INTEGRATION_WITH_NANOARROW="0" \
     conda run --no-capture-output \
