@@ -295,6 +295,44 @@ ArrowErrorCode ArrowIpcDictionaryEncodingsAppend(
   return NANOARROW_OK;
 }
 
+static ArrowErrorCode ArrowIpcDictionaryEncodingsAppendSchemaInternal(
+    struct ArrowIpcDictionaryEncodings* dictionary_encodings,
+    const struct ArrowSchema* schema, int64_t* next_id) {
+  if (schema->dictionary != NULL) {
+    struct ArrowIpcDictionaryEncoding encoding;
+    encoding.schema = schema;
+    encoding.id = (*next_id)++;
+    encoding.kind = NANOARROW_IPC_DICTIONARY_KIND_DENSE_ARRAY;
+    NANOARROW_RETURN_NOT_OK(
+        ArrowIpcDictionaryEncodingsAppend(dictionary_encodings, encoding));
+  }
+
+  for (int64_t i = 0; i < schema->n_children; i++) {
+    NANOARROW_DCHECK(schema->children != NULL && schema->children[i] != NULL);
+    NANOARROW_RETURN_NOT_OK(ArrowIpcDictionaryEncodingsAppendSchemaInternal(
+        dictionary_encodings, schema->children[i], next_id));
+  }
+
+  if (schema->dictionary != NULL) {
+    NANOARROW_RETURN_NOT_OK(ArrowIpcDictionaryEncodingsAppendSchemaInternal(
+        dictionary_encodings, schema->dictionary, next_id));
+  }
+
+  return NANOARROW_OK;
+}
+
+ArrowErrorCode ArrowIpcDictionaryEncodingsAppendSchema(
+    struct ArrowIpcDictionaryEncodings* dictionary_encodings,
+    const struct ArrowSchema* schema) {
+  NANOARROW_DCHECK(dictionary_encodings != NULL);
+
+  int64_t next_id = 0;
+  NANOARROW_RETURN_NOT_OK(ArrowIpcDictionaryEncodingsAppendSchemaInternal(
+      dictionary_encodings, schema, &next_id));
+
+  return NANOARROW_OK;
+}
+
 const struct ArrowIpcDictionaryEncoding* ArrowIpcDictionaryEncodingsFind(
     const struct ArrowIpcDictionaryEncodings* dictionary_encodings,
     const struct ArrowSchema* schema) {
@@ -414,12 +452,13 @@ static ArrowErrorCode ArrowIpcDictionaryReplace(struct ArrowIpcDictionary* dicti
 static ArrowErrorCode ArrowIpcDictionaryAppend(struct ArrowIpcDictionary* dictionary,
                                                struct ArrowArray* value,
                                                struct ArrowError* error) {
-  if (dictionary->current_value.release != NULL) {
+  if (dictionary->current_value.release != NULL &&
+      dictionary->current_value.length != 0) {
     ArrowErrorSet(error, "Dictionary concatenation is not yet supported");
     return ENOTSUP;
   }
 
-  ArrowArrayMove(value, &dictionary->current_value);
+  NANOARROW_RETURN_NOT_OK(ArrowIpcDictionaryReplace(dictionary, value, error));
   return NANOARROW_OK;
 }
 
@@ -492,7 +531,24 @@ static ArrowErrorCode ArrowIpcDictionariesInitDictionaries(
       return result;
     }
 
+    // Set the ID
     dictionary->id = unique_ids[i];
+
+    // Set the initial array value to a valid array with zero length. This is
+    // needed because empty and/or all null columns may not have a dictionary
+    // message emitted before a record batch arrives.
+    result = ArrowArrayInitFromSchema(&dictionary->current_value,
+                                      encoding->schema->dictionary, error);
+    if (result != NANOARROW_OK) {
+      *num_initialized_decoders_out = i + 1;
+      return result;
+    }
+
+    result = ArrowArrayFinishBuildingDefault(&dictionary->current_value, error);
+    if (result != NANOARROW_OK) {
+      *num_initialized_decoders_out = i + 1;
+      return result;
+    }
   }
 
   *num_initialized_decoders_out = private_data->num_dictionaries;
@@ -1203,78 +1259,15 @@ static int ArrowIpcDecoderSetType(struct ArrowSchema* schema, ns(Field_table_t) 
   }
 }
 
-// A fun corner case when decoding dictionaries: the extension metadata lives with
-// the dictionary (i.e., the non-index type); however, the field metadata still
-// needs to exist on the field.
-static int ArrowIpcMoveNonExtensionFieldMetadataBackToFieldIfNeeded(
-    struct ArrowSchema* schema) {
+// When decoding dictionaries, we move the value type to the schema->dictionary
+// member, but we need to move the field metadata back because in IPC there
+// is no such thing as dictionary metadata (even extension metadata)
+// https://github.com/apache/arrow/issues/49704
+static int ArrowIpcMoveDictionaryMetadataBackToField(struct ArrowSchema* schema) {
   NANOARROW_DCHECK(schema->dictionary != NULL);
-  struct ArrowMetadataReader reader;
-  NANOARROW_RETURN_NOT_OK(ArrowMetadataReaderInit(&reader, schema->dictionary->metadata));
-
-  // For the most common case (no metadata), nothing needs to be done here
-  if (reader.remaining_keys == 0) {
-    return NANOARROW_OK;
-  }
-
-  struct ArrowBuffer field_metadata;
-  struct ArrowBuffer extension_metadata;
-  NANOARROW_RETURN_NOT_OK(ArrowMetadataBuilderInit(&field_metadata, NULL));
-  ArrowErrorCode result = ArrowMetadataBuilderInit(&extension_metadata, NULL);
-  if (result != NANOARROW_OK) {
-    ArrowBufferReset(&field_metadata);
-    return result;
-  }
-
-  const struct ArrowStringView extension_name_key = ArrowCharView("ARROW:extension:name");
-  const struct ArrowStringView extension_metadata_key =
-      ArrowCharView("ARROW:extension:metadata");
-
-  struct ArrowStringView key;
-  struct ArrowStringView value;
-  while (reader.remaining_keys > 0) {
-    result = ArrowMetadataReaderRead(&reader, &key, &value);
-    if (result != NANOARROW_OK) {
-      ArrowBufferReset(&field_metadata);
-      ArrowBufferReset(&extension_metadata);
-      return result;
-    }
-
-    int key_is_extension_name =
-        key.size_bytes == extension_name_key.size_bytes &&
-        strncmp(key.data, extension_name_key.data, key.size_bytes) == 0;
-    int key_is_extension_metadata =
-        key.size_bytes == extension_metadata_key.size_bytes &&
-        strncmp(key.data, extension_metadata_key.data, key.size_bytes) == 0;
-    if (!key_is_extension_name && !key_is_extension_metadata) {
-      result = ArrowMetadataBuilderAppend(&field_metadata, key, value);
-      if (result != NANOARROW_OK) {
-        ArrowBufferReset(&field_metadata);
-        ArrowBufferReset(&extension_metadata);
-        return result;
-      }
-    } else {
-      result = ArrowMetadataBuilderAppend(&extension_metadata, key, value);
-      if (result != NANOARROW_OK) {
-        ArrowBufferReset(&field_metadata);
-        ArrowBufferReset(&extension_metadata);
-        return result;
-      }
-    }
-  }
-
-  result = ArrowSchemaSetMetadata(schema, (char*)field_metadata.data);
-  if (result != NANOARROW_OK) {
-    ArrowBufferReset(&field_metadata);
-    ArrowBufferReset(&extension_metadata);
-    return result;
-  }
-
-  result = ArrowSchemaSetMetadata(schema->dictionary, (char*)extension_metadata.data);
-  ArrowBufferReset(&field_metadata);
-  ArrowBufferReset(&extension_metadata);
-
-  return result;
+  NANOARROW_RETURN_NOT_OK(ArrowSchemaSetMetadata(schema, schema->dictionary->metadata));
+  NANOARROW_RETURN_NOT_OK(ArrowSchemaSetMetadata(schema->dictionary, NULL));
+  return NANOARROW_OK;
 }
 
 static int ArrowIpcSetDictionaryEncoding(
@@ -1313,10 +1306,9 @@ static int ArrowIpcSetDictionaryEncoding(
     schema->flags |= ARROW_FLAG_DICTIONARY_ORDERED;
   }
 
-  // Field metadata should stay with the field; however, we need the extension metadata
-  // to stay with the dictionary.
-  NANOARROW_RETURN_NOT_OK_WITH_ERROR(
-      ArrowIpcMoveNonExtensionFieldMetadataBackToFieldIfNeeded(schema), error);
+  // Sort out field metadata between the schema and the dictionary member
+  NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowIpcMoveDictionaryMetadataBackToField(schema),
+                                     error);
 
   // Track the identifier if we have a dictionaries object in which to track it
   if (dictionaries != NULL) {
@@ -2354,6 +2346,7 @@ struct ArrowIpcArraySetter {
   struct ArrowIpcBufferSource src;
   struct ArrowIpcBufferFactory factory;
   enum ArrowIpcMetadataVersion version;
+  struct ArrowIpcDictionaries* dictionaries;
 };
 
 static int ArrowIpcDecoderMakeBuffer(struct ArrowIpcArraySetter* setter, int64_t offset,
@@ -2420,6 +2413,12 @@ static int ArrowIpcDecoderWalkGetArray(struct ArrowArrayView* array_view,
         array_view->children[i], array->children[i], out->children[i], error));
   }
 
+  if (array_view->dictionary != NULL) {
+    // TODO: this currently copies the array for every output.
+    NANOARROW_RETURN_NOT_OK(ArrowIpcDecoderWalkGetArray(
+        array_view->dictionary, array->dictionary, out->dictionary, error));
+  }
+
   return NANOARROW_OK;
 }
 
@@ -2430,10 +2429,32 @@ static int ArrowIpcDecoderWalkSetArrayView(struct ArrowIpcDecoder* decoder,
                                            struct ArrowError* error) {
   struct ArrowIpcDecoderPrivate* private_data =
       (struct ArrowIpcDecoderPrivate*)decoder->private_data;
-  struct ArrowIpcField* ipc_field = private_data->fields + setter->field_i;
+
+  // setter->field_i indexes the flatbuffer FieldNode vector (which excludes the root
+  // struct), but private_data->fields includes the root at index 0, so add 1.
+  struct ArrowIpcField* ipc_field = private_data->fields + setter->field_i + 1;
   if (ipc_field->dictionary_id != NANOARROW_IPC_NO_DICTIONARY_ID) {
-    ArrowErrorSet(error, "Decoding a dictionary-encoding field is not supported");
-    return ENOTSUP;
+    if (setter->dictionaries == NULL) {
+      ArrowErrorSet(
+          error, "Can't decode a dictionary-encoded field without ArrowIpcDictionaries");
+      return ENOTSUP;
+    }
+
+    const struct ArrowArray* dictionary;
+    NANOARROW_RETURN_NOT_OK(ArrowIpcDictionariesFindCurrentValue(
+        setter->dictionaries, ipc_field->dictionary_id, &dictionary, error));
+
+    if (dictionary->release == NULL) {
+      ArrowErrorSet(error, "Dictionary with ID %" PRId64 " is marked as released",
+                    ipc_field->dictionary_id);
+      return EINVAL;
+    }
+
+    // Set the dictionary array view from the value. We may be able to skip this
+    // if we can somehow detect that the dictionary hasn't changed since the last
+    // decode.
+    NANOARROW_RETURN_NOT_OK(
+        ArrowArrayViewSetArray(array_view->dictionary, dictionary, error));
   }
 
   ns(FieldNode_struct_t) field =
@@ -2538,7 +2559,8 @@ static ArrowErrorCode ArrowIpcDecoderDecodeArrayInternal(
 
 static ArrowErrorCode ArrowIpcDecoderDecodeArrayViewInternal(
     struct ArrowIpcDecoder* decoder, struct ArrowIpcBufferFactory factory,
-    int64_t field_i, struct ArrowArrayView** out_view, struct ArrowError* error) {
+    int64_t field_i, struct ArrowIpcDictionaries* dictionaries,
+    struct ArrowArrayView** out_view, struct ArrowError* error) {
   struct ArrowIpcDecoderPrivate* private_data =
       (struct ArrowIpcDecoderPrivate*)decoder->private_data;
 
@@ -2563,6 +2585,7 @@ static ArrowErrorCode ArrowIpcDecoderDecodeArrayViewInternal(
   setter.src.codec = decoder->codec;
   setter.src.swap_endian = ArrowIpcDecoderNeedsSwapEndian(decoder);
   setter.version = decoder->metadata_version;
+  setter.dictionaries = dictionaries;
 
   // If we are going to need a decompressor here, ensure the default one is
   // initialized.
@@ -2600,10 +2623,10 @@ static ArrowErrorCode ArrowIpcDecoderDecodeArrayViewInternal(
   return NANOARROW_OK;
 }
 
-ArrowErrorCode ArrowIpcDecoderDecodeArrayView(struct ArrowIpcDecoder* decoder,
-                                              struct ArrowBufferView body, int64_t i,
-                                              struct ArrowArrayView** out,
-                                              struct ArrowError* error) {
+NANOARROW_DLL ArrowErrorCode ArrowIpcDecoderDecodeArrayViewWithDictionaries(
+    struct ArrowIpcDecoder* decoder, struct ArrowBufferView body, int64_t i,
+    struct ArrowIpcDictionaries* dictionaries, struct ArrowArrayView** out,
+    struct ArrowError* error) {
   struct ArrowIpcDecoderPrivate* private_data =
       (struct ArrowIpcDecoderPrivate*)decoder->private_data;
   if (private_data->last_message == NULL ||
@@ -2613,14 +2636,21 @@ ArrowErrorCode ArrowIpcDecoderDecodeArrayView(struct ArrowIpcDecoder* decoder,
   }
 
   return ArrowIpcDecoderDecodeArrayViewInternal(
-      decoder, ArrowIpcBufferFactoryFromView(&body), i, out, error);
+      decoder, ArrowIpcBufferFactoryFromView(&body), i, dictionaries, out, error);
 }
 
-ArrowErrorCode ArrowIpcDecoderDecodeArray(struct ArrowIpcDecoder* decoder,
-                                          struct ArrowBufferView body, int64_t i,
-                                          struct ArrowArray* out,
-                                          enum ArrowValidationLevel validation_level,
-                                          struct ArrowError* error) {
+ArrowErrorCode ArrowIpcDecoderDecodeArrayView(struct ArrowIpcDecoder* decoder,
+                                              struct ArrowBufferView body, int64_t i,
+                                              struct ArrowArrayView** out,
+                                              struct ArrowError* error) {
+  return ArrowIpcDecoderDecodeArrayViewWithDictionaries(decoder, body, i, NULL, out,
+                                                        error);
+}
+
+NANOARROW_DLL ArrowErrorCode ArrowIpcDecoderDecodeArrayWithDictionaries(
+    struct ArrowIpcDecoder* decoder, struct ArrowBufferView body, int64_t i,
+    struct ArrowIpcDictionaries* dictionaries, struct ArrowArray* out,
+    enum ArrowValidationLevel validation_level, struct ArrowError* error) {
   struct ArrowIpcDecoderPrivate* private_data =
       (struct ArrowIpcDecoderPrivate*)decoder->private_data;
   if (private_data->last_message == NULL ||
@@ -2631,7 +2661,42 @@ ArrowErrorCode ArrowIpcDecoderDecodeArray(struct ArrowIpcDecoder* decoder,
 
   struct ArrowArrayView* array_view;
   NANOARROW_RETURN_NOT_OK(ArrowIpcDecoderDecodeArrayViewInternal(
-      decoder, ArrowIpcBufferFactoryFromView(&body), i, &array_view, error));
+      decoder, ArrowIpcBufferFactoryFromView(&body), i, dictionaries, &array_view,
+      error));
+
+  NANOARROW_RETURN_NOT_OK(ArrowArrayViewValidate(array_view, validation_level, error));
+
+  struct ArrowArray temp;
+  temp.release = NULL;
+  int result =
+      ArrowIpcDecoderDecodeArrayInternal(decoder, i, &temp, validation_level, error);
+  if (result != NANOARROW_OK && temp.release != NULL) {
+    ArrowArrayRelease(&temp);
+  } else if (result != NANOARROW_OK) {
+    return result;
+  }
+
+  ArrowArrayMove(&temp, out);
+  return NANOARROW_OK;
+}
+
+ArrowErrorCode ArrowIpcDecoderDecodeArray(struct ArrowIpcDecoder* decoder,
+                                          struct ArrowBufferView body, int64_t i,
+                                          struct ArrowArray* out,
+                                          enum ArrowValidationLevel validation_level,
+                                          struct ArrowError* error) {
+  return ArrowIpcDecoderDecodeArrayWithDictionaries(decoder, body, i, NULL, out,
+                                                    validation_level, error);
+}
+
+ArrowErrorCode ArrowIpcDecoderDecodeArrayFromSharedWithDictionaries(
+    struct ArrowIpcDecoder* decoder, struct ArrowIpcSharedBuffer* body, int64_t i,
+    struct ArrowIpcDictionaries* dictionaries, struct ArrowArray* out,
+    enum ArrowValidationLevel validation_level, struct ArrowError* error) {
+  struct ArrowArrayView* array_view;
+  NANOARROW_RETURN_NOT_OK(ArrowIpcDecoderDecodeArrayViewInternal(
+      decoder, ArrowIpcBufferFactoryFromShared(body), i, dictionaries, &array_view,
+      error));
 
   NANOARROW_RETURN_NOT_OK(ArrowArrayViewValidate(array_view, validation_level, error));
 
@@ -2653,34 +2718,14 @@ ArrowErrorCode ArrowIpcDecoderDecodeArrayFromShared(
     struct ArrowIpcDecoder* decoder, struct ArrowIpcSharedBuffer* body, int64_t i,
     struct ArrowArray* out, enum ArrowValidationLevel validation_level,
     struct ArrowError* error) {
-  struct ArrowArrayView* array_view;
-  NANOARROW_RETURN_NOT_OK(ArrowIpcDecoderDecodeArrayViewInternal(
-      decoder, ArrowIpcBufferFactoryFromShared(body), i, &array_view, error));
-
-  NANOARROW_RETURN_NOT_OK(ArrowArrayViewValidate(array_view, validation_level, error));
-
-  struct ArrowArray temp;
-  temp.release = NULL;
-  int result =
-      ArrowIpcDecoderDecodeArrayInternal(decoder, i, &temp, validation_level, error);
-  if (result != NANOARROW_OK && temp.release != NULL) {
-    ArrowArrayRelease(&temp);
-  } else if (result != NANOARROW_OK) {
-    return result;
-  }
-
-  ArrowArrayMove(&temp, out);
-  return NANOARROW_OK;
+  return ArrowIpcDecoderDecodeArrayFromSharedWithDictionaries(decoder, body, i, NULL, out,
+                                                              validation_level, error);
 }
 
-NANOARROW_DLL ArrowErrorCode ArrowIpcDecoderDecodeDictionary(
-    struct ArrowIpcDecoder* decoder, struct ArrowIpcSharedBuffer* shared,
+static ArrowErrorCode ArrowIpcDecoderDecodeDictionaryInternal(
+    struct ArrowIpcDecoder* decoder, struct ArrowIpcBufferFactory factory,
     enum ArrowValidationLevel validation_level, struct ArrowIpcDictionaries* dictionaries,
     struct ArrowError* error) {
-  NANOARROW_DCHECK(decoder != NULL);
-  NANOARROW_DCHECK(shared != NULL);
-  NANOARROW_DCHECK(dictionaries != NULL);
-
   struct ArrowIpcDecoderPrivate* private_data =
       (struct ArrowIpcDecoderPrivate*)decoder->private_data;
 
@@ -2709,15 +2754,26 @@ NANOARROW_DLL ArrowErrorCode ArrowIpcDecoderDecodeDictionary(
       (struct ArrowIpcDecoderPrivate*)dictionary->decoder.private_data;
   dictionary->decoder.message_type = NANOARROW_IPC_MESSAGE_TYPE_RECORD_BATCH;
   dictionary_decoder_private_data->last_message = record_batch;
+  // Transfer the endianness setting so that buffers are byte-swapped if needed
+  dictionary_decoder_private_data->endianness = private_data->endianness;
+
+  struct ArrowArrayView* array_view;
+  NANOARROW_RETURN_NOT_OK(ArrowIpcDecoderDecodeArrayViewInternal(
+      &dictionary->decoder, factory, 0, dictionaries, &array_view, error));
+
+  NANOARROW_RETURN_NOT_OK(ArrowArrayViewValidate(array_view, validation_level, error));
 
   struct ArrowArray tmp;
+  tmp.release = NULL;
+  int result = ArrowIpcDecoderDecodeArrayInternal(&dictionary->decoder, 0, &tmp,
+                                                  validation_level, error);
+  if (result != NANOARROW_OK && tmp.release != NULL) {
+    ArrowArrayRelease(&tmp);
+    return result;
+  } else if (result != NANOARROW_OK) {
+    return result;
+  }
 
-  // TODO: provide ArrowIpcDecoderDecodeArrayInternalWithDictionaries to handle nested
-  // dictionaries
-  NANOARROW_RETURN_NOT_OK(ArrowIpcDecoderDecodeArrayFromShared(
-      &dictionary->decoder, shared, 0, &tmp, validation_level, error));
-
-  ArrowErrorCode result;
   if (decoder->dictionary->is_delta) {
     result = ArrowIpcDictionaryAppend(dictionary, &tmp, error);
   } else {
@@ -2730,4 +2786,29 @@ NANOARROW_DLL ArrowErrorCode ArrowIpcDecoderDecodeDictionary(
   }
 
   return NANOARROW_OK;
+}
+
+NANOARROW_DLL ArrowErrorCode ArrowIpcDecoderDecodeDictionary(
+    struct ArrowIpcDecoder* decoder, struct ArrowBufferView body,
+    enum ArrowValidationLevel validation_level, struct ArrowIpcDictionaries* dictionaries,
+    struct ArrowError* error) {
+  NANOARROW_DCHECK(decoder != NULL);
+  NANOARROW_DCHECK(dictionaries != NULL);
+
+  return ArrowIpcDecoderDecodeDictionaryInternal(decoder,
+                                                 ArrowIpcBufferFactoryFromView(&body),
+                                                 validation_level, dictionaries, error);
+}
+
+NANOARROW_DLL ArrowErrorCode ArrowIpcDecoderDecodeDictionaryFromShared(
+    struct ArrowIpcDecoder* decoder, struct ArrowIpcSharedBuffer* shared,
+    enum ArrowValidationLevel validation_level, struct ArrowIpcDictionaries* dictionaries,
+    struct ArrowError* error) {
+  NANOARROW_DCHECK(decoder != NULL);
+  NANOARROW_DCHECK(shared != NULL);
+  NANOARROW_DCHECK(dictionaries != NULL);
+
+  return ArrowIpcDecoderDecodeDictionaryInternal(decoder,
+                                                 ArrowIpcBufferFactoryFromShared(shared),
+                                                 validation_level, dictionaries, error);
 }

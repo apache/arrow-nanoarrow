@@ -191,6 +191,7 @@ struct ArrowIpcArrayStreamReaderPrivate {
   struct ArrowBuffer header;
   struct ArrowBuffer body;
   int32_t expected_header_prefix_size;
+  struct ArrowIpcDictionaries dictionaries;
   struct ArrowError error;
 };
 
@@ -211,13 +212,16 @@ static void ArrowIpcArrayStreamReaderRelease(struct ArrowArrayStream* stream) {
   ArrowBufferReset(&private_data->header);
   ArrowBufferReset(&private_data->body);
 
+  if (private_data->dictionaries.private_data != NULL) {
+    ArrowIpcDictionariesReset(&private_data->dictionaries);
+  }
+
   ArrowFree(private_data);
   stream->release = NULL;
 }
 
 static int ArrowIpcArrayStreamReaderNextHeader(
-    struct ArrowIpcArrayStreamReaderPrivate* private_data,
-    enum ArrowIpcMessageType message_type) {
+    struct ArrowIpcArrayStreamReaderPrivate* private_data, int schema_expected) {
   private_data->header.size_bytes = 0;
   int64_t bytes_read = 0;
 
@@ -332,7 +336,10 @@ static int ArrowIpcArrayStreamReaderNextHeader(
 
   // Don't decode the message if it's of the wrong type (because the error message
   // is better communicated by the caller)
-  if (private_data->decoder.message_type != message_type) {
+  if ((schema_expected &&
+       private_data->decoder.message_type != NANOARROW_IPC_MESSAGE_TYPE_SCHEMA) ||
+      (!schema_expected &&
+       private_data->decoder.message_type == NANOARROW_IPC_MESSAGE_TYPE_SCHEMA)) {
     return NANOARROW_OK;
   }
 
@@ -372,8 +379,7 @@ static int ArrowIpcArrayStreamReaderReadSchemaIfNeeded(
     return NANOARROW_OK;
   }
 
-  NANOARROW_RETURN_NOT_OK(ArrowIpcArrayStreamReaderNextHeader(
-      private_data, NANOARROW_IPC_MESSAGE_TYPE_SCHEMA));
+  NANOARROW_RETURN_NOT_OK(ArrowIpcArrayStreamReaderNextHeader(private_data, 1));
 
   // Error if this isn't a schema message
   if (private_data->decoder.message_type != NANOARROW_IPC_MESSAGE_TYPE_SCHEMA) {
@@ -415,11 +421,21 @@ static int ArrowIpcArrayStreamReaderReadSchemaIfNeeded(
     return ENOTSUP;
   }
 
+  // Initialize dictionary decoders
+  int result = ArrowIpcDictionariesInit(&private_data->dictionaries,
+                                        &dictionary_encodings, &private_data->error);
+  if (result != NANOARROW_OK) {
+    ArrowIpcDictionaryEncodingsReset(&dictionary_encodings);
+    ArrowSchemaRelease(&tmp);
+    return result;
+  }
+
   // Notify the decoder of the schema for forthcoming messages
-  int result = ArrowIpcDecoderSetSchemaWithDictionaries(
+  result = ArrowIpcDecoderSetSchemaWithDictionaries(
       &private_data->decoder, &tmp, &dictionary_encodings, &private_data->error);
   ArrowIpcDictionaryEncodingsReset(&dictionary_encodings);
   if (result != NANOARROW_OK) {
+    ArrowIpcDictionariesReset(&private_data->dictionaries);
     ArrowSchemaRelease(&tmp);
     return result;
   }
@@ -437,53 +453,19 @@ static int ArrowIpcArrayStreamReaderGetSchema(struct ArrowArrayStream* stream,
   return ArrowSchemaDeepCopy(&private_data->out_schema, out);
 }
 
-static int ArrowIpcArrayStreamReaderGetNext(struct ArrowArrayStream* stream,
-                                            struct ArrowArray* out) {
-  struct ArrowIpcArrayStreamReaderPrivate* private_data =
-      (struct ArrowIpcArrayStreamReaderPrivate*)stream->private_data;
-  ArrowErrorInit(&private_data->error);
-  NANOARROW_RETURN_NOT_OK(ArrowIpcArrayStreamReaderReadSchemaIfNeeded(private_data));
-
-  // Read + decode the next header
-  int result = ArrowIpcArrayStreamReaderNextHeader(
-      private_data, NANOARROW_IPC_MESSAGE_TYPE_RECORD_BATCH);
-  if (result == ENODATA) {
-    // Stream is finished either because there is no input or because
-    // end of stream bytes were read.
-    out->release = NULL;
-    return NANOARROW_OK;
-  } else if (result != NANOARROW_OK) {
-    // Other error
-    return result;
-  }
-
-  // Make sure we have a RecordBatch message
-  switch (private_data->decoder.message_type) {
-    case NANOARROW_IPC_MESSAGE_TYPE_RECORD_BATCH:
-      break;
-    case NANOARROW_IPC_MESSAGE_TYPE_DICTIONARY_BATCH:
-      ArrowErrorSet(
-          &private_data->error,
-          "Found valid dictionary batch but dictionary encoding is not yet supported");
-      return ENOTSUP;
-    default:
-      ArrowErrorSet(&private_data->error,
-                    "Unexpected message type (expected RecordBatch)");
-      return EINVAL;
-  }
-
+static int ArrowIpcArrayStreamReaderProcessRecordBatch(
+    struct ArrowIpcArrayStreamReaderPrivate* private_data, struct ArrowArray* out) {
   // Read in the body
   NANOARROW_RETURN_NOT_OK(ArrowIpcArrayStreamReaderNextBody(private_data));
-
-  struct ArrowArray tmp;
 
   if (private_data->use_shared_buffers) {
     struct ArrowIpcSharedBuffer shared;
     NANOARROW_RETURN_NOT_OK_WITH_ERROR(
         ArrowIpcSharedBufferInit(&shared, &private_data->body), &private_data->error);
-    result = ArrowIpcDecoderDecodeArrayFromShared(
-        &private_data->decoder, &shared, private_data->field_index, &tmp,
-        NANOARROW_VALIDATION_LEVEL_FULL, &private_data->error);
+    int result = ArrowIpcDecoderDecodeArrayFromSharedWithDictionaries(
+        &private_data->decoder, &shared, private_data->field_index,
+        &private_data->dictionaries, out, NANOARROW_VALIDATION_LEVEL_FULL,
+        &private_data->error);
     ArrowIpcSharedBufferReset(&shared);
     NANOARROW_RETURN_NOT_OK(result);
   } else {
@@ -491,10 +473,96 @@ static int ArrowIpcArrayStreamReaderGetNext(struct ArrowArrayStream* stream,
     body_view.data.data = private_data->body.data;
     body_view.size_bytes = private_data->body.size_bytes;
 
-    NANOARROW_RETURN_NOT_OK(ArrowIpcDecoderDecodeArray(
-        &private_data->decoder, body_view, private_data->field_index, &tmp,
-        NANOARROW_VALIDATION_LEVEL_FULL, &private_data->error));
+    NANOARROW_RETURN_NOT_OK(ArrowIpcDecoderDecodeArrayWithDictionaries(
+        &private_data->decoder, body_view, private_data->field_index,
+        &private_data->dictionaries, out, NANOARROW_VALIDATION_LEVEL_FULL,
+        &private_data->error));
   }
+
+  return NANOARROW_OK;
+}
+
+static int ArrowIpcArrayStreamReaderProcessDictionary(
+    struct ArrowIpcArrayStreamReaderPrivate* private_data) {
+  // Read in the body
+  NANOARROW_RETURN_NOT_OK(ArrowIpcArrayStreamReaderNextBody(private_data));
+
+  if (private_data->use_shared_buffers) {
+    // Decode the dictionary
+    struct ArrowIpcSharedBuffer shared;
+    NANOARROW_RETURN_NOT_OK_WITH_ERROR(
+        ArrowIpcSharedBufferInit(&shared, &private_data->body), &private_data->error);
+    int result = ArrowIpcDecoderDecodeDictionaryFromShared(
+        &private_data->decoder, &shared, NANOARROW_VALIDATION_LEVEL_FULL,
+        &private_data->dictionaries, &private_data->error);
+    ArrowIpcSharedBufferReset(&shared);
+    NANOARROW_RETURN_NOT_OK(result);
+  } else {
+    struct ArrowBufferView body_view;
+    body_view.data.data = private_data->body.data;
+    body_view.size_bytes = private_data->body.size_bytes;
+    NANOARROW_RETURN_NOT_OK(ArrowIpcDecoderDecodeDictionary(
+        &private_data->decoder, body_view, NANOARROW_VALIDATION_LEVEL_FULL,
+        &private_data->dictionaries, &private_data->error));
+  }
+
+  return NANOARROW_OK;
+}
+
+static int ArrowIpcArrayStreamReaderProcessMessage(
+    struct ArrowIpcArrayStreamReaderPrivate* private_data,
+    enum ArrowIpcMessageType* message_type, struct ArrowArray* out) {
+  // Read + decode the next header
+  int result = ArrowIpcArrayStreamReaderNextHeader(private_data, 0);
+  if (result == ENODATA) {
+    // Stream is finished either because there is no input or because
+    // end of stream bytes were read. Read this as a RecordBatch in the
+    // sense that we populate out->release to NULL and return OK.
+    *message_type = NANOARROW_IPC_MESSAGE_TYPE_RECORD_BATCH;
+    out->release = NULL;
+    return NANOARROW_OK;
+  } else if (result != NANOARROW_OK) {
+    // Other error
+    return result;
+  }
+
+  // Make sure we have a RecordBatch message or DictionaryBatch message
+  switch (private_data->decoder.message_type) {
+    case NANOARROW_IPC_MESSAGE_TYPE_RECORD_BATCH:
+      *message_type = NANOARROW_IPC_MESSAGE_TYPE_RECORD_BATCH;
+      return ArrowIpcArrayStreamReaderProcessRecordBatch(private_data, out);
+    case NANOARROW_IPC_MESSAGE_TYPE_DICTIONARY_BATCH:
+      *message_type = NANOARROW_IPC_MESSAGE_TYPE_DICTIONARY_BATCH;
+      return ArrowIpcArrayStreamReaderProcessDictionary(private_data);
+    default:
+      ArrowErrorSet(&private_data->error,
+                    "Unexpected message type (expected RecordBatch or DictionaryBatch)");
+      return EINVAL;
+  }
+}
+
+static int ArrowIpcArrayStreamReaderGetNext(struct ArrowArrayStream* stream,
+                                            struct ArrowArray* out) {
+  struct ArrowIpcArrayStreamReaderPrivate* private_data =
+      (struct ArrowIpcArrayStreamReaderPrivate*)stream->private_data;
+  ArrowErrorInit(&private_data->error);
+  NANOARROW_RETURN_NOT_OK(ArrowIpcArrayStreamReaderReadSchemaIfNeeded(private_data));
+
+  enum ArrowIpcMessageType message_type;
+  struct ArrowArray tmp;
+  tmp.release = NULL;
+
+  do {
+    int result =
+        ArrowIpcArrayStreamReaderProcessMessage(private_data, &message_type, &tmp);
+    if (result != NANOARROW_OK) {
+      if (tmp.release != NULL) {
+        ArrowArrayRelease(&tmp);
+      }
+
+      return result;
+    }
+  } while (message_type != NANOARROW_IPC_MESSAGE_TYPE_RECORD_BATCH);
 
   ArrowArrayMove(&tmp, out);
   return NANOARROW_OK;
@@ -528,6 +596,7 @@ ArrowErrorCode ArrowIpcArrayStreamReaderInit(
   private_data->out_schema.release = NULL;
   ArrowIpcInputStreamMove(input_stream, &private_data->input);
   private_data->expected_header_prefix_size = kExpectedHeaderPrefixSizeNotSet;
+  private_data->dictionaries.private_data = NULL;
 
   if (options != NULL) {
     private_data->field_index = options->field_index;

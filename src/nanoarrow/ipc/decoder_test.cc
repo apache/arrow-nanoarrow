@@ -208,6 +208,19 @@ alignas(8) static uint8_t kDictionaryBatch[] = {
     0x6f, 0x6e, 0x65, 0x74, 0x77, 0x6f, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 };
 
+alignas(8) static uint8_t kDictionaryRecordBatch[] = {
+    0xff, 0xff, 0xff, 0xff, 0x88, 0x00, 0x00, 0x00, 0x14, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x0c, 0x00, 0x16, 0x00, 0x06, 0x00, 0x05, 0x00, 0x08, 0x00, 0x0c, 0x00,
+    0x0c, 0x00, 0x00, 0x00, 0x00, 0x03, 0x04, 0x00, 0x18, 0x00, 0x00, 0x00, 0x08, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0a, 0x00, 0x18, 0x00, 0x0c, 0x00,
+    0x04, 0x00, 0x08, 0x00, 0x0a, 0x00, 0x00, 0x00, 0x3c, 0x00, 0x00, 0x00, 0x10, 0x00,
+    0x00, 0x00, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00,
+    0x00, 0x00, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00};
+
 TEST(NanoarrowIpcTest, NanoarrowIpcCheckHeader) {
   struct ArrowIpcDecoder decoder;
   struct ArrowError error;
@@ -698,7 +711,7 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDecodeDictionaryBatchDecode) {
   // Make a dictionary encoded schema that matches that of the dictionary example batch
   ArrowSchemaInit(&schema);
   ASSERT_EQ(ArrowSchemaSetTypeStruct(&schema, 1), NANOARROW_OK);
-  ASSERT_EQ(ArrowSchemaSetType(schema.children[0], NANOARROW_TYPE_INT32), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaSetType(schema.children[0], NANOARROW_TYPE_INT8), NANOARROW_OK);
   ASSERT_EQ(ArrowSchemaAllocateDictionary(schema.children[0]), NANOARROW_OK);
   ASSERT_EQ(
       ArrowSchemaInitFromType(schema.children[0]->dictionary, NANOARROW_TYPE_STRING),
@@ -721,11 +734,12 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDecodeDictionaryBatchDecode) {
   // Check that we can't decode a dictionary batch if we haven't read a dictionary batch
   // message
   ASSERT_EQ(ArrowIpcDecoderInit(&decoder), NANOARROW_OK);
-  struct ArrowIpcSharedBuffer shared;
-  ASSERT_EQ(
-      ArrowIpcDecoderDecodeDictionary(&decoder, &shared, NANOARROW_VALIDATION_LEVEL_FULL,
-                                      &dictionaries, &error),
-      EINVAL);
+  struct ArrowBufferView body;
+  body.data.data = nullptr;
+  body.size_bytes = 0;
+  ASSERT_EQ(ArrowIpcDecoderDecodeDictionary(
+                &decoder, body, NANOARROW_VALIDATION_LEVEL_FULL, &dictionaries, &error),
+            EINVAL);
   ASSERT_STREQ(error.message, "decoder did not just decode a DictionaryBatch message");
 
   // Decode a dictionary batch and inspect metadata
@@ -741,17 +755,12 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDecodeDictionaryBatchDecode) {
   EXPECT_FALSE(decoder.dictionary->is_delta);
 
   // Decode the dictionary batch
-  data.data.as_uint8 += decoder.header_size_bytes;
-  data.size_bytes = decoder.body_size_bytes;
-  struct ArrowBuffer body;
-  ArrowBufferInit(&body);
-  ASSERT_EQ(ArrowBufferAppendBufferView(&body, data), NANOARROW_OK);
+  body.data.as_uint8 = data.data.as_uint8 + decoder.header_size_bytes;
+  body.size_bytes = decoder.body_size_bytes;
 
-  ASSERT_EQ(ArrowIpcSharedBufferInit(&shared, &body), NANOARROW_OK);
-  ASSERT_EQ(
-      ArrowIpcDecoderDecodeDictionary(&decoder, &shared, NANOARROW_VALIDATION_LEVEL_FULL,
-                                      &dictionaries, &error),
-      NANOARROW_OK);
+  ASSERT_EQ(ArrowIpcDecoderDecodeDictionary(
+                &decoder, body, NANOARROW_VALIDATION_LEVEL_FULL, &dictionaries, &error),
+            NANOARROW_OK);
 
   // If we find the current value of the dictionary we should get the correct array
   const struct ArrowArray* dictionary_value;
@@ -775,10 +784,9 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDecodeDictionaryBatchDecode) {
 
   // If we try to decode the dictionary again it should succeed (because the dictionary
   // is in replacement mode)
-  ASSERT_EQ(
-      ArrowIpcDecoderDecodeDictionary(&decoder, &shared, NANOARROW_VALIDATION_LEVEL_FULL,
-                                      &dictionaries, &error),
-      NANOARROW_OK);
+  ASSERT_EQ(ArrowIpcDecoderDecodeDictionary(
+                &decoder, body, NANOARROW_VALIDATION_LEVEL_FULL, &dictionaries, &error),
+            NANOARROW_OK);
   ASSERT_EQ(ArrowArrayViewSetArray(&array_view, dictionary_value, &error), NANOARROW_OK);
 
   ASSERT_EQ(array_view.length, 3);
@@ -788,14 +796,75 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDecodeDictionaryBatchDecode) {
 
   // If we try to decode a delta dictionary, we should fail with a reasonable message
   const_cast<struct ArrowIpcDictionaryBatch*>(decoder.dictionary)->is_delta = 1;
-  ASSERT_EQ(
-      ArrowIpcDecoderDecodeDictionary(&decoder, &shared, NANOARROW_VALIDATION_LEVEL_FULL,
-                                      &dictionaries, &error),
-      ENOTSUP);
+  ASSERT_EQ(ArrowIpcDecoderDecodeDictionary(
+                &decoder, body, NANOARROW_VALIDATION_LEVEL_FULL, &dictionaries, &error),
+            ENOTSUP);
   ASSERT_STREQ(error.message, "Dictionary concatenation is not yet supported");
 
+  // After all of this, we should be able to actually decode a RecordBatch
+  ASSERT_EQ(ArrowIpcDecoderSetSchemaWithDictionaries(&decoder, &schema,
+                                                     &dictionary_encodings, &error),
+            NANOARROW_OK);
+  data.data.data = kDictionaryRecordBatch;
+  data.size_bytes = sizeof(kDictionaryRecordBatch);
+  ASSERT_EQ(ArrowIpcDecoderDecodeHeader(&decoder, data, &error), NANOARROW_OK);
+  data.data.as_uint8 += decoder.header_size_bytes;
+  data.size_bytes -= decoder.header_size_bytes;
+
+  // Decode the entire batch and check the dictionary
+  struct ArrowArrayView* batch_view;
+  ASSERT_EQ(ArrowIpcDecoderDecodeArrayViewWithDictionaries(
+                &decoder, data, -1, &dictionaries, &batch_view, &error),
+            NANOARROW_OK)
+      << error.message;
+
+  ASSERT_NE(batch_view->children[0]->dictionary, nullptr);
+  ASSERT_EQ(batch_view->children[0]->dictionary->length, 3);
+  ASSERT_EQ(ArrowArrayViewGetStringUnsafe(batch_view->children[0]->dictionary, 0),
+            "zero"_asv);
+
+  // Decode the specific column and check the dictionary
+  struct ArrowArrayView* column_view;
+  ASSERT_EQ(ArrowIpcDecoderDecodeArrayViewWithDictionaries(
+                &decoder, data, 0, &dictionaries, &column_view, &error),
+            NANOARROW_OK)
+      << error.message;
+
+  ASSERT_NE(column_view->dictionary, nullptr);
+  ASSERT_EQ(column_view->dictionary->length, 3);
+  ASSERT_EQ(ArrowArrayViewGetStringUnsafe(column_view->dictionary, 0), "zero"_asv);
+
+  // Decode the array from the ArrowBufferView
+  struct ArrowArray batch;
+  ASSERT_EQ(ArrowIpcDecoderDecodeArrayWithDictionaries(
+                &decoder, data, -1, &dictionaries, &batch,
+                NANOARROW_VALIDATION_LEVEL_FULL, &error),
+            NANOARROW_OK)
+      << error.message;
+  ASSERT_NE(batch.children[0]->dictionary, nullptr);
+  ASSERT_EQ(batch.children[0]->dictionary->length, 3);
+  ArrowArrayRelease(&batch);
+
+  // Decode the array from a shared buffer
+  struct ArrowBuffer record_batch_body;
+  ArrowBufferInit(&record_batch_body);
+  ASSERT_EQ(ArrowBufferAppendBufferView(&record_batch_body, data), NANOARROW_OK);
+
+  struct ArrowIpcSharedBuffer record_batch_shared;
+  ASSERT_EQ(ArrowIpcSharedBufferInit(&record_batch_shared, &record_batch_body),
+            NANOARROW_OK);
+
+  ASSERT_EQ(ArrowIpcDecoderDecodeArrayFromSharedWithDictionaries(
+                &decoder, &record_batch_shared, -1, &dictionaries, &batch,
+                NANOARROW_VALIDATION_LEVEL_FULL, &error),
+            NANOARROW_OK)
+      << error.message;
+  ASSERT_NE(batch.children[0]->dictionary, nullptr);
+  ASSERT_EQ(batch.children[0]->dictionary->length, 3);
+  ArrowArrayRelease(&batch);
+  ArrowIpcSharedBufferReset(&record_batch_shared);
+
   ArrowArrayViewReset(&array_view);
-  ArrowIpcSharedBufferReset(&shared);
   ArrowIpcDictionariesReset(&dictionaries);
   ArrowIpcDictionaryEncodingsReset(&dictionary_encodings);
   ArrowSchemaRelease(&schema);
@@ -1140,7 +1209,14 @@ std::string ArrowSchemaToString(const struct ArrowSchema* schema) {
 #if defined(NANOARROW_BUILD_TESTS_WITH_ARROW)
 TEST_P(ArrowTypeParameterizedTestFixture, NanoarrowIpcNanoarrowTypeRoundtrip) {
   if (GetParam()->id() == arrow::Type::DICTIONARY) {
-    GTEST_SKIP() << "Dictionary array decode is not yet supported";
+    GTEST_SKIP() << "Dictionary array encode is not yet supported";
+  }
+
+  if (GetParam()->id() == arrow::Type::EXTENSION &&
+      std::static_pointer_cast<arrow::ExtensionType>(GetParam())->storage_type()->id() ==
+          arrow::Type::DICTIONARY) {
+    GTEST_SKIP()
+        << "nanoarrow encoder cannot yet encode extension types with dictionary storage";
   }
 
   nanoarrow::UniqueSchema schema;
@@ -1182,16 +1258,20 @@ TEST_P(ArrowTypeParameterizedTestFixture, NanoarrowIpcNanoarrowTypeRoundtrip) {
 
 #if defined(NANOARROW_BUILD_TESTS_WITH_ARROW)
 TEST_P(ArrowTypeParameterizedTestFixture, NanoarrowIpcArrowArrayRoundtrip) {
-  if (GetParam()->id() == arrow::Type::DICTIONARY) {
-    GTEST_SKIP() << "Dictionary array decode is not yet supported";
+  const std::shared_ptr<arrow::DataType>& data_type = GetParam();
+
+  if (data_type->id() == arrow::Type::DICTIONARY &&
+      std::static_pointer_cast<arrow::DictionaryType>(data_type)->value_type()->id() ==
+          Type::EXTENSION) {
+    GTEST_SKIP()
+        << "Arrow C++ MakeEmpty() doesn't support dictionary with extension value types";
   }
 
-  const std::shared_ptr<arrow::DataType>& data_type = GetParam();
   std::shared_ptr<arrow::Schema> dummy_schema =
       arrow::schema({arrow::field("dummy_name", data_type)});
 
   auto maybe_empty = arrow::RecordBatch::MakeEmpty(dummy_schema);
-  ASSERT_TRUE(maybe_empty.ok());
+  ASSERT_TRUE(maybe_empty.ok()) << maybe_empty.status();
   auto empty = maybe_empty.ValueUnsafe();
 
   auto maybe_nulls_array = arrow::MakeArrayOfNull(data_type, 3);
@@ -1206,10 +1286,24 @@ TEST_P(ArrowTypeParameterizedTestFixture, NanoarrowIpcArrowArrayRoundtrip) {
   struct ArrowBufferView buffer_view;
   struct ArrowArray array;
 
-  // Initialize the decoder
+  // Initialize the schema
   ASSERT_TRUE(arrow::ExportSchema(*dummy_schema, &schema).ok());
+
+  // Initialize the dictionaries
+  struct ArrowIpcDictionaryEncodings dictionary_encodings;
+  struct ArrowIpcDictionaries dictionaries;
+  ArrowIpcDictionaryEncodingsInit(&dictionary_encodings);
+  ASSERT_EQ(ArrowIpcDictionaryEncodingsAppendSchema(&dictionary_encodings, &schema),
+            NANOARROW_OK);
+  ASSERT_EQ(ArrowIpcDictionariesInit(&dictionaries, &dictionary_encodings, nullptr),
+            NANOARROW_OK);
+
+  // Initialize the decoder
   ArrowIpcDecoderInit(&decoder);
-  ASSERT_EQ(ArrowIpcDecoderSetSchema(&decoder, &schema, nullptr), NANOARROW_OK);
+  ASSERT_EQ(ArrowIpcDecoderSetSchemaWithDictionaries(&decoder, &schema,
+                                                     &dictionary_encodings, nullptr),
+            NANOARROW_OK);
+  ArrowIpcDictionaryEncodingsReset(&dictionary_encodings);
 
   // Check the empty array
   auto maybe_serialized = arrow::ipc::SerializeRecordBatch(*empty, options);
@@ -1220,14 +1314,22 @@ TEST_P(ArrowTypeParameterizedTestFixture, NanoarrowIpcArrowArrayRoundtrip) {
   ASSERT_EQ(ArrowIpcDecoderDecodeHeader(&decoder, buffer_view, nullptr), NANOARROW_OK);
   buffer_view.data.as_uint8 += decoder.header_size_bytes;
   buffer_view.size_bytes -= decoder.header_size_bytes;
-  ASSERT_EQ(ArrowIpcDecoderDecodeArray(&decoder, buffer_view, -1, &array,
-                                       NANOARROW_VALIDATION_LEVEL_FULL, nullptr),
+  ASSERT_EQ(ArrowIpcDecoderDecodeArrayWithDictionaries(
+                &decoder, buffer_view, -1, &dictionaries, &array,
+                NANOARROW_VALIDATION_LEVEL_FULL, nullptr),
             NANOARROW_OK);
 
   auto maybe_batch = arrow::ImportRecordBatch(&array, dummy_schema);
   ASSERT_TRUE(maybe_batch.ok());
   EXPECT_EQ(maybe_batch.ValueUnsafe()->ToString(), empty->ToString());
-  EXPECT_TRUE(maybe_batch.ValueUnsafe()->Equals(*empty));
+
+  // Arrow C++ MakeEmpty() loses the ordered=1 flag for dictionary types.
+  // https://github.com/apache/arrow/issues/49674
+  // So for ordered dictionaries, we only check ToString() equality for empty batches.
+  if (data_type->id() != arrow::Type::DICTIONARY ||
+      !std::static_pointer_cast<arrow::DictionaryType>(data_type)->ordered()) {
+    EXPECT_TRUE(maybe_batch.ValueUnsafe()->Equals(*empty)) << empty->ToString();
+  }
 
   // Check the array with 3 null values
   maybe_serialized = arrow::ipc::SerializeRecordBatch(*nulls, options);
@@ -1238,8 +1340,9 @@ TEST_P(ArrowTypeParameterizedTestFixture, NanoarrowIpcArrowArrayRoundtrip) {
   ASSERT_EQ(ArrowIpcDecoderDecodeHeader(&decoder, buffer_view, nullptr), NANOARROW_OK);
   buffer_view.data.as_uint8 += decoder.header_size_bytes;
   buffer_view.size_bytes -= decoder.header_size_bytes;
-  ASSERT_EQ(ArrowIpcDecoderDecodeArray(&decoder, buffer_view, -1, &array,
-                                       NANOARROW_VALIDATION_LEVEL_FULL, nullptr),
+  ASSERT_EQ(ArrowIpcDecoderDecodeArrayWithDictionaries(
+                &decoder, buffer_view, -1, &dictionaries, &array,
+                NANOARROW_VALIDATION_LEVEL_FULL, nullptr),
             NANOARROW_OK);
 
   maybe_batch = arrow::ImportRecordBatch(&array, dummy_schema);
@@ -1248,6 +1351,7 @@ TEST_P(ArrowTypeParameterizedTestFixture, NanoarrowIpcArrowArrayRoundtrip) {
   EXPECT_TRUE(maybe_batch.ValueUnsafe()->Equals(*nulls));
 
   ArrowSchemaRelease(&schema);
+  ArrowIpcDictionariesReset(&dictionaries);
   ArrowIpcDecoderReset(&decoder);
 }
 #endif
@@ -1279,6 +1383,13 @@ void AssertArrayViewIdentical(const struct ArrowArrayView* actual,
 TEST_P(ArrowTypeParameterizedTestFixture, NanoarrowIpcNanoarrowArrayRoundtrip) {
   if (GetParam()->id() == arrow::Type::DICTIONARY) {
     GTEST_SKIP() << "nanoarrow encoder cannot yet encode dictionaries";
+  }
+
+  if (GetParam()->id() == arrow::Type::EXTENSION &&
+      std::static_pointer_cast<arrow::ExtensionType>(GetParam())->storage_type()->id() ==
+          arrow::Type::DICTIONARY) {
+    GTEST_SKIP()
+        << "nanoarrow encoder cannot yet encode extension types with dictionary storage";
   }
 
   struct ArrowError error;
@@ -1334,6 +1445,43 @@ TEST_P(ArrowTypeParameterizedTestFixture, NanoarrowIpcNanoarrowArrayRoundtrip) {
   }
 }
 
+// Extension type with dictionary storage for testing
+class DictExtensionType : public ExtensionType {
+ public:
+  explicit DictExtensionType() : ExtensionType(dictionary(int32(), utf8())) {}
+
+  std::string extension_name() const override { return "dict-extension"; }
+
+  bool ExtensionEquals(const ExtensionType& other) const override {
+    return other.extension_name() == extension_name();
+  }
+
+  std::shared_ptr<Array> MakeArray(std::shared_ptr<ArrayData> data) const override {
+    return std::make_shared<ExtensionArray>(data);
+  }
+
+  Result<std::shared_ptr<DataType>> Deserialize(
+      std::shared_ptr<DataType> storage_type,
+      const std::string& serialized) const override {
+    return std::make_shared<DictExtensionType>();
+  }
+
+  std::string Serialize() const override { return ""; }
+};
+
+std::shared_ptr<DataType> dict_extension() {
+  static bool registered = false;
+  auto type = std::make_shared<DictExtensionType>();
+  if (!registered) {
+    auto status = RegisterExtensionType(type);
+    if (!status.ok() && !status.IsKeyError()) {
+      status.Abort();
+    }
+    registered = true;
+  }
+  return type;
+}
+
 INSTANTIATE_TEST_SUITE_P(
     NanoarrowIpcTest, ArrowTypeParameterizedTestFixture,
     ::testing::Values(
@@ -1383,8 +1531,12 @@ INSTANTIATE_TEST_SUITE_P(
         arrow::dictionary(arrow::int32(), arrow::utf8(), true),
         // Extension type
         arrow::extension::uuid(),
-        // Dictionary-encoded extension
-        arrow::dictionary(arrow::int32(), arrow::extension::uuid())));
+        // Extension type with dictionary as the storage type
+        dict_extension()
+        // Dictionary-encoded extension is not supported in IPC
+        // https://github.com/apache/arrow/issues/49704
+        // arrow::dictionary(arrow::int32(), arrow::extension::uuid()))
+        ));
 
 class ArrowSchemaParameterizedTestFixture
     : public ::testing::TestWithParam<std::shared_ptr<arrow::Schema>> {
@@ -1545,11 +1697,12 @@ INSTANTIATE_TEST_SUITE_P(
         // Dictionary with field metadata
         arrow::schema({arrow::field(
             "some_name", arrow::dictionary(arrow::int32(), arrow::utf8()),
-            arrow::KeyValueMetadata::Make({"key1", "key2"}, {"value1", "value2"}))}),
-        // Dictionary with field metadata
-        arrow::schema({arrow::field(
-            "some_name", arrow::dictionary(arrow::int32(), arrow::extension::uuid()),
-            arrow::KeyValueMetadata::Make({"key1", "key2"}, {"value1", "value2"}))})));
+            arrow::KeyValueMetadata::Make({"key1", "key2"}, {"value1", "value2"}))})
+        // Dictionary with extension storage and field metadata is not supported in IPC
+        // arrow::schema({arrow::field(
+        //     "some_name", arrow::dictionary(arrow::int32(), arrow::extension::uuid()),
+        //     arrow::KeyValueMetadata::Make({"key1", "key2"}, {"value1", "value2"}))})
+        ));
 
 class ArrowTypeIdParameterizedTestFixture
     : public ::testing::TestWithParam<enum ArrowType> {

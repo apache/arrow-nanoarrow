@@ -144,6 +144,60 @@ TEST(ArrayTest, ArrayTestAllocateDictionary) {
   ArrowArrayRelease(&array);
 }
 
+TEST(ArrayTest, ArrayTestValidateDictionaryIndices) {
+  struct ArrowArray array;
+  struct ArrowSchema schema;
+  struct ArrowArrayView array_view;
+  struct ArrowError error;
+
+  // Create a schema for dictionary-encoded int32 with string dictionary
+  ASSERT_EQ(ArrowSchemaInitFromType(&schema, NANOARROW_TYPE_INT32), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaAllocateDictionary(&schema), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaInitFromType(schema.dictionary, NANOARROW_TYPE_STRING),
+            NANOARROW_OK);
+
+  // Initialize array_view from schema
+  ASSERT_EQ(ArrowArrayViewInitFromSchema(&array_view, &schema, &error), NANOARROW_OK);
+
+  // Create a dictionary-encoded int32 array with a string dictionary
+  ASSERT_EQ(ArrowArrayInitFromSchema(&array, &schema, &error), NANOARROW_OK);
+
+  // Build the array with dictionary values: ["zero", "one"] and indices [0, 1, 0]
+  ASSERT_EQ(ArrowArrayStartAppending(&array), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAppendString(array.dictionary, "zero"_asv), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAppendString(array.dictionary, "one"_asv), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAppendInt(&array, 0), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAppendInt(&array, 1), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAppendInt(&array, 0), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayFinishBuildingDefault(&array, &error), NANOARROW_OK);
+
+  // Valid indices should pass validation
+  ASSERT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayViewValidate(&array_view, NANOARROW_VALIDATION_LEVEL_FULL, &error),
+            NANOARROW_OK);
+
+  // Now modify index to be out of bounds (index 2 when dictionary has length 2)
+  int32_t* indices = reinterpret_cast<int32_t*>(ArrowArrayBuffer(&array, 1)->data);
+  indices[1] = 2;  // Out of bounds (valid range is 0-1)
+  ASSERT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayViewValidate(&array_view, NANOARROW_VALIDATION_LEVEL_FULL, &error),
+            EINVAL);
+  EXPECT_STREQ(error.message,
+               "[1] Expected dictionary index >= 0 and < 2 but found value 2");
+
+  // Test negative index
+  indices[1] = -1;
+  ASSERT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayViewValidate(&array_view, NANOARROW_VALIDATION_LEVEL_FULL, &error),
+            EINVAL);
+  EXPECT_STREQ(error.message,
+               "[1] Expected dictionary index >= 0 and < 2 but found value -1");
+
+  ArrowArrayViewReset(&array_view);
+  ArrowSchemaRelease(&schema);
+  ArrowArrayRelease(&array);
+}
+
 TEST(ArrayTest, ArrayTestInitFromSchema) {
   struct ArrowArray array;
   struct ArrowSchema schema;

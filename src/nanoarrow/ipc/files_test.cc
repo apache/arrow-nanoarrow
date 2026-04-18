@@ -24,6 +24,7 @@
 #if defined(NANOARROW_BUILD_TESTS_WITH_ARROW)
 #include <arrow/buffer.h>
 #include <arrow/c/bridge.h>
+#include <arrow/extension_type.h>
 #include <arrow/io/api.h>
 #include <arrow/ipc/api.h>
 #include <arrow/table.h>
@@ -51,16 +52,22 @@ using namespace arrow;
 // would read.
 class TestFile {
  public:
-  TestFile(std::string path, int expected_return_code, std::string expected_error_message)
+  TestFile(std::string path, int expected_return_code, std::string expected_error_message,
+           bool write_supported = true)
       : path_(path),
         expected_return_code_(expected_return_code),
-        expected_error_message_(expected_error_message) {}
+        expected_error_message_(expected_error_message),
+        write_supported_(write_supported) {}
 
   TestFile(std::string path) : TestFile(path, NANOARROW_OK, "") {}
 
   TestFile() : TestFile("") {}
 
   static TestFile OK(std::string path) { return TestFile(path); }
+
+  static TestFile ReadOnly(std::string path) {
+    return TestFile(path, NANOARROW_OK, "", false);
+  }
 
   static TestFile Err(int code, std::string path, std::string message = "__any__") {
     return TestFile(path, code, message);
@@ -228,7 +235,8 @@ class TestFile {
     return ArrowIpcWriterWriteArrayView(writer.get(), nullptr, error);
   }
 
-  void TestEqualsArrowCpp(const std::string& dir_prefix) {
+  void TestEqualsArrowCpp(const std::string& dir_prefix,
+                          bool check_write_roundtrip = true) {
     std::stringstream path_builder;
     path_builder << dir_prefix << "/" << path_;
 
@@ -251,11 +259,15 @@ class TestFile {
       GTEST_FAIL() << MakeError(NANOARROW_OK, "");
     }
 
-    // Write back to a buffer using nanoarrow
+    // Write back to a buffer using nanoarrow if supported. We do this here
+    // because we need to move the arrays into the comparison for the Arrow C++
+    // read.
     nanoarrow::UniqueBuffer roundtripped;
-    ASSERT_EQ(WriteNanoarrowStream(schema, arrays, roundtripped.get(), &error),
-              NANOARROW_OK)
-        << error.message;
+    if (write_supported_) {
+      ASSERT_EQ(WriteNanoarrowStream(schema, arrays, roundtripped.get(), &error),
+                NANOARROW_OK)
+          << error.message;
+    }
 
     // Read the same file with Arrow C++
     auto maybe_table_arrow = ReadTable(io::ReadableFile::Open(path_builder.str()));
@@ -264,6 +276,11 @@ class TestFile {
       FAIL_RESULT_NOT_OK(maybe_table_arrow);
       AssertEqualsTable(std::move(schema), std::move(arrays),
                         maybe_table_arrow.ValueUnsafe());
+    }
+
+    // For types that aren't supported by the writer yet
+    if (!write_supported_) {
+      return;
     }
 
     auto maybe_table_roundtripped = ReadTable(BufferInputStream(roundtripped.get()));
@@ -348,6 +365,7 @@ class TestFile {
 
     // Use testing utility to compare
     nanoarrow::testing::TestingJSONComparison comparison;
+    comparison.set_compare_metadata_order(false);
     ASSERT_EQ(comparison.CompareArrayStream(ipc_stream.get(), json_stream.get(), &error),
               NANOARROW_OK)
         << error.message;
@@ -378,6 +396,7 @@ class TestFile {
   std::string path_;
   int expected_return_code_;
   std::string expected_error_message_;
+  bool write_supported_;
 };
 
 // For better testing output
@@ -404,7 +423,13 @@ class TestEndianFileFixture : public ::testing::TestWithParam<TestFile> {
   TestFile test_file;
 };
 
+bool EnsureUuidIsNotRegistered() {
+  return arrow::UnregisterExtensionType("arrow.uuid").ok();
+}
+
 TEST_P(TestEndianFileFixture, NanoarrowIpcTestFileNativeEndian) {
+  EnsureUuidIsNotRegistered();
+
   std::stringstream dir_builder;
   ArrowError error;
   ArrowErrorInit(&error);
@@ -422,6 +447,8 @@ TEST_P(TestEndianFileFixture, NanoarrowIpcTestFileNativeEndian) {
 }
 
 TEST_P(TestEndianFileFixture, NanoarrowIpcTestFileSwapEndian) {
+  EnsureUuidIsNotRegistered();
+
   std::stringstream dir_builder;
   ArrowError error;
   ArrowErrorInit(&error);
@@ -439,6 +466,8 @@ TEST_P(TestEndianFileFixture, NanoarrowIpcTestFileSwapEndian) {
 }
 
 TEST_P(TestEndianFileFixture, NanoarrowIpcTestFileCheckJSON) {
+  EnsureUuidIsNotRegistered();
+
   std::stringstream dir_builder;
   ArrowError error;
   ArrowErrorInit(&error);
@@ -477,20 +506,10 @@ INSTANTIATE_TEST_SUITE_P(
         TestFile::OK("generated_primitive.stream"),
         TestFile::OK("generated_recursive_nested.stream"),
         TestFile::OK("generated_union.stream"),
-
-        // Files with features that are not yet supported (Dictionary encoding)
-        TestFile::NotSupported(
-            "generated_dictionary_unsigned.stream",
-            "Found valid dictionary batch but dictionary encoding is not yet supported"),
-        TestFile::NotSupported(
-            "generated_dictionary.stream",
-            "Found valid dictionary batch but dictionary encoding is not yet supported"),
-        TestFile::NotSupported(
-            "generated_nested_dictionary.stream",
-            "Found valid dictionary batch but dictionary encoding is not yet supported"),
-        TestFile::NotSupported(
-            "generated_extension.stream",
-            "Found valid dictionary batch but dictionary encoding is not yet supported")
+        TestFile::ReadOnly("generated_dictionary_unsigned.stream"),
+        TestFile::ReadOnly("generated_dictionary.stream"),
+        TestFile::ReadOnly("generated_nested_dictionary.stream"),
+        TestFile::ReadOnly("generated_extension.stream")
         // Comment to keep last line from wrapping
         ));
 

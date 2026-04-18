@@ -1513,10 +1513,26 @@ static int ArrowArrayViewValidateFull(struct ArrowArrayView* array_view,
     NANOARROW_RETURN_NOT_OK(ArrowArrayViewValidateFull(array_view->children[i], error));
   }
 
-  // Dictionary validation not implemented
+  // Dictionary index validation
   if (array_view->dictionary != NULL) {
     NANOARROW_RETURN_NOT_OK(ArrowArrayViewValidateFull(array_view->dictionary, error));
-    // TODO: validate the indices
+
+    // Validate that all non-null indices are within the dictionary bounds
+    int64_t dictionary_length = array_view->dictionary->length;
+    for (int64_t i = 0; i < array_view->length; i++) {
+      if (ArrowArrayViewIsNull(array_view, i)) {
+        continue;
+      }
+
+      int64_t index = ArrowArrayViewGetIntUnsafe(array_view, i);
+      if (index < 0 || index >= dictionary_length) {
+        ArrowErrorSet(error,
+                      "[%" PRId64 "] Expected dictionary index >= 0 and < %" PRId64
+                      " but found value %" PRId64,
+                      i, dictionary_length, index);
+        return EINVAL;
+      }
+    }
   }
 
   return NANOARROW_OK;
