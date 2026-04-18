@@ -60,14 +60,6 @@ RUN git clone https://github.com/apache/arrow-js.git /arrow-integration/js --dep
 # Clone the arrow-rs repo
 RUN git clone https://github.com/apache/arrow-rs.git /arrow-integration/rust --depth 1
 
-# Install missing conda packages that the base image expects but no longer includes.
-# The conda environment sets CC, GOROOT, CFLAGS etc. but the packages that provide
-# these tools were removed from the base image. Must install into the "arrow" environment.
-RUN conda install -n arrow -y compilers go
-
-# Tell zstd-sys to use system libzstd via pkg-config instead of compiling from source
-ENV ZSTD_SYS_USE_PKG_CONFIG=1
-
 # Build all the integrations except nanoarrow (since we'll do that ourselves on each run)
 # Activate conda environment directly instead of using conda run, which has issues with
 # environment variables being inherited from base instead of the target environment.
