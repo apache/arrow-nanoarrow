@@ -24,6 +24,7 @@ WIN_DLL_NANOARROW_FETCHED="$(pwd)/scratch/build_against_fetched_shared/_deps/nan
 WIN_DLL_NANOARROW_BUILT="$(pwd)/scratch/nanoarrow_build/Debug"
 WIN_DLL_NANOARROW_INSTALLED="$(pwd)/scratch/nanoarrow_install/bin"
 
+# The mismatched_shared_libs test is static-only, so no DLL path needed
 for dir in scratch/build*; do
     # Special cases where we have to set PATH on Windows
     if [ "${dir}" = "scratch/build_against_fetched_shared" ] && [ "${OSTYPE}" = "msys" ]; then
