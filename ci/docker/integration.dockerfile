@@ -60,16 +60,21 @@ RUN git clone https://github.com/apache/arrow-js.git /arrow-integration/js --dep
 # Clone the arrow-rs repo
 RUN git clone https://github.com/apache/arrow-rs.git /arrow-integration/rust --depth 1
 
+# Install missing conda packages that the base image expects but no longer includes.
+# The conda environment sets CC, GOROOT, CFLAGS etc. but the packages that provide
+# these tools were removed from the base image. Must install into the "arrow" environment.
+RUN conda install -n arrow -y compilers go
+
 # Tell zstd-sys to use system libzstd via pkg-config instead of compiling from source
-# (the conda C compiler referenced by $CC doesn't exist in this image)
 ENV ZSTD_SYS_USE_PKG_CONFIG=1
 
-# Install Go (the base image sets GOROOT=/opt/conda/go but doesn't install it)
-RUN conda install -y go
-
 # Build all the integrations except nanoarrow (since we'll do that ourselves on each run)
-RUN ARCHERY_INTEGRATION_WITH_NANOARROW="0" \
-    conda run --no-capture-output \
-    /arrow-integration/ci/scripts/integration_arrow_build.sh \
-    /arrow-integration \
-    /build
+# Activate conda environment directly instead of using conda run, which has issues with
+# environment variables being inherited from base instead of the target environment.
+# Also add cargo/bin back to PATH since conda activation may not include it.
+SHELL ["/bin/bash", "-c"]
+RUN source /opt/conda/etc/profile.d/conda.sh && \
+    conda activate arrow && \
+    export PATH="/root/.cargo/bin:$PATH" && \
+    ARCHERY_INTEGRATION_WITH_NANOARROW="0" \
+    /arrow-integration/ci/scripts/integration_arrow_build.sh /arrow-integration /build
