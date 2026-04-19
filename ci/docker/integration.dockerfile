@@ -18,7 +18,6 @@
 FROM apache/arrow-dev:amd64-conda-integration
 
 ENV ARROW_USE_CCACHE=OFF \
-    ARROW_CPP_EXE_PATH=/build/cpp/debug \
     ARROW_NANOARROW_PATH=/build/nanoarrow \
     ARROW_RUST_EXE_PATH=/build/rust/debug \
     BUILD_DOCS_CPP=OFF \
