@@ -830,6 +830,13 @@ endif()
 # Generate package files for the build and install trees.
 include(CMakePackageConfigHelpers)
 
+# Capture BUILD_SHARED_LIBS at configure time for use in the config file
+if(BUILD_SHARED_LIBS)
+  set(NANOARROW_BUILD_SHARED_LIBS "ON")
+else()
+  set(NANOARROW_BUILD_SHARED_LIBS "OFF")
+endif()
+
 foreach(tree_type BUILD INSTALL)
   if(tree_type STREQUAL "BUILD")
     set(install_location ".")

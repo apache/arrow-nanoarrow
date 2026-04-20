@@ -54,3 +54,23 @@ for nanoarrow_build_type in static shared auto; do
         -DTEST_BUILD_TYPE=${nanoarrow_build_type}
     cmake --build scratch/build_against_fetched_${nanoarrow_build_type}/
 done
+
+# Test that the nanoarrow::nanoarrow alias uses BUILD_SHARED_LIBS from nanoarrow's
+# build time, not the consumer's. Build nanoarrow as static-only, then configure
+# the consumer with BUILD_SHARED_LIBS=ON. The alias should resolve to static.
+# See: https://github.com/apache/arrow-nanoarrow/issues/875
+cmake -S ../.. -B scratch/nanoarrow_build_static_only/ \
+    -DCMAKE_INSTALL_PREFIX=scratch/nanoarrow_install_static_only/ \
+    -DNANOARROW_IPC=ON -DNANOARROW_DEVICE=ON -DNANOARROW_TESTING=ON \
+    -DBUILD_SHARED_LIBS=OFF \
+    $EXTRA_CMAKE_CONFIGURE
+cmake --build scratch/nanoarrow_build_static_only/
+cmake --install scratch/nanoarrow_build_static_only/ $EXTRA_CMAKE_INSTALL
+
+# Consumer uses BUILD_SHARED_LIBS=ON but nanoarrow only has static libs.
+# With the fix, this should work because nanoarrow::nanoarrow aliases to _static.
+cmake -S . -B scratch/build_mismatched_shared_libs/ \
+    -Dnanoarrow_ROOT=scratch/nanoarrow_install_static_only \
+    -DTEST_BUILD_TYPE=auto \
+    -DBUILD_SHARED_LIBS=ON
+cmake --build scratch/build_mismatched_shared_libs/
