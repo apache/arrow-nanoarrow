@@ -61,7 +61,7 @@ jobs:
 
       - name: Cache Arrow C++ Build
         id: cache-arrow-build
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: arrow
           # Bump the number at the end of this line to force a new Arrow C++ build
@@ -150,7 +150,7 @@ jobs:
 
       - name: Cache Arrow C++ Build
         id: cache-arrow-build
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: arrow
           # Bump the number at the end of this line to force a new Arrow C++ build
