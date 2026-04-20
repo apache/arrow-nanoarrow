@@ -18,7 +18,6 @@
 FROM apache/arrow-dev:amd64-conda-integration
 
 ENV ARROW_USE_CCACHE=OFF \
-    ARROW_CPP_EXE_PATH=/build/cpp/debug \
     ARROW_NANOARROW_PATH=/build/nanoarrow \
     ARROW_RUST_EXE_PATH=/build/rust/debug \
     BUILD_DOCS_CPP=OFF \
@@ -61,8 +60,12 @@ RUN git clone https://github.com/apache/arrow-js.git /arrow-integration/js --dep
 RUN git clone https://github.com/apache/arrow-rs.git /arrow-integration/rust --depth 1
 
 # Build all the integrations except nanoarrow (since we'll do that ourselves on each run)
-RUN ARCHERY_INTEGRATION_WITH_NANOARROW="0" \
-    conda run --no-capture-output \
-    /arrow-integration/ci/scripts/integration_arrow_build.sh \
-    /arrow-integration \
-    /build
+# Activate conda environment directly instead of using conda run, which has issues with
+# environment variables being inherited from base instead of the target environment.
+# Also add cargo/bin back to PATH since conda activation may not include it.
+SHELL ["/bin/bash", "-c"]
+RUN source /opt/conda/etc/profile.d/conda.sh && \
+    conda activate arrow && \
+    export PATH="/root/.cargo/bin:$PATH" && \
+    ARCHERY_INTEGRATION_WITH_NANOARROW="0" \
+    /arrow-integration/ci/scripts/integration_arrow_build.sh /arrow-integration /build
