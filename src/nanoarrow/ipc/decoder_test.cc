@@ -699,7 +699,7 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDictionaryEncodingsUniqueIds) {
   ArrowIpcDictionaryEncodingsReset(&dictionary_encodings);
 }
 
-TEST(NanoarrowIpcTest, NanoarrowIpcDecodeDictionaryBatchDecode) {
+TEST(NanoarrowIpcTest, NanoarrowIpcDecodeDictionaryBatch) {
   using namespace nanoarrow::literals;
 
   struct ArrowIpcDictionaryEncodings dictionary_encodings;
@@ -734,6 +734,9 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDecodeDictionaryBatchDecode) {
   // Check that we can't decode a dictionary batch if we haven't read a dictionary batch
   // message
   ASSERT_EQ(ArrowIpcDecoderInit(&decoder), NANOARROW_OK);
+  ASSERT_EQ(ArrowIpcDecoderSetEndianness(&decoder, NANOARROW_IPC_ENDIANNESS_LITTLE),
+            NANOARROW_OK);
+
   struct ArrowBufferView body;
   body.data.data = nullptr;
   body.size_bytes = 0;
