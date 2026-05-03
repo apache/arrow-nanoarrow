@@ -2086,7 +2086,7 @@ static struct ArrowIpcBufferFactory ArrowIpcBufferFactoryFromShared(
   struct ArrowIpcBufferFactory out;
   out.make_buffer = &ArrowIpcMakeBufferFromShared;
   out.decompressor = NULL;
-  out.buffer_length = shared->private_src.size_bytes;
+  out.buffer_length = shared->size_bytes;
   out.private_data = shared;
   return out;
 }
@@ -2568,7 +2568,7 @@ ArrowErrorCode ArrowIpcDecoderDecodeArray(struct ArrowIpcDecoder* decoder,
 }
 
 ArrowErrorCode ArrowIpcDecoderDecodeArrayFromSharedWithDictionaries(
-    struct ArrowIpcDecoder* decoder, struct ArrowIpcSharedBuffer* body, int64_t i,
+    struct ArrowIpcDecoder* decoder, struct ArrowBuffer* body, int64_t i,
     struct ArrowIpcDictionaries* dictionaries, struct ArrowArray* out,
     enum ArrowValidationLevel validation_level, struct ArrowError* error) {
   struct ArrowArrayView* array_view;
@@ -2679,7 +2679,7 @@ NANOARROW_DLL ArrowErrorCode ArrowIpcDecoderDecodeDictionary(
 }
 
 NANOARROW_DLL ArrowErrorCode ArrowIpcDecoderDecodeDictionaryFromShared(
-    struct ArrowIpcDecoder* decoder, struct ArrowIpcSharedBuffer* shared,
+    struct ArrowIpcDecoder* decoder, struct ArrowBuffer* shared,
     enum ArrowValidationLevel validation_level, struct ArrowIpcDictionaries* dictionaries,
     struct ArrowError* error) {
   NANOARROW_DCHECK(decoder != NULL);

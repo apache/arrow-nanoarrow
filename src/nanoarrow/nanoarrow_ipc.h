@@ -644,7 +644,7 @@ NANOARROW_DLL ArrowErrorCode ArrowIpcDecoderDecodeArray(
 /// ArrowSharedBufferIsThreadSafe() returns 0, out must not be released by another
 /// thread.
 NANOARROW_DLL ArrowErrorCode ArrowIpcDecoderDecodeArrayFromSharedWithDictionaries(
-    struct ArrowIpcDecoder* decoder, struct ArrowIpcSharedBuffer* shared, int64_t i,
+    struct ArrowIpcDecoder* decoder, struct ArrowBuffer* shared, int64_t i,
     struct ArrowIpcDictionaries* dictionaries, struct ArrowArray* out,
     enum ArrowValidationLevel validation_level, struct ArrowError* error);
 
@@ -673,12 +673,12 @@ NANOARROW_DLL ArrowErrorCode ArrowIpcDecoderDecodeDictionary(
 /// \brief Decode an ArrowArray from a dictionary batch from an owned buffer
 ///
 /// This implementation takes advantage of the fact that it can avoid copying individual
-/// buffers. In all cases the caller must ArrowIpcSharedBufferReset() body after one or
+/// buffers. In all cases the caller must ArrowBufferReset() body after one or
 /// more calls to ArrowIpcDecoderDecodeArrayFromShared(). If
-/// ArrowIpcSharedBufferIsThreadSafe() returns 0, no batches decoded using out may
+/// ArrowSharedBufferIsThreadSafe() returns 0, no batches decoded using out may
 /// be released from another thread.
 NANOARROW_DLL ArrowErrorCode ArrowIpcDecoderDecodeDictionaryFromShared(
-    struct ArrowIpcDecoder* decoder, struct ArrowIpcSharedBuffer* shared,
+    struct ArrowIpcDecoder* decoder, struct ArrowBuffer* shared,
     enum ArrowValidationLevel validation_level, struct ArrowIpcDictionaries* out,
     struct ArrowError* error);
 
@@ -735,7 +735,7 @@ struct ArrowIpcArrayStreamReaderOptions {
   /// (since unreferenced portions of the file are often not loaded into memory) or
   /// (2) if all data from all columns are about to be referenced anyway. When loading
   /// a single field there is probably no advantage to using shared buffers.
-  /// Defaults to the value of ArrowIpcSharedBufferIsThreadSafe().
+  /// Defaults to the value of ArrowSharedBufferIsThreadSafe().
   int use_shared_buffers;
 };
 

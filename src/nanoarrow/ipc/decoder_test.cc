@@ -853,8 +853,8 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDecodeDictionaryBatch) {
   ArrowBufferInit(&record_batch_body);
   ASSERT_EQ(ArrowBufferAppendBufferView(&record_batch_body, data), NANOARROW_OK);
 
-  struct ArrowIpcSharedBuffer record_batch_shared;
-  ASSERT_EQ(ArrowIpcSharedBufferInit(&record_batch_shared, &record_batch_body),
+  struct ArrowBuffer record_batch_shared;
+  ASSERT_EQ(ArrowSharedBufferInit(&record_batch_shared, &record_batch_body),
             NANOARROW_OK);
 
   ASSERT_EQ(ArrowIpcDecoderDecodeArrayFromSharedWithDictionaries(
@@ -865,7 +865,7 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDecodeDictionaryBatch) {
   ASSERT_NE(batch.children[0]->dictionary, nullptr);
   ASSERT_EQ(batch.children[0]->dictionary->length, 3);
   ArrowArrayRelease(&batch);
-  ArrowIpcSharedBufferReset(&record_batch_shared);
+  ArrowBufferReset(&record_batch_shared);
 
   ArrowArrayViewReset(&array_view);
   ArrowIpcDictionariesReset(&dictionaries);
@@ -971,7 +971,7 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDecodeSimpleRecordBatchFromShared) {
             NANOARROW_OK);
 
   struct ArrowBuffer shared;
-  ASSERT_EQ(ArrowIpcSharedBufferInit(&shared, &body), NANOARROW_OK);
+  ASSERT_EQ(ArrowSharedBufferInit(&shared, &body), NANOARROW_OK);
 
   // Check full struct extract
   EXPECT_EQ(ArrowIpcDecoderDecodeArrayFromShared(
@@ -1010,8 +1010,8 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDecodeSimpleRecordBatchFromShared) {
 }
 
 TEST(NanoarrowIpcTest, NanoarrowIpcSharedBufferThreadSafeDecode) {
-  if (!ArrowIpcSharedBufferIsThreadSafe()) {
-    GTEST_SKIP() << "ArrowIpcSharedBufferIsThreadSafe() returned false";
+  if (!ArrowSharedBufferIsThreadSafe()) {
+    GTEST_SKIP() << "ArrowSharedBufferIsThreadSafe() returned false";
   }
 
   struct ArrowIpcDecoder decoder;
@@ -1040,7 +1040,7 @@ TEST(NanoarrowIpcTest, NanoarrowIpcSharedBufferThreadSafeDecode) {
             NANOARROW_OK);
 
   struct ArrowBuffer shared;
-  ASSERT_EQ(ArrowIpcSharedBufferInit(&shared, &body), NANOARROW_OK);
+  ASSERT_EQ(ArrowSharedBufferInit(&shared, &body), NANOARROW_OK);
 
   struct ArrowArray arrays[10];
   for (int i = 0; i < 10; i++) {
