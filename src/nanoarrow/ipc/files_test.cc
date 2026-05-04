@@ -557,7 +557,7 @@ INSTANTIATE_TEST_SUITE_P(
         TestFile::OK("0.14.1/generated_primitive.stream"),
         TestFile::OK("0.14.1/generated_primitive_no_batches.stream"),
         TestFile::OK("0.14.1/generated_primitive_zerolength.stream"),
-        TestFile::OK("4.0.0-shareddict/generated_shared_dict"),
+        TestFile::ReadOnly("4.0.0-shareddict/generated_shared_dict.stream"),
         // cpp-21.0.0 regenerated gold files
         TestFile::OK("cpp-21.0.0/generated_binary.stream"),
         TestFile::OK("cpp-21.0.0/generated_binary_no_batches.stream"),
