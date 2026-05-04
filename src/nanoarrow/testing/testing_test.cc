@@ -1152,7 +1152,7 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestFieldDecimal) {
       R"({"name": null, "count": 3, "VALIDITY": [0, 1, 1], "DATA": ["0", "0", "258"]})");
 
   TestTypeError(R"({"name": "decimal", "bitWidth": 123, "precision": 10, "scale": 3})",
-                "Type[name=='decimal'] bitWidth must be 128 or 256");
+                "Type[name=='decimal'] bitWidth must be 32, 64, 128 or 256");
 
   // Ensure that omitted bitWidth maps to decimal128
   TestingJSONReader reader;

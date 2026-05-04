@@ -1154,6 +1154,12 @@ ArrowErrorCode SetTypeDecimal(ArrowSchema* schema, const json& value, ArrowError
 
   ArrowType type;
   switch (bit_width_int) {
+    case 32:
+      type = NANOARROW_TYPE_DECIMAL32;
+      break;
+    case 64:
+      type = NANOARROW_TYPE_DECIMAL64;
+      break;
     case 128:
       type = NANOARROW_TYPE_DECIMAL128;
       break;
@@ -1161,7 +1167,7 @@ ArrowErrorCode SetTypeDecimal(ArrowSchema* schema, const json& value, ArrowError
       type = NANOARROW_TYPE_DECIMAL256;
       break;
     default:
-      ArrowErrorSet(error, "Type[name=='decimal'] bitWidth must be 128 or 256");
+      ArrowErrorSet(error, "Type[name=='decimal'] bitWidth must be 32, 64, 128 or 256");
       return EINVAL;
   }
 
