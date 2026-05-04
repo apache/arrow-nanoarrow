@@ -1225,10 +1225,16 @@ static int ArrowIpcDecoderSetType(struct ArrowSchema* schema, ns(Field_table_t) 
     case ns(Type_FixedSizeBinary):
       return ArrowIpcDecoderSetTypeFixedSizeBinary(schema, ns(Field_type_get(field)),
                                                    error);
+    case ns(Type_BinaryView):
+      ArrowErrorSet(error, "BinaryView not yet supported in IPC reader");
+      return ENOTSUP;
     case ns(Type_Utf8):
       return ArrowIpcDecoderSetTypeSimple(schema, NANOARROW_TYPE_STRING, error);
     case ns(Type_LargeUtf8):
       return ArrowIpcDecoderSetTypeSimple(schema, NANOARROW_TYPE_LARGE_STRING, error);
+    case ns(Type_Utf8View):
+      ArrowErrorSet(error, "Utf8View not yet supported in IPC reader");
+      return ENOTSUP;
     case ns(Type_Date):
       return ArrowIpcDecoderSetTypeDate(schema, ns(Field_type_get(field)), error);
     case ns(Type_Time):
@@ -1248,11 +1254,18 @@ static int ArrowIpcDecoderSetType(struct ArrowSchema* schema, ns(Field_table_t) 
     case ns(Type_FixedSizeList):
       return ArrowIpcDecoderSetTypeFixedSizeList(schema, ns(Field_type_get(field)),
                                                  error);
+    case ns(Type_ListView):
+    case ns(Type_LargeListView):
+      ArrowErrorSet(error, "ListView/LargeListView not yet supported in IPC reader");
+      return ENOTSUP;
     case ns(Type_Map):
       return ArrowIpcDecoderSetTypeMap(schema, ns(Field_type_get(field)), error);
     case ns(Type_Union):
       return ArrowIpcDecoderSetTypeUnion(schema, ns(Field_type_get(field)), n_children,
                                          error);
+    case ns(Type_RunEndEncoded):
+      ArrowErrorSet(error, "RunEndEncoded not yet supported in IPC reader");
+      return ENOTSUP;
     default:
       ArrowErrorSet(error, "Unrecognized Field type with value %d", type_type);
       return EINVAL;

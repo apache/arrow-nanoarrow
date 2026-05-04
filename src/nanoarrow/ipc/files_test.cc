@@ -491,7 +491,6 @@ INSTANTIATE_TEST_SUITE_P(
         TestFile::OK("generated_datetime.stream"),
         TestFile::OK("generated_decimal.stream"),
         TestFile::OK("generated_decimal256.stream"),
-
         TestFile::OK("generated_duplicate_fieldnames.stream"),
         TestFile::OK("generated_interval.stream"),
         TestFile::OK("generated_map_non_canonical.stream"),
@@ -545,18 +544,10 @@ TEST_P(TestFileFixture, NanoarrowIpcTestFileIPCCheckJSON) {
   param.TestIPCCheckJSON(dir_builder.str());
 }
 
-// At least one Windows MSVC version does not allow the #if defined()
-// to be within a macro invocation, so we define these two cases
-// with some repetition.
-#if defined(NANOARROW_IPC_WITH_ZSTD) && defined(NANOARROW_IPC_WITH_LZ4)
 INSTANTIATE_TEST_SUITE_P(
     NanoarrowIpcTest, TestFileFixture,
     ::testing::Values(
         // Testing of other files
-        TestFile::OK("2.0.0-compression/generated_uncompressible_zstd.stream"),
-        TestFile::OK("2.0.0-compression/generated_zstd.stream"),
-        TestFile::OK("2.0.0-compression/generated_uncompressible_lz4.stream"),
-        TestFile::OK("2.0.0-compression/generated_lz4.stream"),
         TestFile::OK("0.17.1/generated_union.stream"),
         TestFile::OK("0.14.1/generated_datetime.stream"),
         TestFile::OK("0.14.1/generated_decimal.stream"),
@@ -565,24 +556,54 @@ INSTANTIATE_TEST_SUITE_P(
         TestFile::OK("0.14.1/generated_nested.stream"),
         TestFile::OK("0.14.1/generated_primitive.stream"),
         TestFile::OK("0.14.1/generated_primitive_no_batches.stream"),
-        TestFile::OK("0.14.1/generated_primitive_zerolength.stream")
+        TestFile::OK("0.14.1/generated_primitive_zerolength.stream"),
+        TestFile::OK("4.0.0-shareddict/generated_shared_dict"),
+        // cpp-21.0.0 regenerated gold files
+        TestFile::OK("cpp-21.0.0/generated_binary.stream"),
+        TestFile::OK("cpp-21.0.0/generated_binary_no_batches.stream"),
+        TestFile::OK("cpp-21.0.0/generated_binary_zerolength.stream"),
+        TestFile::OK("cpp-21.0.0/generated_custom_metadata.stream"),
+        TestFile::OK("cpp-21.0.0/generated_datetime.stream"),
+        TestFile::OK("cpp-21.0.0/generated_decimal.stream"),
+        TestFile::OK("cpp-21.0.0/generated_decimal256.stream"),
+        TestFile::OK("cpp-21.0.0/generated_decimal32.stream"),
+        TestFile::OK("cpp-21.0.0/generated_decimal64.stream"),
+        TestFile::OK("cpp-21.0.0/generated_duplicate_fieldnames.stream"),
+        TestFile::OK("cpp-21.0.0/generated_duration.stream"),
+        TestFile::OK("cpp-21.0.0/generated_interval.stream"),
+        TestFile::OK("cpp-21.0.0/generated_interval_mdn.stream"),
+        TestFile::OK("cpp-21.0.0/generated_large_binary.stream"),
+        TestFile::OK("cpp-21.0.0/generated_map.stream"),
+        TestFile::OK("cpp-21.0.0/generated_map_non_canonical.stream"),
+        TestFile::OK("cpp-21.0.0/generated_nested.stream"),
+        TestFile::OK("cpp-21.0.0/generated_nested_large_offsets.stream"),
+        TestFile::OK("cpp-21.0.0/generated_null.stream"),
+        TestFile::OK("cpp-21.0.0/generated_null_trivial.stream"),
+        TestFile::OK("cpp-21.0.0/generated_primitive.stream"),
+        TestFile::OK("cpp-21.0.0/generated_primitive_no_batches.stream"),
+        TestFile::OK("cpp-21.0.0/generated_primitive_zerolength.stream"),
+        TestFile::OK("cpp-21.0.0/generated_recursive_nested.stream"),
+        TestFile::OK("cpp-21.0.0/generated_union.stream"),
+        TestFile::ReadOnly("cpp-21.0.0/generated_dictionary.stream"),
+        TestFile::ReadOnly("cpp-21.0.0/generated_dictionary_unsigned.stream"),
+        TestFile::ReadOnly("cpp-21.0.0/generated_extension.stream"),
+        TestFile::ReadOnly("cpp-21.0.0/generated_nested_dictionary.stream"),
+        TestFile::NotSupported("cpp-21.0.0/generated_list_view.stream"),
+        TestFile::NotSupported("cpp-21.0.0/generated_binary_view.stream"),
+        TestFile::NotSupported("cpp-21.0.0/generated_run_end_encoded.stream")
         // Comment to keep line from wrapping
         ));
-#else
-INSTANTIATE_TEST_SUITE_P(NanoarrowIpcTest, TestFileFixture,
-                         ::testing::Values(
-                             // Testing of other files
-                             TestFile::OK("0.17.1/generated_union.stream"),
-                             TestFile::OK("0.14.1/generated_datetime.stream"),
-                             TestFile::OK("0.14.1/generated_decimal.stream"),
-                             TestFile::OK("0.14.1/generated_interval.stream"),
-                             TestFile::OK("0.14.1/generated_map.stream"),
-                             TestFile::OK("0.14.1/generated_nested.stream"),
-                             TestFile::OK("0.14.1/generated_primitive.stream"),
-                             TestFile::OK("0.14.1/generated_primitive_no_batches.stream"),
-                             TestFile::OK("0.14.1/generated_primitive_zerolength.stream")
-                             // Comment to keep line from wrapping
-                             ));
+
+#if defined(NANOARROW_IPC_WITH_ZSTD) && defined(NANOARROW_IPC_WITH_LZ4)
+INSTANTIATE_TEST_SUITE_P(
+    NanoarrowIpcTestCompression, TestFileFixture,
+    ::testing::Values(
+        TestFile::OK("2.0.0-compression/generated_uncompressible_zstd.stream"),
+        TestFile::OK("2.0.0-compression/generated_zstd.stream"),
+        TestFile::OK("2.0.0-compression/generated_uncompressible_lz4.stream"),
+        TestFile::OK("2.0.0-compression/generated_lz4.stream")
+        // Comment to keep line from wrapping
+        ));
 #endif
 
 #endif
