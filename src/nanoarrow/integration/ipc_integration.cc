@@ -200,14 +200,19 @@ struct MaterializedArrayStream {
     NANOARROW_RETURN_NOT_OK_WITH_ERROR(
         ArrowIpcDecoderSetEndianness(decoder.get(), decoder->endianness), error);
 
-    // Read dictionary blocks
+    // Initialize dictionaries storage
     nanoarrow::ipc::UniqueDictionaries dictionaries;
     NANOARROW_RETURN_NOT_OK(ArrowIpcDictionariesInit(
         dictionaries.get(), &decoder->footer->dictionaries, error));
 
+    // Move both block buffers out of the footer BEFORE decoding any headers,
+    // because ArrowIpcDecoderDecodeHeader resets the footer
     nanoarrow::UniqueBuffer dictionary_blocks;
-    ArrowBufferMove(&decoder->footer->record_batch_blocks, dictionary_blocks.get());
+    nanoarrow::UniqueBuffer record_batch_blocks;
+    ArrowBufferMove(&decoder->footer->dictionary_blocks, dictionary_blocks.get());
+    ArrowBufferMove(&decoder->footer->record_batch_blocks, record_batch_blocks.get());
 
+    // Read dictionary blocks
     for (int i = 0; i < dictionary_blocks->size_bytes / sizeof(struct ArrowIpcFileBlock);
          i++) {
       const auto& block =
@@ -229,9 +234,6 @@ struct MaterializedArrayStream {
     }
 
     // Read record batch blocks
-    nanoarrow::UniqueBuffer record_batch_blocks;
-    ArrowBufferMove(&decoder->footer->record_batch_blocks, record_batch_blocks.get());
-
     for (int i = 0;
          i < record_batch_blocks->size_bytes / sizeof(struct ArrowIpcFileBlock); i++) {
       const auto& block =
