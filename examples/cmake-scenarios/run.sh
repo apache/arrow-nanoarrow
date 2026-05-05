@@ -27,13 +27,14 @@ WIN_DLL_NANOARROW_INSTALLED="$(pwd)/scratch/nanoarrow_install/bin"
 # The mismatched_shared_libs test is static-only, so no DLL path needed
 for dir in scratch/build*; do
     # Special cases where we have to set PATH on Windows
-    if [ "${dir}" = "scratch/build_against_fetched_shared" ] && [ "${OSTYPE}" = "msys" ]; then
+    # OSTYPE can be "msys" (Git Bash) or "cygwin" (Cygwin/GitHub Actions)
+    if [ "${dir}" = "scratch/build_against_fetched_shared" ] && [[ "${OSTYPE}" == msys* || "${OSTYPE}" == cygwin* ]]; then
         PATH="${PATH}:${WIN_DLL_NANOARROW_FETCHED}"  ./${dir}/Debug/minimal_cpp_app
-    elif [ "${dir}" = "scratch/build_shared" ] && [ "${OSTYPE}" = "msys" ]; then
+    elif [ "${dir}" = "scratch/build_shared" ] && [[ "${OSTYPE}" == msys* || "${OSTYPE}" == cygwin* ]]; then
         PATH="${PATH}:${WIN_DLL_NANOARROW_BUILT}" ./${dir}/Debug/minimal_cpp_app
-    elif [ "${dir}" = "scratch/build_against_install_shared" ] && [ "${OSTYPE}" = "msys" ]; then
+    elif [ "${dir}" = "scratch/build_against_install_shared" ] && [[ "${OSTYPE}" == msys* || "${OSTYPE}" == cygwin* ]]; then
         PATH="${PATH}:${WIN_DLL_NANOARROW_INSTALLED}" ./${dir}/Debug/minimal_cpp_app
-    elif [ "${OSTYPE}" = "msys" ]; then
+    elif [[ "${OSTYPE}" == msys* || "${OSTYPE}" == cygwin* ]]; then
         ./${dir}/Debug/minimal_cpp_app
     else
         ./${dir}/minimal_cpp_app
