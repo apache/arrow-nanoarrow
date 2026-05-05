@@ -954,6 +954,8 @@ struct ArrowIpcFooter {
   struct ArrowIpcDictionaryEncodings dictionaries;
   /// \brief all blocks containing RecordBatch Messages
   struct ArrowBuffer record_batch_blocks;
+  /// \brief all blocks containing DictionaryBatch Messages
+  struct ArrowBuffer dictionary_blocks;
 };
 
 /// \brief Initialize a footer

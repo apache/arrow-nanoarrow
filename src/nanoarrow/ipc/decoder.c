@@ -1898,6 +1898,19 @@ ArrowErrorCode ArrowIpcDecoderDecodeFooter(struct ArrowIpcDecoder* decoder,
     record_batches[i].body_length = ns(Block_bodyLength(blocks + i));
   }
 
+  blocks = ns(Footer_dictionaries(footer));
+  n = ns(Block_vec_len(blocks));
+  NANOARROW_RETURN_NOT_OK(ArrowBufferResize(&private_data->footer.dictionary_blocks,
+                                            sizeof(struct ArrowIpcFileBlock) * n,
+                                            /*shrink_to_fit=*/0));
+  struct ArrowIpcFileBlock* dictionaries =
+      (struct ArrowIpcFileBlock*)private_data->footer.dictionary_blocks.data;
+  for (int64_t i = 0; i < n; i++) {
+    dictionaries[i].offset = ns(Block_offset(blocks + i));
+    dictionaries[i].metadata_length = ns(Block_metaDataLength(blocks + i));
+    dictionaries[i].body_length = ns(Block_bodyLength(blocks + i));
+  }
+
   decoder->footer = &private_data->footer;
   return NANOARROW_OK;
 }
