@@ -22,7 +22,7 @@ FROM --platform=linux/${NANOARROW_ARCH} ubuntu:latest
 RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
     locales git cmake r-base gnupg curl valgrind gfortran python3-venv python3-dev doxygen pandoc gcovr \
     libxml2-dev libfontconfig1-dev libfreetype6-dev libfribidi-dev libharfbuzz-dev \
-    libjpeg-dev libpng-dev libtiff-dev
+    libjpeg-dev libpng-dev libtiff-dev libuv1-dev
 
 # For Arrow C++
 RUN apt-get install -y -V ca-certificates lsb-release wget && \
