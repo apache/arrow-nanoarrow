@@ -18,17 +18,15 @@
 # under the License.
 
 # This script runs the nanoarrow_ipc_integration VALIDATE command against
-# test files from the arrow-testing repository.
+# all test files from the arrow-testing repository's integration directory.
 #
 # Usage:
 #   export NANOARROW_ARROW_TESTING_DIR=/path/to/arrow-testing
-#   ./dev/run_ipc_integration_tests.sh [build_dir]
+#   ./ci/scripts/run-ipc-integration-tests.sh [build_dir]
 #
 # Arguments:
 #   build_dir: Optional path to the build directory containing
 #              nanoarrow_ipc_integration. Defaults to "build".
-
-set -e
 
 REPO_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 BUILD_DIR="${1:-${REPO_ROOT}/build}"
@@ -57,28 +55,42 @@ DATA_DIR="${NANOARROW_ARROW_TESTING_DIR}/data/arrow-ipc-stream/integration"
 TEMP_DIR=$(mktemp -d)
 trap "rm -rf ${TEMP_DIR}" EXIT
 
+# Track results
+PASSED=0
+FAILED=0
+SKIPPED=0
+
+# Known files that are expected to be skipped (unsupported types)
+SKIP_PATTERNS=(
+    "generated_extension"      # Extension types not fully supported
+    "generated_list_view"      # ListView not supported
+    "generated_binary_view"    # BinaryView not supported
+    "generated_run_end_encoded" # REE not supported
+)
+
+# Function to check if a file should be skipped
+should_skip() {
+    local basename="$1"
+    for pattern in "${SKIP_PATTERNS[@]}"; do
+        if [[ "${basename}" == *"${pattern}"* ]]; then
+            return 0
+        fi
+    done
+    return 1
+}
+
 # Function to run VALIDATE for a given test file
 run_validate() {
     local subdir="$1"
     local basename="$2"
 
-    local stream_file="${DATA_DIR}/${subdir}/${basename}.stream"
     local arrow_file="${DATA_DIR}/${subdir}/${basename}.arrow_file"
     local json_gz="${DATA_DIR}/${subdir}/${basename}.json.gz"
     local json_file="${TEMP_DIR}/${subdir}_${basename}.json"
 
-    # The VALIDATE command uses FromIpcFile which requires Arrow file format
-    # (with ARROW1 magic and footer), not IPC stream format.
-    # So we prefer .arrow_file over .stream
-    local arrow_path=""
-    if [ -f "${arrow_file}" ]; then
-        arrow_path="${arrow_file}"
-    elif [ -f "${stream_file}" ]; then
-        # Note: .stream files may fail because FromIpcFile expects file format
-        arrow_path="${stream_file}"
-    else
-        echo "SKIP: ${subdir}/${basename} - no .arrow_file or .stream found"
-        return 0
+    # We require .arrow_file format (with ARROW1 magic and footer)
+    if [ ! -f "${arrow_file}" ]; then
+        return 2  # Skip - no arrow file
     fi
 
     # Check if JSON exists (possibly gzipped)
@@ -87,34 +99,13 @@ run_validate() {
     elif [ -f "${DATA_DIR}/${subdir}/${basename}.json" ]; then
         json_file="${DATA_DIR}/${subdir}/${basename}.json"
     else
-        echo "SKIP: ${subdir}/${basename} - no .json or .json.gz found"
-        return 0
+        return 2  # Skip - no JSON file
     fi
 
-    echo "Testing: ${subdir}/${basename}"
-    if COMMAND=VALIDATE ARROW_PATH="${arrow_path}" JSON_PATH="${json_file}" "${INTEGRATION_BIN}"; then
-        echo "  PASS"
-        return 0
+    if COMMAND=VALIDATE ARROW_PATH="${arrow_file}" JSON_PATH="${json_file}" "${INTEGRATION_BIN}" > /dev/null 2>&1; then
+        return 0  # Pass
     else
-        echo "  FAIL"
-        return 1
-    fi
-}
-
-# Track results
-PASSED=0
-FAILED=0
-SKIPPED=0
-
-run_test() {
-    if run_validate "$@"; then
-        if [[ $(run_validate "$@" 2>&1) == *"SKIP"* ]]; then
-            ((SKIPPED++))
-        else
-            ((PASSED++))
-        fi
-    else
-        ((FAILED++))
+        return 1  # Fail
     fi
 }
 
@@ -123,82 +114,47 @@ echo "Using arrow-testing at: ${NANOARROW_ARROW_TESTING_DIR}"
 echo "Using integration binary at: ${INTEGRATION_BIN}"
 echo ""
 
-# Test files in cpp-21.0.0 (includes decimal32, decimal64, and dictionaries)
-CPP_21_FILES=(
-    "generated_decimal32"
-    "generated_decimal64"
-    "generated_decimal"
-    "generated_decimal256"
-    "generated_primitive"
-    "generated_primitive_no_batches"
-    "generated_primitive_zerolength"
-    "generated_datetime"
-    "generated_interval"
-    "generated_interval_mdn"
-    "generated_duration"
-    "generated_nested"
-    "generated_nested_large_offsets"
-    "generated_null"
-    "generated_null_trivial"
-    "generated_custom_metadata"
-    "generated_duplicate_fieldnames"
-    "generated_map"
-    "generated_map_non_canonical"
-    "generated_recursive_nested"
-    "generated_union"
-    "generated_binary"
-    "generated_binary_no_batches"
-    "generated_binary_zerolength"
-    "generated_large_binary"
-    "generated_dictionary"
-    "generated_dictionary_unsigned"
-    "generated_nested_dictionary"
-)
+# Find all subdirectories in the integration directory
+for subdir_path in "${DATA_DIR}"/*/; do
+    [ -d "${subdir_path}" ] || continue
+    subdir=$(basename "${subdir_path}")
 
-echo "=== Testing cpp-21.0.0 files ==="
-for file in "${CPP_21_FILES[@]}"; do
-    if run_validate "cpp-21.0.0" "${file}"; then
-        ((PASSED++))
-    else
-        exit_code=$?
-        if [ $exit_code -eq 0 ]; then
+    # Skip versions before 1.0.0
+    if [[ "${subdir}" == 0.* ]]; then
+        continue
+    fi
+
+    echo "=== Testing ${subdir} ==="
+
+    # Find all unique basenames (from .arrow_file files)
+    for arrow_file in "${subdir_path}"*.arrow_file; do
+        [ -f "${arrow_file}" ] || continue
+
+        basename=$(basename "${arrow_file}" .arrow_file)
+
+        # Check if this file should be skipped
+        if should_skip "${basename}"; then
+            ((SKIPPED++))
+            continue
+        fi
+
+        run_validate "${subdir}" "${basename}"
+        result=$?
+
+        if [ $result -eq 0 ]; then
+            echo "  PASS: ${basename}"
+            ((PASSED++))
+        elif [ $result -eq 2 ]; then
+            echo "  SKIP: ${basename} (missing files)"
             ((SKIPPED++))
         else
+            echo "  FAIL: ${basename}"
             ((FAILED++))
         fi
-    fi
+    done
+    echo ""
 done
 
-# Test files in 1.0.0-littleendian
-LITTLEENDIAN_FILES=(
-    "generated_decimal"
-    "generated_decimal256"
-    "generated_primitive"
-    "generated_datetime"
-    "generated_interval"
-    "generated_nested"
-    "generated_null"
-    "generated_custom_metadata"
-    "generated_map"
-    "generated_union"
-)
-
-echo ""
-echo "=== Testing 1.0.0-littleendian files ==="
-for file in "${LITTLEENDIAN_FILES[@]}"; do
-    if run_validate "1.0.0-littleendian" "${file}"; then
-        ((PASSED++))
-    else
-        exit_code=$?
-        if [ $exit_code -eq 0 ]; then
-            ((SKIPPED++))
-        else
-            ((FAILED++))
-        fi
-    fi
-done
-
-echo ""
 echo "=== Summary ==="
 echo "Passed: ${PASSED}"
 echo "Failed: ${FAILED}"
