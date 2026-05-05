@@ -80,8 +80,11 @@ jobs:
       - name: Install build dependencies
         if: matrix.config.label == 'with-cuda'
         run: |
+          # Install minimal CUDA packages needed for building (avoid full cuda-toolkit
+          # which includes nsight-systems and other large tools that exhaust disk space)
           sudo apt-get update && \
-            sudo apt-get install -y cmake build-essential cuda-toolkit tzdata
+            sudo apt-get install -y cmake build-essential tzdata \
+              cuda-nvcc-13-2 cuda-cudart-dev-13-2 libcublas-dev-13-2
 
           # Install newer cmake for building Arrow C++
           pip install cmake
