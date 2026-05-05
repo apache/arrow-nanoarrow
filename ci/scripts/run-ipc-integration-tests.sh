@@ -62,7 +62,6 @@ SKIPPED=0
 
 # Known files that are expected to be skipped (unsupported types)
 SKIP_PATTERNS=(
-    "generated_extension"      # Extension types not fully supported
     "generated_list_view"      # ListView not supported
     "generated_binary_view"    # BinaryView not supported
     "generated_run_end_encoded" # REE not supported
