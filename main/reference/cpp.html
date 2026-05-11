@@ -27,23 +27,23 @@
   </noscript>
   
   <!-- Loaded before other Sphinx assets -->
-  <link href="../_static/styles/theme.css?digest=7f76b32a3354e82990f2" rel="stylesheet" />
-<link href="../_static/styles/pydata-sphinx-theme.css?digest=7f76b32a3354e82990f2" rel="stylesheet" />
+  <link href="../_static/styles/theme.css?digest=55c26ed414f5f8a31ebb" rel="stylesheet" />
+<link href="../_static/styles/pydata-sphinx-theme.css?digest=55c26ed414f5f8a31ebb" rel="stylesheet" />
 
     <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=8f2a1f02" />
   
   <!-- So that users can add custom icons -->
-  <script defer src="../_static/scripts/fontawesome.js?digest=7f76b32a3354e82990f2"></script>
+  <script defer src="../_static/scripts/fontawesome.js?digest=55c26ed414f5f8a31ebb"></script>
   <!-- Pre-loaded scripts that we'll load fully later -->
-  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=7f76b32a3354e82990f2" />
-<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=7f76b32a3354e82990f2" />
+  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=55c26ed414f5f8a31ebb" />
+<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=55c26ed414f5f8a31ebb" />
 
     <script src="../_static/documentation_options.js?v=5929fcd5"></script>
     <script src="../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script>DOCUMENTATION_OPTIONS.pagename = 'reference/cpp';</script>
     <script>
-        DOCUMENTATION_OPTIONS.theme_version = '0.17.0';
+        DOCUMENTATION_OPTIONS.theme_version = '0.17.1';
         DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://arrow.apache.org/nanoarrow/switcher.json';
         DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'dev';
         DOCUMENTATION_OPTIONS.show_version_warning_banner =
@@ -74,7 +74,9 @@
   
   <button type="button" class="btn rounded-pill" id="pst-back-to-top">
     <i class="fa-solid fa-arrow-up"></i>Back to top</button>
-
+  
+  
+  
   
   <dialog id="pst-search-dialog">
     
@@ -400,7 +402,7 @@
 <dl>
 <dt class="sig sig-object cpp">
 <span class="target" id="group__nanoarrow__hpp-errors"></span><em><span class="pre">group</span></em> <span class="sig-name descname"><span class="pre">Error</span> <span class="pre">handling</span> <span class="pre">helpers</span></span></dt>
-<dd><p>Most functions in the C API return an ArrowErrorCode to communicate possible failure. Except where documented, it is usually not safe to continue after a non-zero value has been returned. While the nanoarrow C++ helpers do not throw any exceptions of their own, these helpers are provided to facilitate using the nanoarrow C++ helpers in frameworks where this is a useful error handling idiom. </p>
+<dd><p>Most functions in the C API return an <a class="reference internal" href="c.html#group__nanoarrow-errors_1ga7a5fb5dd2afa900c7b5f1d78b5da92c8"><span class="std std-ref">ArrowErrorCode</span></a> to communicate possible failure. Except where documented, it is usually not safe to continue after a non-zero value has been returned. While the nanoarrow C++ helpers do not throw any exceptions of their own, these helpers are provided to facilitate using the nanoarrow C++ helpers in frameworks where this is a useful error handling idiom. </p>
 <div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric" id="breathe-section-title-defines">Defines</p>
 <dl class="cpp macro">
@@ -484,7 +486,7 @@
 <p>Export an <a class="reference internal" href="c.html#struct_arrow_array_stream"><span class="std std-ref">ArrowArrayStream</span></a> from a standard C++ class. </p>
 <p>
 This class allows a standard C++ class to be exported to a generic <a class="reference internal" href="c.html#struct_arrow_array_stream"><span class="std std-ref">ArrowArrayStream</span></a> consumer by mapping C callback invocations to method calls on an instance of the object whose lifecycle is owned by the <a class="reference internal" href="c.html#struct_arrow_array_stream"><span class="std std-ref">ArrowArrayStream</span></a>. See <a class="reference internal" href="#class_vector_array_stream"><span class="std std-ref">VectorArrayStream</span></a> for minimal useful example of this pattern.</p>
-<p>The methods must be accessible to the <a class="reference internal" href="#class_array_stream_factory"><span class="std std-ref">ArrayStreamFactory</span></a>, either as public methods or by declaring ArrayStreamFactory&lt;ImplClass&gt; a friend. Implementors are encouraged (but not required) to implement a ToArrayStream(ArrowArrayStream*) that creates a new instance owned by the <a class="reference internal" href="c.html#struct_arrow_array_stream"><span class="std std-ref">ArrowArrayStream</span></a> and moves the relevant data to that instance.</p>
+<p>The methods must be accessible to the <a class="reference internal" href="#class_array_stream_factory"><span class="std std-ref">ArrayStreamFactory</span></a>, either as public methods or by declaring <a class="reference internal" href="#class_array_stream_factory"><span class="std std-ref">ArrayStreamFactory&lt;ImplClass&gt;</span></a> a friend. Implementors are encouraged (but not required) to implement a ToArrayStream(ArrowArrayStream*) that creates a new instance owned by the <a class="reference internal" href="c.html#struct_arrow_array_stream"><span class="std std-ref">ArrowArrayStream</span></a> and moves the relevant data to that instance.</p>
 <p>An example implementation might be:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">class</span><span class="w"> </span><span class="nc">StreamImpl</span> <span class="p">{</span>
  <span class="n">public</span><span class="p">:</span>
@@ -562,13 +564,13 @@ This class allows a standard C++ class to be exported to a generic <a class="ref
 <span id="_CPPv317VectorArrayStream"></span><span id="_CPPv217VectorArrayStream"></span><span id="VectorArrayStream"></span><span class="target" id="class_vector_array_stream"></span><span class="k"><span class="pre">class</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">VectorArrayStream</span></span></span><a class="headerlink" href="#_CPPv417VectorArrayStream" title="Link to this definition">#</a><br /></dt>
 <dd><div class="docutils container">
 <em>#include &lt;array_stream.hpp&gt;</em></div>
-<p>Implementation of an <a class="reference internal" href="c.html#struct_arrow_array_stream"><span class="std std-ref">ArrowArrayStream</span></a> backed by a vector of UniqueArray objects. </p>
+<p>Implementation of an <a class="reference internal" href="c.html#struct_arrow_array_stream"><span class="std std-ref">ArrowArrayStream</span></a> backed by a vector of <a class="reference internal" href="#group__nanoarrow__hpp-unique_1gabcbf87c4436c3168ebd37b85b82f8a9e"><span class="std std-ref">UniqueArray</span></a> objects. </p>
 <div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric" id="breathe-section-title-public-functions">Public Functions</p>
 <dl class="cpp function">
 <dt class="sig sig-object cpp" id="_CPPv4N17VectorArrayStream17VectorArrayStreamEP11ArrowSchemaNSt6vectorI11UniqueArrayEE">
 <span id="_CPPv3N17VectorArrayStream17VectorArrayStreamEP11ArrowSchemaNSt6vectorI11UniqueArrayEE"></span><span id="_CPPv2N17VectorArrayStream17VectorArrayStreamEP11ArrowSchemaNSt6vectorI11UniqueArrayEE"></span><span id="VectorArrayStream::VectorArrayStream__ArrowSchemaP.std::vector:UniqueArray:"></span><span class="target" id="class_vector_array_stream_1adbb77ff0b845935e4b1d653194b908bc"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">VectorArrayStream</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="c.html#_CPPv411ArrowSchema" title="ArrowSchema"><span class="n"><span class="pre">ArrowSchema</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">schema</span></span>, <span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">vector</span></span><span class="p"><span class="pre">&lt;</span></span><a class="reference internal" href="#_CPPv411UniqueArray" title="UniqueArray"><span class="n"><span class="pre">UniqueArray</span></span></a><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">arrays</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N17VectorArrayStream17VectorArrayStreamEP11ArrowSchemaNSt6vectorI11UniqueArrayEE" title="Link to this definition">#</a><br /></dt>
-<dd><p>Create a <a class="reference internal" href="#class_vector_array_stream"><span class="std std-ref">VectorArrayStream</span></a> from an <a class="reference internal" href="c.html#struct_arrow_schema"><span class="std std-ref">ArrowSchema</span></a> + vector of UniqueArray. </p>
+<dd><p>Create a <a class="reference internal" href="#class_vector_array_stream"><span class="std std-ref">VectorArrayStream</span></a> from an <a class="reference internal" href="c.html#struct_arrow_schema"><span class="std std-ref">ArrowSchema</span></a> + vector of <a class="reference internal" href="#group__nanoarrow__hpp-unique_1gabcbf87c4436c3168ebd37b85b82f8a9e"><span class="std std-ref">UniqueArray</span></a>. </p>
 <p>Takes ownership of schema and moves arrays if possible. </p>
 </dd></dl>
 
@@ -627,7 +629,7 @@ This class allows a standard C++ class to be exported to a generic <a class="ref
 <p class="breathe-sectiondef-title rubric" id="breathe-section-title-variables">Variables</p>
 <dl class="cpp var">
 <dt class="sig sig-object cpp" id="_CPPv42NA">
-<span id="_CPPv32NA"></span><span id="_CPPv22NA"></span><span id="NA__internal::Nothing"></span><span class="target" id="group__nanoarrow__hpp-range__for_1ga61fe392b65cee57b204c9122731acd30"></span><span class="k"><span class="pre">constexpr</span></span><span class="w"> </span><span class="n"><span class="pre">internal</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">Nothing</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">NA</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="p"><span class="pre">{</span></span><span class="p"><span class="pre">}</span></span><a class="headerlink" href="#_CPPv42NA" title="Link to this definition">#</a><br /></dt>
+<span id="_CPPv32NA"></span><span id="_CPPv22NA"></span><span id="NA__internal::Nothing"></span><span class="target" id="group__nanoarrow__hpp-range__for_1ga61fe392b65cee57b204c9122731acd30"></span><span class="n"><span class="pre">internal</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">Nothing</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">NA</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="p"><span class="pre">{</span></span><span class="p"><span class="pre">}</span></span><a class="headerlink" href="#_CPPv42NA" title="Link to this definition">#</a><br /></dt>
 <dd><p>An object convertible to any empty optional. </p>
 </dd></dl>
 
@@ -839,8 +841,8 @@ This class allows a standard C++ class to be exported to a generic <a class="ref
   </div>
   
   <!-- Scripts loaded after <body> so the DOM is not blocked -->
-  <script defer src="../_static/scripts/bootstrap.js?digest=7f76b32a3354e82990f2"></script>
-<script defer src="../_static/scripts/pydata-sphinx-theme.js?digest=7f76b32a3354e82990f2"></script>
+  <script defer src="../_static/scripts/bootstrap.js?digest=55c26ed414f5f8a31ebb"></script>
+<script defer src="../_static/scripts/pydata-sphinx-theme.js?digest=55c26ed414f5f8a31ebb"></script>
 
   <footer class="bd-footer">
 <div class="bd-footer__inner bd-page-width">
@@ -874,7 +876,7 @@ This class allows a standard C++ class to be exported to a generic <a class="ref
         <div class="footer-item">
 <p class="theme-version">
   <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
-  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.17.0.
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.17.1.
 </p></div>
       
     </div>

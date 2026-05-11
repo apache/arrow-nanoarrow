@@ -103,7 +103,7 @@ CRAN release: 2023-09-29
 - Use classed warnings to signal that a lossy conversion occurred
   ([\#298](https://github.com/apache/arrow-nanoarrow/issues/298))
 - Add support for
-  [`bit64::integer64()`](https://rdrr.io/pkg/bit64/man/bit64-package.html)
+  [`bit64::integer64()`](https://bit64.r-lib.org/reference/bit64-package.html)
   conversions
   ([\#293](https://github.com/apache/arrow-nanoarrow/issues/293))
 - Implement extension type registration/conversion

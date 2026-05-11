@@ -27,11 +27,11 @@ exposes an Arrow-based API and uses nanoarrow to implement a simple text
 file reader/writer. In general, nanoarrow can help you write a library
 or application that:
 
--  exposes an Arrow-based API to read from a data source or format,
--  exposes an Arrow-based API to write to a data source or format,
--  exposes one or more compute functions that operates on and produces
-   data in the form of Arrow arrays, and/or
--  exposes an extension type implementation.
+- exposes an Arrow-based API to read from a data source or format,
+- exposes an Arrow-based API to write to a data source or format,
+- exposes one or more compute functions that operates on and produces
+  data in the form of Arrow arrays, and/or
+- exposes an extension type implementation.
 
 Because Arrow has bindings in many languages, it means that you or
 others can easily bind or use your tool in higher-level runtimes like R,
@@ -60,10 +60,10 @@ The library
 The library we’ll write in this tutorial is a simple text processing
 library that splits and reassembles lines of text. It will be able to:
 
--  Read text from a buffer into an ``ArrowArray`` as one element per
-   line, and
--  Write elements of an ``ArrowArray`` into a buffer, inserting line
-   breaks after every element.
+- Read text from a buffer into an ``ArrowArray`` as one element per
+  line, and
+- Write elements of an ``ArrowArray`` into a buffer, inserting line
+  breaks after every element.
 
 For the sake of argument, we’ll call it ``linesplitter``.
 

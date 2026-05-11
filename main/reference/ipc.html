@@ -27,23 +27,23 @@
   </noscript>
   
   <!-- Loaded before other Sphinx assets -->
-  <link href="../_static/styles/theme.css?digest=7f76b32a3354e82990f2" rel="stylesheet" />
-<link href="../_static/styles/pydata-sphinx-theme.css?digest=7f76b32a3354e82990f2" rel="stylesheet" />
+  <link href="../_static/styles/theme.css?digest=55c26ed414f5f8a31ebb" rel="stylesheet" />
+<link href="../_static/styles/pydata-sphinx-theme.css?digest=55c26ed414f5f8a31ebb" rel="stylesheet" />
 
     <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=8f2a1f02" />
   
   <!-- So that users can add custom icons -->
-  <script defer src="../_static/scripts/fontawesome.js?digest=7f76b32a3354e82990f2"></script>
+  <script defer src="../_static/scripts/fontawesome.js?digest=55c26ed414f5f8a31ebb"></script>
   <!-- Pre-loaded scripts that we'll load fully later -->
-  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=7f76b32a3354e82990f2" />
-<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=7f76b32a3354e82990f2" />
+  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=55c26ed414f5f8a31ebb" />
+<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=55c26ed414f5f8a31ebb" />
 
     <script src="../_static/documentation_options.js?v=5929fcd5"></script>
     <script src="../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script>DOCUMENTATION_OPTIONS.pagename = 'reference/ipc';</script>
     <script>
-        DOCUMENTATION_OPTIONS.theme_version = '0.17.0';
+        DOCUMENTATION_OPTIONS.theme_version = '0.17.1';
         DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://arrow.apache.org/nanoarrow/switcher.json';
         DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'dev';
         DOCUMENTATION_OPTIONS.show_version_warning_banner =
@@ -74,7 +74,9 @@
   
   <button type="button" class="btn rounded-pill" id="pst-back-to-top">
     <i class="fa-solid fa-arrow-up"></i>Back to top</button>
-
+  
+  
+  
   
   <dialog id="pst-search-dialog">
     
@@ -677,7 +679,7 @@
 <dl class="cpp function">
 <dt class="sig sig-object cpp">
 <span class="target" id="group__nanoarrow__ipc_1ga51fa1e0958ac2174c45d659b9358298d"></span><span class="sig-name descname"><span class="pre">NANOARROW_DLL</span> <span class="pre">ArrowErrorCode</span> <span class="pre">ArrowIpcSerialDecompressorSetFunction</span> <span class="pre">(struct</span> <span class="pre">ArrowIpcDecompressor</span> <span class="pre">*decompressor,</span> <span class="pre">enum</span> <span class="pre">ArrowIpcCompressionType</span> <span class="pre">compression_type,</span> <span class="pre">ArrowIpcDecompressFunction</span> <span class="pre">decompress_function)</span></span></dt>
-<dd><p>Override the ArrowIpcDecompressFunction used for a specific compression type. </p>
+<dd><p>Override the <a class="reference internal" href="#group__nanoarrow__ipc_1ga74ed8ec651ecc43c0de70f4a9b556571"><span class="std std-ref">ArrowIpcDecompressFunction</span></a> used for a specific compression type. </p>
 <p>This may be used to inject support for a particular type of decompression if used with a version of nanoarrow with unknown or minimal capabilities. </p>
 </dd></dl>
 
@@ -1051,7 +1053,7 @@
 <dd><div class="docutils container">
 <em>#include &lt;nanoarrow_ipc.h&gt;</em></div>
 <p>A user-extensible decompressor. </p>
-<p>The <a class="reference internal" href="#struct_arrow_ipc_decompressor"><span class="std std-ref">ArrowIpcDecompressor</span></a> is the underlying object that enables decompression in the <a class="reference internal" href="#struct_arrow_ipc_decoder"><span class="std std-ref">ArrowIpcDecoder</span></a>. Its structure allows it to be backed by a multithreaded implementation; however, this is not required and the default implementation does not implement this. An implementation of a decompressor may support more than one ArrowIpcCompressionType. </p>
+<p>The <a class="reference internal" href="#struct_arrow_ipc_decompressor"><span class="std std-ref">ArrowIpcDecompressor</span></a> is the underlying object that enables decompression in the <a class="reference internal" href="#struct_arrow_ipc_decoder"><span class="std std-ref">ArrowIpcDecoder</span></a>. Its structure allows it to be backed by a multithreaded implementation; however, this is not required and the default implementation does not implement this. An implementation of a decompressor may support more than one <a class="reference internal" href="#group__nanoarrow__ipc_1gad7618ff0b7eaebe315248fc317877d85"><span class="std std-ref">ArrowIpcCompressionType</span></a>. </p>
 <div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric" id="breathe-section-title-public-members">Public Members</p>
 <dl class="cpp var">
@@ -1197,7 +1199,7 @@
 <span id="_CPPv332ArrowIpcArrayStreamReaderOptions"></span><span id="_CPPv232ArrowIpcArrayStreamReaderOptions"></span><span id="ArrowIpcArrayStreamReaderOptions"></span><span class="target" id="struct_arrow_ipc_array_stream_reader_options"></span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">ArrowIpcArrayStreamReaderOptions</span></span></span><a class="headerlink" href="#_CPPv432ArrowIpcArrayStreamReaderOptions" title="Link to this definition">#</a><br /></dt>
 <dd><div class="docutils container">
 <em>#include &lt;nanoarrow_ipc.h&gt;</em></div>
-<p>Options for <a class="reference internal" href="#group__nanoarrow__ipc_1ga5a6b06a78723c1f4e5c5f02bb88757fb"><span class="std std-ref">ArrowIpcArrayStreamReaderInit()</span></a></p>
+<p>Options for <a class="reference internal" href="#group__nanoarrow__ipc_1ga5a6b06a78723c1f4e5c5f02bb88757fb"><span class="std std-ref">ArrowIpcArrayStreamReaderInit()</span></a>. </p>
 <div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric" id="breathe-section-title-public-members">Public Members</p>
 <dl class="cpp var">
@@ -1297,61 +1299,61 @@
 <p class="breathe-sectiondef-title rubric" id="breathe-section-title-typedefs">Typedefs</p>
 <dl class="cpp type">
 <dt class="sig sig-object cpp" id="_CPPv418UniqueSharedBuffer">
-<span id="_CPPv318UniqueSharedBuffer"></span><span id="_CPPv218UniqueSharedBuffer"></span><span class="target" id="group__nanoarrow__ipc__hpp-unique_1gabdf2155dc93e609a770efdb2a672be88"></span><span class="k"><span class="pre">using</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">UniqueSharedBuffer</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="n"><span class="pre">internal</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">Unique</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv420ArrowIpcSharedBuffer" title="ArrowIpcSharedBuffer"><span class="n"><span class="pre">ArrowIpcSharedBuffer</span></span></a><span class="p"><span class="pre">&gt;</span></span><a class="headerlink" href="#_CPPv418UniqueSharedBuffer" title="Link to this definition">#</a><br /></dt>
+<span id="_CPPv318UniqueSharedBuffer"></span><span id="_CPPv218UniqueSharedBuffer"></span><span class="target" id="group__nanoarrow__ipc__hpp-unique_1gab270d1d1593de3b0c4a0be5fbfb8f0a0"></span><span class="k"><span class="pre">using</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">UniqueSharedBuffer</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="n"><span class="pre">internal</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">Unique</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv420ArrowIpcSharedBuffer" title="ArrowIpcSharedBuffer"><span class="n"><span class="pre">ArrowIpcSharedBuffer</span></span></a><span class="p"><span class="pre">&gt;</span></span><a class="headerlink" href="#_CPPv418UniqueSharedBuffer" title="Link to this definition">#</a><br /></dt>
 <dd><p>Class wrapping a unique struct <a class="reference internal" href="#struct_arrow_ipc_shared_buffer"><span class="std std-ref">ArrowIpcSharedBuffer</span></a>. </p>
 </dd></dl>
 
 <dl class="cpp type">
 <dt class="sig sig-object cpp" id="_CPPv413UniqueDecoder">
-<span id="_CPPv313UniqueDecoder"></span><span id="_CPPv213UniqueDecoder"></span><span class="target" id="group__nanoarrow__ipc__hpp-unique_1ga8e49ccb04c056f739bb40de41a7f3537"></span><span class="k"><span class="pre">using</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">UniqueDecoder</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="n"><span class="pre">internal</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">Unique</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv415ArrowIpcDecoder" title="ArrowIpcDecoder"><span class="n"><span class="pre">ArrowIpcDecoder</span></span></a><span class="p"><span class="pre">&gt;</span></span><a class="headerlink" href="#_CPPv413UniqueDecoder" title="Link to this definition">#</a><br /></dt>
+<span id="_CPPv313UniqueDecoder"></span><span id="_CPPv213UniqueDecoder"></span><span class="target" id="group__nanoarrow__ipc__hpp-unique_1ga047aadf33e433490ce3d8b4a336d722b"></span><span class="k"><span class="pre">using</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">UniqueDecoder</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="n"><span class="pre">internal</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">Unique</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv415ArrowIpcDecoder" title="ArrowIpcDecoder"><span class="n"><span class="pre">ArrowIpcDecoder</span></span></a><span class="p"><span class="pre">&gt;</span></span><a class="headerlink" href="#_CPPv413UniqueDecoder" title="Link to this definition">#</a><br /></dt>
 <dd><p>Class wrapping a unique struct <a class="reference internal" href="#struct_arrow_ipc_decoder"><span class="std std-ref">ArrowIpcDecoder</span></a>. </p>
 </dd></dl>
 
 <dl class="cpp type">
 <dt class="sig sig-object cpp" id="_CPPv412UniqueFooter">
-<span id="_CPPv312UniqueFooter"></span><span id="_CPPv212UniqueFooter"></span><span class="target" id="group__nanoarrow__ipc__hpp-unique_1gac08aad661c0ba6d741b72b438bfa40d6"></span><span class="k"><span class="pre">using</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">UniqueFooter</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="n"><span class="pre">internal</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">Unique</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><span class="n"><span class="pre">ArrowIpcFooter</span></span><span class="p"><span class="pre">&gt;</span></span><a class="headerlink" href="#_CPPv412UniqueFooter" title="Link to this definition">#</a><br /></dt>
+<span id="_CPPv312UniqueFooter"></span><span id="_CPPv212UniqueFooter"></span><span class="target" id="group__nanoarrow__ipc__hpp-unique_1gab32a5e3acae8885ab5fe82265eb879c7"></span><span class="k"><span class="pre">using</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">UniqueFooter</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="n"><span class="pre">internal</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">Unique</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><span class="n"><span class="pre">ArrowIpcFooter</span></span><span class="p"><span class="pre">&gt;</span></span><a class="headerlink" href="#_CPPv412UniqueFooter" title="Link to this definition">#</a><br /></dt>
 <dd><p>Class wrapping a unique struct ArrowIpcFooter. </p>
 </dd></dl>
 
 <dl class="cpp type">
 <dt class="sig sig-object cpp" id="_CPPv425UniqueDictionaryEncodings">
-<span id="_CPPv325UniqueDictionaryEncodings"></span><span id="_CPPv225UniqueDictionaryEncodings"></span><span class="target" id="group__nanoarrow__ipc__hpp-unique_1ga89c18f00d6e78e3d71a9bebd8bfe208c"></span><span class="k"><span class="pre">using</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">UniqueDictionaryEncodings</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="n"><span class="pre">internal</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">Unique</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv427ArrowIpcDictionaryEncodings" title="ArrowIpcDictionaryEncodings"><span class="n"><span class="pre">ArrowIpcDictionaryEncodings</span></span></a><span class="p"><span class="pre">&gt;</span></span><a class="headerlink" href="#_CPPv425UniqueDictionaryEncodings" title="Link to this definition">#</a><br /></dt>
+<span id="_CPPv325UniqueDictionaryEncodings"></span><span id="_CPPv225UniqueDictionaryEncodings"></span><span class="target" id="group__nanoarrow__ipc__hpp-unique_1gab2b7038205d4294e884722cc7a7fca1d"></span><span class="k"><span class="pre">using</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">UniqueDictionaryEncodings</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="n"><span class="pre">internal</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">Unique</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv427ArrowIpcDictionaryEncodings" title="ArrowIpcDictionaryEncodings"><span class="n"><span class="pre">ArrowIpcDictionaryEncodings</span></span></a><span class="p"><span class="pre">&gt;</span></span><a class="headerlink" href="#_CPPv425UniqueDictionaryEncodings" title="Link to this definition">#</a><br /></dt>
 <dd><p>Class wrapping a unique struct <a class="reference internal" href="#struct_arrow_ipc_dictionary_encodings"><span class="std std-ref">ArrowIpcDictionaryEncodings</span></a>. </p>
 </dd></dl>
 
 <dl class="cpp type">
 <dt class="sig sig-object cpp" id="_CPPv418UniqueDictionaries">
-<span id="_CPPv318UniqueDictionaries"></span><span id="_CPPv218UniqueDictionaries"></span><span class="target" id="group__nanoarrow__ipc__hpp-unique_1ga1c958388e5331ede39a789dab2e82554"></span><span class="k"><span class="pre">using</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">UniqueDictionaries</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="n"><span class="pre">internal</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">Unique</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv420ArrowIpcDictionaries" title="ArrowIpcDictionaries"><span class="n"><span class="pre">ArrowIpcDictionaries</span></span></a><span class="p"><span class="pre">&gt;</span></span><a class="headerlink" href="#_CPPv418UniqueDictionaries" title="Link to this definition">#</a><br /></dt>
-<dd><p>Class wrapping a unique struct UniqueDictionaries. </p>
+<span id="_CPPv318UniqueDictionaries"></span><span id="_CPPv218UniqueDictionaries"></span><span class="target" id="group__nanoarrow__ipc__hpp-unique_1gabdc47d0e68393c2cd04ce99f56317e95"></span><span class="k"><span class="pre">using</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">UniqueDictionaries</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="n"><span class="pre">internal</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">Unique</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv420ArrowIpcDictionaries" title="ArrowIpcDictionaries"><span class="n"><span class="pre">ArrowIpcDictionaries</span></span></a><span class="p"><span class="pre">&gt;</span></span><a class="headerlink" href="#_CPPv418UniqueDictionaries" title="Link to this definition">#</a><br /></dt>
+<dd><p>Class wrapping a unique struct <a class="reference internal" href="#group__nanoarrow__ipc__hpp-unique_1gabdc47d0e68393c2cd04ce99f56317e95"><span class="std std-ref">UniqueDictionaries</span></a>. </p>
 </dd></dl>
 
 <dl class="cpp type">
 <dt class="sig sig-object cpp" id="_CPPv413UniqueEncoder">
-<span id="_CPPv313UniqueEncoder"></span><span id="_CPPv213UniqueEncoder"></span><span class="target" id="group__nanoarrow__ipc__hpp-unique_1ga7d8001dff97da64dce4f8a13521bbaa5"></span><span class="k"><span class="pre">using</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">UniqueEncoder</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="n"><span class="pre">internal</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">Unique</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv415ArrowIpcEncoder" title="ArrowIpcEncoder"><span class="n"><span class="pre">ArrowIpcEncoder</span></span></a><span class="p"><span class="pre">&gt;</span></span><a class="headerlink" href="#_CPPv413UniqueEncoder" title="Link to this definition">#</a><br /></dt>
+<span id="_CPPv313UniqueEncoder"></span><span id="_CPPv213UniqueEncoder"></span><span class="target" id="group__nanoarrow__ipc__hpp-unique_1ga77a800b919deaf27a45e244e6fe0a0fa"></span><span class="k"><span class="pre">using</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">UniqueEncoder</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="n"><span class="pre">internal</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">Unique</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv415ArrowIpcEncoder" title="ArrowIpcEncoder"><span class="n"><span class="pre">ArrowIpcEncoder</span></span></a><span class="p"><span class="pre">&gt;</span></span><a class="headerlink" href="#_CPPv413UniqueEncoder" title="Link to this definition">#</a><br /></dt>
 <dd><p>Class wrapping a unique struct <a class="reference internal" href="#struct_arrow_ipc_encoder"><span class="std std-ref">ArrowIpcEncoder</span></a>. </p>
 </dd></dl>
 
 <dl class="cpp type">
 <dt class="sig sig-object cpp" id="_CPPv418UniqueDecompressor">
-<span id="_CPPv318UniqueDecompressor"></span><span id="_CPPv218UniqueDecompressor"></span><span class="target" id="group__nanoarrow__ipc__hpp-unique_1gaba25494dc1e52ad34fa4365f35e0fb9f"></span><span class="k"><span class="pre">using</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">UniqueDecompressor</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="n"><span class="pre">internal</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">Unique</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv420ArrowIpcDecompressor" title="ArrowIpcDecompressor"><span class="n"><span class="pre">ArrowIpcDecompressor</span></span></a><span class="p"><span class="pre">&gt;</span></span><a class="headerlink" href="#_CPPv418UniqueDecompressor" title="Link to this definition">#</a><br /></dt>
+<span id="_CPPv318UniqueDecompressor"></span><span id="_CPPv218UniqueDecompressor"></span><span class="target" id="group__nanoarrow__ipc__hpp-unique_1ga049015c6b5df71638409c7558de08895"></span><span class="k"><span class="pre">using</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">UniqueDecompressor</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="n"><span class="pre">internal</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">Unique</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv420ArrowIpcDecompressor" title="ArrowIpcDecompressor"><span class="n"><span class="pre">ArrowIpcDecompressor</span></span></a><span class="p"><span class="pre">&gt;</span></span><a class="headerlink" href="#_CPPv418UniqueDecompressor" title="Link to this definition">#</a><br /></dt>
 <dd><p>Class wrapping a unique struct <a class="reference internal" href="#struct_arrow_ipc_decompressor"><span class="std std-ref">ArrowIpcDecompressor</span></a>. </p>
 </dd></dl>
 
 <dl class="cpp type">
 <dt class="sig sig-object cpp" id="_CPPv417UniqueInputStream">
-<span id="_CPPv317UniqueInputStream"></span><span id="_CPPv217UniqueInputStream"></span><span class="target" id="group__nanoarrow__ipc__hpp-unique_1ga01cded4704dc447650624c061d1fe5db"></span><span class="k"><span class="pre">using</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">UniqueInputStream</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="n"><span class="pre">internal</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">Unique</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv419ArrowIpcInputStream" title="ArrowIpcInputStream"><span class="n"><span class="pre">ArrowIpcInputStream</span></span></a><span class="p"><span class="pre">&gt;</span></span><a class="headerlink" href="#_CPPv417UniqueInputStream" title="Link to this definition">#</a><br /></dt>
+<span id="_CPPv317UniqueInputStream"></span><span id="_CPPv217UniqueInputStream"></span><span class="target" id="group__nanoarrow__ipc__hpp-unique_1gadfb0e1df846a2dde87ab3122f50a8bbf"></span><span class="k"><span class="pre">using</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">UniqueInputStream</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="n"><span class="pre">internal</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">Unique</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv419ArrowIpcInputStream" title="ArrowIpcInputStream"><span class="n"><span class="pre">ArrowIpcInputStream</span></span></a><span class="p"><span class="pre">&gt;</span></span><a class="headerlink" href="#_CPPv417UniqueInputStream" title="Link to this definition">#</a><br /></dt>
 <dd><p>Class wrapping a unique struct <a class="reference internal" href="#struct_arrow_ipc_input_stream"><span class="std std-ref">ArrowIpcInputStream</span></a>. </p>
 </dd></dl>
 
 <dl class="cpp type">
 <dt class="sig sig-object cpp" id="_CPPv418UniqueOutputStream">
-<span id="_CPPv318UniqueOutputStream"></span><span id="_CPPv218UniqueOutputStream"></span><span class="target" id="group__nanoarrow__ipc__hpp-unique_1ga812e2e601c4504e43139d284aca50040"></span><span class="k"><span class="pre">using</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">UniqueOutputStream</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="n"><span class="pre">internal</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">Unique</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv420ArrowIpcOutputStream" title="ArrowIpcOutputStream"><span class="n"><span class="pre">ArrowIpcOutputStream</span></span></a><span class="p"><span class="pre">&gt;</span></span><a class="headerlink" href="#_CPPv418UniqueOutputStream" title="Link to this definition">#</a><br /></dt>
+<span id="_CPPv318UniqueOutputStream"></span><span id="_CPPv218UniqueOutputStream"></span><span class="target" id="group__nanoarrow__ipc__hpp-unique_1gac0d3f35bff1376ee6fc414376d2ee6fd"></span><span class="k"><span class="pre">using</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">UniqueOutputStream</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="n"><span class="pre">internal</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">Unique</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv420ArrowIpcOutputStream" title="ArrowIpcOutputStream"><span class="n"><span class="pre">ArrowIpcOutputStream</span></span></a><span class="p"><span class="pre">&gt;</span></span><a class="headerlink" href="#_CPPv418UniqueOutputStream" title="Link to this definition">#</a><br /></dt>
 <dd><p>Class wrapping a unique struct <a class="reference internal" href="#struct_arrow_ipc_output_stream"><span class="std std-ref">ArrowIpcOutputStream</span></a>. </p>
 </dd></dl>
 
 <dl class="cpp type">
 <dt class="sig sig-object cpp" id="_CPPv412UniqueWriter">
-<span id="_CPPv312UniqueWriter"></span><span id="_CPPv212UniqueWriter"></span><span class="target" id="group__nanoarrow__ipc__hpp-unique_1gafcf94e5b1bb6a1cf05c3381ddc7aaeb0"></span><span class="k"><span class="pre">using</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">UniqueWriter</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="n"><span class="pre">internal</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">Unique</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv414ArrowIpcWriter" title="ArrowIpcWriter"><span class="n"><span class="pre">ArrowIpcWriter</span></span></a><span class="p"><span class="pre">&gt;</span></span><a class="headerlink" href="#_CPPv412UniqueWriter" title="Link to this definition">#</a><br /></dt>
+<span id="_CPPv312UniqueWriter"></span><span id="_CPPv212UniqueWriter"></span><span class="target" id="group__nanoarrow__ipc__hpp-unique_1ga5000d72ba32e85a8ea977e80f48cc3f6"></span><span class="k"><span class="pre">using</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">UniqueWriter</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="n"><span class="pre">internal</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">Unique</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv414ArrowIpcWriter" title="ArrowIpcWriter"><span class="n"><span class="pre">ArrowIpcWriter</span></span></a><span class="p"><span class="pre">&gt;</span></span><a class="headerlink" href="#_CPPv412UniqueWriter" title="Link to this definition">#</a><br /></dt>
 <dd><p>Class wrapping a unique struct <a class="reference internal" href="#struct_arrow_ipc_writer"><span class="std std-ref">ArrowIpcWriter</span></a>. </p>
 </dd></dl>
 
@@ -1563,8 +1565,8 @@
   </div>
   
   <!-- Scripts loaded after <body> so the DOM is not blocked -->
-  <script defer src="../_static/scripts/bootstrap.js?digest=7f76b32a3354e82990f2"></script>
-<script defer src="../_static/scripts/pydata-sphinx-theme.js?digest=7f76b32a3354e82990f2"></script>
+  <script defer src="../_static/scripts/bootstrap.js?digest=55c26ed414f5f8a31ebb"></script>
+<script defer src="../_static/scripts/pydata-sphinx-theme.js?digest=55c26ed414f5f8a31ebb"></script>
 
   <footer class="bd-footer">
 <div class="bd-footer__inner bd-page-width">
@@ -1598,7 +1600,7 @@
         <div class="footer-item">
 <p class="theme-version">
   <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
-  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.17.0.
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.17.1.
 </p></div>
       
     </div>

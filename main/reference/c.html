@@ -27,23 +27,23 @@
   </noscript>
   
   <!-- Loaded before other Sphinx assets -->
-  <link href="../_static/styles/theme.css?digest=7f76b32a3354e82990f2" rel="stylesheet" />
-<link href="../_static/styles/pydata-sphinx-theme.css?digest=7f76b32a3354e82990f2" rel="stylesheet" />
+  <link href="../_static/styles/theme.css?digest=55c26ed414f5f8a31ebb" rel="stylesheet" />
+<link href="../_static/styles/pydata-sphinx-theme.css?digest=55c26ed414f5f8a31ebb" rel="stylesheet" />
 
     <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=8f2a1f02" />
   
   <!-- So that users can add custom icons -->
-  <script defer src="../_static/scripts/fontawesome.js?digest=7f76b32a3354e82990f2"></script>
+  <script defer src="../_static/scripts/fontawesome.js?digest=55c26ed414f5f8a31ebb"></script>
   <!-- Pre-loaded scripts that we'll load fully later -->
-  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=7f76b32a3354e82990f2" />
-<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=7f76b32a3354e82990f2" />
+  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=55c26ed414f5f8a31ebb" />
+<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=55c26ed414f5f8a31ebb" />
 
     <script src="../_static/documentation_options.js?v=5929fcd5"></script>
     <script src="../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script>DOCUMENTATION_OPTIONS.pagename = 'reference/c';</script>
     <script>
-        DOCUMENTATION_OPTIONS.theme_version = '0.17.0';
+        DOCUMENTATION_OPTIONS.theme_version = '0.17.1';
         DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://arrow.apache.org/nanoarrow/switcher.json';
         DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'dev';
         DOCUMENTATION_OPTIONS.show_version_warning_banner =
@@ -74,7 +74,9 @@
   
   <button type="button" class="btn rounded-pill" id="pst-back-to-top">
     <i class="fa-solid fa-arrow-up"></i>Back to top</button>
-
+  
+  
+  
   
   <dialog id="pst-search-dialog">
     
@@ -414,7 +416,7 @@
 <dl class="cpp function">
 <dt class="sig sig-object cpp">
 <span class="target" id="group__nanoarrow-schema_1ga450736da5fd948df1973086885fbf206"></span><span class="sig-name descname"><span class="pre">NANOARROW_DLL</span> <span class="pre">ArrowErrorCode</span> <span class="pre">ArrowSchemaInitFromType</span> <span class="pre">(struct</span> <span class="pre">ArrowSchema</span> <span class="pre">*schema,</span> <span class="pre">enum</span> <span class="pre">ArrowType</span> <span class="pre">type)</span></span></dt>
-<dd><p>Initialize an <a class="reference internal" href="#struct_arrow_schema"><span class="std std-ref">ArrowSchema</span></a> from an ArrowType. </p>
+<dd><p>Initialize an <a class="reference internal" href="#struct_arrow_schema"><span class="std std-ref">ArrowSchema</span></a> from an <a class="reference internal" href="#group__nanoarrow-utils_1gae040d7d64b46dd1dc796225aa77c2112"><span class="std std-ref">ArrowType</span></a>. </p>
 <p>A convenience constructor for that calls <a class="reference internal" href="#group__nanoarrow-schema_1ga0f6e6285d3226f5e3e218fa7010bc989"><span class="std std-ref">ArrowSchemaInit()</span></a> and <a class="reference internal" href="#group__nanoarrow-schema_1ga0838c682ddba35dcb4f04709b6c254c8"><span class="std std-ref">ArrowSchemaSetType()</span></a> for the common case of constructing an unparameterized type. The caller is responsible for calling the schema-&gt;release callback if NANOARROW_OK is returned. </p>
 </dd></dl>
 
@@ -428,7 +430,7 @@
 <dl class="cpp function">
 <dt class="sig sig-object cpp">
 <span class="target" id="group__nanoarrow-schema_1ga0838c682ddba35dcb4f04709b6c254c8"></span><span class="sig-name descname"><span class="pre">NANOARROW_DLL</span> <span class="pre">ArrowErrorCode</span> <span class="pre">ArrowSchemaSetType</span> <span class="pre">(struct</span> <span class="pre">ArrowSchema</span> <span class="pre">*schema,</span> <span class="pre">enum</span> <span class="pre">ArrowType</span> <span class="pre">type)</span></span></dt>
-<dd><p>Set the format field of a schema from an ArrowType. </p>
+<dd><p>Set the format field of a schema from an <a class="reference internal" href="#group__nanoarrow-utils_1gae040d7d64b46dd1dc796225aa77c2112"><span class="std std-ref">ArrowType</span></a>. </p>
 <p>Initializes the fields and release callback of schema_out. For NANOARROW_TYPE_LIST, NANOARROW_TYPE_LARGE_LIST, and NANOARROW_TYPE_MAP, the appropriate number of children are allocated, initialized, and named; however, the caller must <a class="reference internal" href="#group__nanoarrow-schema_1ga0838c682ddba35dcb4f04709b6c254c8"><span class="std std-ref">ArrowSchemaSetType()</span></a> on the preinitialized children. Schema must have been initialized using <a class="reference internal" href="#group__nanoarrow-schema_1ga0f6e6285d3226f5e3e218fa7010bc989"><span class="std std-ref">ArrowSchemaInit()</span></a> or <a class="reference internal" href="#group__nanoarrow-schema_1ga09967f5a49641e173058b198b01ccce6"><span class="std std-ref">ArrowSchemaDeepCopy()</span></a>. </p>
 </dd></dl>
 
@@ -530,7 +532,7 @@
 <dl class="cpp macro">
 <dt class="sig sig-object cpp" id="c.NANOARROW_FLAG_ALL_SUPPORTED">
 <span class="target" id="group__nanoarrow-schema-view_1ga38c3c98dcac5057f383dbdd51d601810"></span><span class="sig-name descname"><span class="n"><span class="pre">NANOARROW_FLAG_ALL_SUPPORTED</span></span></span><a class="headerlink" href="#c.NANOARROW_FLAG_ALL_SUPPORTED" title="Link to this definition">#</a><br /></dt>
-<dd><p>Flags supported by <a class="reference internal" href="#group__nanoarrow-schema-view_1ga0fce0d8aa2bdba9eb936d9bce24426ed"><span class="std std-ref">ArrowSchemaViewInit()</span></a></p>
+<dd><p>Flags supported by <a class="reference internal" href="#group__nanoarrow-schema-view_1ga0fce0d8aa2bdba9eb936d9bce24426ed"><span class="std std-ref">ArrowSchemaViewInit()</span></a>. </p>
 </dd></dl>
 
 </div>
@@ -1039,7 +1041,7 @@
 <dt class="sig sig-object cpp">
 <span class="target" id="group__nanoarrow-array-view_1ga967941b0230a706a65764b2d23c350a3"></span><span class="sig-name descname"><span class="pre">NANOARROW_DLL</span> <span class="pre">ArrowErrorCode</span> <span class="pre">ArrowArrayViewValidate</span> <span class="pre">(struct</span> <span class="pre">ArrowArrayView</span> <span class="pre">*array_view,</span> <span class="pre">enum</span> <span class="pre">ArrowValidationLevel</span> <span class="pre">validation_level,</span> <span class="pre">struct</span> <span class="pre">ArrowError</span> <span class="pre">*error)</span></span></dt>
 <dd><p>Performs checks on the content of an <a class="reference internal" href="#struct_arrow_array_view"><span class="std std-ref">ArrowArrayView</span></a>. </p>
-<p>If using <a class="reference internal" href="#group__nanoarrow-array-view_1ga589539e7f361e6246fdc68483c64e5ee"><span class="std std-ref">ArrowArrayViewSetArray()</span></a> to back array_view with an <a class="reference internal" href="#struct_arrow_array"><span class="std std-ref">ArrowArray</span></a>, the buffer sizes and some content (fist and last offset) have already been validated at the “default” level. If setting the buffer pointers and sizes otherwise, you may wish to perform checks at a different level. See documentation for ArrowValidationLevel for the details of checks performed at each level. </p>
+<p>If using <a class="reference internal" href="#group__nanoarrow-array-view_1ga589539e7f361e6246fdc68483c64e5ee"><span class="std std-ref">ArrowArrayViewSetArray()</span></a> to back array_view with an <a class="reference internal" href="#struct_arrow_array"><span class="std std-ref">ArrowArray</span></a>, the buffer sizes and some content (fist and last offset) have already been validated at the “default” level. If setting the buffer pointers and sizes otherwise, you may wish to perform checks at a different level. See documentation for <a class="reference internal" href="#group__nanoarrow-array_1ga75bb85a49c08c4ce1e60876d3973c4ab"><span class="std std-ref">ArrowValidationLevel</span></a> for the details of checks performed at each level. </p>
 </dd></dl>
 
 <dl class="cpp function">
@@ -1694,13 +1696,13 @@
 <dl class="cpp function">
 <dt class="sig sig-object cpp">
 <span class="target" id="group__nanoarrow-malloc_1gacda0c53b1739288de12527f54e975220"></span><span class="sig-name descname"><span class="pre">NANOARROW_DLL</span> <span class="pre">void</span> <span class="pre">*</span> <span class="pre">ArrowMalloc</span> <span class="pre">(int64_t</span> <span class="pre">size)</span></span></dt>
-<dd><p>Allocate like malloc() </p>
+<dd><p>Allocate like malloc(). </p>
 </dd></dl>
 
 <dl class="cpp function">
 <dt class="sig sig-object cpp">
 <span class="target" id="group__nanoarrow-malloc_1gacd38d18ec02384930474bf0fe7a56f94"></span><span class="sig-name descname"><span class="pre">NANOARROW_DLL</span> <span class="pre">void</span> <span class="pre">*</span> <span class="pre">ArrowRealloc</span> <span class="pre">(void</span> <span class="pre">*ptr,</span> <span class="pre">int64_t</span> <span class="pre">size)</span></span></dt>
-<dd><p>Reallocate like realloc() </p>
+<dd><p>Reallocate like realloc(). </p>
 </dd></dl>
 
 <dl class="cpp function">
@@ -1733,7 +1735,7 @@
 <dt class="sig sig-object cpp">
 <span class="target" id="group__nanoarrow-errors"></span><em><span class="pre">group</span></em> <span class="sig-name descname"><span class="pre">Error</span> <span class="pre">handling</span></span></dt>
 <dd><p>Functions generally return an errno-compatible error code; functions that need to communicate more verbose error information accept a pointer to an <a class="reference internal" href="#struct_arrow_error"><span class="std std-ref">ArrowError</span></a>. This can be stack or statically allocated. The content of the message is undefined unless an error code has been returned. If a nanoarrow function is passed a non-null <a class="reference internal" href="#struct_arrow_error"><span class="std std-ref">ArrowError</span></a> pointer, the <a class="reference internal" href="#struct_arrow_error"><span class="std std-ref">ArrowError</span></a> pointed to by the argument will be propagated with a null-terminated error message. It is safe to pass a NULL <a class="reference internal" href="#struct_arrow_error"><span class="std std-ref">ArrowError</span></a> anywhere in the nanoarrow API.</p>
-<p>Except where documented, it is generally not safe to continue after a function has returned a non-zero ArrowErrorCode. The NANOARROW_RETURN_NOT_OK and NANOARROW_ASSERT_OK macros are provided to help propagate errors. C++ clients can use the helpers provided in the nanoarrow.hpp header to facilitate using C++ idioms for memory management and error propgagtion. </p>
+<p>Except where documented, it is generally not safe to continue after a function has returned a non-zero <a class="reference internal" href="#group__nanoarrow-errors_1ga7a5fb5dd2afa900c7b5f1d78b5da92c8"><span class="std std-ref">ArrowErrorCode</span></a>. The NANOARROW_RETURN_NOT_OK and NANOARROW_ASSERT_OK macros are provided to help propagate errors. C++ clients can use the helpers provided in the nanoarrow.hpp header to facilitate using C++ idioms for memory management and error propgagtion. </p>
 <div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric" id="breathe-section-title-defines">Defines</p>
 <dl class="cpp macro">
@@ -2108,14 +2110,14 @@
 <dl class="cpp function">
 <dt class="sig sig-object cpp" id="_CPPv415ArrowTypeString9ArrowType">
 <span id="_CPPv315ArrowTypeString9ArrowType"></span><span id="_CPPv215ArrowTypeString9ArrowType"></span><span id="ArrowTypeString__ArrowType"></span><span class="target" id="group__nanoarrow-utils_1ga8912e1fb95c379d230b4723d362619cf"></span><span class="k"><span class="pre">static</span></span><span class="w"> </span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="kt"><span class="pre">char</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="sig-name descname"><span class="n"><span class="pre">ArrowTypeString</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">enum</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv49ArrowType" title="ArrowType"><span class="n"><span class="pre">ArrowType</span></span></a><span class="w"> </span><span class="n sig-param"><span class="pre">type</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv415ArrowTypeString9ArrowType" title="Link to this definition">#</a><br /></dt>
-<dd><p>Get a string value of an enum ArrowType value. </p>
+<dd><p>Get a string value of an enum <a class="reference internal" href="#group__nanoarrow-utils_1gae040d7d64b46dd1dc796225aa77c2112"><span class="std std-ref">ArrowType</span></a> value. </p>
 <p>Returns NULL for invalid values for type </p>
 </dd></dl>
 
 <dl class="cpp function">
 <dt class="sig sig-object cpp" id="_CPPv419ArrowTimeUnitString13ArrowTimeUnit">
 <span id="_CPPv319ArrowTimeUnitString13ArrowTimeUnit"></span><span id="_CPPv219ArrowTimeUnitString13ArrowTimeUnit"></span><span id="ArrowTimeUnitString__ArrowTimeUnit"></span><span class="target" id="group__nanoarrow-utils_1ga13a80e043c8d5b2cb6c045dfb117d282"></span><span class="k"><span class="pre">static</span></span><span class="w"> </span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="kt"><span class="pre">char</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="sig-name descname"><span class="n"><span class="pre">ArrowTimeUnitString</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">enum</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv413ArrowTimeUnit" title="ArrowTimeUnit"><span class="n"><span class="pre">ArrowTimeUnit</span></span></a><span class="w"> </span><span class="n sig-param"><span class="pre">time_unit</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv419ArrowTimeUnitString13ArrowTimeUnit" title="Link to this definition">#</a><br /></dt>
-<dd><p>Get a string value of an enum ArrowTimeUnit value. </p>
+<dd><p>Get a string value of an enum <a class="reference internal" href="#group__nanoarrow-utils_1ga7048580e7cf78a7d6baac47a6b39e1ac"><span class="std std-ref">ArrowTimeUnit</span></a> value. </p>
 <p>Returns NULL for invalid values for time_unit </p>
 </dd></dl>
 
@@ -3061,8 +3063,8 @@
   </div>
   
   <!-- Scripts loaded after <body> so the DOM is not blocked -->
-  <script defer src="../_static/scripts/bootstrap.js?digest=7f76b32a3354e82990f2"></script>
-<script defer src="../_static/scripts/pydata-sphinx-theme.js?digest=7f76b32a3354e82990f2"></script>
+  <script defer src="../_static/scripts/bootstrap.js?digest=55c26ed414f5f8a31ebb"></script>
+<script defer src="../_static/scripts/pydata-sphinx-theme.js?digest=55c26ed414f5f8a31ebb"></script>
 
   <footer class="bd-footer">
 <div class="bd-footer__inner bd-page-width">
@@ -3096,7 +3098,7 @@
         <div class="footer-item">
 <p class="theme-version">
   <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
-  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.17.0.
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.17.1.
 </p></div>
       
     </div>
