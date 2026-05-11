@@ -421,6 +421,12 @@ ArrowErrorCode WriteData(std::ostream& out, const ArrowArrayView* value,
       break;
     }
 
+    case NANOARROW_TYPE_DECIMAL32:
+      NANOARROW_RETURN_NOT_OK(WriteDecimalData(out, value, 32));
+      break;
+    case NANOARROW_TYPE_DECIMAL64:
+      NANOARROW_RETURN_NOT_OK(WriteDecimalData(out, value, 64));
+      break;
     case NANOARROW_TYPE_DECIMAL128:
       NANOARROW_RETURN_NOT_OK(WriteDecimalData(out, value, 128));
       break;
@@ -508,6 +514,8 @@ ArrowErrorCode WriteTypeFromView(std::ostream& out, const ArrowSchemaView* field
     case NANOARROW_TYPE_FIXED_SIZE_BINARY:
       out << R"("name": "fixedsizebinary", "byteWidth": )" << field->fixed_size;
       break;
+    case NANOARROW_TYPE_DECIMAL32:
+    case NANOARROW_TYPE_DECIMAL64:
     case NANOARROW_TYPE_DECIMAL128:
     case NANOARROW_TYPE_DECIMAL256:
       out << R"("name": "decimal", "bitWidth": )" << field->decimal_bitwidth
@@ -1154,6 +1162,12 @@ ArrowErrorCode SetTypeDecimal(ArrowSchema* schema, const json& value, ArrowError
 
   ArrowType type;
   switch (bit_width_int) {
+    case 32:
+      type = NANOARROW_TYPE_DECIMAL32;
+      break;
+    case 64:
+      type = NANOARROW_TYPE_DECIMAL64;
+      break;
     case 128:
       type = NANOARROW_TYPE_DECIMAL128;
       break;
@@ -1161,7 +1175,7 @@ ArrowErrorCode SetTypeDecimal(ArrowSchema* schema, const json& value, ArrowError
       type = NANOARROW_TYPE_DECIMAL256;
       break;
     default:
-      ArrowErrorSet(error, "Type[name=='decimal'] bitWidth must be 128 or 256");
+      ArrowErrorSet(error, "Type[name=='decimal'] bitWidth must be 32, 64, 128 or 256");
       return EINVAL;
   }
 
@@ -1918,6 +1932,9 @@ ArrowErrorCode SetBufferDecimal(const json& value, ArrowBuffer* buffer, int bitw
   ArrowDecimal decimal;
   ArrowDecimalInit(&decimal, bitwidth, 0, 0);
 
+  // n_words is 0 for decimal32, so calculate byte size from bitwidth directly
+  size_t element_size_bytes = bitwidth / 8;
+
   ArrowStringView item_view;
 
   for (const auto& item : value) {
@@ -1928,8 +1945,7 @@ ArrowErrorCode SetBufferDecimal(const json& value, ArrowBuffer* buffer, int bitw
     item_view.size_bytes = item_str.size();
     NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowDecimalSetDigits(&decimal, item_view), error);
     NANOARROW_RETURN_NOT_OK_WITH_ERROR(
-        ArrowBufferAppend(buffer, decimal.words, decimal.n_words * sizeof(uint64_t)),
-        error);
+        ArrowBufferAppend(buffer, decimal.words, element_size_bytes), error);
   }
 
   return NANOARROW_OK;
@@ -2053,6 +2069,10 @@ ArrowErrorCode SetArrayColumnBuffers(const json& value, ArrowArrayView* array_vi
           return SetBufferIntervalDayTime(data, buffer, error);
         case NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO:
           return SetBufferIntervalMonthDayNano(data, buffer, error);
+        case NANOARROW_TYPE_DECIMAL32:
+          return SetBufferDecimal(data, buffer, 32, error);
+        case NANOARROW_TYPE_DECIMAL64:
+          return SetBufferDecimal(data, buffer, 64, error);
         case NANOARROW_TYPE_DECIMAL128:
           return SetBufferDecimal(data, buffer, 128, error);
         case NANOARROW_TYPE_DECIMAL256:

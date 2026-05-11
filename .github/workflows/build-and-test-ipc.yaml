@@ -149,3 +149,8 @@ jobs:
         with:
           name: nanoarrow-ipc-memcheck
           path: build/Testing/Temporary/MemoryChecker.*.log
+
+      - name: Run integration test validation for arrow-testing files
+        if: matrix.config.label == 'default-build'
+        run: |
+          ./ci/scripts/run-ipc-integration-tests.sh build

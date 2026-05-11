@@ -195,14 +195,45 @@ struct MaterializedArrayStream {
 
     NANOARROW_RETURN_NOT_OK_WITH_ERROR(
         ArrowSchemaDeepCopy(&decoder->footer->schema, schema.get()), error);
-    NANOARROW_RETURN_NOT_OK(
-        ArrowIpcDecoderSetSchema(decoder.get(), &decoder->footer->schema, error));
+    NANOARROW_RETURN_NOT_OK(ArrowIpcDecoderSetSchemaWithDictionaries(
+        decoder.get(), &decoder->footer->schema, &decoder->footer->dictionaries, error));
     NANOARROW_RETURN_NOT_OK_WITH_ERROR(
         ArrowIpcDecoderSetEndianness(decoder.get(), decoder->endianness), error);
 
+    // Initialize dictionaries storage
+    nanoarrow::ipc::UniqueDictionaries dictionaries;
+    NANOARROW_RETURN_NOT_OK(ArrowIpcDictionariesInit(
+        dictionaries.get(), &decoder->footer->dictionaries, error));
+
+    // Move both block buffers out of the footer BEFORE decoding any headers,
+    // because ArrowIpcDecoderDecodeHeader resets the footer
+    nanoarrow::UniqueBuffer dictionary_blocks;
     nanoarrow::UniqueBuffer record_batch_blocks;
+    ArrowBufferMove(&decoder->footer->dictionary_blocks, dictionary_blocks.get());
     ArrowBufferMove(&decoder->footer->record_batch_blocks, record_batch_blocks.get());
 
+    // Read dictionary blocks
+    for (int i = 0; i < dictionary_blocks->size_bytes / sizeof(struct ArrowIpcFileBlock);
+         i++) {
+      const auto& block =
+          reinterpret_cast<struct ArrowIpcFileBlock*>(dictionary_blocks->data)[i];
+      struct ArrowBufferView metadata_view = {
+          {bytes.data() + block.offset},
+          block.metadata_length,
+      };
+      NANOARROW_RETURN_NOT_OK(
+          ArrowIpcDecoderDecodeHeader(decoder.get(), metadata_view, error));
+
+      struct ArrowBufferView body_view = {
+          {metadata_view.data.as_uint8 + metadata_view.size_bytes},
+          block.body_length,
+      };
+      NANOARROW_RETURN_NOT_OK(ArrowIpcDecoderDecodeDictionary(
+          decoder.get(), body_view, NANOARROW_VALIDATION_LEVEL_FULL, dictionaries.get(),
+          error));
+    }
+
+    // Read record batch blocks
     for (int i = 0;
          i < record_batch_blocks->size_bytes / sizeof(struct ArrowIpcFileBlock); i++) {
       const auto& block =
@@ -219,9 +250,9 @@ struct MaterializedArrayStream {
           block.body_length,
       };
       nanoarrow::UniqueArray batch;
-      NANOARROW_RETURN_NOT_OK(
-          ArrowIpcDecoderDecodeArray(decoder.get(), body_view, -1, batch.get(),
-                                     NANOARROW_VALIDATION_LEVEL_FULL, error));
+      NANOARROW_RETURN_NOT_OK(ArrowIpcDecoderDecodeArrayWithDictionaries(
+          decoder.get(), body_view, -1, dictionaries.get(), batch.get(),
+          NANOARROW_VALIDATION_LEVEL_FULL, error));
       batches.push_back(std::move(batch));
     }
 
