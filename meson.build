@@ -151,7 +151,7 @@ if get_option('ipc').enabled()
         dependencies: [nanoarrow_dep],
     )
     meson.override_dependency('nanoarrow-ipc', nanoarrow_ipc_dep)
-    zlib_dep = dependency('zlib', default_options: ['tests=false'])
+    zlib_dep = dependency('zlib', default_options: ['tests=disabled'])
 else
     flatcc_dep = disabler()
     nanoarrow_ipc_dep = disabler()
