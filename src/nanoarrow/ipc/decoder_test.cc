@@ -1211,17 +1211,6 @@ std::string ArrowSchemaToString(const struct ArrowSchema* schema) {
 
 #if defined(NANOARROW_BUILD_TESTS_WITH_ARROW)
 TEST_P(ArrowTypeParameterizedTestFixture, NanoarrowIpcNanoarrowTypeRoundtrip) {
-  if (GetParam()->id() == arrow::Type::DICTIONARY) {
-    GTEST_SKIP() << "Dictionary array encode is not yet supported";
-  }
-
-  if (GetParam()->id() == arrow::Type::EXTENSION &&
-      std::static_pointer_cast<arrow::ExtensionType>(GetParam())->storage_type()->id() ==
-          arrow::Type::DICTIONARY) {
-    GTEST_SKIP()
-        << "nanoarrow encoder cannot yet encode extension types with dictionary storage";
-  }
-
   nanoarrow::UniqueSchema schema;
   ASSERT_TRUE(
       arrow::ExportSchema(arrow::Schema({arrow::field("", GetParam())}), schema.get())
@@ -1577,12 +1566,6 @@ TEST_P(ArrowSchemaParameterizedTestFixture, NanoarrowIpcArrowSchemaRoundtrip) {
 }
 
 TEST_P(ArrowSchemaParameterizedTestFixture, NanoarrowIpcNanoarrowSchemaRoundtrip) {
-  for (const auto& field : GetParam()->fields()) {
-    if (field->type()->id() == arrow::Type::DICTIONARY) {
-      GTEST_SKIP() << "nanoarrow cannot yet encode arrays with dictionaries";
-    }
-  }
-
   const std::shared_ptr<arrow::Schema>& arrow_schema = GetParam();
 
   nanoarrow::UniqueSchema schema;
@@ -1620,33 +1603,31 @@ TEST_P(ArrowSchemaParameterizedTestFixture, NanoarrowIpcNanoarrowSchemaRoundtrip
 }
 
 TEST_P(ArrowSchemaParameterizedTestFixture, NanoarrowIpcNanoarrowFooterRoundtrip) {
-  for (const auto& field : GetParam()->fields()) {
-    if (field->type()->id() == arrow::Type::DICTIONARY) {
-      GTEST_SKIP() << "nanoarrow cannot yet encode arrays with dictionaries";
-    }
-  }
-
   using namespace nanoarrow::literals;
   const std::shared_ptr<arrow::Schema>& arrow_schema = GetParam();
 
   nanoarrow::ipc::UniqueFooter footer;
   ASSERT_TRUE(arrow::ExportSchema(*arrow_schema, &footer->schema).ok());
+  ArrowIpcDictionaryEncodingsInit(&footer->dictionaries);
+  ASSERT_EQ(
+      ArrowIpcDictionaryEncodingsAppendSchema(&footer->dictionaries, &footer->schema),
+      NANOARROW_OK);
 
   struct ArrowIpcFileBlock dummy_block = {1, 2, 3};
-  EXPECT_EQ(
+  ASSERT_EQ(
       ArrowBufferAppend(&footer->record_batch_blocks, &dummy_block, sizeof(dummy_block)),
       NANOARROW_OK);
 
   nanoarrow::ipc::UniqueEncoder encoder;
-  EXPECT_EQ(ArrowIpcEncoderInit(encoder.get()), NANOARROW_OK);
+  ASSERT_EQ(ArrowIpcEncoderInit(encoder.get()), NANOARROW_OK);
 
   struct ArrowError error;
-  EXPECT_EQ(ArrowIpcEncoderEncodeFooter(encoder.get(), footer.get(), &error),
+  ASSERT_EQ(ArrowIpcEncoderEncodeFooter(encoder.get(), footer.get(), &error),
             NANOARROW_OK)
       << error.message;
 
   nanoarrow::UniqueBuffer buffer;
-  EXPECT_EQ(
+  ASSERT_EQ(
       ArrowIpcEncoderFinalizeBuffer(encoder.get(), /*encapsulate=*/false, buffer.get()),
       NANOARROW_OK);
 
@@ -1654,9 +1635,9 @@ TEST_P(ArrowSchemaParameterizedTestFixture, NanoarrowIpcNanoarrowFooterRoundtrip
   uint32_t footer_size_le = bswap32(static_cast<uint32_t>(buffer->size_bytes));
   EXPECT_EQ(ArrowBufferAppendInt32(buffer.get(), footer_size_le), NANOARROW_OK);
 #else
-  EXPECT_EQ(ArrowBufferAppendInt32(buffer.get(), buffer->size_bytes), NANOARROW_OK);
+  ASSERT_EQ(ArrowBufferAppendInt32(buffer.get(), buffer->size_bytes), NANOARROW_OK);
 #endif
-  EXPECT_EQ(ArrowBufferAppendStringView(buffer.get(), "ARROW1"_asv), NANOARROW_OK);
+  ASSERT_EQ(ArrowBufferAppendStringView(buffer.get(), "ARROW1"_asv), NANOARROW_OK);
 
   struct ArrowBufferView buffer_view;
   buffer_view.data.data = buffer->data;
