@@ -1519,7 +1519,15 @@ INSTANTIATE_TEST_SUITE_P(
         arrow::list(arrow::field("some_custom_name", arrow::int32(),
                                  arrow::KeyValueMetadata::Make({"key1"}, {"value1"}))),
         // Dictionary encoding
+        arrow::dictionary(arrow::int8(), arrow::utf8()),
+        arrow::dictionary(arrow::int16(), arrow::utf8()),
         arrow::dictionary(arrow::int32(), arrow::utf8()),
+        arrow::dictionary(arrow::int64(), arrow::utf8()),
+        arrow::dictionary(arrow::uint8(), arrow::utf8()),
+        arrow::dictionary(arrow::uint16(), arrow::utf8()),
+        arrow::dictionary(arrow::uint32(), arrow::utf8()),
+        arrow::dictionary(arrow::uint64(), arrow::utf8()),
+        // Ordered dictionary encoding
         arrow::dictionary(arrow::int32(), arrow::utf8(), true),
         // Extension type
         arrow::extension::uuid(),
