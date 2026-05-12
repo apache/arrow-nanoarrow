@@ -1315,11 +1315,21 @@ TEST_P(ArrowTypeParameterizedTestFixture, NanoarrowIpcArrowArrayRoundtrip) {
   ASSERT_TRUE(maybe_batch.ok());
   EXPECT_EQ(maybe_batch.ValueUnsafe()->ToString(), empty->ToString());
 
-  // Arrow C++ MakeEmpty() loses the ordered=1 flag for dictionary types.
+  // Arrow C++ MakeEmpty() loses the ordered=1 flag and unsigned index types for
+  // dictionary types.
   // https://github.com/apache/arrow/issues/49674
-  // So for ordered dictionaries, we only check ToString() equality for empty batches.
-  if (data_type->id() != arrow::Type::DICTIONARY ||
-      !std::static_pointer_cast<arrow::DictionaryType>(data_type)->ordered()) {
+  // So for ordered dictionaries and unsigned index types, we only check ToString()
+  // equality for empty batches.
+  bool skip_equals_check = false;
+  if (data_type->id() == arrow::Type::DICTIONARY) {
+    auto dict_type = std::static_pointer_cast<arrow::DictionaryType>(data_type);
+    auto index_id = dict_type->index_type()->id();
+    bool is_unsigned = index_id == arrow::Type::UINT8 ||
+                       index_id == arrow::Type::UINT16 ||
+                       index_id == arrow::Type::UINT32 || index_id == arrow::Type::UINT64;
+    skip_equals_check = dict_type->ordered() || is_unsigned;
+  }
+  if (!skip_equals_check) {
     EXPECT_TRUE(maybe_batch.ValueUnsafe()->Equals(*empty)) << empty->ToString();
   }
 
