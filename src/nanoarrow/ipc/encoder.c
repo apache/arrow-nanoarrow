@@ -628,6 +628,11 @@ static ArrowErrorCode ArrowIpcEncoderEncodeRecordBatchImpl(
     return ENOTSUP;
   }
 
+  if (array_view->dictionary != NULL) {
+    ArrowErrorSet(error, "Cannot encode dictionary arrays");
+    return ENOTSUP;
+  }
+
   for (int64_t c = 0; c < array_view->n_children; ++c) {
     const struct ArrowArrayView* child = array_view->children[c];
 
