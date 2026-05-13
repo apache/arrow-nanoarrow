@@ -45,6 +45,7 @@ struct ArrowIpcEncoderPrivate {
   struct ArrowBuffer buffers;
   struct ArrowBuffer nodes;
   int encoding_footer;
+  struct ArrowIpcDictionaryEncodings dictionary_encodings;
 };
 
 ArrowErrorCode ArrowIpcEncoderInit(struct ArrowIpcEncoder* encoder) {
@@ -63,6 +64,7 @@ ArrowErrorCode ArrowIpcEncoderInit(struct ArrowIpcEncoder* encoder) {
   private->encoding_footer = 0;
   ArrowBufferInit(&private->buffers);
   ArrowBufferInit(&private->nodes);
+  ArrowIpcDictionaryEncodingsInit(&private->dictionary_encodings);
   return NANOARROW_OK;
 }
 
@@ -74,6 +76,7 @@ void ArrowIpcEncoderReset(struct ArrowIpcEncoder* encoder) {
     flatcc_builder_clear(&private->builder);
     ArrowBufferReset(&private->nodes);
     ArrowBufferReset(&private->buffers);
+    ArrowIpcDictionaryEncodingsReset(&private->dictionary_encodings);
     ArrowFree(private);
   }
   memset(encoder, 0, sizeof(struct ArrowIpcEncoder));
@@ -337,9 +340,10 @@ static ArrowErrorCode ArrowIpcEncodeFieldType(flatcc_builder_t* builder,
   }
 }
 
-static ArrowErrorCode ArrowIpcEncodeField(flatcc_builder_t* builder,
-                                          const struct ArrowSchema* schema,
-                                          struct ArrowError* error);
+static ArrowErrorCode ArrowIpcEncodeField(
+    flatcc_builder_t* builder, const struct ArrowSchema* schema,
+    const struct ArrowIpcDictionaryEncodings* dictionary_encodings,
+    struct ArrowError* error);
 
 static ArrowErrorCode ArrowIpcEncodeMetadata(flatcc_builder_t* builder,
                                              const struct ArrowSchema* schema,
@@ -364,36 +368,109 @@ static ArrowErrorCode ArrowIpcEncodeMetadata(flatcc_builder_t* builder,
   return NANOARROW_OK;
 }
 
-static ArrowErrorCode ArrowIpcEncodeFields(flatcc_builder_t* builder,
-                                           const struct ArrowSchema* schema,
-                                           int (*push_start)(flatcc_builder_t*),
-                                           ns(Field_ref_t) *
-                                               (*push_end)(flatcc_builder_t*),
-                                           struct ArrowError* error) {
+static ArrowErrorCode ArrowIpcEncodeFields(
+    flatcc_builder_t* builder, const struct ArrowSchema* schema,
+    int (*push_start)(flatcc_builder_t*),
+    ns(Field_ref_t) * (*push_end)(flatcc_builder_t*),
+    const struct ArrowIpcDictionaryEncodings* dictionary_encodings,
+    struct ArrowError* error) {
   for (int i = 0; i < schema->n_children; i++) {
     FLATCC_RETURN_UNLESS_0_NO_NS(push_start(builder), error);
-    NANOARROW_RETURN_NOT_OK(ArrowIpcEncodeField(builder, schema->children[i], error));
+    NANOARROW_RETURN_NOT_OK(
+        ArrowIpcEncodeField(builder, schema->children[i], dictionary_encodings, error));
     FLATCC_RETURN_IF_NULL(push_end(builder), error);
   }
   return NANOARROW_OK;
 }
 
-static ArrowErrorCode ArrowIpcEncodeField(flatcc_builder_t* builder,
-                                          const struct ArrowSchema* schema,
-                                          struct ArrowError* error) {
+static ArrowErrorCode ArrowIpcEncodeField(
+    flatcc_builder_t* builder, const struct ArrowSchema* schema,
+    const struct ArrowIpcDictionaryEncodings* dictionary_encodings,
+    struct ArrowError* error) {
   FLATCC_RETURN_UNLESS_0(Field_name_create_str(builder, schema->name), error);
   FLATCC_RETURN_UNLESS_0(
       Field_nullable_add(builder, (schema->flags & ARROW_FLAG_NULLABLE) != 0), error);
 
   struct ArrowSchemaView schema_view;
   NANOARROW_RETURN_NOT_OK(ArrowSchemaViewInit(&schema_view, schema, error));
+
+  if (schema_view.type == NANOARROW_TYPE_DICTIONARY) {
+    const struct ArrowIpcDictionaryEncoding* encoding =
+        ArrowIpcDictionaryEncodingsFind(dictionary_encodings, schema);
+
+    // We just computed these dictionary ids, so we should be able to resolve them
+    if (encoding == NULL) {
+      ArrowErrorSet(error, "Unexpected missing dictionary encoding for field");
+      return EINVAL;
+    }
+
+    // Determine the index type's bitWidth and is_signed from the storage_type
+    int32_t index_bitwidth;
+    flatbuffers_bool_t index_is_signed;
+    switch (schema_view.storage_type) {
+      case NANOARROW_TYPE_INT8:
+        index_bitwidth = 8;
+        index_is_signed = 1;
+        break;
+      case NANOARROW_TYPE_UINT8:
+        index_bitwidth = 8;
+        index_is_signed = 0;
+        break;
+      case NANOARROW_TYPE_INT16:
+        index_bitwidth = 16;
+        index_is_signed = 1;
+        break;
+      case NANOARROW_TYPE_UINT16:
+        index_bitwidth = 16;
+        index_is_signed = 0;
+        break;
+      case NANOARROW_TYPE_INT32:
+        index_bitwidth = 32;
+        index_is_signed = 1;
+        break;
+      case NANOARROW_TYPE_UINT32:
+        index_bitwidth = 32;
+        index_is_signed = 0;
+        break;
+      case NANOARROW_TYPE_INT64:
+        index_bitwidth = 64;
+        index_is_signed = 1;
+        break;
+      case NANOARROW_TYPE_UINT64:
+        index_bitwidth = 64;
+        index_is_signed = 0;
+        break;
+      default:
+        ArrowErrorSet(error, "Invalid dictionary index type: %s",
+                      ArrowTypeString(schema_view.storage_type));
+        return EINVAL;
+    }
+
+    // Create the Int type for the index type
+    ns(Int_ref_t) index_type_ref =
+        ns(Int_create(builder, index_bitwidth, index_is_signed));
+    FLATCC_RETURN_IF_NULL(index_type_ref, error);
+
+    // Create the DictionaryEncoding with id, indexType, isOrdered, and dictionaryKind
+    flatbuffers_bool_t is_ordered = (schema->flags & ARROW_FLAG_DICTIONARY_ORDERED) != 0;
+    ns(DictionaryEncoding_ref_t) dict_encoding_ref =
+        ns(DictionaryEncoding_create(builder, encoding->id, index_type_ref, is_ordered,
+                                     ns(DictionaryKind_DenseArray)));
+    FLATCC_RETURN_IF_NULL(dict_encoding_ref, error);
+
+    // Add the dictionary encoding to the field
+    FLATCC_RETURN_UNLESS_0(Field_dictionary_add(builder, dict_encoding_ref), error);
+
+    NANOARROW_RETURN_NOT_OK(ArrowSchemaViewInit(&schema_view, schema->dictionary, error));
+  }
+
   NANOARROW_RETURN_NOT_OK(ArrowIpcEncodeFieldType(builder, &schema_view, error));
 
   if (schema->n_children != 0) {
     FLATCC_RETURN_UNLESS_0(Field_children_start(builder), error);
-    NANOARROW_RETURN_NOT_OK(ArrowIpcEncodeFields(builder, schema,
-                                                 &ns(Field_children_push_start),
-                                                 &ns(Field_children_push_end), error));
+    NANOARROW_RETURN_NOT_OK(
+        ArrowIpcEncodeFields(builder, schema, &ns(Field_children_push_start),
+                             &ns(Field_children_push_end), dictionary_encodings, error));
     FLATCC_RETURN_UNLESS_0(Field_children_end(builder), error);
   }
 
@@ -407,9 +484,10 @@ static ArrowErrorCode ArrowIpcEncodeField(flatcc_builder_t* builder,
   return NANOARROW_OK;
 }
 
-static ArrowErrorCode ArrowIpcEncodeSchema(flatcc_builder_t* builder,
-                                           const struct ArrowSchema* schema,
-                                           struct ArrowError* error) {
+static ArrowErrorCode ArrowIpcEncodeSchema(
+    flatcc_builder_t* builder, const struct ArrowSchema* schema,
+    const struct ArrowIpcDictionaryEncodings* dictionary_encodings,
+    struct ArrowError* error) {
   NANOARROW_DCHECK(schema->release != NULL);
 
   if (strcmp(schema->format, "+s") != 0) {
@@ -427,9 +505,9 @@ static ArrowErrorCode ArrowIpcEncodeSchema(flatcc_builder_t* builder,
   }
 
   FLATCC_RETURN_UNLESS_0(Schema_fields_start(builder), error);
-  NANOARROW_RETURN_NOT_OK(ArrowIpcEncodeFields(builder, schema,
-                                               &ns(Schema_fields_push_start),
-                                               &ns(Schema_fields_push_end), error));
+  NANOARROW_RETURN_NOT_OK(
+      ArrowIpcEncodeFields(builder, schema, &ns(Schema_fields_push_start),
+                           &ns(Schema_fields_push_end), dictionary_encodings, error));
   FLATCC_RETURN_UNLESS_0(Schema_fields_end(builder), error);
 
   FLATCC_RETURN_UNLESS_0(Schema_custom_metadata_start(builder), error);
@@ -461,7 +539,19 @@ ArrowErrorCode ArrowIpcEncoderEncodeSchema(struct ArrowIpcEncoder* encoder,
   FLATCC_RETURN_UNLESS_0(Message_version_add(builder, ns(MetadataVersion_V5)), error);
 
   FLATCC_RETURN_UNLESS_0(Message_header_Schema_start(builder), error);
-  NANOARROW_RETURN_NOT_OK(ArrowIpcEncodeSchema(builder, schema, error));
+
+  // Look for any fields of the schema that should be dictionary encoded
+  if (private->dictionary_encodings.encodings.size_bytes > 0) {
+    ArrowIpcDictionaryEncodingsReset(&private->dictionary_encodings);
+    ArrowIpcDictionaryEncodingsInit(&private->dictionary_encodings);
+  }
+  NANOARROW_RETURN_NOT_OK_WITH_ERROR(
+      ArrowIpcDictionaryEncodingsAppendSchema(&private->dictionary_encodings, schema),
+      error);
+
+  NANOARROW_RETURN_NOT_OK(
+      ArrowIpcEncodeSchema(builder, schema, &private->dictionary_encodings, error));
+
   FLATCC_RETURN_UNLESS_0(Message_header_Schema_end(builder), error);
 
   FLATCC_RETURN_UNLESS_0(Message_bodyLength_add(builder, 0), error);
@@ -535,6 +625,11 @@ static ArrowErrorCode ArrowIpcEncoderEncodeRecordBatchImpl(
     struct ArrowBuffer* nodes, struct ArrowError* error) {
   if (array_view->offset != 0) {
     ArrowErrorSet(error, "Cannot encode arrays with nonzero offset");
+    return ENOTSUP;
+  }
+
+  if (array_view->dictionary != NULL) {
+    ArrowErrorSet(error, "Cannot encode dictionary arrays");
     return ENOTSUP;
   }
 
@@ -657,7 +752,8 @@ ArrowErrorCode ArrowIpcEncoderEncodeFooter(struct ArrowIpcEncoder* encoder,
   FLATCC_RETURN_UNLESS_0(Footer_version_add(builder, ns(MetadataVersion_V5)), error);
 
   FLATCC_RETURN_UNLESS_0(Footer_schema_start(builder), error);
-  NANOARROW_RETURN_NOT_OK(ArrowIpcEncodeSchema(builder, &footer->schema, error));
+  NANOARROW_RETURN_NOT_OK(
+      ArrowIpcEncodeSchema(builder, &footer->schema, &footer->dictionaries, error));
   FLATCC_RETURN_UNLESS_0(Footer_schema_end(builder), error);
 
   const struct ArrowIpcFileBlock* blocks =
