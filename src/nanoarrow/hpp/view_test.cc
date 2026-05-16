@@ -223,6 +223,36 @@ TEST(NanoarrowHppTest, NanoarrowHppViewArrayOffsetTest) {
               testing::ElementsAre(2, 3));
 }
 
+TEST(NanoarrowHppTest, NanoarrowHppViewArrayAsSubscriptOffsetTest) {
+  nanoarrow::UniqueSchema schema{};
+  ArrowSchemaInit(schema.get());
+  ASSERT_EQ(ArrowSchemaSetType(schema.get(), NANOARROW_TYPE_INT32), NANOARROW_OK);
+
+  nanoarrow::UniqueArray array{};
+  ASSERT_EQ(ArrowArrayInitFromSchema(array.get(), schema.get(), nullptr), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayStartAppending(array.get()), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAppendInt(array.get(), 10), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAppendInt(array.get(), 11), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAppendInt(array.get(), 12), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAppendInt(array.get(), 13), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayFinishBuildingDefault(array.get(), nullptr), NANOARROW_OK);
+  array->offset = 2;
+  array->length = 2;
+
+  nanoarrow::ViewArrayAs<int32_t> view(array.get());
+  EXPECT_EQ(*view[0], 12);
+  EXPECT_EQ(*view[1], 13);
+
+  nanoarrow::UniqueArrayView array_view{};
+  ASSERT_EQ(ArrowArrayViewInitFromSchema(array_view.get(), schema.get(), nullptr),
+            NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayViewSetArray(array_view.get(), array.get(), nullptr), NANOARROW_OK);
+
+  nanoarrow::ViewArrayAs<int32_t> view_from_array_view(array_view.get());
+  EXPECT_EQ(*view_from_array_view[0], 12);
+  EXPECT_EQ(*view_from_array_view[1], 13);
+}
+
 TEST(NanoarrowHppTest, NanoarrowHppViewArrayAsBytesOffsetTest) {
   using namespace nanoarrow::literals;
 
