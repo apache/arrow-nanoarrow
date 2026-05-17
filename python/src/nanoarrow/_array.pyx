@@ -143,8 +143,7 @@ cdef class CArrayView:
     @property
     def storage_type(self):
         cdef const char* type_str = ArrowTypeString(self._ptr.storage_type)
-        if type_str != NULL:
-            return type_str.decode('UTF-8')
+        return type_str.decode('UTF-8')
 
     @property
     def layout(self):
