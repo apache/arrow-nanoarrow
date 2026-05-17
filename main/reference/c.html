@@ -866,9 +866,30 @@
 
 <dl class="cpp function">
 <dt class="sig sig-object cpp">
+<span class="target" id="group__nanoarrow-array_1ga34fea19fe5db49490c9e3f213731da84"></span><span class="sig-name descname"><span class="pre">NANOARROW_DLL</span> <span class="pre">int</span> <span class="pre">ArrowArrayIsInternal</span> <span class="pre">(struct</span> <span class="pre">ArrowArray</span> <span class="pre">*array)</span></span></dt>
+<dd><p>Check if an <a class="reference internal" href="#struct_arrow_array"><span class="std std-ref">ArrowArray</span></a> was allocated by nanoarrow. </p>
+<p>Returns non-zero if array was allocated using <a class="reference internal" href="#group__nanoarrow-array_1gae10b759c47c4ddc5bc4d302bcab27338"><span class="std std-ref">ArrowArrayInitFromType()</span></a>, <a class="reference internal" href="#group__nanoarrow-array_1ga41bf85a798b8434015cba6584017f9ca"><span class="std std-ref">ArrowArrayInitFromSchema()</span></a>, or <a class="reference internal" href="#group__nanoarrow-array_1gacaa61c8fea7445750690709d621a8468"><span class="std std-ref">ArrowArrayInitFromArrayView()</span></a>. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp">
 <span class="target" id="group__nanoarrow-array_1ga019017c92a47b225c68e56325521ba88"></span><span class="sig-name descname"><span class="pre">NANOARROW_DLL</span> <span class="pre">ArrowErrorCode</span> <span class="pre">ArrowArrayFinishBuilding</span> <span class="pre">(struct</span> <span class="pre">ArrowArray</span> <span class="pre">*array,</span> <span class="pre">enum</span> <span class="pre">ArrowValidationLevel</span> <span class="pre">validation_level,</span> <span class="pre">struct</span> <span class="pre">ArrowError</span> <span class="pre">*error)</span></span></dt>
 <dd><p>Finish building an <a class="reference internal" href="#struct_arrow_array"><span class="std std-ref">ArrowArray</span></a> with explicit validation. </p>
 <p>Finish building with an explicit validation level. This could perform less validation (i.e. NANOARROW_VALIDATION_LEVEL_NONE or NANOARROW_VALIDATION_LEVEL_MINIMAL) if CPU buffer data access is not possible or more validation (i.e., NANOARROW_VALIDATION_LEVEL_FULL) if buffer content was obtained from an untrusted or corruptible source. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp">
+<span class="target" id="group__nanoarrow-array_1ga170d9363f43e1cadc75057d240d85a6b"></span><span class="sig-name descname"><span class="pre">NANOARROW_DLL</span> <span class="pre">ArrowErrorCode</span> <span class="pre">ArrowArrayMoveShared</span> <span class="pre">(struct</span> <span class="pre">ArrowArray</span> <span class="pre">*array,</span> <span class="pre">struct</span> <span class="pre">ArrowArray</span> <span class="pre">*shared)</span></span></dt>
+<dd><p>Create a shared copy of an <a class="reference internal" href="#struct_arrow_array"><span class="std std-ref">ArrowArray</span></a>. </p>
+<p>Recursively converts array into a version where all buffers are reference-counted. On success, shared is a new <a class="reference internal" href="#struct_arrow_array"><span class="std std-ref">ArrowArray</span></a> whose buffers are backed by ArrowSharedArray references, and array is consumed (release set to NULL). The resulting shared array can be safely moved or have its buffers cloned via ArrowSharedBufferClone(). </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp">
+<span class="target" id="group__nanoarrow-array_1ga07db48cd9dff935fb827946a5eedd84a"></span><span class="sig-name descname"><span class="pre">NANOARROW_DLL</span> <span class="pre">ArrowErrorCode</span> <span class="pre">ArrowArrayCloneShared</span> <span class="pre">(struct</span> <span class="pre">ArrowArray</span> <span class="pre">*shared,</span> <span class="pre">struct</span> <span class="pre">ArrowArray</span> <span class="pre">*array)</span></span></dt>
+<dd><p>Clone a shared <a class="reference internal" href="#struct_arrow_array"><span class="std std-ref">ArrowArray</span></a>. </p>
+<p>Creates a new <a class="reference internal" href="#struct_arrow_array"><span class="std std-ref">ArrowArray</span></a> whose buffers share the same underlying data as the source shared array. The source must have been created by <a class="reference internal" href="#group__nanoarrow-array_1ga170d9363f43e1cadc75057d240d85a6b"><span class="std std-ref">ArrowArrayMoveShared()</span></a> (i.e. all buffers are reference-counted). Returns EINVAL if shared is not a shared array. </p>
 </dd></dl>
 
 </div>

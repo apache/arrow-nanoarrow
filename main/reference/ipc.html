@@ -637,27 +637,6 @@
 
 <dl class="cpp function">
 <dt class="sig sig-object cpp">
-<span class="target" id="group__nanoarrow__ipc_1ga40f064cf9a503d416f8087b308554466"></span><span class="sig-name descname"><span class="pre">NANOARROW_DLL</span> <span class="pre">ArrowErrorCode</span> <span class="pre">ArrowIpcSharedBufferInit</span> <span class="pre">(struct</span> <span class="pre">ArrowIpcSharedBuffer</span> <span class="pre">*shared,</span> <span class="pre">struct</span> <span class="pre">ArrowBuffer</span> <span class="pre">*src)</span></span></dt>
-<dd><p>Initialize the contents of a <a class="reference internal" href="#struct_arrow_ipc_shared_buffer"><span class="std std-ref">ArrowIpcSharedBuffer</span></a> struct. </p>
-<p>If NANOARROW_OK is returned, the <a class="reference internal" href="#struct_arrow_ipc_shared_buffer"><span class="std std-ref">ArrowIpcSharedBuffer</span></a> takes ownership of src. </p>
-</dd></dl>
-
-<dl class="cpp function">
-<dt class="sig sig-object cpp">
-<span class="target" id="group__nanoarrow__ipc_1ga4271f51dd56896bb76770dcb4084fbbe"></span><span class="sig-name descname"><span class="pre">NANOARROW_DLL</span> <span class="pre">void</span> <span class="pre">ArrowIpcSharedBufferReset</span> <span class="pre">(struct</span> <span class="pre">ArrowIpcSharedBuffer</span> <span class="pre">*shared)</span></span></dt>
-<dd><p>Release the caller’s copy of the shared buffer. </p>
-<p>When finished, the caller must relinquish its own copy of the shared data using this function. The original buffer will continue to exist until all <a class="reference internal" href="c.html#struct_arrow_array"><span class="std std-ref">ArrowArray</span></a> objects that refer to it have also been released. </p>
-</dd></dl>
-
-<dl class="cpp function">
-<dt class="sig sig-object cpp">
-<span class="target" id="group__nanoarrow__ipc_1ga106d89801147cc32a5a1cdb43dec1431"></span><span class="sig-name descname"><span class="pre">NANOARROW_DLL</span> <span class="pre">int</span> <span class="pre">ArrowIpcSharedBufferIsThreadSafe</span> <span class="pre">(void)</span></span></dt>
-<dd><p>Check for shared buffer thread safety. </p>
-<p>Thread-safe shared buffers require C11 and the stdatomic.h header. If either are unavailable, shared buffers are still possible but the resulting arrays must not be passed to other threads to be released. </p>
-</dd></dl>
-
-<dl class="cpp function">
-<dt class="sig sig-object cpp">
 <span class="target" id="group__nanoarrow__ipc_1ga59d30b50cdf766ac5715d275d7df4cde"></span><span class="sig-name descname"><span class="pre">NANOARROW_DLL</span> <span class="pre">ArrowIpcDecompressFunction</span> <span class="pre">ArrowIpcGetZstdDecompressionFunction</span> <span class="pre">(void)</span></span></dt>
 <dd><p>Get the decompression function for ZSTD. </p>
 <p>The result will be NULL if nanoarrow was not built with NANOARROW_IPC_WITH_ZSTD. </p>
@@ -801,16 +780,16 @@
 
 <dl class="cpp function">
 <dt class="sig sig-object cpp">
-<span class="target" id="group__nanoarrow__ipc_1ga2f01bcf23bc41ef82b258a0ffd6a0706"></span><span class="sig-name descname"><span class="pre">NANOARROW_DLL</span> <span class="pre">ArrowErrorCode</span> <span class="pre">ArrowIpcDecoderDecodeArrayFromSharedWithDictionaries</span> <span class="pre">(struct</span> <span class="pre">ArrowIpcDecoder</span> <span class="pre">*decoder,</span> <span class="pre">struct</span> <span class="pre">ArrowIpcSharedBuffer</span> <span class="pre">*shared,</span> <span class="pre">int64_t</span> <span class="pre">i,</span> <span class="pre">struct</span> <span class="pre">ArrowIpcDictionaries</span> <span class="pre">*dictionaries,</span> <span class="pre">struct</span> <span class="pre">ArrowArray</span> <span class="pre">*out,</span> <span class="pre">enum</span> <span class="pre">ArrowValidationLevel</span> <span class="pre">validation_level,</span> <span class="pre">struct</span> <span class="pre">ArrowError</span> <span class="pre">*error)</span></span></dt>
+<span class="target" id="group__nanoarrow__ipc_1gad69a98aa0ddffa48cbdb1a5f0bdc5149"></span><span class="sig-name descname"><span class="pre">NANOARROW_DLL</span> <span class="pre">ArrowErrorCode</span> <span class="pre">ArrowIpcDecoderDecodeArrayFromSharedWithDictionaries</span> <span class="pre">(struct</span> <span class="pre">ArrowIpcDecoder</span> <span class="pre">*decoder,</span> <span class="pre">struct</span> <span class="pre">ArrowBuffer</span> <span class="pre">*shared,</span> <span class="pre">int64_t</span> <span class="pre">i,</span> <span class="pre">struct</span> <span class="pre">ArrowIpcDictionaries</span> <span class="pre">*dictionaries,</span> <span class="pre">struct</span> <span class="pre">ArrowArray</span> <span class="pre">*out,</span> <span class="pre">enum</span> <span class="pre">ArrowValidationLevel</span> <span class="pre">validation_level,</span> <span class="pre">struct</span> <span class="pre">ArrowError</span> <span class="pre">*error)</span></span></dt>
 <dd><p>Decode an <a class="reference internal" href="c.html#struct_arrow_array"><span class="std std-ref">ArrowArray</span></a> from an owned buffer with dictionary decoding support. </p>
-<p>This implementation takes advantage of the fact that it can avoid copying individual buffers. In all cases the caller must <a class="reference internal" href="#group__nanoarrow__ipc_1ga4271f51dd56896bb76770dcb4084fbbe"><span class="std std-ref">ArrowIpcSharedBufferReset()</span></a> body after one or more calls to <a class="reference internal" href="#group__nanoarrow__ipc_1gadd4ab41285a9a217664286b6abba0037"><span class="std std-ref">ArrowIpcDecoderDecodeArrayFromShared()</span></a>. If <a class="reference internal" href="#group__nanoarrow__ipc_1ga106d89801147cc32a5a1cdb43dec1431"><span class="std std-ref">ArrowIpcSharedBufferIsThreadSafe()</span></a> returns 0, out must not be released by another thread. </p>
+<p>This implementation takes advantage of the fact that it can avoid copying individual buffers. In all cases the caller must ArrowBufferReset() body after one or more calls to <a class="reference internal" href="#group__nanoarrow__ipc_1gaad1f9476ec0e4808a1107b32a0917328"><span class="std std-ref">ArrowIpcDecoderDecodeArrayFromShared()</span></a>. If ArrowSharedBufferIsThreadSafe() returns 0, out must not be released by another thread. </p>
 </dd></dl>
 
 <dl class="cpp function">
 <dt class="sig sig-object cpp">
-<span class="target" id="group__nanoarrow__ipc_1gadd4ab41285a9a217664286b6abba0037"></span><span class="sig-name descname"><span class="pre">NANOARROW_DLL</span> <span class="pre">ArrowErrorCode</span> <span class="pre">ArrowIpcDecoderDecodeArrayFromShared</span> <span class="pre">(struct</span> <span class="pre">ArrowIpcDecoder</span> <span class="pre">*decoder,</span> <span class="pre">struct</span> <span class="pre">ArrowIpcSharedBuffer</span> <span class="pre">*shared,</span> <span class="pre">int64_t</span> <span class="pre">i,</span> <span class="pre">struct</span> <span class="pre">ArrowArray</span> <span class="pre">*out,</span> <span class="pre">enum</span> <span class="pre">ArrowValidationLevel</span> <span class="pre">validation_level,</span> <span class="pre">struct</span> <span class="pre">ArrowError</span> <span class="pre">*error)</span></span></dt>
+<span class="target" id="group__nanoarrow__ipc_1gaad1f9476ec0e4808a1107b32a0917328"></span><span class="sig-name descname"><span class="pre">NANOARROW_DLL</span> <span class="pre">ArrowErrorCode</span> <span class="pre">ArrowIpcDecoderDecodeArrayFromShared</span> <span class="pre">(struct</span> <span class="pre">ArrowIpcDecoder</span> <span class="pre">*decoder,</span> <span class="pre">struct</span> <span class="pre">ArrowBuffer</span> <span class="pre">*shared,</span> <span class="pre">int64_t</span> <span class="pre">i,</span> <span class="pre">struct</span> <span class="pre">ArrowArray</span> <span class="pre">*out,</span> <span class="pre">enum</span> <span class="pre">ArrowValidationLevel</span> <span class="pre">validation_level,</span> <span class="pre">struct</span> <span class="pre">ArrowError</span> <span class="pre">*error)</span></span></dt>
 <dd><p>Decode an <a class="reference internal" href="c.html#struct_arrow_array"><span class="std std-ref">ArrowArray</span></a> from an owned buffer. </p>
-<p>Equivalent to calling <a class="reference internal" href="#group__nanoarrow__ipc_1ga2f01bcf23bc41ef82b258a0ffd6a0706"><span class="std std-ref">ArrowIpcDecoderDecodeArrayFromSharedWithDictionaries()</span></a> with dictionaries as NULL. </p>
+<p>Equivalent to calling <a class="reference internal" href="#group__nanoarrow__ipc_1gad69a98aa0ddffa48cbdb1a5f0bdc5149"><span class="std std-ref">ArrowIpcDecoderDecodeArrayFromSharedWithDictionaries()</span></a> with dictionaries as NULL. </p>
 </dd></dl>
 
 <dl class="cpp function">
@@ -822,9 +801,9 @@
 
 <dl class="cpp function">
 <dt class="sig sig-object cpp">
-<span class="target" id="group__nanoarrow__ipc_1ga5e1e79c9c13f127c763befe8880074c4"></span><span class="sig-name descname"><span class="pre">NANOARROW_DLL</span> <span class="pre">ArrowErrorCode</span> <span class="pre">ArrowIpcDecoderDecodeDictionaryFromShared</span> <span class="pre">(struct</span> <span class="pre">ArrowIpcDecoder</span> <span class="pre">*decoder,</span> <span class="pre">struct</span> <span class="pre">ArrowIpcSharedBuffer</span> <span class="pre">*shared,</span> <span class="pre">enum</span> <span class="pre">ArrowValidationLevel</span> <span class="pre">validation_level,</span> <span class="pre">struct</span> <span class="pre">ArrowIpcDictionaries</span> <span class="pre">*out,</span> <span class="pre">struct</span> <span class="pre">ArrowError</span> <span class="pre">*error)</span></span></dt>
+<span class="target" id="group__nanoarrow__ipc_1gae53f18aeb63271050d6e079b53ccb689"></span><span class="sig-name descname"><span class="pre">NANOARROW_DLL</span> <span class="pre">ArrowErrorCode</span> <span class="pre">ArrowIpcDecoderDecodeDictionaryFromShared</span> <span class="pre">(struct</span> <span class="pre">ArrowIpcDecoder</span> <span class="pre">*decoder,</span> <span class="pre">struct</span> <span class="pre">ArrowBuffer</span> <span class="pre">*shared,</span> <span class="pre">enum</span> <span class="pre">ArrowValidationLevel</span> <span class="pre">validation_level,</span> <span class="pre">struct</span> <span class="pre">ArrowIpcDictionaries</span> <span class="pre">*out,</span> <span class="pre">struct</span> <span class="pre">ArrowError</span> <span class="pre">*error)</span></span></dt>
 <dd><p>Decode an <a class="reference internal" href="c.html#struct_arrow_array"><span class="std std-ref">ArrowArray</span></a> from a dictionary batch from an owned buffer. </p>
-<p>This implementation takes advantage of the fact that it can avoid copying individual buffers. In all cases the caller must <a class="reference internal" href="#group__nanoarrow__ipc_1ga4271f51dd56896bb76770dcb4084fbbe"><span class="std std-ref">ArrowIpcSharedBufferReset()</span></a> body after one or more calls to <a class="reference internal" href="#group__nanoarrow__ipc_1gadd4ab41285a9a217664286b6abba0037"><span class="std std-ref">ArrowIpcDecoderDecodeArrayFromShared()</span></a>. If <a class="reference internal" href="#group__nanoarrow__ipc_1ga106d89801147cc32a5a1cdb43dec1431"><span class="std std-ref">ArrowIpcSharedBufferIsThreadSafe()</span></a> returns 0, no batches decoded using out may be released from another thread. </p>
+<p>This implementation takes advantage of the fact that it can avoid copying individual buffers. In all cases the caller must ArrowBufferReset() body after one or more calls to <a class="reference internal" href="#group__nanoarrow__ipc_1gaad1f9476ec0e4808a1107b32a0917328"><span class="std std-ref">ArrowIpcDecoderDecodeArrayFromShared()</span></a>. If ArrowSharedBufferIsThreadSafe() returns 0, no batches decoded using out may be released from another thread. </p>
 </dd></dl>
 
 <dl class="cpp function">
@@ -1040,14 +1019,6 @@
 </dd></dl>
 
 <dl class="cpp struct">
-<dt class="sig sig-object cpp" id="_CPPv420ArrowIpcSharedBuffer">
-<span id="_CPPv320ArrowIpcSharedBuffer"></span><span id="_CPPv220ArrowIpcSharedBuffer"></span><span id="ArrowIpcSharedBuffer"></span><span class="target" id="struct_arrow_ipc_shared_buffer"></span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">ArrowIpcSharedBuffer</span></span></span><a class="headerlink" href="#_CPPv420ArrowIpcSharedBuffer" title="Link to this definition">#</a><br /></dt>
-<dd><div class="docutils container">
-<em>#include &lt;nanoarrow_ipc.h&gt;</em></div>
-<p>A structure representing a reference-counted buffer that may be passed to <a class="reference internal" href="#group__nanoarrow__ipc_1gadd4ab41285a9a217664286b6abba0037"><span class="std std-ref">ArrowIpcDecoderDecodeArrayFromShared()</span></a>. </p>
-</dd></dl>
-
-<dl class="cpp struct">
 <dt class="sig sig-object cpp" id="_CPPv420ArrowIpcDecompressor">
 <span id="_CPPv320ArrowIpcDecompressor"></span><span id="_CPPv220ArrowIpcDecompressor"></span><span id="ArrowIpcDecompressor"></span><span class="target" id="struct_arrow_ipc_decompressor"></span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">ArrowIpcDecompressor</span></span></span><a class="headerlink" href="#_CPPv420ArrowIpcDecompressor" title="Link to this definition">#</a><br /></dt>
 <dd><div class="docutils container">
@@ -1213,7 +1184,7 @@
 <dt class="sig sig-object cpp" id="_CPPv4N32ArrowIpcArrayStreamReaderOptions18use_shared_buffersE">
 <span id="_CPPv3N32ArrowIpcArrayStreamReaderOptions18use_shared_buffersE"></span><span id="_CPPv2N32ArrowIpcArrayStreamReaderOptions18use_shared_buffersE"></span><span id="ArrowIpcArrayStreamReaderOptions::use_shared_buffers__i"></span><span class="target" id="struct_arrow_ipc_array_stream_reader_options_1a415145f089d7244dbc92c2dadea9988b"></span><span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">use_shared_buffers</span></span></span><a class="headerlink" href="#_CPPv4N32ArrowIpcArrayStreamReaderOptions18use_shared_buffersE" title="Link to this definition">#</a><br /></dt>
 <dd><p>Set to a non-zero value to share the message body buffer among decoded arrays. </p>
-<p>Sharing buffers is a good choice when (1) using memory-mapped IO (since unreferenced portions of the file are often not loaded into memory) or (2) if all data from all columns are about to be referenced anyway. When loading a single field there is probably no advantage to using shared buffers. Defaults to the value of <a class="reference internal" href="#group__nanoarrow__ipc_1ga106d89801147cc32a5a1cdb43dec1431"><span class="std std-ref">ArrowIpcSharedBufferIsThreadSafe()</span></a>. </p>
+<p>Sharing buffers is a good choice when (1) using memory-mapped IO (since unreferenced portions of the file are often not loaded into memory) or (2) if all data from all columns are about to be referenced anyway. When loading a single field there is probably no advantage to using shared buffers. Defaults to the value of ArrowSharedBufferIsThreadSafe(). </p>
 </dd></dl>
 
 </div>
@@ -1297,12 +1268,6 @@
 <dd><p>Extends the unique object wrappers in nanoarrow.hpp to include C structs defined in the nanoarrow_ipc.h header. </p>
 <div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric" id="breathe-section-title-typedefs">Typedefs</p>
-<dl class="cpp type">
-<dt class="sig sig-object cpp" id="_CPPv418UniqueSharedBuffer">
-<span id="_CPPv318UniqueSharedBuffer"></span><span id="_CPPv218UniqueSharedBuffer"></span><span class="target" id="group__nanoarrow__ipc__hpp-unique_1gab270d1d1593de3b0c4a0be5fbfb8f0a0"></span><span class="k"><span class="pre">using</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">UniqueSharedBuffer</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="n"><span class="pre">internal</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">Unique</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv420ArrowIpcSharedBuffer" title="ArrowIpcSharedBuffer"><span class="n"><span class="pre">ArrowIpcSharedBuffer</span></span></a><span class="p"><span class="pre">&gt;</span></span><a class="headerlink" href="#_CPPv418UniqueSharedBuffer" title="Link to this definition">#</a><br /></dt>
-<dd><p>Class wrapping a unique struct <a class="reference internal" href="#struct_arrow_ipc_shared_buffer"><span class="std std-ref">ArrowIpcSharedBuffer</span></a>. </p>
-</dd></dl>
-
 <dl class="cpp type">
 <dt class="sig sig-object cpp" id="_CPPv413UniqueDecoder">
 <span id="_CPPv313UniqueDecoder"></span><span id="_CPPv213UniqueDecoder"></span><span class="target" id="group__nanoarrow__ipc__hpp-unique_1ga047aadf33e433490ce3d8b4a336d722b"></span><span class="k"><span class="pre">using</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">UniqueDecoder</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="n"><span class="pre">internal</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">Unique</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv415ArrowIpcDecoder" title="ArrowIpcDecoder"><span class="n"><span class="pre">ArrowIpcDecoder</span></span></a><span class="p"><span class="pre">&gt;</span></span><a class="headerlink" href="#_CPPv413UniqueDecoder" title="Link to this definition">#</a><br /></dt>
@@ -1463,7 +1428,6 @@
 </li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv427ArrowIpcDictionaryEncodings"><code class="docutils literal notranslate"><span class="pre">ArrowIpcDictionaryEncodings</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv420ArrowIpcDictionaries"><code class="docutils literal notranslate"><span class="pre">ArrowIpcDictionaries</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv420ArrowIpcSharedBuffer"><code class="docutils literal notranslate"><span class="pre">ArrowIpcSharedBuffer</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv420ArrowIpcDecompressor"><code class="docutils literal notranslate"><span class="pre">ArrowIpcDecompressor</span></code></a><ul class="nav section-nav flex-column">
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N20ArrowIpcDecompressor14decompress_addE"><code class="docutils literal notranslate"><span class="pre">decompress_add</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N20ArrowIpcDecompressor15decompress_waitE"><code class="docutils literal notranslate"><span class="pre">decompress_wait</span></code></a></li>
@@ -1512,7 +1476,6 @@
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#c-helpers">C++ Helpers</a><ul class="pst-show_toc_level nav section-nav flex-column">
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv418UniqueSharedBuffer"><code class="docutils literal notranslate"><span class="pre">UniqueSharedBuffer</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv413UniqueDecoder"><code class="docutils literal notranslate"><span class="pre">UniqueDecoder</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv412UniqueFooter"><code class="docutils literal notranslate"><span class="pre">UniqueFooter</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv425UniqueDictionaryEncodings"><code class="docutils literal notranslate"><span class="pre">UniqueDictionaryEncodings</span></code></a></li>
