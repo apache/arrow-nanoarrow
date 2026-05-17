@@ -19,6 +19,8 @@
 #include <gtest/gtest.h>
 #include <cmath>
 #include <cstdint>
+#include <cstring>
+#include <thread>
 
 #if defined(NANOARROW_BUILD_TESTS_WITH_ARROW)
 #include <arrow/array.h>
@@ -4717,3 +4719,371 @@ TEST(ArrayViewTest, ArrayViewTestGetDecimal256) {
   ArrowArrayRelease(&array);
 }
 #endif
+
+// Helper to build a simple int32 array with known data for shared array tests
+static void MakeInt32ArrayForSharedTest(struct ArrowArray* array, const int32_t* values,
+                                        int64_t n) {
+  ASSERT_EQ(ArrowArrayInitFromType(array, NANOARROW_TYPE_INT32), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayStartAppending(array), NANOARROW_OK);
+  for (int64_t i = 0; i < n; i++) {
+    ASSERT_EQ(ArrowArrayAppendInt(array, values[i]), NANOARROW_OK);
+  }
+  ASSERT_EQ(ArrowArrayFinishBuildingDefault(array, nullptr), NANOARROW_OK);
+}
+
+TEST(ArrayIsInternalTest, InternalArrayReturnsTrue) {
+  struct ArrowArray array;
+  ASSERT_EQ(ArrowArrayInitFromType(&array, NANOARROW_TYPE_INT32), NANOARROW_OK);
+  EXPECT_NE(ArrowArrayIsInternal(&array), 0);
+  ArrowArrayRelease(&array);
+}
+
+TEST(ArrayIsInternalTest, ExternalArrayReturnsFalse) {
+  // Create a simple external array with a custom release callback
+  struct ArrowArray array;
+  memset(&array, 0, sizeof(struct ArrowArray));
+  array.release = [](struct ArrowArray* arr) { arr->release = nullptr; };
+
+  EXPECT_EQ(ArrowArrayIsInternal(&array), 0);
+  ArrowArrayRelease(&array);
+}
+
+// Helper to build a struct array with children for shared array tests
+static void MakeStructArrayForSharedTest(struct ArrowArray* array, const int32_t* values,
+                                         int64_t n) {
+  ASSERT_EQ(ArrowArrayInitFromType(array, NANOARROW_TYPE_STRUCT), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAllocateChildren(array, 1), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayInitFromType(array->children[0], NANOARROW_TYPE_INT32),
+            NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayStartAppending(array), NANOARROW_OK);
+  for (int64_t i = 0; i < n; i++) {
+    ASSERT_EQ(ArrowArrayAppendInt(array->children[0], values[i]), NANOARROW_OK);
+    ASSERT_EQ(ArrowArrayFinishElement(array), NANOARROW_OK);
+  }
+  ASSERT_EQ(ArrowArrayFinishBuildingDefault(array, nullptr), NANOARROW_OK);
+}
+
+// Helper to build a dictionary array for shared array tests
+static void MakeDictionaryArrayForSharedTest(struct ArrowArray* array) {
+  // Create indices
+  ASSERT_EQ(ArrowArrayInitFromType(array, NANOARROW_TYPE_INT32), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAllocateDictionary(array), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayInitFromType(array->dictionary, NANOARROW_TYPE_STRING),
+            NANOARROW_OK);
+
+  ASSERT_EQ(ArrowArrayStartAppending(array), NANOARROW_OK);
+
+  // Add dictionary values
+  struct ArrowStringView sv;
+  sv.data = "zero";
+  sv.size_bytes = 4;
+  ASSERT_EQ(ArrowArrayAppendString(array->dictionary, sv), NANOARROW_OK);
+  sv.data = "one";
+  sv.size_bytes = 3;
+  ASSERT_EQ(ArrowArrayAppendString(array->dictionary, sv), NANOARROW_OK);
+
+  // Add indices
+  ASSERT_EQ(ArrowArrayAppendInt(array, 0), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAppendInt(array, 1), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAppendInt(array, 0), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayFinishBuildingDefault(array, nullptr), NANOARROW_OK);
+}
+
+TEST(ArrayMoveSharedTest, MoveSimpleArray) {
+  int32_t values[] = {1, 2, 3, 4};
+  struct ArrowArray src;
+  MakeInt32ArrayForSharedTest(&src, values, 4);
+
+  struct ArrowArray shared;
+  ASSERT_EQ(ArrowArrayMoveShared(&src, &shared), NANOARROW_OK);
+
+  // Source should be consumed
+  EXPECT_EQ(src.release, nullptr);
+
+  // Shared array should have the correct values
+  EXPECT_EQ(shared.length, 4);
+  EXPECT_EQ(shared.n_buffers, 2);
+
+  // Buffers should be shared
+  struct ArrowBuffer* data_buffer = ArrowArrayBuffer(&shared, 1);
+  EXPECT_NE(ArrowIsSharedBuffer(data_buffer), 0);
+
+  const int32_t* data = reinterpret_cast<const int32_t*>(shared.buffers[1]);
+  EXPECT_EQ(data[0], 1);
+  EXPECT_EQ(data[3], 4);
+
+  ArrowArrayRelease(&shared);
+}
+
+TEST(ArrayMoveSharedTest, MoveArrayWithChildren) {
+  int32_t values[] = {10, 20, 30};
+  struct ArrowArray src;
+  MakeStructArrayForSharedTest(&src, values, 3);
+
+  struct ArrowArray shared;
+  ASSERT_EQ(ArrowArrayMoveShared(&src, &shared), NANOARROW_OK);
+
+  // Source should be consumed
+  EXPECT_EQ(src.release, nullptr);
+
+  // Shared array should have the child
+  EXPECT_EQ(shared.n_children, 1);
+  EXPECT_EQ(shared.children[0]->length, 3);
+
+  // Child buffers should be shared
+  struct ArrowBuffer* child_data_buffer = ArrowArrayBuffer(shared.children[0], 1);
+  EXPECT_NE(ArrowIsSharedBuffer(child_data_buffer), 0);
+
+  const int32_t* data = reinterpret_cast<const int32_t*>(shared.children[0]->buffers[1]);
+  EXPECT_EQ(data[0], 10);
+  EXPECT_EQ(data[2], 30);
+
+  ArrowArrayRelease(&shared);
+}
+
+TEST(ArrayMoveSharedTest, MoveArrayWithDictionary) {
+  struct ArrowArray src;
+  MakeDictionaryArrayForSharedTest(&src);
+
+  struct ArrowArray shared;
+  ASSERT_EQ(ArrowArrayMoveShared(&src, &shared), NANOARROW_OK);
+
+  // Source should be consumed
+  EXPECT_EQ(src.release, nullptr);
+
+  // Dictionary should exist
+  ASSERT_NE(shared.dictionary, nullptr);
+  EXPECT_EQ(shared.dictionary->length, 2);
+
+  // Dictionary buffers should be shared
+  struct ArrowBuffer* dict_data_buffer = ArrowArrayBuffer(shared.dictionary, 2);
+  EXPECT_NE(ArrowIsSharedBuffer(dict_data_buffer), 0);
+
+  ArrowArrayRelease(&shared);
+}
+
+TEST(ArrayMoveSharedTest, MoveAlreadySharedArray) {
+  int32_t values[] = {5, 6, 7};
+  struct ArrowArray src;
+  MakeInt32ArrayForSharedTest(&src, values, 3);
+
+  // Move to shared once
+  struct ArrowArray shared1;
+  ASSERT_EQ(ArrowArrayMoveShared(&src, &shared1), NANOARROW_OK);
+
+  // Move to shared again - should be idempotent
+  struct ArrowArray shared2;
+  ASSERT_EQ(ArrowArrayMoveShared(&shared1, &shared2), NANOARROW_OK);
+
+  // First shared should be consumed
+  EXPECT_EQ(shared1.release, nullptr);
+
+  // Second shared should have valid data
+  EXPECT_EQ(shared2.length, 3);
+  const int32_t* data = reinterpret_cast<const int32_t*>(shared2.buffers[1]);
+  EXPECT_EQ(data[0], 5);
+  EXPECT_EQ(data[2], 7);
+
+  ArrowArrayRelease(&shared2);
+}
+
+TEST(ArrayMoveSharedTest, MoveEmptyArray) {
+  struct ArrowArray src;
+  ASSERT_EQ(ArrowArrayInitFromType(&src, NANOARROW_TYPE_INT32), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayStartAppending(&src), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayFinishBuildingDefault(&src, nullptr), NANOARROW_OK);
+
+  struct ArrowArray shared;
+  ASSERT_EQ(ArrowArrayMoveShared(&src, &shared), NANOARROW_OK);
+
+  EXPECT_EQ(src.release, nullptr);
+  EXPECT_EQ(shared.length, 0);
+
+  ArrowArrayRelease(&shared);
+}
+
+TEST(ArrayCloneSharedTest, CloneSimpleArray) {
+  int32_t values[] = {1, 2, 3, 4};
+  struct ArrowArray src;
+  MakeInt32ArrayForSharedTest(&src, values, 4);
+
+  // First move to shared
+  struct ArrowArray shared;
+  ASSERT_EQ(ArrowArrayMoveShared(&src, &shared), NANOARROW_OK);
+
+  // Clone the shared array
+  struct ArrowArray clone;
+  ASSERT_EQ(ArrowArrayCloneShared(&shared, &clone), NANOARROW_OK);
+
+  // Both should have valid data
+  EXPECT_EQ(shared.length, 4);
+  EXPECT_EQ(clone.length, 4);
+
+  // Data should point to the same underlying buffer
+  EXPECT_EQ(shared.buffers[1], clone.buffers[1]);
+
+  const int32_t* shared_data = reinterpret_cast<const int32_t*>(shared.buffers[1]);
+  const int32_t* clone_data = reinterpret_cast<const int32_t*>(clone.buffers[1]);
+  EXPECT_EQ(shared_data[0], clone_data[0]);
+  EXPECT_EQ(shared_data[3], clone_data[3]);
+
+  ArrowArrayRelease(&shared);
+  ArrowArrayRelease(&clone);
+}
+
+TEST(ArrayCloneSharedTest, CloneArrayWithChildren) {
+  int32_t values[] = {100, 200, 300};
+  struct ArrowArray src;
+  MakeStructArrayForSharedTest(&src, values, 3);
+
+  struct ArrowArray shared;
+  ASSERT_EQ(ArrowArrayMoveShared(&src, &shared), NANOARROW_OK);
+
+  struct ArrowArray clone;
+  ASSERT_EQ(ArrowArrayCloneShared(&shared, &clone), NANOARROW_OK);
+
+  // Both should have children
+  EXPECT_EQ(shared.n_children, 1);
+  EXPECT_EQ(clone.n_children, 1);
+
+  // Child data should be shared
+  EXPECT_EQ(shared.children[0]->buffers[1], clone.children[0]->buffers[1]);
+
+  ArrowArrayRelease(&shared);
+  ArrowArrayRelease(&clone);
+}
+
+TEST(ArrayCloneSharedTest, CloneArrayWithDictionary) {
+  struct ArrowArray src;
+  MakeDictionaryArrayForSharedTest(&src);
+
+  struct ArrowArray shared;
+  ASSERT_EQ(ArrowArrayMoveShared(&src, &shared), NANOARROW_OK);
+
+  struct ArrowArray clone;
+  ASSERT_EQ(ArrowArrayCloneShared(&shared, &clone), NANOARROW_OK);
+
+  // Both should have dictionaries
+  ASSERT_NE(shared.dictionary, nullptr);
+  ASSERT_NE(clone.dictionary, nullptr);
+
+  // Dictionary data buffers should be shared
+  EXPECT_EQ(shared.dictionary->buffers[2], clone.dictionary->buffers[2]);
+
+  ArrowArrayRelease(&shared);
+  ArrowArrayRelease(&clone);
+}
+
+TEST(ArrayCloneSharedTest, CloneNonSharedArrayFails) {
+  int32_t values[] = {1, 2, 3};
+  struct ArrowArray src;
+  MakeInt32ArrayForSharedTest(&src, values, 3);
+
+  struct ArrowArray clone;
+  EXPECT_EQ(ArrowArrayCloneShared(&src, &clone), EINVAL);
+
+  ArrowArrayRelease(&src);
+}
+
+TEST(ArrayCloneSharedTest, ReleaseCloneBeforeOriginal) {
+  int32_t values[] = {42, 43, 44};
+  struct ArrowArray src;
+  MakeInt32ArrayForSharedTest(&src, values, 3);
+
+  struct ArrowArray shared;
+  ASSERT_EQ(ArrowArrayMoveShared(&src, &shared), NANOARROW_OK);
+
+  struct ArrowArray clone;
+  ASSERT_EQ(ArrowArrayCloneShared(&shared, &clone), NANOARROW_OK);
+
+  // Release clone first
+  ArrowArrayRelease(&clone);
+
+  // Original should still be valid
+  const int32_t* data = reinterpret_cast<const int32_t*>(shared.buffers[1]);
+  EXPECT_EQ(data[0], 42);
+  EXPECT_EQ(data[2], 44);
+
+  ArrowArrayRelease(&shared);
+}
+
+TEST(ArrayCloneSharedTest, ReleaseOriginalBeforeClone) {
+  int32_t values[] = {50, 51, 52};
+  struct ArrowArray src;
+  MakeInt32ArrayForSharedTest(&src, values, 3);
+
+  struct ArrowArray shared;
+  ASSERT_EQ(ArrowArrayMoveShared(&src, &shared), NANOARROW_OK);
+
+  struct ArrowArray clone;
+  ASSERT_EQ(ArrowArrayCloneShared(&shared, &clone), NANOARROW_OK);
+
+  // Release original first
+  ArrowArrayRelease(&shared);
+
+  // Clone should still be valid
+  const int32_t* data = reinterpret_cast<const int32_t*>(clone.buffers[1]);
+  EXPECT_EQ(data[0], 50);
+  EXPECT_EQ(data[2], 52);
+
+  ArrowArrayRelease(&clone);
+}
+
+TEST(ArrayCloneSharedTest, ThreadSafeClone) {
+  if (!ArrowSharedBufferIsThreadSafe()) {
+    GTEST_SKIP() << "ArrowSharedBufferIsThreadSafe() returned false";
+  }
+
+  int32_t values[] = {1, 2, 3, 4, 5};
+  struct ArrowArray src;
+  MakeInt32ArrayForSharedTest(&src, values, 5);
+
+  struct ArrowArray shared;
+  ASSERT_EQ(ArrowArrayMoveShared(&src, &shared), NANOARROW_OK);
+
+  // Clone into multiple arrays
+  struct ArrowArray clones[10];
+  for (int i = 0; i < 10; i++) {
+    ASSERT_EQ(ArrowArrayCloneShared(&shared, &clones[i]), NANOARROW_OK);
+  }
+
+  // Release original
+  ArrowArrayRelease(&shared);
+
+  // Release clones from separate threads
+  std::thread threads[10];
+  for (int i = 0; i < 10; i++) {
+    threads[i] = std::thread([&clones, i] {
+      const int32_t* data = reinterpret_cast<const int32_t*>(clones[i].buffers[1]);
+      EXPECT_EQ(data[0], 1);
+      EXPECT_EQ(data[4], 5);
+      ArrowArrayRelease(&clones[i]);
+    });
+  }
+
+  for (int i = 0; i < 10; i++) {
+    threads[i].join();
+  }
+}
+
+TEST(ArrayMoveSharedTest, ArrayWithNullBuffers) {
+  // Create an array with a null validity buffer (all non-null)
+  struct ArrowArray array;
+  ASSERT_EQ(ArrowArrayInitFromType(&array, NANOARROW_TYPE_INT32), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayStartAppending(&array), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAppendInt(&array, 1), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAppendInt(&array, 2), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayFinishBuildingDefault(&array, nullptr), NANOARROW_OK);
+
+  // Validity buffer should be null for all-valid array
+  EXPECT_EQ(array.buffers[0], nullptr);
+
+  struct ArrowArray shared;
+  ASSERT_EQ(ArrowArrayMoveShared(&array, &shared), NANOARROW_OK);
+
+  // Should still have null validity buffer
+  EXPECT_EQ(shared.buffers[0], nullptr);
+  EXPECT_EQ(shared.length, 2);
+
+  ArrowArrayRelease(&shared);
+}
