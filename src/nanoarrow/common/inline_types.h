@@ -473,7 +473,7 @@ enum ArrowType {
 /// \brief Get a string value of an enum ArrowType value
 /// \ingroup nanoarrow-utils
 ///
-/// Returns NULL for invalid values for type
+/// Returns "<unknown type identifier>" for invalid values for type
 static inline const char* ArrowTypeString(enum ArrowType type);
 
 static inline const char* ArrowTypeString(enum ArrowType type) {
@@ -569,7 +569,7 @@ static inline const char* ArrowTypeString(enum ArrowType type) {
     case NANOARROW_TYPE_LARGE_LIST_VIEW:
       return "large_list_view";
     default:
-      return NULL;
+      return "<unknown type identifier>";
   }
 }
 

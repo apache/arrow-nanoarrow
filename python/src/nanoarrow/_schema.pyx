@@ -594,18 +594,12 @@ cdef class CSchemaView:
     @property
     def type(self) -> str:
         cdef const char* type_str = ArrowTypeString(self._schema_view.type)
-        if type_str != NULL:
-            return type_str.decode()
-        else:
-            raise ValueError("ArrowTypeString() returned NULL")
+        return type_str.decode()
 
     @property
     def storage_type(self) -> str:
         cdef const char* type_str = ArrowTypeString(self._schema_view.storage_type)
-        if type_str != NULL:
-            return type_str.decode()
-        else:
-            raise ValueError("ArrowTypeString() returned NULL")
+        return type_str.decode()
 
     @property
     def dictionary_ordered(self) -> Union[bool, None]:
