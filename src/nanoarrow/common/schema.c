@@ -647,6 +647,168 @@ ArrowErrorCode ArrowSchemaDeepCopy(const struct ArrowSchema* schema,
   return NANOARROW_OK;
 }
 
+struct ArrowSchemaComparisonInternalState {
+  enum ArrowCompareLevel level;
+  int check_metadata;
+  int check_exact_names;
+  int check_nullability;
+  int is_equal;
+  struct ArrowError* reason;
+};
+
+#define CHECK_METADATA_IDENTICAL 2
+#define CHECK_NAME_PARENT_WAS_MAP -1
+#define CHECK_NAME_PARENT_WAS_MAP_CHILD -2
+
+#define SET_NOT_EQUAL_AND_RETURN_IF_IMPL(cond_, state_, reason_) \
+  do {                                                           \
+    if (cond_) {                                                 \
+      ArrowErrorSet(state_->reason, ": %s", reason_);            \
+      state_->is_equal = 0;                                      \
+      return;                                                    \
+    }                                                            \
+  } while (0)
+
+#define SET_NOT_EQUAL_AND_RETURN_IF(condition_, state_) \
+  SET_NOT_EQUAL_AND_RETURN_IF_IMPL(condition_, state_, #condition_)
+
+static void ArrowSchemaCompareIdentical(const struct ArrowSchema* actual,
+                                        const struct ArrowSchema* expected,
+                                        struct ArrowSchemaComparisonInternalState* state,
+                                        int check_name) {
+  SET_NOT_EQUAL_AND_RETURN_IF(actual->format == NULL && expected->format != NULL, state);
+  SET_NOT_EQUAL_AND_RETURN_IF(actual->format != NULL && expected->format == NULL, state);
+  if (actual->format != NULL) {
+    SET_NOT_EQUAL_AND_RETURN_IF(strcmp(actual->format, expected->format) != 0, state);
+  }
+
+  if (check_name > 0) {
+    SET_NOT_EQUAL_AND_RETURN_IF(actual->name == NULL && expected->name != NULL, state);
+    SET_NOT_EQUAL_AND_RETURN_IF(actual->name != NULL && expected->name == NULL, state);
+    if (actual->name != NULL) {
+      SET_NOT_EQUAL_AND_RETURN_IF(strcmp(actual->name, expected->name) != 0, state);
+    }
+  }
+
+  if (state->check_nullability) {
+    SET_NOT_EQUAL_AND_RETURN_IF(actual->flags != expected->flags, state);
+  } else {
+    int64_t actual_flags = actual->flags & ~ARROW_FLAG_NULLABLE;
+    int64_t expected_flags = expected->flags & ~ARROW_FLAG_NULLABLE;
+    SET_NOT_EQUAL_AND_RETURN_IF(actual_flags != expected_flags, state);
+  }
+
+  if (state->check_metadata != 0) {
+    // Most implementations export empty metadata as NULL; however, some use
+    // the representation of zero key/value pairs to do so.
+    char empty_metadata[4] = {'\0', '\0', '\0', '\0'};
+    int actual_has_metadata =
+        actual->metadata != NULL &&
+        memcmp(actual->metadata, empty_metadata, sizeof(empty_metadata)) != 0;
+    int expected_has_metadata =
+        expected->metadata != NULL &&
+        memcmp(expected->metadata, empty_metadata, sizeof(empty_metadata)) != 0;
+
+    if (state->check_metadata == CHECK_METADATA_IDENTICAL) {
+      SET_NOT_EQUAL_AND_RETURN_IF(actual->metadata == NULL && expected->metadata != NULL,
+                                  state);
+      SET_NOT_EQUAL_AND_RETURN_IF(actual->metadata != NULL && expected->metadata == NULL,
+                                  state);
+    } else {
+      SET_NOT_EQUAL_AND_RETURN_IF(actual_has_metadata != expected_has_metadata, state);
+    }
+
+    if (actual_has_metadata && expected_has_metadata) {
+      SET_NOT_EQUAL_AND_RETURN_IF(ArrowMetadataSizeOf(actual->metadata) !=
+                                      ArrowMetadataSizeOf(expected->metadata),
+                                  state);
+      SET_NOT_EQUAL_AND_RETURN_IF(memcmp(actual->metadata, expected->metadata,
+                                         ArrowMetadataSizeOf(actual->metadata)) != 0,
+                                  state);
+    }
+  }
+
+  SET_NOT_EQUAL_AND_RETURN_IF(actual->n_children != expected->n_children, state);
+  SET_NOT_EQUAL_AND_RETURN_IF(actual->dictionary == NULL && expected->dictionary != NULL,
+                              state);
+  SET_NOT_EQUAL_AND_RETURN_IF(actual->dictionary != NULL && expected->dictionary == NULL,
+                              state);
+
+  int check_child_names = 1;
+  if (!state->check_exact_names && actual->format != NULL &&
+      strcmp(actual->format, "+l") == 0) {
+    check_child_names = 0;
+  } else if (check_name == CHECK_NAME_PARENT_WAS_MAP) {
+    check_child_names = CHECK_NAME_PARENT_WAS_MAP_CHILD;
+  } else if (check_name == CHECK_NAME_PARENT_WAS_MAP_CHILD) {
+    check_child_names = 0;
+  } else if (!state->check_exact_names && actual->format != NULL &&
+             strcmp(actual->format, "+m") == 0) {
+    check_child_names = CHECK_NAME_PARENT_WAS_MAP;
+  }
+
+  for (int64_t i = 0; i < actual->n_children; i++) {
+    ArrowSchemaCompareIdentical(actual->children[i], expected->children[i], state,
+                                check_child_names);
+    if (!state->is_equal) {
+      ArrowErrorPrefix(state->reason, ".children[%" PRId64 "]", i);
+      return;
+    }
+  }
+
+  if (actual->dictionary != NULL) {
+    // The name field of the dictionary does not need to be exact for the
+    // purposes of allowing non-canonical names
+    ArrowSchemaCompareIdentical(actual->dictionary, expected->dictionary, state,
+                                state->check_exact_names);
+    if (!state->is_equal) {
+      ArrowErrorPrefix(state->reason, ".dictionary");
+      return;
+    }
+  }
+}
+
+// Top-level entry point to take care of creating, cleaning up, and
+// propagating the ArrowSchemaComparisonInternalState to the caller
+ArrowErrorCode ArrowSchemaCompare(const struct ArrowSchema* actual,
+                                  const struct ArrowSchema* expected,
+                                  enum ArrowCompareLevel level, int* out,
+                                  struct ArrowError* reason) {
+  struct ArrowSchemaComparisonInternalState state;
+  state.level = level;
+  state.reason = reason;
+  state.is_equal = 1;
+
+  switch (level) {
+    case NANOARROW_COMPARE_IDENTICAL:
+      state.check_exact_names = 1;
+      state.check_nullability = 1;
+      state.check_metadata = CHECK_METADATA_IDENTICAL;
+      break;
+    case NANOARROW_COMPARE_EQUAL:
+      state.check_exact_names = 1;
+      state.check_nullability = 1;
+      state.check_metadata = 1;
+      break;
+    case NANOARROW_COMPARE_TYPE_EQUAL:
+      state.check_exact_names = 0;
+      state.check_nullability = 1;
+      state.check_metadata = 0;
+      break;
+    default:
+      return ENOTSUP;
+  }
+
+  ArrowSchemaCompareIdentical(actual, expected, &state, state.check_exact_names);
+
+  *out = state.is_equal;
+  if (!state.is_equal) {
+    ArrowErrorPrefix(state.reason, "root");
+  }
+
+  return NANOARROW_OK;
+}
+
 static void ArrowSchemaViewSetPrimitive(struct ArrowSchemaView* schema_view,
                                         enum ArrowType type) {
   schema_view->type = type;
