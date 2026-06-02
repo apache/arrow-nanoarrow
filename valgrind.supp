@@ -19,7 +19,7 @@
    <Arrow C++>:Library initialization
    Memcheck:Cond
    ...
-   obj:*libarrow*
+   obj:*arrow*
    ...
    fun:call_init*
    fun:_dl_init
