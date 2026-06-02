@@ -16,6 +16,16 @@
 # under the License.
 
 {
+   <Arrow C++>:Library initialization
+   Memcheck:Cond
+   ...
+   obj:*arrow*
+   ...
+   fun:call_init*
+   fun:_dl_init
+}
+
+{
     <jemalloc>:Thread locals don't appear to be freed
     Memcheck:Leak
     ...

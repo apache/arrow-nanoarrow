@@ -170,5 +170,17 @@ jobs:
 
         run: |
           cd src
+          mkdir -p ../nanoarrow-verify-tmp
           echo "::group::Docker Pull"
-          docker compose run -e GITHUB_ACTIONS ${{ matrix.config.compose_args }} verify
+          docker compose run \
+            -e GITHUB_ACTIONS \
+            -e NANOARROW_TMPDIR=/nanoarrow-verify-tmp \
+            -v "$(pwd)/../nanoarrow-verify-tmp:/nanoarrow-verify-tmp" \
+            ${{ matrix.config.compose_args }} verify
+
+      - name: Upload temp directory
+        if: failure()
+        uses: actions/upload-artifact@main
+        with:
+          path: nanoarrow-verify-tmp
+          name: nanoarrow-verify-tmp-${{ matrix.config.platform }}-${{ matrix.config.arch }}${{ matrix.config.extra_label }}
