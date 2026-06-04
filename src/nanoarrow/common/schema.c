@@ -17,6 +17,7 @@
 
 #include <errno.h>
 #include <inttypes.h>
+#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -1370,47 +1371,34 @@ ArrowErrorCode ArrowSchemaViewInit(struct ArrowSchemaView* schema_view,
   return NANOARROW_OK;
 }
 
-static int64_t ArrowSchemaTypeToStringInternal(struct ArrowSchemaView* schema_view,
-                                               char* out, int64_t n) {
-  const char* type_string = ArrowTypeString(schema_view->type);
-  switch (schema_view->type) {
-    case NANOARROW_TYPE_DECIMAL32:
-    case NANOARROW_TYPE_DECIMAL64:
-    case NANOARROW_TYPE_DECIMAL128:
-    case NANOARROW_TYPE_DECIMAL256:
-      return snprintf(out, n, "%s(%" PRId32 ", %" PRId32 ")", type_string,
-                      schema_view->decimal_precision, schema_view->decimal_scale);
-    case NANOARROW_TYPE_TIMESTAMP:
-      return snprintf(out, n, "%s('%s', '%s')", type_string,
-                      ArrowTimeUnitString(schema_view->time_unit), schema_view->timezone);
-    case NANOARROW_TYPE_TIME32:
-    case NANOARROW_TYPE_TIME64:
-    case NANOARROW_TYPE_DURATION:
-      return snprintf(out, n, "%s('%s')", type_string,
-                      ArrowTimeUnitString(schema_view->time_unit));
-    case NANOARROW_TYPE_FIXED_SIZE_BINARY:
-    case NANOARROW_TYPE_FIXED_SIZE_LIST:
-      return snprintf(out, n, "%s(%" PRId32 ")", type_string, schema_view->fixed_size);
-    case NANOARROW_TYPE_SPARSE_UNION:
-    case NANOARROW_TYPE_DENSE_UNION:
-      return snprintf(out, n, "%s([%s])", type_string, schema_view->union_type_ids);
-    default:
-      return snprintf(out, n, "%s", type_string);
+static inline void ArrowSchemaToStringSNPrintF(char** out, int64_t* n_remaining,
+                                               int64_t* n_chars, const char* fmt, ...) {
+  // With _FORTIFY_SOURCE=3, vsnprintf on a null output warns, so ensure we never pass
+  // a NULL to vsnprintf
+  char tmp_not_null[1];
+  char* out_not_null;
+  size_t out_not_null_size;
+  if (*out == NULL) {
+    out_not_null = tmp_not_null;
+    out_not_null_size = sizeof(tmp_not_null);
+  } else {
+    out_not_null = *out;
+    out_not_null_size = (size_t)*n_remaining;
   }
-}
 
-// Helper for bookkeeping to emulate sprintf()-like behaviour spread
-// among multiple sprintf calls.
-static inline void ArrowToStringLogChars(char** out, int64_t n_chars_last,
-                                         int64_t* n_remaining, int64_t* n_chars) {
+  va_list args;
+  va_start(args, fmt);
+  int n_chars_last = vsnprintf(out_not_null, out_not_null_size, fmt, args);
+  va_end(args);
+
   // In the unlikely snprintf() returning a negative value (encoding error),
   // ensure the result won't cause an out-of-bounds access.
   if (n_chars_last < 0) {
     n_chars_last = 0;
   }
 
-  *n_chars += n_chars_last;
   *n_remaining -= n_chars_last;
+  *n_chars += n_chars_last;
 
   // n_remaining is never less than 0
   if (*n_remaining < 0) {
@@ -1423,93 +1411,132 @@ static inline void ArrowToStringLogChars(char** out, int64_t n_chars_last,
   }
 }
 
-int64_t ArrowSchemaToString(const struct ArrowSchema* schema, char* out, int64_t n,
-                            char recursive) {
+static void ArrowSchemaTypeToStringInternal(struct ArrowSchemaView* schema_view,
+                                            char** out, int64_t* n_remaining,
+                                            int64_t* n_chars) {
+  const char* type_string = ArrowTypeString(schema_view->type);
+  switch (schema_view->type) {
+    case NANOARROW_TYPE_DECIMAL32:
+    case NANOARROW_TYPE_DECIMAL64:
+    case NANOARROW_TYPE_DECIMAL128:
+    case NANOARROW_TYPE_DECIMAL256:
+      ArrowSchemaToStringSNPrintF(
+          out, n_remaining, n_chars, "%s(%" PRId32 ", %" PRId32 ")", type_string,
+          schema_view->decimal_precision, schema_view->decimal_scale);
+      return;
+    case NANOARROW_TYPE_TIMESTAMP:
+      ArrowSchemaToStringSNPrintF(
+          out, n_remaining, n_chars, "%s('%s', '%s')", type_string,
+          ArrowTimeUnitString(schema_view->time_unit), schema_view->timezone);
+      return;
+    case NANOARROW_TYPE_TIME32:
+    case NANOARROW_TYPE_TIME64:
+    case NANOARROW_TYPE_DURATION:
+      ArrowSchemaToStringSNPrintF(out, n_remaining, n_chars, "%s('%s')", type_string,
+                                  ArrowTimeUnitString(schema_view->time_unit));
+      return;
+    case NANOARROW_TYPE_FIXED_SIZE_BINARY:
+    case NANOARROW_TYPE_FIXED_SIZE_LIST:
+      ArrowSchemaToStringSNPrintF(out, n_remaining, n_chars, "%s(%" PRId32 ")",
+                                  type_string, schema_view->fixed_size);
+      return;
+    case NANOARROW_TYPE_SPARSE_UNION:
+    case NANOARROW_TYPE_DENSE_UNION:
+      ArrowSchemaToStringSNPrintF(out, n_remaining, n_chars, "%s([%s])", type_string,
+                                  schema_view->union_type_ids);
+      return;
+    default:
+      ArrowSchemaToStringSNPrintF(out, n_remaining, n_chars, "%s", type_string);
+      return;
+  }
+}
+
+static void ArrowSchemaToStringInternal(const struct ArrowSchema* schema, char** out,
+                                        int64_t* n_remaining, int64_t* n_chars,
+                                        char recursive) {
   if (schema == NULL) {
-    return snprintf(out, n, "[invalid: pointer is null]");
+    ArrowSchemaToStringSNPrintF(out, n_remaining, n_chars, "[invalid: pointer is null]");
+    return;
   }
 
   if (schema->release == NULL) {
-    return snprintf(out, n, "[invalid: schema is released]");
+    ArrowSchemaToStringSNPrintF(out, n_remaining, n_chars,
+                                "[invalid: schema is released]");
+    return;
   }
 
   struct ArrowSchemaView schema_view;
   struct ArrowError error;
 
   if (ArrowSchemaViewInit(&schema_view, schema, &error) != NANOARROW_OK) {
-    return snprintf(out, n, "[invalid: %s]", ArrowErrorMessage(&error));
+    ArrowSchemaToStringSNPrintF(out, n_remaining, n_chars, "[invalid: %s]",
+                                ArrowErrorMessage(&error));
+    return;
   }
 
   // Extension type and dictionary should include both the top-level type
   // and the storage type.
   int is_extension = schema_view.extension_name.size_bytes > 0;
   int is_dictionary = schema->dictionary != NULL;
-  int64_t n_chars = 0;
-  int64_t n_chars_last = 0;
 
   // Uncommon but not technically impossible that both are true
   if (is_extension && is_dictionary) {
-    n_chars_last = snprintf(
-        out, n, "%.*s{dictionary(%s)<", (int)schema_view.extension_name.size_bytes,
-        schema_view.extension_name.data, ArrowTypeString(schema_view.storage_type));
+    ArrowSchemaToStringSNPrintF(out, n_remaining, n_chars, "%.*s{dictionary(%s)<",
+                                (int)schema_view.extension_name.size_bytes,
+                                schema_view.extension_name.data,
+                                ArrowTypeString(schema_view.storage_type));
   } else if (is_extension) {
-    n_chars_last = snprintf(out, n, "%.*s{", (int)schema_view.extension_name.size_bytes,
-                            schema_view.extension_name.data);
+    ArrowSchemaToStringSNPrintF(out, n_remaining, n_chars, "%.*s{",
+                                (int)schema_view.extension_name.size_bytes,
+                                schema_view.extension_name.data);
   } else if (is_dictionary) {
-    n_chars_last =
-        snprintf(out, n, "dictionary(%s)<", ArrowTypeString(schema_view.storage_type));
+    ArrowSchemaToStringSNPrintF(out, n_remaining, n_chars, "dictionary(%s)<",
+                                ArrowTypeString(schema_view.storage_type));
   }
-
-  ArrowToStringLogChars(&out, n_chars_last, &n, &n_chars);
 
   if (!is_dictionary) {
-    n_chars_last = ArrowSchemaTypeToStringInternal(&schema_view, out, n);
+    ArrowSchemaTypeToStringInternal(&schema_view, out, n_remaining, n_chars);
   } else {
-    n_chars_last = ArrowSchemaToString(schema->dictionary, out, n, recursive);
+    ArrowSchemaToStringInternal(schema->dictionary, out, n_remaining, n_chars, recursive);
   }
 
-  ArrowToStringLogChars(&out, n_chars_last, &n, &n_chars);
-
   if (recursive && schema->format[0] == '+') {
-    n_chars_last = snprintf(out, n, "<");
-    ArrowToStringLogChars(&out, n_chars_last, &n, &n_chars);
+    ArrowSchemaToStringSNPrintF(out, n_remaining, n_chars, "<");
 
     for (int64_t i = 0; i < schema->n_children; i++) {
       if (i > 0) {
-        n_chars_last = snprintf(out, n, ", ");
-        ArrowToStringLogChars(&out, n_chars_last, &n, &n_chars);
+        ArrowSchemaToStringSNPrintF(out, n_remaining, n_chars, ", ");
       }
 
       // ArrowSchemaToStringInternal() will validate the child and print the error,
       // but we need the name first
       if (schema->children[i] != NULL && schema->children[i]->release != NULL &&
           schema->children[i]->name != NULL) {
-        n_chars_last = snprintf(out, n, "%s: ", schema->children[i]->name);
-        ArrowToStringLogChars(&out, n_chars_last, &n, &n_chars);
+        ArrowSchemaToStringSNPrintF(out, n_remaining, n_chars,
+                                    "%s: ", schema->children[i]->name);
       }
 
-      n_chars_last = ArrowSchemaToString(schema->children[i], out, n, recursive);
-      ArrowToStringLogChars(&out, n_chars_last, &n, &n_chars);
+      ArrowSchemaToStringInternal(schema->children[i], out, n_remaining, n_chars,
+                                  recursive);
     }
 
-    n_chars_last = snprintf(out, n, ">");
-    ArrowToStringLogChars(&out, n_chars_last, &n, &n_chars);
+    ArrowSchemaToStringSNPrintF(out, n_remaining, n_chars, ">");
   }
 
   if (is_extension && is_dictionary) {
-    n_chars += snprintf(out, n, ">}");
+    ArrowSchemaToStringSNPrintF(out, n_remaining, n_chars, ">}");
   } else if (is_extension) {
-    n_chars += snprintf(out, n, "}");
+    ArrowSchemaToStringSNPrintF(out, n_remaining, n_chars, "}");
   } else if (is_dictionary) {
-    n_chars += snprintf(out, n, ">");
+    ArrowSchemaToStringSNPrintF(out, n_remaining, n_chars, ">");
   }
+}
 
-  // Ensure that we always return a positive result
-  if (n_chars > 0) {
-    return n_chars;
-  } else {
-    return 0;
-  }
+int64_t ArrowSchemaToString(const struct ArrowSchema* schema, char* out, int64_t n,
+                            char recursive) {
+  int64_t n_chars = 0;
+  ArrowSchemaToStringInternal(schema, &out, &n, &n_chars, recursive);
+  return n_chars;
 }
 
 ArrowErrorCode ArrowMetadataReaderInit(struct ArrowMetadataReader* reader,
