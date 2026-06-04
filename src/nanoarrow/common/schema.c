@@ -1534,7 +1534,7 @@ static void ArrowSchemaToStringInternal(const struct ArrowSchema* schema, char**
 
 int64_t ArrowSchemaToString(const struct ArrowSchema* schema, char* out, int64_t n,
                             char recursive) {
-  NANOARROW_DCHECK(n > 0);
+  NANOARROW_DCHECK(n >= 0);
   NANOARROW_DCHECK(out != NULL || n == 0);
   int64_t n_chars = 0;
   ArrowSchemaToStringInternal(schema, &out, &n, &n_chars, recursive);
