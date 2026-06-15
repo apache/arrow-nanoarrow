@@ -221,7 +221,7 @@ if(NANOARROW_IPC)
     add_library(flatccrt STATIC IMPORTED)
     set_target_properties(flatccrt
                           PROPERTIES IMPORTED_LOCATION
-                                     "${NANOARROW_FLATCC_LIB_DIR}/libflatccrt.a"
+                                     "${NANOARROW_FLATCC_LIB_DIR}/${CMAKE_STATIC_LIBRARY_PREFIX}flatccrt${CMAKE_STATIC_LIBRARY_SUFFIX}"
                                      INTERFACE_INCLUDE_DIRECTORIES
                                      "${NANOARROW_FLATCC_INCLUDE_DIR}")
 
@@ -230,7 +230,11 @@ if(NANOARROW_IPC)
     add_library(flatccrt STATIC IMPORTED)
     set_target_properties(flatccrt
                           PROPERTIES IMPORTED_LOCATION
-                                     "${NANOARROW_FLATCC_ROOT_DIR}/lib/libflatccrt.a"
+                                     "${NANOARROW_FLATCC_ROOT_DIR}/lib/${CMAKE_STATIC_LIBRARY_PREFIX}flatccrt${CMAKE_STATIC_LIBRARY_SUFFIX}"
+                                     IMPORTED_LOCATION_DEBUG
+                                     "${NANOARROW_FLATCC_ROOT_DIR}/debug/lib/${CMAKE_STATIC_LIBRARY_PREFIX}flatccrt_d${CMAKE_STATIC_LIBRARY_SUFFIX}"
+                                     IMPORTED_LOCATION_RELEASE
+                                     "${NANOARROW_FLATCC_ROOT_DIR}/lib/${CMAKE_STATIC_LIBRARY_PREFIX}flatccrt${CMAKE_STATIC_LIBRARY_SUFFIX}"
                                      INTERFACE_INCLUDE_DIRECTORIES
                                      "${NANOARROW_FLATCC_INCLUDE_DIR}")
   endif()
