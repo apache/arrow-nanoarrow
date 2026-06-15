@@ -324,7 +324,11 @@ static ArrowErrorCode ArrowIpcDictionaryReplace(struct ArrowIpcDictionary* dicti
     ArrowArrayRelease(&dictionary->current_value);
   }
 
-  ArrowArrayMove(value, &dictionary->current_value);
+  // Convert to a shared array so that clones can reference the same data
+  // without copying
+  struct ArrowArray shared;
+  NANOARROW_RETURN_NOT_OK(ArrowArrayMoveShared(value, &shared));
+  ArrowArrayMove(&shared, &dictionary->current_value);
   return NANOARROW_OK;
 }
 
@@ -2318,9 +2322,8 @@ static int ArrowIpcDecoderWalkGetArray(struct ArrowArrayView* array_view,
   }
 
   if (array_view->dictionary != NULL) {
-    // TODO: this currently copies the array for every output.
-    NANOARROW_RETURN_NOT_OK(ArrowIpcDecoderWalkGetArray(
-        array_view->dictionary, array->dictionary, out->dictionary, error));
+    // Move the pre-cloned shared dictionary to output (avoids copying)
+    ArrowArrayMove(array->dictionary, out->dictionary);
   }
 
   return NANOARROW_OK;
@@ -2359,6 +2362,15 @@ static int ArrowIpcDecoderWalkSetArrayView(struct ArrowIpcDecoder* decoder,
     // decode.
     NANOARROW_RETURN_NOT_OK(
         ArrowArrayViewSetArray(array_view->dictionary, dictionary, error));
+
+    // Clone the shared dictionary for output (avoids copying dictionary data)
+    if (array->dictionary != NULL) {
+      if (array->dictionary->release != NULL) {
+        ArrowArrayRelease(array->dictionary);
+      }
+      NANOARROW_RETURN_NOT_OK(
+          ArrowArrayCloneShared((struct ArrowArray*)dictionary, array->dictionary));
+    }
   }
 
   ns(FieldNode_struct_t) field =
