@@ -434,7 +434,8 @@ int ArrowIsSharedBuffer(struct ArrowBuffer* buffer) {
 
 ArrowErrorCode ArrowSharedBufferClone(struct ArrowBuffer* shared,
                                       struct ArrowBuffer* shared_out) {
-  if (shared->size_bytes == 0) {
+  // If the buffer has no data, initialize an empty buffer
+  if (shared->data == NULL) {
     ArrowBufferInit(shared_out);
     return NANOARROW_OK;
   }
