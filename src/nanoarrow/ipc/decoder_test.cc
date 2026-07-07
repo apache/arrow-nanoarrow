@@ -1312,7 +1312,7 @@ TEST_P(ArrowTypeParameterizedTestFixture, NanoarrowIpcArrowArrayRoundtrip) {
             NANOARROW_OK);
 
   auto maybe_batch = arrow::ImportRecordBatch(&array, dummy_schema);
-  ASSERT_TRUE(maybe_batch.ok());
+  ASSERT_TRUE(maybe_batch.ok()) << maybe_batch.status().ToString();
   EXPECT_EQ(maybe_batch.ValueUnsafe()->ToString(), empty->ToString());
 
   // Arrow C++ MakeEmpty() loses the ordered=1 flag and unsigned index types for
@@ -1348,7 +1348,7 @@ TEST_P(ArrowTypeParameterizedTestFixture, NanoarrowIpcArrowArrayRoundtrip) {
             NANOARROW_OK);
 
   maybe_batch = arrow::ImportRecordBatch(&array, dummy_schema);
-  ASSERT_TRUE(maybe_batch.ok());
+  ASSERT_TRUE(maybe_batch.ok()) << maybe_batch.status().ToString();
   EXPECT_EQ(maybe_batch.ValueUnsafe()->ToString(), nulls->ToString());
   EXPECT_TRUE(maybe_batch.ValueUnsafe()->Equals(*nulls));
 
