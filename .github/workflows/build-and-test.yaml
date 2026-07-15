@@ -187,8 +187,7 @@ jobs:
               -Dbuildtype=release \
               -Dwerror=true \
               -Dipc=enabled \
-              -Dtests=enabled \
-              --wrap-mode=nodownload
+              -Dtests=enabled
           meson compile -C builddir
           meson test -C builddir --print-errorlogs
 
