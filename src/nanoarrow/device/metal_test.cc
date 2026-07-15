@@ -206,7 +206,7 @@ TEST(NanoarrowDeviceMetal, DeviceCpuArrayBuffers) {
       ArrowArrayFinishBuilding(array.get(), NANOARROW_VALIDATION_LEVEL_FULL, nullptr),
       NANOARROW_OK);
 
-  // Make sure that ArrowDeviceMetalInitArrayBuffers() copies existing content
+  // Make sure that ArrowDeviceMetalAlignArrayBuffers() copies existing content
   ASSERT_EQ(ArrowDeviceMetalAlignArrayBuffers(array.get()), NANOARROW_OK);
 
   auto data_ptr = reinterpret_cast<const int32_t*>(array->children[0]->buffers[1]);

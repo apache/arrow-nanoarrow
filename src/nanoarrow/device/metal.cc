@@ -127,8 +127,7 @@ ArrowErrorCode ArrowDeviceMetalAlignArrayBuffers(struct ArrowArray* array) {
     NANOARROW_RETURN_NOT_OK(ArrowDeviceMetalInitBuffer(&new_buffer));
     NANOARROW_RETURN_NOT_OK(
         ArrowBufferAppend(&new_buffer, buffer->data, buffer->size_bytes));
-    ArrowBufferReset(buffer);
-    ArrowBufferMove(&new_buffer, buffer);
+    NANOARROW_RETURN_NOT_OK(ArrowArraySetBuffer(array, i, &new_buffer));
   }
 
   for (int64_t i = 0; i < array->n_children; i++) {
