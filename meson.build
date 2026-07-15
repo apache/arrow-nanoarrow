@@ -21,8 +21,8 @@ project(
     'cpp',
     version: '0.9.0-SNAPSHOT',
     license: 'Apache-2.0',
-    meson_version: '>=0.58.0',
-    default_options: ['c_std=c99', 'warning_level=2', 'cpp_std=c++17'],
+    meson_version: '>=1.3.0',
+    default_options: ['c_std=c99', 'warning_level=2', 'cpp_std=c++20,c++17'],
 )
 
 cc = meson.get_compiler('c')
