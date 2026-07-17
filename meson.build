@@ -270,7 +270,7 @@ if get_option('tests').enabled()
         test_cpp_args += ['-DNANOARROW_BUILD_TESTS_WITH_ARROW']
     else
         # When tests_with_arrow is disabled, Arrow is optional (for roundtrip tests)
-        arrow_dep = dependency('arrow', required: false)
+        arrow_dep = dependency('arrow', include_type: 'system', required: false)
     endif
 
     gtest_dep = dependency('gtest_main')
