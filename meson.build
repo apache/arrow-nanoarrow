@@ -266,7 +266,7 @@ if get_option('tests').enabled()
     if get_option('tests_with_arrow').enabled()
         # When tests_with_arrow is enabled, Arrow is required. Use pkg-config first,
         # then fall back to building from the wrapdb subproject if not found.
-        arrow_dep = dependency('arrow')
+        arrow_dep = dependency('arrow', include_type: 'system')
         test_cpp_args += ['-DNANOARROW_BUILD_TESTS_WITH_ARROW']
     else
         # When tests_with_arrow is disabled, Arrow is optional (for roundtrip tests)
