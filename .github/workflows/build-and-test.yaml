@@ -166,6 +166,31 @@ jobs:
         run: |
           PKG_CONFIG_PATH="$(pwd)/arrow/lib/pkgconfig" ci/scripts/build-with-meson.sh
 
+  meson-build-no-arrow:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.x'
+
+      # Meson 1.8.0 breaks build
+      # https://github.com/apache/arrow-nanoarrow/issues/753
+      - name: Install build dependencies
+        run: |
+          python3 -m pip install --upgrade pip
+          python3 -m pip install "meson<1.8.0" ninja
+
+      - name: Run meson (no Arrow)
+        run: |
+          meson setup builddir \
+              -Dbuildtype=release \
+              -Dwerror=true \
+              -Dipc=enabled \
+              -Dtests=enabled
+          meson compile -C builddir
+          meson test -C builddir --print-errorlogs
+
   meson-build-windows:
     runs-on: windows-latest
     steps:

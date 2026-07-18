@@ -21,8 +21,8 @@ project(
     'cpp',
     version: '0.9.0-SNAPSHOT',
     license: 'Apache-2.0',
-    meson_version: '>=0.58.0',
-    default_options: ['c_std=c99', 'warning_level=2', 'cpp_std=c++17'],
+    meson_version: '>=1.3.0',
+    default_options: ['c_std=c99', 'warning_level=2', 'cpp_std=c++20,c++17'],
 )
 
 cc = meson.get_compiler('c')
@@ -263,13 +263,14 @@ if get_option('tests').enabled()
     # Similarly code coverage has a built in option users should use instead
     # https://mesonbuild.com/Unit-tests.html#coverage
 
-    arrow_dep = dependency('arrow', include_type: 'system', required: false)
     if get_option('tests_with_arrow').enabled()
-        if arrow_dep.found()
-            test_cpp_args += ['-DNANOARROW_BUILD_TESTS_WITH_ARROW']
-        else
-            warning('tests_with_arrow option enabled but could not find Arrow')
-        endif
+        # When tests_with_arrow is enabled, Arrow is required. Use pkg-config first,
+        # then fall back to building from the wrapdb subproject if not found.
+        arrow_dep = dependency('arrow', include_type: 'system')
+        test_cpp_args += ['-DNANOARROW_BUILD_TESTS_WITH_ARROW']
+    else
+        # When tests_with_arrow is disabled, Arrow is optional (for roundtrip tests)
+        arrow_dep = dependency('arrow', include_type: 'system', required: false)
     endif
 
     gtest_dep = dependency('gtest_main')

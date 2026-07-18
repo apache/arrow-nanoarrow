@@ -64,7 +64,8 @@ function main() {
     meson setup "${SANDBOX_DIR}" \
           --pkg-config-path $PKG_CONFIG_PATH \
           -Dwerror=true \
-          -Dbuildtype=release
+          -Dbuildtype=release \
+          -Dtests_with_arrow=enabled
 
     pushd "${SANDBOX_DIR}"
 

@@ -1,0 +1,31 @@
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+
+[wrap-file]
+directory = apache-arrow-21.0.0
+source_url = https://www.apache.org/dyn/closer.lua?action=download&filename=arrow/arrow-21.0.0/apache-arrow-21.0.0.tar.gz
+source_fallback_url = https://github.com/mesonbuild/wrapdb/releases/download/arrow-cpp_21.0.0-1/apache-arrow-21.0.0.tar.gz
+source_filename = apache-arrow-21.0.0.tar.gz
+source_hash = 5d3f8db7e72fb9f65f4785b7a1634522e8d8e9657a445af53d4a34a3849857b5
+patch_filename = arrow-cpp_21.0.0-1_patch.zip
+patch_url = https://wrapdb.mesonbuild.com/v2/arrow-cpp_21.0.0-1/get_patch
+patch_hash = b25196ce575954384f158575bf3c54fc72745ec793a7b7d1c270089f1639bbbf
+wrapdb_version = 21.0.0-1
+
+[provide]
+arrow = arrow_dep
+arrow-compute = arrow_compute_dep
