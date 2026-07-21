@@ -23,8 +23,9 @@
 #include "nanoarrow/nanoarrow.h"
 #include "nanoarrow/nanoarrow_ipc.h"
 
-// R 3.6 / Windows builds on a very old toolchain that does not define ENODATA
-#if defined(_WIN32) && !defined(_MSC_VER) && !defined(ENODATA)
+// ENODATA is an XSI extension and is not defined by all libcs (e.g., older
+// Windows/MinGW toolchains used by R 3.6, FreeBSD, and OpenBSD).
+#if !defined(ENODATA)
 #define ENODATA 120
 #endif
 
