@@ -17,7 +17,7 @@
 
 """Python bindings to the nanoarrow C library
 
-EXPERIMNETAL
+EXPERIMENTAL
 
 The nanoarrow Python package provides bindings to the nanoarrow C library. Like
 the nanoarrow C library, it provides tools to facilitate the use of the
