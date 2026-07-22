@@ -226,9 +226,11 @@ cdef class SchemaMetadata:
         The result may contain duplicate keys if they exist in the metadata."""
         cdef ArrowStringView key
         cdef ArrowStringView value
+        cdef int code
         self._init_reader()
         while self._reader.remaining_keys > 0:
-            ArrowMetadataReaderRead(&self._reader, &key, &value)
+            code = ArrowMetadataReaderRead(&self._reader, &key, &value)
+            Error.raise_error_not_ok("ArrowMetadataReaderRead()", code)
             key_obj = PyBytes_FromStringAndSize(key.data, key.size_bytes)
             value_obj = PyBytes_FromStringAndSize(value.data, value.size_bytes)
             yield key_obj, value_obj
