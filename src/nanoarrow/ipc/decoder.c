@@ -2334,6 +2334,10 @@ static int ArrowIpcDecoderWalkGetArray(struct ArrowArrayView* array_view,
   }
 
   if (array_view->dictionary != NULL) {
+    // Release the dictionary that was pre-initialized by ArrowArrayInitFromArrayView
+    if (out->dictionary->release != NULL) {
+      ArrowArrayRelease(out->dictionary);
+    }
     // Move the pre-cloned shared dictionary to output (avoids copying)
     ArrowArrayMove(array->dictionary, out->dictionary);
   }
