@@ -701,8 +701,18 @@ ArrowErrorCode ArrowArrayMoveShared(struct ArrowArray* array, struct ArrowArray*
   struct ArrowArray tmp;
   tmp.release = NULL;
   ArrowErrorCode result = ArrowArrayMoveSharedInternal(array, shared);
-  if (result != NANOARROW_OK && tmp.release != NULL) {
-    ArrowArrayRelease(&tmp);
+  if (result != NANOARROW_OK) {
+    // On failure, release the temporary output
+    if (tmp.release != NULL) {
+      ArrowArrayRelease(&tmp);
+    }
+
+    // Because this operation may have partially moved the input array at this point
+    // we also have to release it on failure to be predictable. These failures are
+    // usually failed heap allocations and are difficult to trigger in practice.
+    if (array->release != NULL) {
+      ArrowArrayRelease(array);
+    }
   }
 
   return result;
