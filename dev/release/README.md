@@ -388,6 +388,10 @@ The nanoarrow C library is available on [vcpkg](https://github.com/microsoft/vcp
 
 The nanoarrow C library is available on [conan](https://conan.io/center). When a new release is added, PR into the conan-center-index repository to make the new version available. See https://github.com/conan-io/conan-center-index/pull/29405 for a template PR.
 
+### Update the Homebrew Entry
+
+The nanoarrow C library is available on [Homebrew](https://brew.sh). When a new release is added, PR into the homebrew-core repository to make the new version available. See https://github.com/Homebrew/homebrew-core/pull/266595 for a template PR.
+
 ### Update release documentation
 
 The [nanoarrow documentation](https://arrow.apache.org/nanoarrow) is populated from the [asf-site branch](https://github.com/apache/arrow-nanoarrow/tree/asf-site) of this repository. To update the documentation, first clone just the asf-site branch:
