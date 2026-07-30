@@ -84,8 +84,8 @@ For older MacOS or MacOS without Homebrew, you can
 ### Conda (Linux and MacOS)
 
 Using `conda`, one can install all requirements needed for verification on Linux
-or MacOS. Users are recommended to install `gnupg` using
-a system installer because of interactions with other installations that
+or MacOS (e.g., `docker run --rm -it condaforge/mambaforge`). Users are recommended
+to install `gnupg` using a system installer because of interactions with other installations that
 may cause a crash.
 
 ```bash
@@ -114,7 +114,7 @@ to verify the C library; R and Rtools can be installed using the
 ```bash
 # Pass location of R to the verification script
 export NANOARROW_CMAKE_OPTIONS="-Dgtest_force_shared_crt=ON"
-export R_HOME="/c/Program Files/R/R-4.5.0"
+export R_HOME="/c/Program Files/R/R-4.6.1"
 ```
 
 Unfortunately verifying Python via the release verification script on Windows may not work in some shells, thus successful verification may require `TEST_PYTHON=0 ./verify-release-candidate.sh`.
@@ -124,7 +124,7 @@ Unfortunately verifying Python via the release verification script on Windows ma
 On Debian/Ubuntu (e.g., `docker run --rm -it ubuntu:latest`) you can install prerequisites using `apt`.
 
 ```bash
-apt-get update && apt-get install -y git g++ cmake r-base gnupg curl python3-dev python3-venv
+apt-get update && apt-get install -y git g++ cmake r-base gnupg curl python3-dev python3-venv libuv1-dev
 ```
 
 If you have never installed an R package before, R verification will fail when it
@@ -138,7 +138,7 @@ On recent Fedora (e.g., `docker run --rm -it fedora:latest`), you can install al
 using `dnf`:
 
 ```bash
-dnf install -y git cmake R gnupg curl python3-devel python3-virtualenv awk
+dnf install -y git cmake R gnupg curl python3-devel python3-virtualenv awk libuv-devel
 ```
 
 ### Arch Linux
@@ -147,7 +147,7 @@ On Arch Linux (e.g., `docker run --rm -it archlinux:latest`, you can install all
 using `pacman`):
 
 ```bash
-pacman -Sy git gcc make cmake r-base gnupg curl python
+pacman -Sy git gcc make cmake r-base gnupg curl python libuv
 ```
 
 ### Alpine Linux
@@ -155,8 +155,7 @@ pacman -Sy git gcc make cmake r-base gnupg curl python
 On Alpine Linux (e.g., `docker run --rm -it alpine:latest`), all prerequisites are available using `apk add`.
 
 ```bash
-
-apk add bash linux-headers git cmake R R-dev g++ gnupg curl python3-dev
+apk add bash linux-headers git cmake R R-dev g++ gnupg curl python3-dev libuv-dev
 ```
 
 ### Big endian
@@ -267,7 +266,7 @@ The vote will be open for at least 72 hours.
 [ ] -1 Do not release this as Apache Arrow nanoarrow 0.9.0 because...
 
 [0] https://github.com/apache/arrow-nanoarrow
-[1] https://github.com/apache/arrow-nanoarrow/milestone/4?closed=1
+[1] https://github.com/apache/arrow-nanoarrow/milestone/9?closed=1
 [2] https://github.com/apache/arrow-nanoarrow/tree/apache-arrow-nanoarrow-0.9.0-rc0
 [3] https://dist.apache.org/repos/dist/dev/arrow/apache-arrow-nanoarrow-0.9.0-rc0/
 [4] https://github.com/apache/arrow-nanoarrow/blob/apache-arrow-nanoarrow-0.9.0-rc0/CHANGELOG.md
