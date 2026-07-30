@@ -4,10 +4,10 @@
 \alias{example_ipc_stream}
 \title{Example Arrow IPC Data}
 \usage{
-example_ipc_stream(compression = c("none", "zstd"))
+example_ipc_stream(compression = c("none", "zstd", "lz4"))
 }
 \arguments{
-\item{compression}{One of "none" or "zstd"}
+\item{compression}{One of "none", "zstd", or "lz4"}
 }
 \value{
 A raw vector that can be passed to \code{\link[=read_nanoarrow]{read_nanoarrow()}}

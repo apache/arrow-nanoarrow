@@ -53,7 +53,7 @@
 #' - [character()]: String and large string types can be converted to
 #'   [character()]. The conversion does not check for valid UTF-8: if you need
 #'   finer-grained control over encodings, use `to = blob::blob()`.
-#' - [factor()]: Dictionary-encoded arrays of strings can be converted to
+#' - [base::factor()]: Dictionary-encoded arrays of strings can be converted to
 #'   `factor()`; however, this must be specified explicitly (i.e.,
 #'   `convert_array(array, factor())`) because arrays arriving
 #'   in chunks can have dictionaries that contain different levels. Use
@@ -68,7 +68,7 @@
 #'   be converted to [blob::blob()].
 #' - [vctrs::list_of()]: List, large list, and fixed-size list types can be
 #'   converted to [vctrs::list_of()].
-#' - [matrix()]: Fixed-size list types can be converted to
+#' - [base::matrix()]: Fixed-size list types can be converted to
 #'   `matrix(ptype, ncol = fixed_size)`.
 #' - [data.frame()]: Struct types can be converted to [data.frame()].
 #' - [vctrs::unspecified()]: Any type can be converted to [vctrs::unspecified()];

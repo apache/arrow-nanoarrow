@@ -123,10 +123,21 @@ test_that("read_nanoarrow() works for URLs", {
   )
 })
 
-test_that("read_nanoarrow() works with buffer compression", {
+test_that("read_nanoarrow() works with zstd buffer compression", {
   skip_if_not(nanoarrow_with_zstd())
 
   stream <- read_nanoarrow(example_ipc_stream(compression = "zstd"))
+  expect_s3_class(stream, "nanoarrow_array_stream")
+  expect_identical(
+    as.data.frame(stream),
+    data.frame(some_col = c(0L, 1L, 2L))
+  )
+})
+
+test_that("read_nanoarrow() works with lz4 buffer compression", {
+  skip_if_not(nanoarrow_with_lz4())
+
+  stream <- read_nanoarrow(example_ipc_stream(compression = "lz4"))
   expect_s3_class(stream, "nanoarrow_array_stream")
   expect_identical(
     as.data.frame(stream),
