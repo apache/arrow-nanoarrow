@@ -19,7 +19,6 @@ Description: Provides an 'R' interface to the 'nanoarrow' 'C' library and the
 License: Apache License (>= 2)
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
-RoxygenNote: 7.3.3
 URL: https://arrow.apache.org/nanoarrow/latest/r/, https://github.com/apache/arrow-nanoarrow
 BugReports: https://github.com/apache/arrow-nanoarrow/issues
 Suggests:
@@ -38,3 +37,4 @@ Suggests:
 SystemRequirements: libzstd (optional)
 Config/testthat/edition: 3
 Config/build/bootstrap: TRUE
+Config/roxygen2/version: 8.0.0

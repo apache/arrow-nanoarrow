@@ -35,7 +35,7 @@ nanoarrow_array_stream.
 These functions enable Python wrapper objects created via reticulate to
 be used with any function that uses \code{\link[=as_nanoarrow_array]{as_nanoarrow_array()}} or
 \code{\link[=as_nanoarrow_array_stream]{as_nanoarrow_array_stream()}} to accept generic "arrowable" input.
-Implementations for \code{\link[reticulate:r-py-conversion]{reticulate::py_to_r()}} and \code{\link[reticulate:r-py-conversion]{reticulate::r_to_py()}}
+Implementations for \code{\link[reticulate:py_to_r]{reticulate::py_to_r()}} and \code{\link[reticulate:r_to_py]{reticulate::r_to_py()}}
 are also included such that nanoarrow's array/schema/array stream objects
 can be passed as arguments to Python functions that would otherwise accept
 an object implementing the Arrow PyCapsule protocol.

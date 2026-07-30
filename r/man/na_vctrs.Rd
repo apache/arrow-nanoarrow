@@ -20,7 +20,7 @@ A \link[=as_nanoarrow_schema]{nanoarrow_schema}.
 The Arrow format provides a rich type system that can handle most R
 vector types; however, many R vector types do not roundtrip perfectly
 through Arrow memory. The vctrs extension type uses \code{\link[vctrs:vec_data]{vctrs::vec_data()}},
-\code{\link[vctrs:vec_proxy]{vctrs::vec_restore()}}, and \code{\link[vctrs:vec_ptype]{vctrs::vec_ptype()}} in calls to
+\code{\link[vctrs:vec_restore]{vctrs::vec_restore()}}, and \code{\link[vctrs:vec_ptype]{vctrs::vec_ptype()}} in calls to
 \code{\link[=as_nanoarrow_array]{as_nanoarrow_array()}} and \code{\link[=convert_array]{convert_array()}} to ensure roundtrip fidelity.
 }
 \examples{
