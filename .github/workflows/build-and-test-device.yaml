@@ -104,7 +104,7 @@ jobs:
         if: steps.cache-arrow-build.outputs.cache-hit != 'true'
         shell: bash
         run: |
-          ci/scripts/build-arrow-cpp-minimal.sh 25.0.0 arrow
+          ci/scripts/build-arrow-cpp-minimal.sh 24.0.0 arrow
 
       - name: Build
         run: |

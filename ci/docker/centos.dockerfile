@@ -32,7 +32,7 @@ RUN ln -s /opt/R/${R_VERSION}/bin/R /usr/local/bin/R && \
 
 # For Arrow C++
 COPY ci/scripts/build-arrow-cpp-minimal.sh /
-RUN /build-arrow-cpp-minimal.sh 25.0.0 /arrow
+RUN /build-arrow-cpp-minimal.sh 24.0.0 /arrow
 
 RUN python3 -m venv /venv
 RUN source /venv/bin/activate && \
