@@ -15,9 +15,9 @@
 // specific language governing permissions and limitations
 // under the License.
 
+#include <lz4.h>
 #include <stdint.h>
 #include <string.h>
-#include <lz4.h>
 
 // Function that requires at least one symbol from lz4.h
 int test_lz4(void) {
