@@ -125,6 +125,12 @@ if get_option('ipc').enabled()
         ipc_lib_c_args += '-DNANOARROW_IPC_WITH_ZSTD'
     endif
 
+    if get_option('ipc_with_lz4').enabled()
+        lz4_dep = dependency('liblz4')
+        ipc_lib_deps += lz4_dep
+        ipc_lib_c_args += '-DNANOARROW_IPC_WITH_LZ4'
+    endif
+
     install_headers(
         'src/nanoarrow/nanoarrow_ipc.h',
         'src/nanoarrow/ipc/flatcc_generated.h',

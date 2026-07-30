@@ -21,6 +21,7 @@ option('benchmarks', type: 'feature', description: 'Build benchmarks')
 option('apps', type: 'feature', description: 'Build utility applications')
 option('ipc', type: 'feature', description: 'Build IPC libraries')
 option('ipc_with_zstd', type: 'feature', description: 'Build IPC libraries with ZSTD compression support')
+option('ipc_with_lz4', type: 'feature', description: 'Build IPC libraries with LZ4 compression support')
 option(
     'integration_tests', type: 'feature',
     description: 'Build cross-implementation Arrow integration tests',

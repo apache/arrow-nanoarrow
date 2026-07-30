@@ -26,15 +26,18 @@ project(
         'warning_level=2',
         'c_std=c99',
         'default_library=static',
-        'force_fallback_for=zstd',
+        'force_fallback_for=zstd,lz4',
         # We need to set these options at the project default_option level
         # due to https://github.com/mesonbuild/meson/issues/6728
         'arrow-nanoarrow:ipc=enabled',
         'arrow-nanoarrow:ipc_with_zstd=enabled',
+        'arrow-nanoarrow:ipc_with_lz4=enabled',
         'arrow-nanoarrow:device=enabled',
         'arrow-nanoarrow:namespace=PythonPkg',
         'arrow-nanoarrow:tests=disabled',
         'zstd:bin_programs=false',
+        'lz4:programs=false',
+        'lz4:tests=false',
     ],
 )
 
