@@ -32,5 +32,19 @@ else
   endif
 endif
 
-PKG_CPPFLAGS = -I../inst/include -I../src -DFLATCC_USE_GENERIC_ALIGNED_ALLOC $(ZSTD_CFLAGS)
-PKG_LIBS = $(ZSTD_LIB_FLAGS)
+# Check for lz4 via pkg-config (64-bit only, same as zstd)
+ifeq (,$(shell pkg-config liblz4 --libs 2>/dev/null))
+  LZ4_CFLAGS =
+  LZ4_LIB_FLAGS =
+else
+  ifeq "$(WIN)" "64"
+    LZ4_CFLAGS = $(shell pkg-config --cflags liblz4) -DNANOARROW_IPC_WITH_LZ4
+    LZ4_LIB_FLAGS = $(shell pkg-config --libs liblz4)
+  else
+    LZ4_CFLAGS =
+    LZ4_LIB_FLAGS =
+  endif
+endif
+
+PKG_CPPFLAGS = -I../inst/include -I../src -DFLATCC_USE_GENERIC_ALIGNED_ALLOC $(ZSTD_CFLAGS) $(LZ4_CFLAGS)
+PKG_LIBS = $(ZSTD_LIB_FLAGS) $(LZ4_LIB_FLAGS)

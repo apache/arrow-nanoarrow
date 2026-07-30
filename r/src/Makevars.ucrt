@@ -15,8 +15,11 @@
 # specific language governing permissions and limitations
 # under the License.
 
-# This Makevars handles R >= 4.2 on Windows (pkg-config is available on all such versions)
+# This Makevars handles R >= 4.2 on Windows
+# Note: configure.win is excluded from source tarballs, so this file is used directly
+# on CRAN. We only enable compression if pkg-config finds the libraries.
 
+# Check for zstd via pkg-config
 ifeq (,$(shell pkg-config libzstd --libs 2>/dev/null))
   ZSTD_CFLAGS =
   ZSTD_LIB_FLAGS =
@@ -25,5 +28,14 @@ else
   ZSTD_LIB_FLAGS = $(shell pkg-config --libs libzstd)
 endif
 
-PKG_CPPFLAGS = -I../inst/include -I../src -DFLATCC_USE_GENERIC_ALIGNED_ALLOC $(ZSTD_CFLAGS)
-PKG_LIBS = $(ZSTD_LIB_FLAGS)
+# Check for lz4 via pkg-config (available in rtools43+)
+ifeq (,$(shell pkg-config liblz4 --libs 2>/dev/null))
+  LZ4_CFLAGS =
+  LZ4_LIB_FLAGS =
+else
+  LZ4_CFLAGS = $(shell pkg-config --cflags liblz4) -DNANOARROW_IPC_WITH_LZ4
+  LZ4_LIB_FLAGS = $(shell pkg-config --libs liblz4)
+endif
+
+PKG_CPPFLAGS = -I../inst/include -I../src -DFLATCC_USE_GENERIC_ALIGNED_ALLOC $(ZSTD_CFLAGS) $(LZ4_CFLAGS)
+PKG_LIBS = $(ZSTD_LIB_FLAGS) $(LZ4_LIB_FLAGS)
