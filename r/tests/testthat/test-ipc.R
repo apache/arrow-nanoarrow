@@ -422,3 +422,92 @@ test_that("read_nanoarrow() works for dictionary arrays produced by arrow", {
   df$col <- as.character(df$col)
   expect_identical(result, do.call(rbind, rep(list(df), 10)))
 })
+
+test_that("read_nanoarrow() works for dictionaries of structs of dictionaries", {
+  skip_if_not_installed("arrow")
+  skip_if_not_installed("tibble")
+
+  # Create a record batch with a dictionary inside a struct. Use tibble
+  # for slightly easier nested data frame construction.
+  df <- tibble::tibble(
+    idx = 1:26,
+    letter = letters,
+    nested = data.frame(idx2 = 1:26, LETTER = LETTERS)
+  )
+
+  schema <- arrow::schema(
+    idx = arrow::int32(),
+    letter = arrow::utf8(),
+    nested = arrow::struct(
+      idx2 = arrow::int32(),
+      LETTER = arrow::dictionary(
+        index_type = arrow::int32(),
+        value_type = arrow::large_utf8()
+      )
+    )
+  )
+
+  batch <- arrow::record_batch(df)$cast(schema)
+
+  # Modify the batch so that the inner struct is the values member of a dict
+  na_batch <- as_nanoarrow_array(batch)
+  na_batch$children$nested <- nanoarrow_array_modify(
+    nanoarrow_array_init(
+      as_nanoarrow_schema(
+        arrow::dictionary(
+          index_type = arrow::int32(),
+          value_type = arrow::struct(
+            idx2 = arrow::int32(),
+            LETTER = arrow::dictionary(
+              index_type = arrow::int8(),
+              value_type = arrow::large_utf8()
+            )
+          )
+        )
+      )
+    ),
+    list(
+      length = 26,
+      null_count = 0,
+      buffers = list(
+        NULL,
+        0:25
+      ),
+      dictionary = na_batch$children$nested
+    ),
+  )
+
+  # Create a reversed batch as well (same dictionary, different indices)
+  batch_with_nested_dictionary <- arrow::as_record_batch(na_batch)
+  reversed_batch_with_nested_dictionary <- batch_with_nested_dictionary$Take(
+    (batch$num_rows - 1):0
+  )
+
+  # Test IPC roundtrip with multiple batches
+  tf <- tempfile()
+  on.exit(unlink(tf))
+
+  # Write multiple batches using RecordBatchStreamWriter
+  sink <- arrow::FileOutputStream$create(tf)
+  writer <- arrow::RecordBatchStreamWriter$create(
+    sink,
+    batch_with_nested_dictionary$schema
+  )
+
+  # Write the forward batch and the reversed batch
+  writer$write_batch(batch_with_nested_dictionary)
+  writer$write_batch(reversed_batch_with_nested_dictionary)
+  writer$close()
+  sink$close()
+
+  # Read back via nanoarrow and verify result
+  result <- convert_array_stream(read_nanoarrow(tf))
+
+  expected <- rbind(
+    as.data.frame(df),
+    as.data.frame(df[rev(seq_len(nrow(df))), ])
+  )
+  row.names(expected) <- seq_len(nrow(expected))
+
+  expect_identical(result, expected)
+})

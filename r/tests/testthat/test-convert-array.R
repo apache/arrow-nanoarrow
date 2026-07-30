@@ -1404,6 +1404,6 @@ test_that("convert to vector works for dictionaries of structs of dictionaries",
   )
   expect_identical(
     converted_reversed,
-    as.data.frame(df[nrow(df):1, ])
+    as.data.frame(df[rev(seq_len(nrow(df))), ])
   )
 })
