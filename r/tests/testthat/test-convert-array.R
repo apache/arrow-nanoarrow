@@ -1332,3 +1332,78 @@ test_that("convert to vector works for lists nested in data frames", {
     df_in_list_in_df
   )
 })
+
+test_that("convert to vector works for dictionaries of structs of dictionaries", {
+  skip_if_not_installed("arrow")
+  skip_if_not_installed("tibble")
+
+  # Create a record batch with a dictionary inside a struct. Use tibble
+  # for slightly easier nested data frame construction.
+  df <- tibble::tibble(
+    idx = 1:26,
+    letter = letters,
+    nested = data.frame(idx2 = 1:26, LETTER = LETTERS)
+  )
+
+  schema <- arrow::schema(
+    idx = arrow::int32(),
+    letter = arrow::utf8(),
+    nested = arrow::struct(
+      idx2 = arrow::int32(),
+      LETTER = arrow::dictionary(
+        index_type = arrow::int32(),
+        value_type = arrow::large_utf8()
+      )
+    )
+  )
+
+  batch <- arrow::record_batch(df)$cast(schema)
+
+  # Modify the batch so that the inner struct is the values member of a dict
+  na_batch <- as_nanoarrow_array(batch)
+  na_batch$children$nested <- nanoarrow_array_modify(
+    nanoarrow_array_init(
+      as_nanoarrow_schema(
+        arrow::dictionary(
+          index_type = arrow::int32(),
+          value_type = arrow::struct(
+            idx2 = arrow::int32(),
+            LETTER = arrow::dictionary(
+              index_type = arrow::int8(),
+              value_type = arrow::large_utf8()
+            )
+          )
+        )
+      )
+    ),
+    list(
+      length = 26,
+      null_count = 0,
+      buffers = list(
+        NULL,
+        0:25
+      ),
+      dictionary = na_batch$children$nested
+    ),
+  )
+
+  # Ensure the batch converts back to the original
+  expect_identical(
+    convert_array(na_batch),
+    as.data.frame(df)
+  )
+
+  # Ensure a reversed batch converts back to the original
+  batch_with_nested_dictionary <- arrow::as_record_batch(na_batch)
+  reversed_batch_with_nested_dictionary <- batch_with_nested_dictionary$Take(
+    (batch$num_rows - 1):0
+  )
+
+  converted_reversed <- convert_array(
+    as_nanoarrow_array(reversed_batch_with_nested_dictionary)
+  )
+  expect_identical(
+    converted_reversed,
+    as.data.frame(df[nrow(df):1, ])
+  )
+})
