@@ -34,7 +34,7 @@ Suggests:
     tibble,
     vctrs,
     withr
-SystemRequirements: libzstd (optional)
+SystemRequirements: libzstd (optional), liblz4 (optional)
 Config/testthat/edition: 3
 Config/build/bootstrap: TRUE
 Config/roxygen2/version: 8.0.0
