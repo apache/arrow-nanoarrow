@@ -19,7 +19,8 @@
 
 # nanoarrow 0.8.0-1
 
-- Ensure ArrowTypeString never returns NULL to fix warning on gcc (#885)
+- fix: Eliminate warnings for gcc16 and _FORTIFY_SOURCE=3 for snprintf (#892)
+- fix!: Ensure ArrowTypeString never returns NULL to fix warning on gcc (#885)
 
 # nanoarrow 0.8.0
 
