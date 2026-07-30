@@ -345,3 +345,99 @@ test_that("fixed-size stream conversion errors when the output has insufficient 
     "Expected to materialize 100 values in batch 1 but materialized 2"
   )
 })
+
+test_that("convert array stream works for dictionaries of structs of dictionaries", {
+  skip_if_not_installed("arrow")
+  skip_if_not_installed("tibble")
+
+  # Create a record batch with a dictionary inside a struct. Use tibble
+  # for slightly easier nested data frame construction.
+  df <- tibble::tibble(
+    idx = 1:26,
+    letter = letters,
+    nested = data.frame(idx2 = 1:26, LETTER = LETTERS)
+  )
+
+  schema <- arrow::schema(
+    idx = arrow::int32(),
+    letter = arrow::utf8(),
+    nested = arrow::struct(
+      idx2 = arrow::int32(),
+      LETTER = arrow::dictionary(
+        index_type = arrow::int32(),
+        value_type = arrow::large_utf8()
+      )
+    )
+  )
+
+  batch <- arrow::record_batch(df)$cast(schema)
+
+  # Modify the batch so that the inner struct is the values member of a dict
+  na_batch <- as_nanoarrow_array(batch)
+  na_batch$children$nested <- nanoarrow_array_modify(
+    nanoarrow_array_init(
+      as_nanoarrow_schema(
+        arrow::dictionary(
+          index_type = arrow::int32(),
+          value_type = arrow::struct(
+            idx2 = arrow::int32(),
+            LETTER = arrow::dictionary(
+              index_type = arrow::int8(),
+              value_type = arrow::large_utf8()
+            )
+          )
+        )
+      )
+    ),
+    list(
+      length = 26,
+      null_count = 0,
+      buffers = list(
+        NULL,
+        0:25
+      ),
+      dictionary = na_batch$children$nested
+    ),
+  )
+
+  # Split into multiple batches (first 13 rows and last 13 rows)
+  batch_with_nested_dictionary <- arrow::as_record_batch(na_batch)
+  batch1 <- batch_with_nested_dictionary$Take(0:12)
+  batch2 <- batch_with_nested_dictionary$Take(13:25)
+
+  # Create a stream with multiple batches
+  stream <- basic_array_stream(
+    list(
+      as_nanoarrow_array(batch1),
+      as_nanoarrow_array(batch2)
+    )
+  )
+
+  # Ensure the stream converts back to the original
+  expect_identical(
+    convert_array_stream(stream),
+    as.data.frame(df)
+  )
+
+  # Also test with reversed batches
+  reversed_batch1 <- batch_with_nested_dictionary$Take(12:0)
+  reversed_batch2 <- batch_with_nested_dictionary$Take(25:13)
+
+  reversed_stream <- basic_array_stream(
+    list(
+      as_nanoarrow_array(reversed_batch1),
+      as_nanoarrow_array(reversed_batch2)
+    )
+  )
+
+  expected_reversed <- rbind(
+    as.data.frame(df[13:1, ]),
+    as.data.frame(df[26:14, ])
+  )
+  row.names(expected_reversed) <- 1:26
+
+  expect_identical(
+    convert_array_stream(reversed_stream),
+    expected_reversed
+  )
+})
