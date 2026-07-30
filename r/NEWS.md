@@ -17,6 +17,10 @@
   under the License.
 -->
 
+# nanoarrow 0.8.0-1
+
+- Ensure ArrowTypeString never returns NULL to fix warning on gcc (#885)
+
 # nanoarrow 0.8.0
 
 - Add reticulate/Python integration (#817)
