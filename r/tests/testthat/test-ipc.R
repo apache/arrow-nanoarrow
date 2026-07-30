@@ -364,3 +364,61 @@ test_that("read_nanoarrow() from connection errors when called from another thre
     "Can't read from R connection on a non-R thread"
   )
 })
+
+test_that("read_nanoarrow() works for dictionary arrays produced by arrow", {
+  skip_if_not_installed("arrow")
+
+  # Generate data with many small batches to stress the shared dictionary
+  levels <- LETTERS
+  df <- data.frame(
+    idx = 1:100,
+    col = factor(rep_len(rev(LETTERS), 100), levels = levels)
+  )
+  batch <- arrow::as_record_batch(df)
+
+  tf <- tempfile()
+  on.exit(unlink(tf))
+
+  # Write in small batches using RecordBatchStreamWriter
+  tbl <- arrow::Table$create(df)
+  sink <- arrow::FileOutputStream$create(tf)
+
+  writer <- arrow::RecordBatchStreamWriter$create(
+    sink,
+    batch$schema
+  )
+
+  for (i in 1:10) {
+    writer$write_batch(batch)
+  }
+
+  writer$close()
+  sink$close()
+
+  # Ensure we have a dictionary type
+  reader <- read_nanoarrow(tf)
+  schema <- reader$get_schema()
+  expect_true(batch$schema$Equals(arrow::as_schema(schema)))
+
+  # Ensure we have the expected number of batches
+  batches <- collect_array_stream(reader)
+  expect_identical(length(batches), 10L)
+
+  # Ensure all dictionaries are pointing to the same buffers (shared)
+  dictionaries <- lapply(batches, function(b) b$children$col$dictionary)
+  offsets_addr <- nanoarrow_pointer_addr_chr(dictionaries[[1]]$buffers[[2]]$data)
+  data_addr <- nanoarrow_pointer_addr_chr(dictionaries[[1]]$buffers[[3]]$data)
+  for (dictionary in dictionaries[2:10]) {
+    offsets_addr <- nanoarrow_pointer_addr_chr(dictionary$buffers[[2]]$data)
+    data_addr <- nanoarrow_pointer_addr_chr(dictionary$buffers[[3]]$data)
+  }
+
+  # Ensure the result is correctly read into a factor
+  result <- convert_array_stream(read_nanoarrow(tf), to = df)
+  expect_identical(result, do.call(rbind, rep(list(df), 10)))
+
+  # Ensure the default read works too (by default dictionaries are expanded)
+  result <- convert_array_stream(read_nanoarrow(tf))
+  df$col <- as.character(df$col)
+  expect_identical(result, do.call(rbind, rep(list(df), 10)))
+})
