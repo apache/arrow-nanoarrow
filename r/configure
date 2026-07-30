@@ -50,6 +50,27 @@ fi
 
 rm -f tools/test_zstd.o test_zstd test_zstd.log || true
 
+# Check to see if a lz4 test file compiles and links without any help from pkg-config
+LZ4_FOUND=""
+PKG_CPPFLAGS="$PKG_CPPFLAGS" PKG_LIBS="$PKG_LIBS -llz4" \
+  $R_HOME/bin/R CMD SHLIB tools/test_lz4.c -o test_lz4 >test_lz4.log 2>&1
+if [ $? -eq 0 ]; then
+  echo "tools/test_lz4.c compiled without error"
+  PKG_CPPFLAGS="$PKG_CPPFLAGS -DNANOARROW_IPC_WITH_LZ4"
+  PKG_LIBS="$PKG_LIBS -llz4"
+  LZ4_FOUND="yes"
+fi
+
+# Add pkg-config for liblz4 if possible
+if [ -z "$LZ4_FOUND" ] && pkg-config liblz4 --exists >/dev/null 2>&1; then
+  PKG_CPPFLAGS="`pkg-config liblz4 --cflags` -DNANOARROW_IPC_WITH_LZ4 $PKG_CPPFLAGS"
+  PKG_LIBS="`pkg-config liblz4 --libs` $PKG_LIBS"
+  echo "Using pkg-config liblz4"
+  LZ4_FOUND="yes"
+fi
+
+rm -f tools/test_lz4.o test_lz4 test_lz4.log || true
+
 echo "Using PKG_CPPFLAGS=$PKG_CPPFLAGS"
 echo "Using PKG_LIBS=$PKG_LIBS"
 
