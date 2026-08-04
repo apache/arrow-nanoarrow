@@ -436,3 +436,30 @@
 - **r**: Collect array streams in C (not R) before conversion (#828)
 - **r**: Fix test for forthcoming ALTREP behaviour in R-devel (#826)
 - **r**: Ensure C23 version check works for clang16 (current GitHub Actions) (#801)
+
+## nanoarrow 0.9.0
+
+### Docs
+
+- Fix typo in Python docs (#907)
+
+### Feat
+
+- Use reference counted arrays when decoding batches that contain dictionaries (#895)
+- Add shared array and buffer to nanoarrow.h (#864)
+- Encode dictionary schemas (#882)
+- Actually decode dictionary arrays (#861)
+- Decode dictionary batches (#858)
+- Add ArrowIpcDictionaryMapping to track dictionary identifiers when parsing schema message (#856)
+- Add Dictionary schema read support in IPC reader (#738)
+- **python**: Add LZ4 decompression support to Python bindings and Meson build (#917)
+- **r**: Add LZ4 compression support for IPC read (#916)
+
+### Fix
+
+- Fix ENODATA undefined on FreeBSD and OpenBSD (#906)
+- Ensure metal device's align buffers exports aligned buffer pointers correctly (#904)
+- Eliminate warnings for gcc16 and _FORTIFY_SOURCE=3 for snprintf (#892)
+- Correctly subscript ViewArrayAs with offset (#883)
+- **ci**: Set endianness of decoder in dictionary batch decode test (#878)
+- **python**: Check error code for ArrowMetadataReaderRead in Python bindings (#908)
