@@ -17,6 +17,11 @@
   under the License.
 -->
 
+# nanoarrow 0.9.0
+
+- Add dictionary support for IPC read (#861)
+- Add LZ4 compression support for IPC read (#916)
+
 # nanoarrow 0.8.0-1
 
 - fix: Eliminate warnings for gcc16 and _FORTIFY_SOURCE=3 for snprintf (#892)
