@@ -66,6 +66,12 @@
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcDecoderSetSchemaWithDictionaries)
 #define ArrowIpcDecoderSetEndianness \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcDecoderSetEndianness)
+#define ArrowIpcDecoderGetMessageMetadata \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcDecoderGetMessageMetadata)
+#define ArrowIpcDecoderGetMessageMetadataValue \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcDecoderGetMessageMetadataValue)
+#define ArrowIpcDecoderVisitMessageMetadata \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcDecoderVisitMessageMetadata)
 #define ArrowIpcDecoderPeekFooter \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcDecoderPeekFooter)
 #define ArrowIpcDecoderVerifyFooter \
@@ -84,6 +90,8 @@
 #define ArrowIpcEncoderReset NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcEncoderReset)
 #define ArrowIpcEncoderFinalizeBuffer \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcEncoderFinalizeBuffer)
+#define ArrowIpcEncoderSetMessageMetadata \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcEncoderSetMessageMetadata)
 #define ArrowIpcEncoderEncodeSchema \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcEncoderEncodeSchema)
 #define ArrowIpcEncoderEncodeSimpleRecordBatch \
@@ -461,6 +469,16 @@ NANOARROW_DLL void ArrowIpcDecoderReset(struct ArrowIpcDecoder* decoder);
 NANOARROW_DLL ArrowErrorCode ArrowIpcDecoderSetDecompressor(
     struct ArrowIpcDecoder* decoder, struct ArrowIpcDecompressor* decompressor);
 
+/// \brief Callback invoked for each key/value pair by
+/// ArrowIpcDecoderVisitMessageMetadata()
+///
+/// Returning any value other than NANOARROW_OK will stop the visit and cause that
+/// value to be returned by ArrowIpcDecoderVisitMessageMetadata().
+typedef ArrowErrorCode (*ArrowIpcMetadataVisitFunction)(struct ArrowStringView key,
+                                                        struct ArrowStringView value,
+                                                        void* private_data,
+                                                        struct ArrowError* error);
+
 /// \brief Peek at a message header
 ///
 /// The first 8 bytes of an Arrow IPC message are 0xFFFFFFFF followed by the size
@@ -509,6 +527,52 @@ NANOARROW_DLL ArrowErrorCode ArrowIpcDecoderVerifyHeader(struct ArrowIpcDecoder*
 NANOARROW_DLL ArrowErrorCode ArrowIpcDecoderDecodeHeader(struct ArrowIpcDecoder* decoder,
                                                          struct ArrowBufferView data,
                                                          struct ArrowError* error);
+
+/// \brief Get the custom metadata of the most recently decoded message
+///
+/// After a successful call to ArrowIpcDecoderVerifyHeader() or
+/// ArrowIpcDecoderDecodeHeader(), copy the message's custom_metadata into out using
+/// the same representation as ArrowSchema::metadata. Note that this is the metadata
+/// attached to the message itself and is distinct from the metadata of a Schema or
+/// Field that the message may contain.
+///
+/// out is initialized by this call (i.e., it must not contain data) and the caller
+/// is responsible for calling ArrowBufferReset(). If the message had no custom
+/// metadata, out will be empty (i.e., out->data will be NULL) such that
+/// (const char*)out->data can be passed to ArrowSchemaSetMetadata() or
+/// ArrowMetadataReaderInit().
+///
+/// Returns ENOMEM if allocation fails, EINVAL if the metadata cannot be decoded, or
+/// NANOARROW_OK otherwise.
+NANOARROW_DLL ArrowErrorCode ArrowIpcDecoderGetMessageMetadata(
+    struct ArrowIpcDecoder* decoder, struct ArrowBuffer* out, struct ArrowError* error);
+
+/// \brief Get one value from the custom metadata of the most recently decoded message
+///
+/// Unlike ArrowIpcDecoderGetMessageMetadata(), this does not copy: the value returned
+/// points into the message header passed to ArrowIpcDecoderVerifyHeader() or
+/// ArrowIpcDecoderDecodeHeader() and is only valid until that data is invalidated or
+/// another message header is decoded.
+///
+/// If key occurs more than once, the first value is returned. If key does not occur,
+/// value_out is left unmodified: initialize it with ArrowCharView(NULL) and check
+/// value_out->data for NULL to detect a missing key.
+NANOARROW_DLL ArrowErrorCode ArrowIpcDecoderGetMessageMetadataValue(
+    struct ArrowIpcDecoder* decoder, struct ArrowStringView key,
+    struct ArrowStringView* value_out, struct ArrowError* error);
+
+/// \brief Visit each key/value pair in the most recently decoded message's metadata
+///
+/// Like ArrowIpcDecoderGetMessageMetadataValue(), the keys and values passed to visit
+/// point into the message header passed to ArrowIpcDecoderVerifyHeader() or
+/// ArrowIpcDecoderDecodeHeader() and must not be retained beyond the lifetime of that
+/// data. private_data and error are passed to each invocation of visit.
+///
+/// Returns the first non-NANOARROW_OK value returned by visit, or NANOARROW_OK if all
+/// pairs were visited.
+NANOARROW_DLL ArrowErrorCode ArrowIpcDecoderVisitMessageMetadata(
+    struct ArrowIpcDecoder* decoder, ArrowIpcMetadataVisitFunction visit,
+    void* private_data, struct ArrowError* error);
 
 /// \brief Decode an ArrowSchema
 ///
@@ -777,6 +841,23 @@ NANOARROW_DLL void ArrowIpcEncoderReset(struct ArrowIpcEncoder* encoder);
 /// The bytes of the encoded message will be appended to the provided buffer.
 NANOARROW_DLL ArrowErrorCode ArrowIpcEncoderFinalizeBuffer(
     struct ArrowIpcEncoder* encoder, char encapsulate, struct ArrowBuffer* out);
+
+/// \brief Set the custom metadata of the next encoded message
+///
+/// Attaches metadata to the next message encoded by ArrowIpcEncoderEncodeSchema() or
+/// ArrowIpcEncoderEncodeSimpleRecordBatch() (i.e., Message::custom_metadata, which is
+/// distinct from the metadata of the Schema or Field that the message may contain).
+/// The metadata applies to exactly one message: after a message is encoded the
+/// encoder's message metadata is cleared. Any metadata that was set but not yet
+/// encoded is replaced by this call; pass NULL to clear it.
+///
+/// metadata uses the same representation as ArrowSchema::metadata and may be built
+/// with ArrowMetadataBuilderInit()/ArrowMetadataBuilderAppend(). It is copied by this
+/// call and need not outlive it.
+///
+/// Returns ENOMEM if allocation fails, NANOARROW_OK otherwise.
+NANOARROW_DLL ArrowErrorCode ArrowIpcEncoderSetMessageMetadata(
+    struct ArrowIpcEncoder* encoder, const char* metadata, struct ArrowError* error);
 
 /// \brief Encode an ArrowSchema
 ///

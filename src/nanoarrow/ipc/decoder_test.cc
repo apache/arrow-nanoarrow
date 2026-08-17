@@ -22,6 +22,7 @@
 #include <arrow/array.h>
 #include <arrow/c/bridge.h>
 #include <arrow/extension/uuid.h>
+#include <arrow/io/memory.h>
 #include <arrow/ipc/api.h>
 #include <arrow/util/key_value_metadata.h>
 #endif
@@ -1705,6 +1706,146 @@ INSTANTIATE_TEST_SUITE_P(
         //     "some_name", arrow::dictionary(arrow::int32(), arrow::extension::uuid()),
         //     arrow::KeyValueMetadata::Make({"key1", "key2"}, {"value1", "value2"}))})
         ));
+
+#if defined(NANOARROW_BUILD_TESTS_WITH_ARROW)
+// Advance data past the message whose header was just decoded
+static void AdvancePastMessage(struct ArrowIpcDecoder* decoder,
+                               struct ArrowBufferView* data) {
+  int64_t message_size_bytes = _ArrowRoundUpToMultipleOf8(decoder->header_size_bytes) +
+                               _ArrowRoundUpToMultipleOf8(decoder->body_size_bytes);
+  ASSERT_LE(message_size_bytes, data->size_bytes);
+  data->data.as_uint8 += message_size_bytes;
+  data->size_bytes -= message_size_bytes;
+}
+
+TEST(NanoarrowIpcTest, NanoarrowIpcMessageMetadataArrowInterop) {
+  auto arrow_schema = arrow::schema({arrow::field("some_name", arrow::int32())});
+  auto custom_metadata =
+      arrow::KeyValueMetadata::Make({"key1", "key2"}, {"value1", "value2"});
+
+  auto maybe_batch = arrow::RecordBatch::MakeEmpty(arrow_schema);
+  ASSERT_TRUE(maybe_batch.ok()) << maybe_batch.status();
+  auto batch = maybe_batch.ValueUnsafe();
+
+  struct ArrowError error;
+  nanoarrow::UniqueSchema schema;
+  nanoarrow::UniqueArray array;
+  nanoarrow::UniqueArrayView array_view;
+  ASSERT_TRUE(arrow::ExportSchema(*arrow_schema, schema.get()).ok());
+  ASSERT_TRUE(arrow::ExportRecordBatch(*batch, array.get()).ok());
+  ASSERT_EQ(ArrowArrayViewInitFromSchema(array_view.get(), schema.get(), &error),
+            NANOARROW_OK)
+      << error.message;
+  ASSERT_EQ(ArrowArrayViewSetArray(array_view.get(), array.get(), &error), NANOARROW_OK)
+      << error.message;
+
+  // What nanoarrow writes, Arrow C++ can read
+  nanoarrow::UniqueBuffer metadata;
+  ASSERT_EQ(ArrowMetadataBuilderInit(metadata.get(), nullptr), NANOARROW_OK);
+  for (int64_t i = 0; i < custom_metadata->size(); i++) {
+    ASSERT_EQ(ArrowMetadataBuilderAppend(
+                  metadata.get(), ArrowCharView(custom_metadata->key(i).c_str()),
+                  ArrowCharView(custom_metadata->value(i).c_str())),
+              NANOARROW_OK);
+  }
+
+  nanoarrow::ipc::UniqueEncoder encoder;
+  ASSERT_EQ(ArrowIpcEncoderInit(encoder.get()), NANOARROW_OK);
+  ASSERT_EQ(ArrowIpcEncoderSetMessageMetadata(
+                encoder.get(), reinterpret_cast<const char*>(metadata->data), &error),
+            NANOARROW_OK)
+      << error.message;
+
+  nanoarrow::UniqueBuffer nanoarrow_message;
+  ASSERT_EQ(ArrowIpcEncoderEncodeSimpleRecordBatch(encoder.get(), array_view.get(),
+                                                   nanoarrow_message.get(), &error),
+            NANOARROW_OK)
+      << error.message;
+  {
+    // Prepend the encapsulated header to the body written above
+    nanoarrow::UniqueBuffer body;
+    ArrowBufferMove(nanoarrow_message.get(), body.get());
+    ASSERT_EQ(ArrowIpcEncoderFinalizeBuffer(encoder.get(), /*encapsulate=*/true,
+                                            nanoarrow_message.get()),
+              NANOARROW_OK);
+    ASSERT_EQ(
+        ArrowBufferAppendBufferView(nanoarrow_message.get(),
+                                    ArrowBufferView{{body->data}, body->size_bytes}),
+        NANOARROW_OK);
+  }
+
+  arrow::io::BufferReader message_reader(
+      arrow::Buffer::Wrap(nanoarrow_message->data, nanoarrow_message->size_bytes));
+  auto maybe_message = arrow::ipc::ReadMessage(&message_reader);
+  ASSERT_TRUE(maybe_message.ok()) << maybe_message.status();
+  ASSERT_NE(maybe_message.ValueUnsafe()->custom_metadata(), nullptr);
+  EXPECT_TRUE(maybe_message.ValueUnsafe()->custom_metadata()->Equals(*custom_metadata));
+
+  // What Arrow C++ writes, nanoarrow can read
+  auto maybe_out = arrow::io::BufferOutputStream::Create();
+  ASSERT_TRUE(maybe_out.ok()) << maybe_out.status();
+  auto out = maybe_out.ValueUnsafe();
+
+  auto maybe_writer = arrow::ipc::MakeStreamWriter(out, arrow_schema);
+  ASSERT_TRUE(maybe_writer.ok()) << maybe_writer.status();
+  auto writer = maybe_writer.ValueUnsafe();
+  ASSERT_TRUE(writer->WriteRecordBatch(*batch, custom_metadata).ok());
+  ASSERT_TRUE(writer->Close().ok());
+
+  auto maybe_stream = out->Finish();
+  ASSERT_TRUE(maybe_stream.ok()) << maybe_stream.status();
+  auto stream = maybe_stream.ValueUnsafe();
+
+  struct ArrowBufferView data;
+  data.data.data = stream->data();
+  data.size_bytes = stream->size();
+
+  nanoarrow::ipc::UniqueDecoder decoder;
+  ASSERT_EQ(ArrowIpcDecoderInit(decoder.get()), NANOARROW_OK);
+
+  // The Schema message has no metadata of its own
+  ASSERT_EQ(ArrowIpcDecoderVerifyHeader(decoder.get(), data, &error), NANOARROW_OK)
+      << error.message;
+  ASSERT_EQ(ArrowIpcDecoderDecodeHeader(decoder.get(), data, &error), NANOARROW_OK)
+      << error.message;
+  ASSERT_EQ(decoder->message_type, NANOARROW_IPC_MESSAGE_TYPE_SCHEMA);
+  nanoarrow::UniqueBuffer schema_message_metadata;
+  ASSERT_EQ(ArrowIpcDecoderGetMessageMetadata(decoder.get(),
+                                              schema_message_metadata.get(), &error),
+            NANOARROW_OK)
+      << error.message;
+  EXPECT_EQ(schema_message_metadata->size_bytes, 0);
+  ASSERT_EQ(ArrowIpcDecoderSetSchema(decoder.get(), schema.get(), &error), NANOARROW_OK)
+      << error.message;
+
+  // ...but the RecordBatch message does
+  ASSERT_NO_FATAL_FAILURE(AdvancePastMessage(decoder.get(), &data));
+  ASSERT_EQ(ArrowIpcDecoderVerifyHeader(decoder.get(), data, &error), NANOARROW_OK)
+      << error.message;
+  ASSERT_EQ(ArrowIpcDecoderDecodeHeader(decoder.get(), data, &error), NANOARROW_OK)
+      << error.message;
+  ASSERT_EQ(decoder->message_type, NANOARROW_IPC_MESSAGE_TYPE_RECORD_BATCH);
+
+  nanoarrow::UniqueBuffer batch_message_metadata;
+  ASSERT_EQ(ArrowIpcDecoderGetMessageMetadata(decoder.get(), batch_message_metadata.get(),
+                                              &error),
+            NANOARROW_OK)
+      << error.message;
+  EXPECT_EQ(ArrowSchemaMetadataToString(
+                reinterpret_cast<const char*>(batch_message_metadata->data)),
+            "key1=value1, key2=value2");
+
+  for (int64_t i = 0; i < custom_metadata->size(); i++) {
+    struct ArrowStringView value = ArrowCharView(nullptr);
+    ASSERT_EQ(ArrowIpcDecoderGetMessageMetadataValue(
+                  decoder.get(), ArrowCharView(custom_metadata->key(i).c_str()), &value,
+                  &error),
+              NANOARROW_OK)
+        << error.message;
+    EXPECT_EQ(std::string(value.data, value.size_bytes), custom_metadata->value(i));
+  }
+}
+#endif
 
 class ArrowTypeIdParameterizedTestFixture
     : public ::testing::TestWithParam<enum ArrowType> {

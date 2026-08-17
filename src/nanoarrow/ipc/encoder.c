@@ -46,6 +46,9 @@ struct ArrowIpcEncoderPrivate {
   struct ArrowBuffer nodes;
   int encoding_footer;
   struct ArrowIpcDictionaryEncodings dictionary_encodings;
+  // Metadata to attach to the next encoded Message (in nanoarrow's packed
+  // representation), or an empty buffer if the next Message has no metadata.
+  struct ArrowBuffer message_metadata;
 };
 
 ArrowErrorCode ArrowIpcEncoderInit(struct ArrowIpcEncoder* encoder) {
@@ -65,6 +68,7 @@ ArrowErrorCode ArrowIpcEncoderInit(struct ArrowIpcEncoder* encoder) {
   ArrowBufferInit(&private->buffers);
   ArrowBufferInit(&private->nodes);
   ArrowIpcDictionaryEncodingsInit(&private->dictionary_encodings);
+  ArrowBufferInit(&private->message_metadata);
   return NANOARROW_OK;
 }
 
@@ -77,9 +81,33 @@ void ArrowIpcEncoderReset(struct ArrowIpcEncoder* encoder) {
     ArrowBufferReset(&private->nodes);
     ArrowBufferReset(&private->buffers);
     ArrowIpcDictionaryEncodingsReset(&private->dictionary_encodings);
+    ArrowBufferReset(&private->message_metadata);
     ArrowFree(private);
   }
   memset(encoder, 0, sizeof(struct ArrowIpcEncoder));
+}
+
+ArrowErrorCode ArrowIpcEncoderSetMessageMetadata(struct ArrowIpcEncoder* encoder,
+                                                 const char* metadata,
+                                                 struct ArrowError* error) {
+  NANOARROW_DCHECK(encoder != NULL && encoder->private_data != NULL);
+  struct ArrowIpcEncoderPrivate* private =
+      (struct ArrowIpcEncoderPrivate*)encoder->private_data;
+
+  // Any previously set metadata that was not yet encoded is discarded
+  private->message_metadata.size_bytes = 0;
+
+  struct ArrowMetadataReader reader;
+  NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowMetadataReaderInit(&reader, metadata), error);
+  if (reader.remaining_keys <= 0) {
+    return NANOARROW_OK;
+  }
+
+  NANOARROW_RETURN_NOT_OK_WITH_ERROR(
+      ArrowBufferAppend(&private->message_metadata, metadata,
+                        ArrowMetadataSizeOf(metadata)),
+      error);
+  return NANOARROW_OK;
 }
 
 static ArrowErrorCode ArrowIpcEncoderWriteContinuationAndSize(struct ArrowBuffer* out,
@@ -346,13 +374,13 @@ static ArrowErrorCode ArrowIpcEncodeField(
     struct ArrowError* error);
 
 static ArrowErrorCode ArrowIpcEncodeMetadata(flatcc_builder_t* builder,
-                                             const struct ArrowSchema* schema,
+                                             const char* packed_metadata,
                                              int (*push_start)(flatcc_builder_t*),
                                              ns(KeyValue_ref_t) *
                                                  (*push_end)(flatcc_builder_t*),
                                              struct ArrowError* error) {
   struct ArrowMetadataReader metadata;
-  NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowMetadataReaderInit(&metadata, schema->metadata),
+  NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowMetadataReaderInit(&metadata, packed_metadata),
                                      error);
   while (metadata.remaining_keys > 0) {
     struct ArrowStringView key, value;
@@ -365,6 +393,27 @@ static ArrowErrorCode ArrowIpcEncodeMetadata(flatcc_builder_t* builder,
         KeyValue_value_create_strn(builder, value.data, value.size_bytes), error);
     FLATCC_RETURN_IF_NULL(push_end(builder), error);
   }
+  return NANOARROW_OK;
+}
+
+// Encodes any metadata set by ArrowIpcEncoderSetMessageMetadata() into the Message
+// currently under construction and clears it, such that it applies to exactly one
+// Message.
+static ArrowErrorCode ArrowIpcEncodeMessageMetadata(
+    struct ArrowIpcEncoderPrivate* private, struct ArrowError* error) {
+  if (private->message_metadata.size_bytes == 0) {
+    return NANOARROW_OK;
+  }
+
+  flatcc_builder_t* builder = &private->builder;
+  FLATCC_RETURN_UNLESS_0(Message_custom_metadata_start(builder), error);
+  NANOARROW_RETURN_NOT_OK(
+      ArrowIpcEncodeMetadata(builder, (const char*)private->message_metadata.data,
+                             &ns(Message_custom_metadata_push_start),
+                             &ns(Message_custom_metadata_push_end), error));
+  FLATCC_RETURN_UNLESS_0(Message_custom_metadata_end(builder), error);
+
+  private->message_metadata.size_bytes = 0;
   return NANOARROW_OK;
 }
 
@@ -476,9 +525,9 @@ static ArrowErrorCode ArrowIpcEncodeField(
 
   if (schema->metadata) {
     FLATCC_RETURN_UNLESS_0(Field_custom_metadata_start(builder), error);
-    NANOARROW_RETURN_NOT_OK(
-        ArrowIpcEncodeMetadata(builder, schema, &ns(Field_custom_metadata_push_start),
-                               &ns(Field_custom_metadata_push_end), error));
+    NANOARROW_RETURN_NOT_OK(ArrowIpcEncodeMetadata(
+        builder, schema->metadata, &ns(Field_custom_metadata_push_start),
+        &ns(Field_custom_metadata_push_end), error));
     FLATCC_RETURN_UNLESS_0(Field_custom_metadata_end(builder), error);
   }
   return NANOARROW_OK;
@@ -512,9 +561,9 @@ static ArrowErrorCode ArrowIpcEncodeSchema(
 
   FLATCC_RETURN_UNLESS_0(Schema_custom_metadata_start(builder), error);
   if (schema->metadata) {
-    NANOARROW_RETURN_NOT_OK(
-        ArrowIpcEncodeMetadata(builder, schema, &ns(Schema_custom_metadata_push_start),
-                               &ns(Schema_custom_metadata_push_end), error));
+    NANOARROW_RETURN_NOT_OK(ArrowIpcEncodeMetadata(
+        builder, schema->metadata, &ns(Schema_custom_metadata_push_start),
+        &ns(Schema_custom_metadata_push_end), error));
   }
   FLATCC_RETURN_UNLESS_0(Schema_custom_metadata_end(builder), error);
 
@@ -553,6 +602,8 @@ ArrowErrorCode ArrowIpcEncoderEncodeSchema(struct ArrowIpcEncoder* encoder,
       ArrowIpcEncodeSchema(builder, schema, &private->dictionary_encodings, error));
 
   FLATCC_RETURN_UNLESS_0(Message_header_Schema_end(builder), error);
+
+  NANOARROW_RETURN_NOT_OK(ArrowIpcEncodeMessageMetadata(private, error));
 
   FLATCC_RETURN_UNLESS_0(Message_bodyLength_add(builder, 0), error);
 
@@ -699,6 +750,8 @@ static ArrowErrorCode ArrowIpcEncoderEncodeRecordBatch(
                          error);
 
   FLATCC_RETURN_UNLESS_0(Message_header_RecordBatch_end(builder), error);
+
+  NANOARROW_RETURN_NOT_OK(ArrowIpcEncodeMessageMetadata(private, error));
 
   FLATCC_RETURN_UNLESS_0(Message_bodyLength_add(builder, buffer_encoder->body_length),
                          error);
