@@ -88,25 +88,34 @@ void ArrowIpcEncoderReset(struct ArrowIpcEncoder* encoder) {
 }
 
 ArrowErrorCode ArrowIpcEncoderSetMessageMetadata(struct ArrowIpcEncoder* encoder,
-                                                 const char* metadata,
+                                                 struct ArrowBuffer* metadata,
                                                  struct ArrowError* error) {
   NANOARROW_DCHECK(encoder != NULL && encoder->private_data != NULL);
   struct ArrowIpcEncoderPrivate* private =
       (struct ArrowIpcEncoderPrivate*)encoder->private_data;
 
   // Any previously set metadata that was not yet encoded is discarded
-  private->message_metadata.size_bytes = 0;
+  ArrowBufferReset(&private->message_metadata);
 
-  struct ArrowMetadataReader reader;
-  NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowMetadataReaderInit(&reader, metadata), error);
-  if (reader.remaining_keys <= 0) {
+  if (metadata != NULL) {
+    ArrowBufferMove(metadata, &private->message_metadata);
+  }
+
+  // Metadata that can't contain a key count is empty; metadata with no keys is
+  // equivalent to no metadata at all. In both cases no custom_metadata is encoded.
+  if (private->message_metadata.size_bytes < (int64_t)sizeof(int32_t)) {
+    ArrowBufferReset(&private->message_metadata);
     return NANOARROW_OK;
   }
 
+  struct ArrowMetadataReader reader;
   NANOARROW_RETURN_NOT_OK_WITH_ERROR(
-      ArrowBufferAppend(&private->message_metadata, metadata,
-                        ArrowMetadataSizeOf(metadata)),
+      ArrowMetadataReaderInit(&reader, (const char*)private->message_metadata.data),
       error);
+  if (reader.remaining_keys <= 0) {
+    ArrowBufferReset(&private->message_metadata);
+  }
+
   return NANOARROW_OK;
 }
 
@@ -413,7 +422,7 @@ static ArrowErrorCode ArrowIpcEncodeMessageMetadata(
                              &ns(Message_custom_metadata_push_end), error));
   FLATCC_RETURN_UNLESS_0(Message_custom_metadata_end(builder), error);
 
-  private->message_metadata.size_bytes = 0;
+  ArrowBufferReset(&private->message_metadata);
   return NANOARROW_OK;
 }
 

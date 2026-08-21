@@ -472,6 +472,10 @@ NANOARROW_DLL ArrowErrorCode ArrowIpcDecoderSetDecompressor(
 /// \brief Callback invoked for each key/value pair by
 /// ArrowIpcDecoderVisitMessageMetadata()
 ///
+/// Both key and value are borrowed and are passed with an explicit size because
+/// neither is required to be present nor free of embedded nulls: a key or value that
+/// the message omits is passed as an empty string view.
+///
 /// Returning any value other than NANOARROW_OK will stop the visit and cause that
 /// value to be returned by ArrowIpcDecoderVisitMessageMetadata().
 typedef ArrowErrorCode (*ArrowIpcMetadataVisitFunction)(struct ArrowStringView key,
@@ -851,13 +855,14 @@ NANOARROW_DLL ArrowErrorCode ArrowIpcEncoderFinalizeBuffer(
 /// encoder's message metadata is cleared. Any metadata that was set but not yet
 /// encoded is replaced by this call; pass NULL to clear it.
 ///
-/// metadata uses the same representation as ArrowSchema::metadata and may be built
-/// with ArrowMetadataBuilderInit()/ArrowMetadataBuilderAppend(). It is copied by this
-/// call and need not outlive it.
-///
-/// Returns ENOMEM if allocation fails, NANOARROW_OK otherwise.
-NANOARROW_DLL ArrowErrorCode ArrowIpcEncoderSetMessageMetadata(
-    struct ArrowIpcEncoder* encoder, const char* metadata, struct ArrowError* error);
+/// metadata contains the same representation as ArrowSchema::metadata, as built by
+/// ArrowMetadataBuilderInit()/ArrowMetadataBuilderAppend(). The encoder takes ownership
+/// of it: unless metadata is NULL it is moved into the encoder and left empty. Metadata
+/// containing no keys is equivalent to no metadata at all and no custom_metadata is
+/// encoded for it.
+NANOARROW_DLL ArrowErrorCode
+ArrowIpcEncoderSetMessageMetadata(struct ArrowIpcEncoder* encoder,
+                                  struct ArrowBuffer* metadata, struct ArrowError* error);
 
 /// \brief Encode an ArrowSchema
 ///

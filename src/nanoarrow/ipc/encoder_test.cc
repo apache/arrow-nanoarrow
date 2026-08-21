@@ -204,10 +204,13 @@ TEST(NanoarrowIpcTest, NanoarrowIpcEncoderMessageMetadataRoundtrip) {
 
   KeyValues key_values{{"message_type", "data"}, {"cache-control", "no-store"}};
   auto metadata = PackMetadata(key_values);
-  ASSERT_EQ(ArrowIpcEncoderSetMessageMetadata(
-                encoder.get(), reinterpret_cast<const char*>(metadata->data), &error),
+  ASSERT_EQ(ArrowIpcEncoderSetMessageMetadata(encoder.get(), metadata.get(), &error),
             NANOARROW_OK)
       << error.message;
+
+  // The encoder took ownership of the metadata
+  EXPECT_EQ(metadata->data, nullptr);
+  EXPECT_EQ(metadata->size_bytes, 0);
 
   nanoarrow::UniqueBuffer message, body;
   ASSERT_EQ(ArrowIpcEncoderEncodeSimpleRecordBatch(encoder.get(), batch.array_view(),
@@ -275,8 +278,7 @@ TEST(NanoarrowIpcTest, NanoarrowIpcEncoderSchemaMessageMetadata) {
   KeyValues message_key_values{{"message_key", "message_value"}};
   auto message_metadata = PackMetadata(message_key_values);
   ASSERT_EQ(
-      ArrowIpcEncoderSetMessageMetadata(
-          encoder.get(), reinterpret_cast<const char*>(message_metadata->data), &error),
+      ArrowIpcEncoderSetMessageMetadata(encoder.get(), message_metadata.get(), &error),
       NANOARROW_OK)
       << error.message;
 
@@ -324,9 +326,8 @@ TEST(NanoarrowIpcTest, NanoarrowIpcEncoderMessageMetadataEmpty) {
       ArrowIpcEncoderFinalizeBuffer(encoder.get(), /*encapsulate=*/true, baseline.get()),
       NANOARROW_OK);
 
-  for (const char* metadata : std::vector<const char*>{
-           reinterpret_cast<const char*>(empty_metadata->data),
-           reinterpret_cast<const char*>(keyless_metadata->data), nullptr}) {
+  for (struct ArrowBuffer* metadata :
+       {empty_metadata.get(), keyless_metadata.get(), (struct ArrowBuffer*)nullptr}) {
     ASSERT_EQ(ArrowIpcEncoderSetMessageMetadata(encoder.get(), metadata, &error),
               NANOARROW_OK)
         << error.message;
@@ -350,8 +351,7 @@ TEST(NanoarrowIpcTest, NanoarrowIpcEncoderMessageMetadataEmpty) {
 
   // Setting metadata and then clearing it encodes nothing
   auto metadata = PackMetadata({{"key", "value"}});
-  ASSERT_EQ(ArrowIpcEncoderSetMessageMetadata(
-                encoder.get(), reinterpret_cast<const char*>(metadata->data), &error),
+  ASSERT_EQ(ArrowIpcEncoderSetMessageMetadata(encoder.get(), metadata.get(), &error),
             NANOARROW_OK)
       << error.message;
   ASSERT_EQ(ArrowIpcEncoderSetMessageMetadata(encoder.get(), nullptr, &error),
@@ -391,8 +391,7 @@ TEST(NanoarrowIpcTest, NanoarrowIpcVisitMessageMetadataError) {
       << error.message;
 
   auto metadata = PackMetadata({{"key1", "value1"}, {"key2", "value2"}});
-  ASSERT_EQ(ArrowIpcEncoderSetMessageMetadata(
-                encoder.get(), reinterpret_cast<const char*>(metadata->data), &error),
+  ASSERT_EQ(ArrowIpcEncoderSetMessageMetadata(encoder.get(), metadata.get(), &error),
             NANOARROW_OK)
       << error.message;
 

@@ -1382,6 +1382,62 @@ void AssertArrayViewIdentical(const struct ArrowArrayView* actual,
   }
 }
 
+// A Message whose Message.custom_metadata and Schema.custom_metadata each contain a
+// KeyValue with no key. Both `key` and `value` are optional fields of KeyValue in the
+// IPC format, so this passes flatbuffer verification and must not crash the decoder.
+// Generated with flatcc: a Schema message with no fields, whose two metadata vectors
+// each contain KeyValue{value: "message_value" / "schema_value"} and no key.
+alignas(8) static uint8_t kKeylessMetadataSchema[] = {
+    0xff, 0xff, 0xff, 0xff, 0x90, 0x00, 0x00, 0x00, 0x04, 0x00, 0x00, 0x00, 0x86, 0xff,
+    0xff, 0xff, 0x04, 0x00, 0x01, 0x00, 0x2c, 0x00, 0x00, 0x00, 0x04, 0x00, 0x00, 0x00,
+    0x01, 0x00, 0x00, 0x00, 0x04, 0x00, 0x00, 0x00, 0xb0, 0xff, 0xff, 0xff, 0x04, 0x00,
+    0x00, 0x00, 0x0d, 0x00, 0x00, 0x00, 0x6d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x5f,
+    0x76, 0x61, 0x6c, 0x75, 0x65, 0x00, 0x00, 0x00, 0xc4, 0xff, 0xff, 0xff, 0x2c, 0x00,
+    0x00, 0x00, 0x04, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x04, 0x00, 0x00, 0x00,
+    0xe0, 0xff, 0xff, 0xff, 0x04, 0x00, 0x00, 0x00, 0x0c, 0x00, 0x00, 0x00, 0x73, 0x63,
+    0x68, 0x65, 0x6d, 0x61, 0x5f, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x08, 0x00, 0x08, 0x00, 0x00, 0x00, 0x04, 0x00, 0x0a, 0x00,
+    0x0c, 0x00, 0x00, 0x00, 0x04, 0x00, 0x08, 0x00, 0x0e, 0x00, 0x10, 0x00, 0x04, 0x00,
+    0x06, 0x00, 0x08, 0x00, 0x00, 0x00, 0x0c, 0x00, 0x00, 0x00, 0x00, 0x00};
+
+TEST(NanoarrowIpcTest, NanoarrowIpcDecodeMetadataWithoutKey) {
+  struct ArrowBufferView data;
+  data.data.as_uint8 = kKeylessMetadataSchema;
+  data.size_bytes = sizeof(kKeylessMetadataSchema);
+
+  struct ArrowError error;
+  nanoarrow::ipc::UniqueDecoder decoder;
+  ASSERT_EQ(ArrowIpcDecoderInit(decoder.get()), NANOARROW_OK);
+  ASSERT_EQ(ArrowIpcDecoderVerifyHeader(decoder.get(), data, &error), NANOARROW_OK)
+      << error.message;
+  ASSERT_EQ(ArrowIpcDecoderDecodeHeader(decoder.get(), data, &error), NANOARROW_OK)
+      << error.message;
+
+  // A missing key is decoded as an empty key
+  nanoarrow::UniqueBuffer message_metadata;
+  ASSERT_EQ(
+      ArrowIpcDecoderGetMessageMetadata(decoder.get(), message_metadata.get(), &error),
+      NANOARROW_OK)
+      << error.message;
+  EXPECT_EQ(
+      ArrowSchemaMetadataToString(reinterpret_cast<const char*>(message_metadata->data)),
+      "=message_value");
+
+  struct ArrowStringView value = ArrowCharView(nullptr);
+  ASSERT_EQ(ArrowIpcDecoderGetMessageMetadataValue(decoder.get(), ArrowCharView(""),
+                                                   &value, &error),
+            NANOARROW_OK)
+      << error.message;
+  EXPECT_EQ(std::string(value.data, value.size_bytes), "message_value");
+
+  // ...including the metadata of the schema the message contains
+  nanoarrow::UniqueSchema schema;
+  ASSERT_EQ(ArrowIpcDecoderDecodeSchema(decoder.get(), schema.get(), &error),
+            NANOARROW_OK)
+      << error.message;
+  EXPECT_EQ(ArrowSchemaMetadataToString(schema->metadata), "=schema_value");
+}
+
 #if defined(NANOARROW_BUILD_TESTS_WITH_ARROW)
 TEST_P(ArrowTypeParameterizedTestFixture, NanoarrowIpcNanoarrowArrayRoundtrip) {
   if (GetParam()->id() == arrow::Type::DICTIONARY) {
@@ -1707,7 +1763,6 @@ INSTANTIATE_TEST_SUITE_P(
         //     arrow::KeyValueMetadata::Make({"key1", "key2"}, {"value1", "value2"}))})
         ));
 
-#if defined(NANOARROW_BUILD_TESTS_WITH_ARROW)
 // Advance data past the message whose header was just decoded
 static void AdvancePastMessage(struct ArrowIpcDecoder* decoder,
                                struct ArrowBufferView* data) {
@@ -1751,8 +1806,7 @@ TEST(NanoarrowIpcTest, NanoarrowIpcMessageMetadataArrowInterop) {
 
   nanoarrow::ipc::UniqueEncoder encoder;
   ASSERT_EQ(ArrowIpcEncoderInit(encoder.get()), NANOARROW_OK);
-  ASSERT_EQ(ArrowIpcEncoderSetMessageMetadata(
-                encoder.get(), reinterpret_cast<const char*>(metadata->data), &error),
+  ASSERT_EQ(ArrowIpcEncoderSetMessageMetadata(encoder.get(), metadata.get(), &error),
             NANOARROW_OK)
       << error.message;
 
@@ -1845,7 +1899,6 @@ TEST(NanoarrowIpcTest, NanoarrowIpcMessageMetadataArrowInterop) {
     EXPECT_EQ(std::string(value.data, value.size_bytes), custom_metadata->value(i));
   }
 }
-#endif
 
 class ArrowTypeIdParameterizedTestFixture
     : public ::testing::TestWithParam<enum ArrowType> {
