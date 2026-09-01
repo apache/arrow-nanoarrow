@@ -979,9 +979,10 @@ NANOARROW_DLL ArrowErrorCode ArrowIpcEncoderFinalizeBuffer(
 
 /// \brief Set the custom metadata of the next encoded message
 ///
-/// Attaches metadata to the next message encoded by ArrowIpcEncoderEncodeSchema() or
-/// ArrowIpcEncoderEncodeSimpleRecordBatch() (i.e., Message::custom_metadata, which is
-/// distinct from the metadata of the Schema or Field that the message may contain).
+/// Attaches metadata to the next message encoded by ArrowIpcEncoderEncodeSchema(),
+/// ArrowIpcEncoderEncodeSimpleRecordBatch(), or
+/// ArrowIpcEncoderEncodeSimpleDictionaryBatch() (i.e., Message::custom_metadata, which
+/// is distinct from the metadata of the Schema or Field that the message may contain).
 /// The metadata applies to exactly one message: after a message is encoded the
 /// encoder's message metadata is cleared. Any metadata that was set but not yet
 /// encoded is replaced by this call; pass NULL to clear it.

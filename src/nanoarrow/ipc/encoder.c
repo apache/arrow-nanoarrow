@@ -1124,6 +1124,9 @@ static ArrowErrorCode ArrowIpcEncoderEncodeDictionaryBatch(
   FLATCC_RETURN_UNLESS_0(DictionaryBatch_data_end(builder), error);
   FLATCC_RETURN_UNLESS_0(DictionaryBatch_isDelta_add(builder, is_delta ? 1 : 0), error);
   FLATCC_RETURN_UNLESS_0(Message_header_DictionaryBatch_end(builder), error);
+
+  NANOARROW_RETURN_NOT_OK(ArrowIpcEncodeMessageMetadata(private, error));
+
   FLATCC_RETURN_UNLESS_0(Message_bodyLength_add(builder, buffer_encoder->body_length),
                          error);
   FLATCC_RETURN_IF_NULL(ns(Message_end_as_root(builder)), error);
