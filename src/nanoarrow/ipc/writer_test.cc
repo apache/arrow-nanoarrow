@@ -19,6 +19,12 @@
 
 #include <stdio.h>
 
+#if defined(NANOARROW_BUILD_TESTS_WITH_ARROW)
+#include <arrow/array.h>
+#include <arrow/io/memory.h>
+#include <arrow/ipc/api.h>
+#endif
+
 #include "nanoarrow/nanoarrow_ipc.hpp"
 
 TEST(NanoarrowIpcWriter, OutputStreamBuffer) {
@@ -435,6 +441,77 @@ TEST(NanoarrowIpcWriter, EmitsChangedDictionary) {
                                   NANOARROW_IPC_MESSAGE_TYPE_RECORD_BATCH,
                                   NANOARROW_IPC_MESSAGE_TYPE_DICTIONARY_BATCH,
                                   NANOARROW_IPC_MESSAGE_TYPE_RECORD_BATCH}));
+
+#if defined(NANOARROW_BUILD_TESTS_WITH_ARROW)
+  auto arrow_input = std::make_shared<arrow::io::BufferReader>(
+      arrow::Buffer::Wrap(output->data, output->size_bytes));
+  auto maybe_arrow_reader = arrow::ipc::RecordBatchStreamReader::Open(arrow_input);
+  ASSERT_TRUE(maybe_arrow_reader.ok()) << maybe_arrow_reader.status();
+  auto arrow_reader = maybe_arrow_reader.ValueUnsafe();
+
+  std::shared_ptr<arrow::RecordBatch> arrow_batch1;
+  std::shared_ptr<arrow::RecordBatch> arrow_batch2;
+  ASSERT_TRUE(arrow_reader->ReadNext(&arrow_batch1).ok());
+  ASSERT_TRUE(arrow_reader->ReadNext(&arrow_batch2).ok());
+  auto arrow_dictionary1 =
+      std::static_pointer_cast<arrow::DictionaryArray>(arrow_batch1->column(0));
+  auto arrow_dictionary2 =
+      std::static_pointer_cast<arrow::DictionaryArray>(arrow_batch2->column(0));
+  auto arrow_values1 =
+      std::static_pointer_cast<arrow::StringArray>(arrow_dictionary1->dictionary());
+  auto arrow_values2 =
+      std::static_pointer_cast<arrow::StringArray>(arrow_dictionary2->dictionary());
+  EXPECT_EQ(arrow_values1->GetString(1), "bar");
+  EXPECT_EQ(arrow_values2->GetString(1), "baz");
+#endif
+
+  struct ArrowIpcInputStream input;
+  ASSERT_EQ(ArrowIpcInputStreamInitBuffer(&input, output.get()), NANOARROW_OK);
+  nanoarrow::UniqueArrayStream reader;
+  ASSERT_EQ(ArrowIpcArrayStreamReaderInit(reader.get(), &input, nullptr), NANOARROW_OK);
+
+  nanoarrow::UniqueSchema roundtrip_schema;
+  ASSERT_EQ(ArrowArrayStreamGetSchema(reader.get(), roundtrip_schema.get(), &error),
+            NANOARROW_OK)
+      << error.message;
+
+  nanoarrow::UniqueArray roundtrip_array1;
+  nanoarrow::UniqueArray roundtrip_array2;
+  ASSERT_EQ(ArrowArrayStreamGetNext(reader.get(), roundtrip_array1.get(), &error),
+            NANOARROW_OK)
+      << error.message;
+  ASSERT_EQ(ArrowArrayStreamGetNext(reader.get(), roundtrip_array2.get(), &error),
+            NANOARROW_OK)
+      << error.message;
+
+  nanoarrow::UniqueArrayView roundtrip_view1;
+  nanoarrow::UniqueArrayView roundtrip_view2;
+  ASSERT_EQ(ArrowArrayViewInitFromSchema(roundtrip_view1.get(), roundtrip_schema.get(),
+                                        &error),
+            NANOARROW_OK)
+      << error.message;
+  ASSERT_EQ(ArrowArrayViewInitFromSchema(roundtrip_view2.get(), roundtrip_schema.get(),
+                                        &error),
+            NANOARROW_OK)
+      << error.message;
+  ASSERT_EQ(ArrowArrayViewSetArray(roundtrip_view1.get(), roundtrip_array1.get(), &error),
+            NANOARROW_OK)
+      << error.message;
+  ASSERT_EQ(ArrowArrayViewSetArray(roundtrip_view2.get(), roundtrip_array2.get(), &error),
+            NANOARROW_OK)
+      << error.message;
+
+  struct ArrowStringView first_dictionary_value =
+      ArrowArrayViewGetStringUnsafe(roundtrip_view1->children[0]->dictionary, 1);
+  struct ArrowStringView replacement_dictionary_value =
+      ArrowArrayViewGetStringUnsafe(roundtrip_view2->children[0]->dictionary, 1);
+  EXPECT_EQ(std::string(first_dictionary_value.data,
+                        first_dictionary_value.size_bytes),
+            "bar");
+  EXPECT_EQ(std::string(replacement_dictionary_value.data,
+                        replacement_dictionary_value.size_bytes),
+            "baz");
+
 }
 
 // Write a dictionary-encoded stream through the high-level WriteArrayStream path

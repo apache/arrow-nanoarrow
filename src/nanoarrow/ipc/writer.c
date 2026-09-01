@@ -291,6 +291,8 @@ ArrowErrorCode ArrowIpcWriterWriteSchema(struct ArrowIpcWriter* writer,
       (struct ArrowIpcWriterPrivate*)writer->private_data;
 
   ArrowIpcWriterResetDictionaryCache(private);
+  ArrowIpcEncoderSetDictionaryReplacement(&private->encoder,
+                                          /*enabled=*/!private->writing_file);
   NANOARROW_ASSERT_OK(ArrowBufferResize(&private->buffer, 0, 0));
 
   NANOARROW_RETURN_NOT_OK(ArrowIpcEncoderEncodeSchema(&private->encoder, in, error));
