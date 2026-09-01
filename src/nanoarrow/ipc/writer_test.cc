@@ -303,7 +303,9 @@ TEST(NanoarrowIpcWriter, WriteDictionaryBatch) {
 
 // Build a struct array with a single dictionary-encoded (int32 -> utf8) child.
 static void MakeDictionaryStructArray(struct ArrowArray* array,
-                                      struct ArrowSchema* schema) {
+                                      struct ArrowSchema* schema,
+                                      const char* value0 = "foo",
+                                      const char* value1 = "bar") {
   ASSERT_EQ(ArrowSchemaInitFromType(schema, NANOARROW_TYPE_STRUCT), NANOARROW_OK);
   ASSERT_EQ(ArrowSchemaAllocateChildren(schema, 1), NANOARROW_OK);
   ASSERT_EQ(ArrowSchemaInitFromType(schema->children[0], NANOARROW_TYPE_INT32),
@@ -319,8 +321,8 @@ static void MakeDictionaryStructArray(struct ArrowArray* array,
   struct ArrowArray* values = indices->dictionary;
 
   ASSERT_EQ(ArrowArrayStartAppending(array), NANOARROW_OK);
-  ASSERT_EQ(ArrowArrayAppendString(values, ArrowCharView("foo")), NANOARROW_OK);
-  ASSERT_EQ(ArrowArrayAppendString(values, ArrowCharView("bar")), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAppendString(values, ArrowCharView(value0)), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAppendString(values, ArrowCharView(value1)), NANOARROW_OK);
 
   ASSERT_EQ(ArrowArrayAppendInt(indices, 0), NANOARROW_OK);
   ASSERT_EQ(ArrowArrayAppendInt(indices, 1), NANOARROW_OK);
@@ -328,6 +330,111 @@ static void MakeDictionaryStructArray(struct ArrowArray* array,
   array->length = 3;
 
   ASSERT_EQ(ArrowArrayFinishBuildingDefault(array, nullptr), NANOARROW_OK);
+}
+
+static std::vector<int32_t> DecodeMessageTypes(const struct ArrowBuffer* buffer) {
+  std::vector<int32_t> message_types;
+  struct ArrowBufferView remaining;
+  remaining.data.as_uint8 = buffer->data;
+  remaining.size_bytes = buffer->size_bytes;
+  struct ArrowIpcDecoder decoder;
+  struct ArrowError error;
+  ArrowIpcDecoderInit(&decoder);
+
+  while (remaining.size_bytes > 0) {
+    int result = ArrowIpcDecoderVerifyHeader(&decoder, remaining, &error);
+    if (result == ENODATA) {
+      break;
+    }
+
+    EXPECT_EQ(result, NANOARROW_OK) << error.message;
+    if (result != NANOARROW_OK) {
+      break;
+    }
+
+    message_types.push_back(decoder.message_type);
+    int64_t message_size = ((decoder.header_size_bytes + 7) / 8) * 8 +
+                           ((decoder.body_size_bytes + 7) / 8) * 8;
+    EXPECT_LE(message_size, remaining.size_bytes);
+    if (message_size > remaining.size_bytes) {
+      break;
+    }
+
+    remaining.data.as_uint8 += message_size;
+    remaining.size_bytes -= message_size;
+  }
+
+  ArrowIpcDecoderReset(&decoder);
+  return message_types;
+}
+
+TEST(NanoarrowIpcWriter, DoesNotRepeatUnchangedDictionary) {
+  struct ArrowError error;
+
+  nanoarrow::UniqueSchema schema;
+  nanoarrow::UniqueArray array1;
+  MakeDictionaryStructArray(array1.get(), schema.get());
+
+  nanoarrow::UniqueSchema unused_schema;
+  nanoarrow::UniqueArray array2;
+  MakeDictionaryStructArray(array2.get(), unused_schema.get());
+
+  nanoarrow::UniqueArrayStream array_stream;
+  ASSERT_EQ(ArrowBasicArrayStreamInit(array_stream.get(), schema.get(), 2), NANOARROW_OK);
+  ArrowBasicArrayStreamSetArray(array_stream.get(), 0, array1.get());
+  ArrowBasicArrayStreamSetArray(array_stream.get(), 1, array2.get());
+
+  nanoarrow::UniqueBuffer output;
+  nanoarrow::ipc::UniqueOutputStream out_stream;
+  ASSERT_EQ(ArrowIpcOutputStreamInitBuffer(out_stream.get(), output.get()), NANOARROW_OK);
+
+  nanoarrow::ipc::UniqueWriter writer;
+  ASSERT_EQ(ArrowIpcWriterInit(writer.get(), out_stream.get()), NANOARROW_OK);
+  ASSERT_EQ(ArrowIpcWriterWriteArrayStream(writer.get(), array_stream.get(), &error),
+            NANOARROW_OK)
+      << error.message;
+
+  std::vector<int32_t> message_types = DecodeMessageTypes(output.get());
+  EXPECT_EQ(message_types,
+            (std::vector<int32_t>{NANOARROW_IPC_MESSAGE_TYPE_SCHEMA,
+                                  NANOARROW_IPC_MESSAGE_TYPE_DICTIONARY_BATCH,
+                                  NANOARROW_IPC_MESSAGE_TYPE_RECORD_BATCH,
+                                  NANOARROW_IPC_MESSAGE_TYPE_RECORD_BATCH}));
+}
+
+TEST(NanoarrowIpcWriter, EmitsChangedDictionary) {
+  struct ArrowError error;
+
+  nanoarrow::UniqueSchema schema;
+  nanoarrow::UniqueArray array1;
+  MakeDictionaryStructArray(array1.get(), schema.get());
+
+  nanoarrow::UniqueSchema unused_schema;
+  nanoarrow::UniqueArray array2;
+  MakeDictionaryStructArray(array2.get(), unused_schema.get(), "foo", "baz");
+
+  nanoarrow::UniqueArrayStream array_stream;
+  ASSERT_EQ(ArrowBasicArrayStreamInit(array_stream.get(), schema.get(), 2), NANOARROW_OK);
+  ArrowBasicArrayStreamSetArray(array_stream.get(), 0, array1.get());
+  ArrowBasicArrayStreamSetArray(array_stream.get(), 1, array2.get());
+
+  nanoarrow::UniqueBuffer output;
+  nanoarrow::ipc::UniqueOutputStream out_stream;
+  ASSERT_EQ(ArrowIpcOutputStreamInitBuffer(out_stream.get(), output.get()), NANOARROW_OK);
+
+  nanoarrow::ipc::UniqueWriter writer;
+  ASSERT_EQ(ArrowIpcWriterInit(writer.get(), out_stream.get()), NANOARROW_OK);
+  ASSERT_EQ(ArrowIpcWriterWriteArrayStream(writer.get(), array_stream.get(), &error),
+            NANOARROW_OK)
+      << error.message;
+
+  std::vector<int32_t> message_types = DecodeMessageTypes(output.get());
+  EXPECT_EQ(message_types,
+            (std::vector<int32_t>{NANOARROW_IPC_MESSAGE_TYPE_SCHEMA,
+                                  NANOARROW_IPC_MESSAGE_TYPE_DICTIONARY_BATCH,
+                                  NANOARROW_IPC_MESSAGE_TYPE_RECORD_BATCH,
+                                  NANOARROW_IPC_MESSAGE_TYPE_DICTIONARY_BATCH,
+                                  NANOARROW_IPC_MESSAGE_TYPE_RECORD_BATCH}));
 }
 
 // Write a dictionary-encoded stream through the high-level WriteArrayStream path
