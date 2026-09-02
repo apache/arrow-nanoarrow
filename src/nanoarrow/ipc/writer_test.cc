@@ -374,6 +374,125 @@ static std::vector<int32_t> DecodeMessageTypes(const struct ArrowBuffer* buffer)
   return message_types;
 }
 
+static std::vector<int64_t> DecodeDictionaryIds(const struct ArrowBuffer* buffer) {
+  std::vector<int64_t> dictionary_ids;
+  struct ArrowBufferView remaining;
+  remaining.data.as_uint8 = buffer->data;
+  remaining.size_bytes = buffer->size_bytes;
+  struct ArrowIpcDecoder decoder;
+  struct ArrowError error;
+  ArrowIpcDecoderInit(&decoder);
+
+  while (remaining.size_bytes > 0) {
+    int result = ArrowIpcDecoderVerifyHeader(&decoder, remaining, &error);
+    if (result == ENODATA) {
+      break;
+    }
+
+    EXPECT_EQ(result, NANOARROW_OK) << error.message;
+    if (result != NANOARROW_OK) {
+      break;
+    }
+
+    if (decoder.message_type == NANOARROW_IPC_MESSAGE_TYPE_DICTIONARY_BATCH) {
+      result = ArrowIpcDecoderDecodeHeader(&decoder, remaining, &error);
+      EXPECT_EQ(result, NANOARROW_OK) << error.message;
+      if (result != NANOARROW_OK) {
+        break;
+      }
+      dictionary_ids.push_back(decoder.dictionary->id);
+    }
+
+    int64_t message_size = ((decoder.header_size_bytes + 7) / 8) * 8 +
+                           ((decoder.body_size_bytes + 7) / 8) * 8;
+    remaining.data.as_uint8 += message_size;
+    remaining.size_bytes -= message_size;
+  }
+
+  ArrowIpcDecoderReset(&decoder);
+  return dictionary_ids;
+}
+
+static void MakeNestedDictionaryStructArray(struct ArrowArray* array,
+                                            struct ArrowSchema* schema) {
+  ASSERT_EQ(ArrowSchemaInitFromType(schema, NANOARROW_TYPE_STRUCT), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaAllocateChildren(schema, 1), NANOARROW_OK);
+
+  struct ArrowSchema* outer_field = schema->children[0];
+  ASSERT_EQ(ArrowSchemaInitFromType(outer_field, NANOARROW_TYPE_INT32), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaSetName(outer_field, "outer"), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaAllocateDictionary(outer_field), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaInitFromType(outer_field->dictionary, NANOARROW_TYPE_STRUCT),
+            NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaAllocateChildren(outer_field->dictionary, 1), NANOARROW_OK);
+
+  struct ArrowSchema* inner_field = outer_field->dictionary->children[0];
+  ASSERT_EQ(ArrowSchemaInitFromType(inner_field, NANOARROW_TYPE_INT32), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaSetName(inner_field, "inner"), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaAllocateDictionary(inner_field), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaInitFromType(inner_field->dictionary, NANOARROW_TYPE_STRING),
+            NANOARROW_OK);
+
+  ASSERT_EQ(ArrowArrayInitFromSchema(array, schema, nullptr), NANOARROW_OK);
+  struct ArrowArray* outer_indices = array->children[0];
+  struct ArrowArray* outer_values = outer_indices->dictionary;
+  struct ArrowArray* inner_indices = outer_values->children[0];
+  struct ArrowArray* inner_values = inner_indices->dictionary;
+
+  ASSERT_EQ(ArrowArrayStartAppending(array), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAppendString(inner_values, ArrowCharView("foo")), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAppendString(inner_values, ArrowCharView("bar")), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAppendInt(inner_indices, 0), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAppendInt(inner_indices, 1), NANOARROW_OK);
+  outer_values->length = 2;
+  ASSERT_EQ(ArrowArrayAppendInt(outer_indices, 0), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAppendInt(outer_indices, 1), NANOARROW_OK);
+  array->length = 2;
+  ASSERT_EQ(ArrowArrayFinishBuildingDefault(array, nullptr), NANOARROW_OK);
+}
+
+TEST(NanoarrowIpcWriter, WritesNestedDictionariesDependencyFirst) {
+  struct ArrowError error;
+  nanoarrow::UniqueSchema schema;
+  nanoarrow::UniqueArray array;
+  MakeNestedDictionaryStructArray(array.get(), schema.get());
+
+  nanoarrow::UniqueArrayStream array_stream;
+  ASSERT_EQ(ArrowBasicArrayStreamInit(array_stream.get(), schema.get(), 1), NANOARROW_OK);
+  ArrowBasicArrayStreamSetArray(array_stream.get(), 0, array.get());
+
+  nanoarrow::UniqueBuffer output;
+  nanoarrow::ipc::UniqueOutputStream out_stream;
+  ASSERT_EQ(ArrowIpcOutputStreamInitBuffer(out_stream.get(), output.get()), NANOARROW_OK);
+  nanoarrow::ipc::UniqueWriter writer;
+  ASSERT_EQ(ArrowIpcWriterInit(writer.get(), out_stream.get()), NANOARROW_OK);
+  ASSERT_EQ(ArrowIpcWriterWriteArrayStream(writer.get(), array_stream.get(), &error),
+            NANOARROW_OK)
+      << error.message;
+
+  EXPECT_EQ(DecodeDictionaryIds(output.get()), (std::vector<int64_t>{1, 0}));
+
+  struct ArrowIpcInputStream input;
+  ASSERT_EQ(ArrowIpcInputStreamInitBuffer(&input, output.get()), NANOARROW_OK);
+  nanoarrow::UniqueArrayStream reader;
+  ASSERT_EQ(ArrowIpcArrayStreamReaderInit(reader.get(), &input, nullptr), NANOARROW_OK);
+  nanoarrow::UniqueSchema roundtrip_schema;
+  ASSERT_EQ(ArrowArrayStreamGetSchema(reader.get(), roundtrip_schema.get(), &error),
+            NANOARROW_OK)
+      << error.message;
+  nanoarrow::UniqueArray roundtrip_array;
+  ASSERT_EQ(ArrowArrayStreamGetNext(reader.get(), roundtrip_array.get(), &error),
+            NANOARROW_OK)
+      << error.message;
+
+  struct ArrowArray* outer_dictionary = roundtrip_array->children[0]->dictionary;
+  ASSERT_NE(outer_dictionary, nullptr);
+  ASSERT_EQ(outer_dictionary->n_children, 1);
+  struct ArrowArray* inner_dictionary = outer_dictionary->children[0]->dictionary;
+  ASSERT_NE(inner_dictionary, nullptr);
+  EXPECT_EQ(inner_dictionary->length, 2);
+}
+
 TEST(NanoarrowIpcWriter, DoesNotRepeatUnchangedDictionary) {
   struct ArrowError error;
 
