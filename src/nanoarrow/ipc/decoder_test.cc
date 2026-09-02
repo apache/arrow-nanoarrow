@@ -876,6 +876,14 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDecodeDictionaryBatch) {
   data.data.as_uint8 += decoder.header_size_bytes;
   data.size_bytes -= decoder.header_size_bytes;
 
+  // The convenience APIs without a dictionary memo must reject dictionary-encoded
+  // fields instead of returning an array with an unresolved dictionary.
+  struct ArrowArrayView* unresolved_view;
+  ASSERT_EQ(ArrowIpcDecoderDecodeArrayView(&decoder, data, 0, &unresolved_view, &error),
+            ENOTSUP);
+  EXPECT_STREQ(error.message,
+               "Can't decode a dictionary-encoded field without ArrowIpcDictionaries");
+
   // Decode the entire batch and check the dictionary
   struct ArrowArrayView* batch_view;
   ASSERT_EQ(ArrowIpcDecoderDecodeArrayViewWithDictionaries(
