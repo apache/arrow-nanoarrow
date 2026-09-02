@@ -414,7 +414,8 @@ static std::vector<int64_t> DecodeDictionaryIds(const struct ArrowBuffer* buffer
 }
 
 static void MakeNestedDictionaryStructArray(struct ArrowArray* array,
-                                            struct ArrowSchema* schema) {
+                                            struct ArrowSchema* schema,
+                                            const char* inner_value1 = "bar") {
   ASSERT_EQ(ArrowSchemaInitFromType(schema, NANOARROW_TYPE_STRUCT), NANOARROW_OK);
   ASSERT_EQ(ArrowSchemaAllocateChildren(schema, 1), NANOARROW_OK);
 
@@ -441,7 +442,8 @@ static void MakeNestedDictionaryStructArray(struct ArrowArray* array,
 
   ASSERT_EQ(ArrowArrayStartAppending(array), NANOARROW_OK);
   ASSERT_EQ(ArrowArrayAppendString(inner_values, ArrowCharView("foo")), NANOARROW_OK);
-  ASSERT_EQ(ArrowArrayAppendString(inner_values, ArrowCharView("bar")), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAppendString(inner_values, ArrowCharView(inner_value1)),
+            NANOARROW_OK);
   ASSERT_EQ(ArrowArrayAppendInt(inner_indices, 0), NANOARROW_OK);
   ASSERT_EQ(ArrowArrayAppendInt(inner_indices, 1), NANOARROW_OK);
   outer_values->length = 2;
@@ -491,6 +493,67 @@ TEST(NanoarrowIpcWriter, WritesNestedDictionariesDependencyFirst) {
   struct ArrowArray* inner_dictionary = outer_dictionary->children[0]->dictionary;
   ASSERT_NE(inner_dictionary, nullptr);
   EXPECT_EQ(inner_dictionary->length, 2);
+}
+
+TEST(NanoarrowIpcWriter, ReemitsParentWhenNestedDictionaryChanges) {
+  struct ArrowError error;
+  nanoarrow::UniqueSchema schema;
+  nanoarrow::UniqueArray array1;
+  MakeNestedDictionaryStructArray(array1.get(), schema.get());
+
+  nanoarrow::UniqueSchema unused_schema;
+  nanoarrow::UniqueArray array2;
+  MakeNestedDictionaryStructArray(array2.get(), unused_schema.get(), "baz");
+
+  nanoarrow::UniqueArrayStream array_stream;
+  ASSERT_EQ(ArrowBasicArrayStreamInit(array_stream.get(), schema.get(), 2), NANOARROW_OK);
+  ArrowBasicArrayStreamSetArray(array_stream.get(), 0, array1.get());
+  ArrowBasicArrayStreamSetArray(array_stream.get(), 1, array2.get());
+
+  nanoarrow::UniqueBuffer output;
+  nanoarrow::ipc::UniqueOutputStream out_stream;
+  ASSERT_EQ(ArrowIpcOutputStreamInitBuffer(out_stream.get(), output.get()), NANOARROW_OK);
+  nanoarrow::ipc::UniqueWriter writer;
+  ASSERT_EQ(ArrowIpcWriterInit(writer.get(), out_stream.get()), NANOARROW_OK);
+  ASSERT_EQ(ArrowIpcWriterWriteArrayStream(writer.get(), array_stream.get(), &error),
+            NANOARROW_OK)
+      << error.message;
+
+  EXPECT_EQ(DecodeDictionaryIds(output.get()),
+            (std::vector<int64_t>{1, 0, 1, 0}));
+
+  struct ArrowIpcInputStream input;
+  ASSERT_EQ(ArrowIpcInputStreamInitBuffer(&input, output.get()), NANOARROW_OK);
+  nanoarrow::UniqueArrayStream reader;
+  ASSERT_EQ(ArrowIpcArrayStreamReaderInit(reader.get(), &input, nullptr), NANOARROW_OK);
+  nanoarrow::UniqueSchema roundtrip_schema;
+  ASSERT_EQ(ArrowArrayStreamGetSchema(reader.get(), roundtrip_schema.get(), &error),
+            NANOARROW_OK)
+      << error.message;
+
+  nanoarrow::UniqueArray roundtrip_array1;
+  nanoarrow::UniqueArray roundtrip_array2;
+  ASSERT_EQ(ArrowArrayStreamGetNext(reader.get(), roundtrip_array1.get(), &error),
+            NANOARROW_OK)
+      << error.message;
+  ASSERT_EQ(ArrowArrayStreamGetNext(reader.get(), roundtrip_array2.get(), &error),
+            NANOARROW_OK)
+      << error.message;
+
+  const struct ArrowArray* inner_dictionary1 =
+      roundtrip_array1->children[0]->dictionary->children[0]->dictionary;
+  const struct ArrowArray* inner_dictionary2 =
+      roundtrip_array2->children[0]->dictionary->children[0]->dictionary;
+  nanoarrow::UniqueArrayView inner_view1;
+  nanoarrow::UniqueArrayView inner_view2;
+  ArrowArrayViewInitFromType(inner_view1.get(), NANOARROW_TYPE_STRING);
+  ArrowArrayViewInitFromType(inner_view2.get(), NANOARROW_TYPE_STRING);
+  ASSERT_EQ(ArrowArrayViewSetArray(inner_view1.get(), inner_dictionary1, &error),
+            NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayViewSetArray(inner_view2.get(), inner_dictionary2, &error),
+            NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayViewGetStringUnsafe(inner_view1.get(), 1), ArrowCharView("bar"));
+  EXPECT_EQ(ArrowArrayViewGetStringUnsafe(inner_view2.get(), 1), ArrowCharView("baz"));
 }
 
 TEST(NanoarrowIpcWriter, DoesNotRepeatUnchangedDictionary) {

@@ -191,9 +191,13 @@ struct ArrowIpcWriterDictionaryCacheEntry {
   struct ArrowBuffer body;
 };
 
+#define NANOARROW_IPC_NO_PARENT_DICTIONARY_ID -1
+
 struct ArrowIpcWriterDictionaryView {
   int64_t dictionary_id;
+  int64_t parent_dictionary_id;
   const struct ArrowArrayView* values_view;
+  int force_emit;
 };
 
 static void ArrowIpcWriterResetDictionaryCache(
@@ -432,7 +436,8 @@ static struct ArrowIpcWriterDictionaryCacheEntry* ArrowIpcWriterFindDictionaryCa
 
 static ArrowErrorCode ArrowIpcWriterWriteDictionaryBatchIfChanged(
     struct ArrowIpcWriter* writer, int64_t dictionary_id,
-    const struct ArrowArrayView* values_view, struct ArrowError* error) {
+    const struct ArrowArrayView* values_view, int force_emit, int* emitted,
+    struct ArrowError* error) {
   struct ArrowIpcWriterPrivate* private =
       (struct ArrowIpcWriterPrivate*)writer->private_data;
 
@@ -449,8 +454,10 @@ static ArrowErrorCode ArrowIpcWriterWriteDictionaryBatchIfChanged(
 
   struct ArrowIpcWriterDictionaryCacheEntry* cached =
       ArrowIpcWriterFindDictionaryCacheEntry(private, dictionary_id);
-  if (cached != NULL && ArrowIpcWriterBufferEquals(&cached->metadata, &private->buffer) &&
+  if (!force_emit && cached != NULL &&
+      ArrowIpcWriterBufferEquals(&cached->metadata, &private->buffer) &&
       ArrowIpcWriterBufferEquals(&cached->body, &private->body_buffer)) {
+    *emitted = 0;
     return NANOARROW_OK;
   }
 
@@ -498,6 +505,7 @@ static ArrowErrorCode ArrowIpcWriterWriteDictionaryBatchIfChanged(
   ArrowBufferReset(&cached->body);
   ArrowBufferMove(&metadata_copy, &cached->metadata);
   ArrowBufferMove(&body_copy, &cached->body);
+  *emitted = 1;
   return NANOARROW_OK;
 }
 
@@ -509,11 +517,15 @@ static ArrowErrorCode ArrowIpcWriterWriteDictionaryBatchIfChanged(
 // dictionary, but identical dictionaries do not need to be repeated in the IPC stream.
 static ArrowErrorCode ArrowIpcWriterCollectDictionariesForArrayView(
     const struct ArrowArrayView* array_view, struct ArrowBuffer* dictionaries,
-    int64_t* next_id) {
+    int64_t* next_id, int64_t parent_dictionary_id) {
+  int64_t dictionary_id = NANOARROW_IPC_NO_PARENT_DICTIONARY_ID;
   if (array_view->dictionary != NULL) {
+    dictionary_id = (*next_id)++;
     struct ArrowIpcWriterDictionaryView dictionary = {
-        .dictionary_id = (*next_id)++,
+        .dictionary_id = dictionary_id,
+        .parent_dictionary_id = parent_dictionary_id,
         .values_view = array_view->dictionary,
+        .force_emit = 0,
     };
     NANOARROW_RETURN_NOT_OK(
         ArrowBufferAppend(dictionaries, &dictionary, sizeof(dictionary)));
@@ -521,12 +533,12 @@ static ArrowErrorCode ArrowIpcWriterCollectDictionariesForArrayView(
 
   for (int64_t i = 0; i < array_view->n_children; i++) {
     NANOARROW_RETURN_NOT_OK(ArrowIpcWriterCollectDictionariesForArrayView(
-        array_view->children[i], dictionaries, next_id));
+        array_view->children[i], dictionaries, next_id, parent_dictionary_id));
   }
 
   if (array_view->dictionary != NULL) {
     NANOARROW_RETURN_NOT_OK(ArrowIpcWriterCollectDictionariesForArrayView(
-        array_view->dictionary, dictionaries, next_id));
+        array_view->dictionary, dictionaries, next_id, dictionary_id));
   }
 
   return NANOARROW_OK;
@@ -539,11 +551,12 @@ static ArrowErrorCode ArrowIpcWriterWriteDictionariesForArrayView(
   ArrowBufferInit(&dictionaries);
   int64_t next_id = 0;
   ArrowErrorCode result = ArrowIpcWriterCollectDictionariesForArrayView(
-      array_view, &dictionaries, &next_id);
+      array_view, &dictionaries, &next_id,
+      NANOARROW_IPC_NO_PARENT_DICTIONARY_ID);
 
   if (result == NANOARROW_OK) {
-    const struct ArrowIpcWriterDictionaryView* dictionary_views =
-        (const struct ArrowIpcWriterDictionaryView*)dictionaries.data;
+    struct ArrowIpcWriterDictionaryView* dictionary_views =
+        (struct ArrowIpcWriterDictionaryView*)dictionaries.data;
     int64_t n_dictionaries =
         dictionaries.size_bytes / sizeof(struct ArrowIpcWriterDictionaryView);
 
@@ -551,11 +564,21 @@ static ArrowErrorCode ArrowIpcWriterWriteDictionariesForArrayView(
     // traversal order so dictionaries nested in another dictionary's values are
     // available before decoding their parent.
     for (int64_t i = n_dictionaries - 1; i >= 0; i--) {
+      int emitted = 0;
       result = ArrowIpcWriterWriteDictionaryBatchIfChanged(
           writer, dictionary_views[i].dictionary_id,
-          dictionary_views[i].values_view, error);
+          dictionary_views[i].values_view, dictionary_views[i].force_emit,
+          &emitted, error);
       if (result != NANOARROW_OK) {
         break;
+      }
+
+      // A parent DictionaryBatch captures the current values of dictionaries nested
+      // within it. Re-emit ancestors after a dependency changes even when the parent's
+      // own serialized buffers are otherwise identical.
+      if (emitted && dictionary_views[i].parent_dictionary_id !=
+                         NANOARROW_IPC_NO_PARENT_DICTIONARY_ID) {
+        dictionary_views[dictionary_views[i].parent_dictionary_id].force_emit = 1;
       }
     }
   }
