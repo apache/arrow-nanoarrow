@@ -478,6 +478,8 @@ static ArrowErrorCode ArrowIpcWriterWriteDictionaryBatchIfChanged(
   if (!force_emit && cached != NULL &&
       ArrowIpcWriterBufferEquals(&cached->metadata, &private->buffer) &&
       ArrowIpcWriterBufferEquals(&cached->body, &private->body_buffer)) {
+    ArrowBufferReset(&private->buffer);
+    ArrowBufferReset(&private->body_buffer);
     *emitted = 0;
     return NANOARROW_OK;
   }
@@ -486,53 +488,44 @@ static ArrowErrorCode ArrowIpcWriterWriteDictionaryBatchIfChanged(
     ArrowErrorSet(error,
                   "Arrow IPC files do not support replacement of dictionary ID %" PRId64,
                   dictionary_id);
+    ArrowBufferReset(&private->buffer);
+    ArrowBufferReset(&private->body_buffer);
     return EINVAL;
   }
 
-  struct ArrowBuffer metadata_copy;
-  struct ArrowBuffer body_copy;
-  ArrowBufferInit(&metadata_copy);
-  ArrowBufferInit(&body_copy);
-  ArrowErrorCode result =
-      ArrowBufferAppend(&metadata_copy, private->buffer.data, private->buffer.size_bytes);
-  if (result == NANOARROW_OK) {
-    result = ArrowBufferAppend(&body_copy, private->body_buffer.data,
-                               private->body_buffer.size_bytes);
-  }
-
-  if (result != NANOARROW_OK) {
-    ArrowBufferReset(&metadata_copy);
-    ArrowBufferReset(&body_copy);
-    return result;
-  }
-
+  int cached_was_added = 0;
   if (cached == NULL) {
     struct ArrowIpcWriterDictionaryCacheEntry new_entry = {
         .dictionary_id = dictionary_id,
     };
     ArrowBufferInit(&new_entry.metadata);
     ArrowBufferInit(&new_entry.body);
-    result = ArrowBufferAppend(&private->dictionary_cache, &new_entry, sizeof(new_entry));
+    ArrowErrorCode result =
+        ArrowBufferAppend(&private->dictionary_cache, &new_entry, sizeof(new_entry));
     if (result != NANOARROW_OK) {
-      ArrowBufferReset(&metadata_copy);
-      ArrowBufferReset(&body_copy);
       return result;
     }
     cached = ArrowIpcWriterFindDictionaryCacheEntry(private, dictionary_id);
     NANOARROW_DCHECK(cached != NULL);
+    cached_was_added = 1;
   }
 
-  result = ArrowIpcWriterWriteEncodedDictionaryBatch(writer, error);
+  ArrowErrorCode result = ArrowIpcWriterWriteEncodedDictionaryBatch(writer, error);
   if (result != NANOARROW_OK) {
-    ArrowBufferReset(&metadata_copy);
-    ArrowBufferReset(&body_copy);
+    if (cached_was_added) {
+      NANOARROW_ASSERT_OK(ArrowBufferResize(
+          &private->dictionary_cache,
+          private->dictionary_cache.size_bytes -
+              (int64_t)sizeof(struct ArrowIpcWriterDictionaryCacheEntry),
+          /*shrink_to_fit=*/0));
+    }
     return result;
   }
 
   ArrowBufferReset(&cached->metadata);
   ArrowBufferReset(&cached->body);
-  ArrowBufferMove(&metadata_copy, &cached->metadata);
-  ArrowBufferMove(&body_copy, &cached->body);
+  ArrowBufferMove(&private->buffer, &cached->metadata);
+  ArrowBufferMove(&private->body_buffer, &cached->body);
   *emitted = 1;
   return NANOARROW_OK;
 }
