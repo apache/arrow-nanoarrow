@@ -328,16 +328,15 @@ TEST(NanoarrowIpcTest, NanoarrowIpcEncoderSchemaMessageMetadata) {
 
 TEST(NanoarrowIpcTest, NanoarrowIpcEncoderDictionaryReplacementFeature) {
   nanoarrow::UniqueSchema schema;
-  ASSERT_EQ(ArrowSchemaInitFromType(schema.get(), NANOARROW_TYPE_STRUCT),
-            NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaInitFromType(schema.get(), NANOARROW_TYPE_STRUCT), NANOARROW_OK);
   ASSERT_EQ(ArrowSchemaAllocateChildren(schema.get(), 1), NANOARROW_OK);
   ASSERT_EQ(ArrowSchemaInitFromType(schema->children[0], NANOARROW_TYPE_INT32),
             NANOARROW_OK);
   ASSERT_EQ(ArrowSchemaSetName(schema->children[0], "dict_col"), NANOARROW_OK);
   ASSERT_EQ(ArrowSchemaAllocateDictionary(schema->children[0]), NANOARROW_OK);
-  ASSERT_EQ(ArrowSchemaInitFromType(schema->children[0]->dictionary,
-                                    NANOARROW_TYPE_STRING),
-            NANOARROW_OK);
+  ASSERT_EQ(
+      ArrowSchemaInitFromType(schema->children[0]->dictionary, NANOARROW_TYPE_STRING),
+      NANOARROW_OK);
 
   nanoarrow::ipc::UniqueEncoder encoder;
   ASSERT_EQ(ArrowIpcEncoderInit(encoder.get()), NANOARROW_OK);
@@ -364,8 +363,7 @@ TEST(NanoarrowIpcTest, NanoarrowIpcEncoderDictionaryReplacementFeature) {
 
 TEST(NanoarrowIpcTest, NanoarrowIpcEncoderNestedDictionaryValueSchema) {
   nanoarrow::UniqueSchema schema;
-  ASSERT_EQ(ArrowSchemaInitFromType(schema.get(), NANOARROW_TYPE_STRUCT),
-            NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaInitFromType(schema.get(), NANOARROW_TYPE_STRUCT), NANOARROW_OK);
   ASSERT_EQ(ArrowSchemaAllocateChildren(schema.get(), 1), NANOARROW_OK);
 
   struct ArrowSchema* dictionary_field = schema->children[0];
@@ -375,8 +373,7 @@ TEST(NanoarrowIpcTest, NanoarrowIpcEncoderNestedDictionaryValueSchema) {
   ASSERT_EQ(ArrowSchemaAllocateDictionary(dictionary_field), NANOARROW_OK);
 
   struct ArrowSchema* value_schema = dictionary_field->dictionary;
-  ASSERT_EQ(ArrowSchemaInitFromType(value_schema, NANOARROW_TYPE_STRUCT),
-            NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaInitFromType(value_schema, NANOARROW_TYPE_STRUCT), NANOARROW_OK);
   ASSERT_EQ(ArrowSchemaAllocateChildren(value_schema, 1), NANOARROW_OK);
   ASSERT_EQ(ArrowSchemaInitFromType(value_schema->children[0], NANOARROW_TYPE_STRING),
             NANOARROW_OK);
@@ -1679,4 +1676,26 @@ TEST(NanoarrowIpcTest, NanoarrowIpcEncoderCompressorWithoutOutput) {
             EIO);
   EXPECT_THAT(error.message,
               ::testing::StartsWith("Compressor produced no output for a buffer of"));
+TEST(NanoarrowIpcTest, NanoarrowIpcEncoderRejectsNestedDictionaryBatch) {
+  nanoarrow::UniqueSchema schema;
+  ASSERT_EQ(ArrowSchemaInitFromType(schema.get(), NANOARROW_TYPE_INT32), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaAllocateDictionary(schema.get()), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaInitFromType(schema->dictionary, NANOARROW_TYPE_STRING),
+            NANOARROW_OK);
+
+  nanoarrow::UniqueArrayView array_view;
+  struct ArrowError error;
+  ASSERT_EQ(ArrowArrayViewInitFromSchema(array_view.get(), schema.get(), &error),
+            NANOARROW_OK)
+      << error.message;
+
+  nanoarrow::ipc::UniqueEncoder encoder;
+  ASSERT_EQ(ArrowIpcEncoderInit(encoder.get()), NANOARROW_OK);
+  nanoarrow::UniqueBuffer body;
+  EXPECT_EQ(ArrowIpcEncoderEncodeSimpleDictionaryBatch(encoder.get(), /*dictionary_id=*/0,
+                                                       /*is_delta=*/0, array_view.get(),
+                                                       body.get(), &error),
+            EINVAL);
+  EXPECT_STREQ(error.message,
+               "DictionaryBatch values array must not itself be dictionary-encoded");
 }
