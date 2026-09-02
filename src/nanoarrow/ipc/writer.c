@@ -16,6 +16,7 @@
 // under the License.
 
 #include <errno.h>
+#include <inttypes.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -311,8 +312,17 @@ ArrowErrorCode ArrowIpcWriterWriteSchema(struct ArrowIpcWriter* writer,
       error);
 
   if (private->writing_file) {
+    if (private->footer.schema.release != NULL) {
+      ArrowSchemaRelease(&private->footer.schema);
+    }
+    ArrowIpcDictionaryEncodingsReset(&private->footer.dictionaries);
+    ArrowIpcDictionaryEncodingsInit(&private->footer.dictionaries);
     NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowSchemaDeepCopy(in, &private->footer.schema),
                                        error);
+    NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowIpcDictionaryEncodingsAppendSchema(
+                                          &private->footer.dictionaries,
+                                          &private->footer.schema),
+                                      error);
   }
   private->bytes_written += private->buffer.size_bytes;
 
@@ -391,12 +401,23 @@ static ArrowErrorCode ArrowIpcWriterWriteEncodedDictionaryBatch(
   return NANOARROW_OK;
 }
 
+static ArrowErrorCode ArrowIpcWriterWriteDictionaryBatchIfChanged(
+    struct ArrowIpcWriter* writer, int64_t dictionary_id,
+    const struct ArrowArrayView* values_view, int force_emit, int* emitted,
+    struct ArrowError* error);
+
 ArrowErrorCode ArrowIpcWriterWriteDictionaryBatch(
     struct ArrowIpcWriter* writer, int64_t dictionary_id, char is_delta,
     const struct ArrowArrayView* values_view, struct ArrowError* error) {
   NANOARROW_DCHECK(writer != NULL && writer->private_data != NULL && values_view != NULL);
   struct ArrowIpcWriterPrivate* private =
       (struct ArrowIpcWriterPrivate*)writer->private_data;
+
+  if (private->writing_file && !is_delta) {
+    int emitted;
+    return ArrowIpcWriterWriteDictionaryBatchIfChanged(
+        writer, dictionary_id, values_view, /*force_emit=*/0, &emitted, error);
+  }
 
   NANOARROW_ASSERT_OK(ArrowBufferResize(&private->buffer, 0, 0));
   NANOARROW_ASSERT_OK(ArrowBufferResize(&private->body_buffer, 0, 0));
@@ -459,6 +480,13 @@ static ArrowErrorCode ArrowIpcWriterWriteDictionaryBatchIfChanged(
       ArrowIpcWriterBufferEquals(&cached->body, &private->body_buffer)) {
     *emitted = 0;
     return NANOARROW_OK;
+  }
+
+  if (private->writing_file && cached != NULL) {
+    ArrowErrorSet(error,
+                  "Arrow IPC files do not support replacement of dictionary ID %" PRId64,
+                  dictionary_id);
+    return EINVAL;
   }
 
   struct ArrowBuffer metadata_copy;

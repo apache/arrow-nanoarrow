@@ -1180,6 +1180,9 @@ NANOARROW_DLL ArrowErrorCode ArrowIpcWriterWriteArrayView(struct ArrowIpcWriter*
 /// dictionary_id must match the id assigned to the dictionary-encoded field in the
 /// schema. is_delta selects DictionaryBatch.isDelta. values_view must not itself be
 /// dictionary-encoded. The writer does not check that a schema was already written.
+/// In file mode, changed non-delta dictionaries previously written with the same ID
+/// return EINVAL; an identical repeated dictionary is suppressed. Delta dictionaries
+/// are written and recorded in footer order.
 ///
 /// Errors are propagated from the underlying encoder and output byte stream.
 NANOARROW_DLL ArrowErrorCode ArrowIpcWriterWriteDictionaryBatch(
