@@ -1191,6 +1191,10 @@ NANOARROW_DLL ArrowErrorCode ArrowIpcWriterWriteDictionaryBatch(
 
 /// \brief Write an entire stream (including EOS) to the output byte stream
 ///
+/// Identical dictionaries are suppressed. When a dictionary grows by appending values,
+/// the writer emits the appended values as a dictionary delta; other changes are emitted
+/// as replacements in stream mode and return EINVAL in file mode.
+///
 /// Errors are propagated from the underlying encoder, array stream, and output byte
 /// stream.
 NANOARROW_DLL ArrowErrorCode ArrowIpcWriterWriteArrayStream(struct ArrowIpcWriter* writer,

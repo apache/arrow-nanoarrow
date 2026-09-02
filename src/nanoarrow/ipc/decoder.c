@@ -405,7 +405,7 @@ static ArrowErrorCode ArrowIpcDictionaryAppend(struct ArrowIpcDictionary* dictio
     ArrowIpcArrayPrepareForAppend(&combined, array_view);
     ArrowErrorCode result = ArrowArrayReserve(&combined, value->length);
     if (result == NANOARROW_OK) {
-      result = ArrowArrayAppendArrayView(&combined, array_view, error);
+      result = ArrowArrayAppendStorageFromArrayView(&combined, array_view, error);
     }
     if (result == NANOARROW_OK) {
       result = ArrowIpcArraySetDictionaries(&combined, value);
@@ -438,7 +438,7 @@ static ArrowErrorCode ArrowIpcDictionaryAppend(struct ArrowIpcDictionary* dictio
     result = ArrowArrayViewSetArray(array_view, &dictionary->current_value, error);
   }
   if (result == NANOARROW_OK) {
-    result = ArrowArrayAppendArrayView(&combined, array_view, error);
+    result = ArrowArrayAppendStorageFromArrayView(&combined, array_view, error);
   }
   if (result == NANOARROW_OK) {
     result = ArrowIpcArraySetDictionaries(&combined, value);
@@ -447,7 +447,7 @@ static ArrowErrorCode ArrowIpcDictionaryAppend(struct ArrowIpcDictionary* dictio
     result = ArrowArrayViewSetArray(array_view, value, error);
   }
   if (result == NANOARROW_OK) {
-    result = ArrowArrayAppendArrayView(&combined, array_view, error);
+    result = ArrowArrayAppendStorageFromArrayView(&combined, array_view, error);
   }
   if (result == NANOARROW_OK) {
     result = ArrowArrayFinishBuildingDefault(&combined, error);
