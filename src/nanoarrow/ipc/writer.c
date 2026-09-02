@@ -585,7 +585,7 @@ static ArrowErrorCode ArrowIpcWriterWriteDictionaryBatchIfChanged(
   struct ArrowIpcWriterDictionaryCacheEntry* cached =
       ArrowIpcWriterFindDictionaryCacheEntry(private, dictionary_id);
   int values_equal = 0;
-  int is_delta = 0;
+  char is_delta = 0;
   int cached_was_added = 0;
   const struct ArrowArray* values_to_encode = NULL;
   if (cached != NULL) {
