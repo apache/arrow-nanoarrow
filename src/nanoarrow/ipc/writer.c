@@ -485,6 +485,30 @@ static ArrowErrorCode ArrowIpcWriterArrayViewInitLike(struct ArrowArrayView* out
   return NANOARROW_OK;
 }
 
+static void ArrowIpcWriterCanonicalizeBitmapPadding(
+    struct ArrowArray* array, const struct ArrowArrayView* array_view) {
+  int64_t remainder = array->length % 8;
+  if (remainder != 0) {
+    uint8_t mask = (uint8_t)((1U << remainder) - 1U);
+    for (int i = 0; i < NANOARROW_MAX_FIXED_BUFFERS; i++) {
+      if (array_view->layout.element_size_bits[i] == 1) {
+        struct ArrowBuffer* buffer = ArrowArrayBuffer(array, i);
+        if (buffer->size_bytes > 0) {
+          buffer->data[buffer->size_bytes - 1] &= mask;
+        }
+      }
+    }
+  }
+
+  for (int64_t i = 0; i < array->n_children; i++) {
+    ArrowIpcWriterCanonicalizeBitmapPadding(array->children[i], array_view->children[i]);
+  }
+
+  if (array->dictionary != NULL) {
+    ArrowIpcWriterCanonicalizeBitmapPadding(array->dictionary, array_view->dictionary);
+  }
+}
+
 static ArrowErrorCode ArrowIpcWriterMaterializeArrayView(const struct ArrowArrayView* src,
                                                          int64_t offset, int64_t length,
                                                          struct ArrowArray* out,
@@ -515,6 +539,12 @@ static ArrowErrorCode ArrowIpcWriterMaterializeArrayView(const struct ArrowArray
   }
   if (result == NANOARROW_OK) {
     result = ArrowArrayFinishBuildingDefault(out, error);
+  }
+  if (result == NANOARROW_OK) {
+    // Arrow bitmaps do not require producers to initialize padding bits. Clear them so
+    // physical comparisons of two otherwise identical materialized arrays never read
+    // indeterminate data and do not treat padding as part of dictionary identity.
+    ArrowIpcWriterCanonicalizeBitmapPadding(out, src);
   }
 
   if (result != NANOARROW_OK && out->release != NULL) {

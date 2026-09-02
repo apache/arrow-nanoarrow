@@ -471,7 +471,8 @@ static void MakeDictionaryStructArray(struct ArrowArray* array,
                                       struct ArrowSchema* schema,
                                       const char* value0 = "foo",
                                       const char* value1 = "bar",
-                                      const char* value2 = nullptr) {
+                                      const char* value2 = nullptr,
+                                      bool value1_is_null = false) {
   ASSERT_EQ(ArrowSchemaInitFromType(schema, NANOARROW_TYPE_STRUCT), NANOARROW_OK);
   ASSERT_EQ(ArrowSchemaAllocateChildren(schema, 1), NANOARROW_OK);
   ASSERT_EQ(ArrowSchemaInitFromType(schema->children[0], NANOARROW_TYPE_INT32),
@@ -488,7 +489,11 @@ static void MakeDictionaryStructArray(struct ArrowArray* array,
 
   ASSERT_EQ(ArrowArrayStartAppending(array), NANOARROW_OK);
   ASSERT_EQ(ArrowArrayAppendString(values, ArrowCharView(value0)), NANOARROW_OK);
-  ASSERT_EQ(ArrowArrayAppendString(values, ArrowCharView(value1)), NANOARROW_OK);
+  if (value1_is_null) {
+    ASSERT_EQ(ArrowArrayAppendNull(values, 1), NANOARROW_OK);
+  } else {
+    ASSERT_EQ(ArrowArrayAppendString(values, ArrowCharView(value1)), NANOARROW_OK);
+  }
   if (value2 != nullptr) {
     ASSERT_EQ(ArrowArrayAppendString(values, ArrowCharView(value2)), NANOARROW_OK);
   }
@@ -826,6 +831,41 @@ TEST(NanoarrowIpcWriter, DoesNotRepeatUnchangedDictionary) {
 
   std::vector<int32_t> message_types = DecodeMessageTypes(output.get());
   EXPECT_EQ(message_types,
+            (std::vector<int32_t>{NANOARROW_IPC_MESSAGE_TYPE_SCHEMA,
+                                  NANOARROW_IPC_MESSAGE_TYPE_DICTIONARY_BATCH,
+                                  NANOARROW_IPC_MESSAGE_TYPE_RECORD_BATCH,
+                                  NANOARROW_IPC_MESSAGE_TYPE_RECORD_BATCH}));
+}
+
+TEST(NanoarrowIpcWriter, DoesNotRepeatUnchangedNullableDictionary) {
+  struct ArrowError error;
+
+  nanoarrow::UniqueSchema schema;
+  nanoarrow::UniqueArray array1;
+  MakeDictionaryStructArray(array1.get(), schema.get(), "foo", "unused", nullptr,
+                            /*value1_is_null=*/true);
+
+  nanoarrow::UniqueSchema unused_schema;
+  nanoarrow::UniqueArray array2;
+  MakeDictionaryStructArray(array2.get(), unused_schema.get(), "foo", "unused", nullptr,
+                            /*value1_is_null=*/true);
+
+  nanoarrow::UniqueArrayStream array_stream;
+  ASSERT_EQ(ArrowBasicArrayStreamInit(array_stream.get(), schema.get(), 2), NANOARROW_OK);
+  ArrowBasicArrayStreamSetArray(array_stream.get(), 0, array1.get());
+  ArrowBasicArrayStreamSetArray(array_stream.get(), 1, array2.get());
+
+  nanoarrow::UniqueBuffer output;
+  nanoarrow::ipc::UniqueOutputStream out_stream;
+  ASSERT_EQ(ArrowIpcOutputStreamInitBuffer(out_stream.get(), output.get()), NANOARROW_OK);
+
+  nanoarrow::ipc::UniqueWriter writer;
+  ASSERT_EQ(ArrowIpcWriterInit(writer.get(), out_stream.get()), NANOARROW_OK);
+  ASSERT_EQ(ArrowIpcWriterWriteArrayStream(writer.get(), array_stream.get(), &error),
+            NANOARROW_OK)
+      << error.message;
+
+  EXPECT_EQ(DecodeMessageTypes(output.get()),
             (std::vector<int32_t>{NANOARROW_IPC_MESSAGE_TYPE_SCHEMA,
                                   NANOARROW_IPC_MESSAGE_TYPE_DICTIONARY_BATCH,
                                   NANOARROW_IPC_MESSAGE_TYPE_RECORD_BATCH,
@@ -1228,11 +1268,10 @@ TEST(NanoarrowIpcWriter, RoundtripDictionaryStream) {
   EXPECT_EQ(std::string(v0.data, v0.size_bytes), "foo");
   EXPECT_EQ(std::string(v1.data, v1.size_bytes), "bar");
 
-  roundtrip_array.reset();
-  ASSERT_EQ(ArrowArrayStreamGetNext(reader.get(), roundtrip_array.get(), &error),
-            NANOARROW_OK)
+  nanoarrow::UniqueArray end;
+  ASSERT_EQ(ArrowArrayStreamGetNext(reader.get(), end.get(), &error), NANOARROW_OK)
       << error.message;
-  EXPECT_EQ(roundtrip_array->release, nullptr);
+  EXPECT_EQ(end->release, nullptr);
 }
 
 // A struct array with a single int32 column of repeating values (i.e., compressible)
