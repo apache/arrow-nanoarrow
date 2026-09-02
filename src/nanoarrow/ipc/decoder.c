@@ -644,19 +644,14 @@ static inline int32_t ArrowIpcReadInt32LE(struct ArrowBufferView* data, int swap
   return value;
 }
 
-// Returned by an internal ArrowIpcMetadataVisitFunction to stop iterating early.
-// This is never returned to a caller of the public API.
-#define _NANOARROW_IPC_VISIT_STOP (-1)
-
 // Visits each key/value pair in a flatbuffers vector of KeyValue.
 //
 // Keys and values point into the message and are passed with an explicit size because
 // both are optional fields whose content may contain embedded nulls; a KeyValue with no
 // key or no value is visited with an empty string view.
-static ArrowErrorCode ArrowIpcDecoderVisitMetadata(ns(KeyValue_vec_t) kv_vec,
-                                                   ArrowIpcMetadataVisitFunction visit,
-                                                   void* private_data,
-                                                   struct ArrowError* error) {
+static ArrowErrorCode ArrowIpcDecoderVisitMetadata(
+    ns(KeyValue_vec_t) kv_vec, ArrowIpcMessageMetadataVisitFunction visit,
+    void* private_data, struct ArrowError* error) {
   int64_t n_pairs = ns(KeyValue_vec_len(kv_vec));
 
   for (int64_t i = 0; i < n_pairs; i++) {
@@ -1767,59 +1762,9 @@ ArrowErrorCode ArrowIpcDecoderGetMessageMetadata(struct ArrowIpcDecoder* decoder
   return ArrowIpcDecoderBuildMetadata(private_data->last_message_metadata, out, error);
 }
 
-struct ArrowIpcMetadataValueLookup {
-  struct ArrowStringView key;
-  struct ArrowStringView* value_out;
-};
-
-static ArrowErrorCode ArrowIpcDecoderMatchMetadataKey(struct ArrowStringView key,
-                                                      struct ArrowStringView value,
-                                                      void* private_data,
-                                                      struct ArrowError* error) {
-  NANOARROW_UNUSED(error);
-  struct ArrowIpcMetadataValueLookup* lookup =
-      (struct ArrowIpcMetadataValueLookup*)private_data;
-
-  if (key.size_bytes != lookup->key.size_bytes) {
-    return NANOARROW_OK;
-  }
-
-  if (key.size_bytes > 0 &&
-      memcmp(key.data, lookup->key.data, (size_t)key.size_bytes) != 0) {
-    return NANOARROW_OK;
-  }
-
-  *lookup->value_out = value;
-  return _NANOARROW_IPC_VISIT_STOP;
-}
-
-ArrowErrorCode ArrowIpcDecoderGetMessageMetadataValue(struct ArrowIpcDecoder* decoder,
-                                                      struct ArrowStringView key,
-                                                      struct ArrowStringView* value_out,
-                                                      struct ArrowError* error) {
-  NANOARROW_DCHECK(decoder != NULL && decoder->private_data != NULL && value_out != NULL);
-  struct ArrowIpcDecoderPrivate* private_data =
-      (struct ArrowIpcDecoderPrivate*)decoder->private_data;
-
-  struct ArrowIpcMetadataValueLookup lookup;
-  lookup.key = key;
-  lookup.value_out = value_out;
-
-  int result =
-      ArrowIpcDecoderVisitMetadata(private_data->last_message_metadata,
-                                   &ArrowIpcDecoderMatchMetadataKey, &lookup, error);
-  if (result == _NANOARROW_IPC_VISIT_STOP) {
-    // key was found and value_out was set
-    return NANOARROW_OK;
-  }
-
-  return result;
-}
-
-ArrowErrorCode ArrowIpcDecoderVisitMessageMetadata(struct ArrowIpcDecoder* decoder,
-                                                   ArrowIpcMetadataVisitFunction visit,
-                                                   void* private_data,
-                                                   struct ArrowError* error) {
+ArrowErrorCode ArrowIpcDecoderVisitMessageMetadata(
+    struct ArrowIpcDecoder* decoder, ArrowIpcMessageMetadataVisitFunction visit,
+    void* private_data, struct ArrowError* error) {
   NANOARROW_DCHECK(decoder != NULL && decoder->private_data != NULL && visit != NULL);
   struct ArrowIpcDecoderPrivate* decoder_private =
       (struct ArrowIpcDecoderPrivate*)decoder->private_data;

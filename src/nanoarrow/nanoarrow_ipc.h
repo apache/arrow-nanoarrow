@@ -82,8 +82,6 @@
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcDecoderSetEndianness)
 #define ArrowIpcDecoderGetMessageMetadata \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcDecoderGetMessageMetadata)
-#define ArrowIpcDecoderGetMessageMetadataValue \
-  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcDecoderGetMessageMetadataValue)
 #define ArrowIpcDecoderVisitMessageMetadata \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcDecoderVisitMessageMetadata)
 #define ArrowIpcDecoderPeekFooter \
@@ -623,10 +621,9 @@ NANOARROW_DLL ArrowErrorCode ArrowIpcDecoderSetDecompressor(
 ///
 /// Returning any value other than NANOARROW_OK will stop the visit and cause that
 /// value to be returned by ArrowIpcDecoderVisitMessageMetadata().
-typedef ArrowErrorCode (*ArrowIpcMetadataVisitFunction)(struct ArrowStringView key,
-                                                        struct ArrowStringView value,
-                                                        void* private_data,
-                                                        struct ArrowError* error);
+typedef ArrowErrorCode (*ArrowIpcMessageMetadataVisitFunction)(
+    struct ArrowStringView key, struct ArrowStringView value, void* private_data,
+    struct ArrowError* error);
 
 /// \brief Peek at a message header
 ///
@@ -691,36 +688,25 @@ NANOARROW_DLL ArrowErrorCode ArrowIpcDecoderDecodeHeader(struct ArrowIpcDecoder*
 /// (const char*)out->data can be passed to ArrowSchemaSetMetadata() or
 /// ArrowMetadataReaderInit().
 ///
+/// To read a single key, pass (const char*)out->data to ArrowMetadataGetValue(); to
+/// read every pair without copying, use ArrowIpcDecoderVisitMessageMetadata().
+///
 /// Returns ENOMEM if allocation fails, EINVAL if the metadata cannot be decoded, or
 /// NANOARROW_OK otherwise.
 NANOARROW_DLL ArrowErrorCode ArrowIpcDecoderGetMessageMetadata(
     struct ArrowIpcDecoder* decoder, struct ArrowBuffer* out, struct ArrowError* error);
 
-/// \brief Get one value from the custom metadata of the most recently decoded message
-///
-/// Unlike ArrowIpcDecoderGetMessageMetadata(), this does not copy: the value returned
-/// points into the message header passed to ArrowIpcDecoderVerifyHeader() or
-/// ArrowIpcDecoderDecodeHeader() and is only valid until that data is invalidated or
-/// another message header is decoded.
-///
-/// If key occurs more than once, the first value is returned. If key does not occur,
-/// value_out is left unmodified: initialize it with ArrowCharView(NULL) and check
-/// value_out->data for NULL to detect a missing key.
-NANOARROW_DLL ArrowErrorCode ArrowIpcDecoderGetMessageMetadataValue(
-    struct ArrowIpcDecoder* decoder, struct ArrowStringView key,
-    struct ArrowStringView* value_out, struct ArrowError* error);
-
 /// \brief Visit each key/value pair in the most recently decoded message's metadata
 ///
-/// Like ArrowIpcDecoderGetMessageMetadataValue(), the keys and values passed to visit
-/// point into the message header passed to ArrowIpcDecoderVerifyHeader() or
-/// ArrowIpcDecoderDecodeHeader() and must not be retained beyond the lifetime of that
+/// Unlike ArrowIpcDecoderGetMessageMetadata(), this does not copy: the keys and values
+/// passed to visit point into the message header passed to ArrowIpcDecoderVerifyHeader()
+/// or ArrowIpcDecoderDecodeHeader() and must not be retained beyond the lifetime of that
 /// data. private_data and error are passed to each invocation of visit.
 ///
 /// Returns the first non-NANOARROW_OK value returned by visit, or NANOARROW_OK if all
 /// pairs were visited.
 NANOARROW_DLL ArrowErrorCode ArrowIpcDecoderVisitMessageMetadata(
-    struct ArrowIpcDecoder* decoder, ArrowIpcMetadataVisitFunction visit,
+    struct ArrowIpcDecoder* decoder, ArrowIpcMessageMetadataVisitFunction visit,
     void* private_data, struct ArrowError* error);
 
 /// \brief Decode an ArrowSchema
