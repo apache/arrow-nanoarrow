@@ -49,7 +49,7 @@ static inline int nanoarrow_materialize_int64(struct ArrayViewSlice* src,
       break;
     case NANOARROW_TYPE_INT64:
       memcpy(result + dst->offset,
-             src->array_view->buffer_views[1].data.as_int32 + raw_src_offset,
+             src->array_view->buffer_views[1].data.as_int64 + raw_src_offset,
              dst->length * sizeof(int64_t));
 
       // Set any nulls to NA_INTEGER64
