@@ -783,6 +783,18 @@ TEST(UtilsTest, ArrowResolveChunk32Test) {
   EXPECT_EQ(ArrowResolveChunk32(5, offsets, 0, n_offsets), 2);
 }
 
+TEST(UtilsTest, ArrowResolveChunk16Test) {
+  int16_t offsets[] = {0, 2, 3, 6};
+  int16_t n_offsets = 4;
+
+  EXPECT_EQ(ArrowResolveChunk16(0, offsets, 0, n_offsets), 0);
+  EXPECT_EQ(ArrowResolveChunk16(1, offsets, 0, n_offsets), 0);
+  EXPECT_EQ(ArrowResolveChunk16(2, offsets, 0, n_offsets), 1);
+  EXPECT_EQ(ArrowResolveChunk16(3, offsets, 0, n_offsets), 2);
+  EXPECT_EQ(ArrowResolveChunk16(4, offsets, 0, n_offsets), 2);
+  EXPECT_EQ(ArrowResolveChunk16(5, offsets, 0, n_offsets), 2);
+}
+
 TEST(MaybeTest, ConstructionAndConversion) {
   using nanoarrow::NA;
   using nanoarrow::internal::Maybe;
