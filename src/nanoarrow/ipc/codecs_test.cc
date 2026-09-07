@@ -16,6 +16,7 @@
 // under the License.
 
 #include <cstring>
+#include <vector>
 
 #include <gmock/gmock-matchers.h>
 #include <gtest/gtest.h>
@@ -181,6 +182,151 @@ TEST(NanoarrowIpcTest, SerialDecompressor) {
   EXPECT_EQ(decompressor->decompress_add(decompressor.get(),
                                          NANOARROW_IPC_COMPRESSION_TYPE_ZSTD,
                                          {{nullptr}, 0}, nullptr, 0, &error),
+            ENOTSUP);
+  EXPECT_STREQ(error.message,
+               "Compression type with value 2 not supported by this build of nanoarrow");
+}
+
+// Compress input (appending to a buffer that already has content), decompress the
+// appended bytes, and check that the result matches the input. Returns the number of
+// compressed bytes that were appended.
+static int64_t TestCompressRoundtrip(ArrowIpcCompressFunction compress,
+                                     ArrowIpcDecompressFunction decompress,
+                                     const std::vector<uint8_t>& input) {
+  struct ArrowError error {};
+  nanoarrow::UniqueBuffer compressed;
+
+  // Content already in dst must be preserved (compress functions only append)
+  const char* existing = "existing";
+  const int64_t existing_size = 8;
+  EXPECT_EQ(ArrowBufferAppend(compressed.get(), existing, existing_size), NANOARROW_OK);
+
+  EXPECT_EQ(compress({{input.data()}, static_cast<int64_t>(input.size())},
+                     compressed.get(), &error),
+            NANOARROW_OK)
+      << error.message;
+  EXPECT_GT(compressed->size_bytes, existing_size);
+  EXPECT_EQ(std::memcmp(compressed->data, existing, existing_size), 0);
+
+  std::vector<uint8_t> output(input.size());
+  struct ArrowBufferView compressed_view = {{compressed->data + existing_size},
+                                            compressed->size_bytes - existing_size};
+  EXPECT_EQ(decompress(compressed_view, output.data(),
+                       static_cast<int64_t>(output.size()), &error),
+            NANOARROW_OK)
+      << error.message;
+  EXPECT_EQ(output, input);
+
+  return compressed->size_bytes - existing_size;
+}
+
+static std::vector<uint8_t> CompressibleInput(size_t n) {
+  std::vector<uint8_t> out(n);
+  for (size_t i = 0; i < n; i++) {
+    out[i] = static_cast<uint8_t>(i % 7);
+  }
+  return out;
+}
+
+// Check compress/decompress on empty, small, and multi-block inputs
+static void TestCompressionFunctions(ArrowIpcCompressFunction compress,
+                                     ArrowIpcDecompressFunction decompress) {
+  ASSERT_NE(compress, nullptr);
+  ASSERT_NE(decompress, nullptr);
+
+  TestCompressRoundtrip(compress, decompress, {});
+  TestCompressRoundtrip(
+      compress, decompress,
+      std::vector<uint8_t>(kUncompressed012,
+                           kUncompressed012 + sizeof(kUncompressed012)));
+
+  // Large enough to span several blocks; a repetitive input must actually shrink
+  auto input = CompressibleInput(1 << 20);
+  int64_t compressed_size = TestCompressRoundtrip(compress, decompress, input);
+  EXPECT_LT(compressed_size, static_cast<int64_t>(input.size() / 10));
+}
+
+TEST(NanoarrowIpcTest, NanoarrowIpcZstdCompressBuildMatchesRuntime) {
+#if defined(NANOARROW_IPC_WITH_ZSTD)
+  ASSERT_NE(ArrowIpcGetZstdCompressionFunction(), nullptr);
+#else
+  ASSERT_EQ(ArrowIpcGetZstdCompressionFunction(), nullptr);
+#endif
+}
+
+TEST(NanoarrowIpcTest, ZstdCompressRoundtrip) {
+  if (ArrowIpcGetZstdCompressionFunction() == nullptr) {
+    GTEST_SKIP() << "nanoarrow_ipc not built with NANOARROW_IPC_WITH_ZSTD";
+  }
+  TestCompressionFunctions(ArrowIpcGetZstdCompressionFunction(),
+                           ArrowIpcGetZstdDecompressionFunction());
+}
+
+TEST(NanoarrowIpcTest, NanoarrowIpcLZ4CompressBuildMatchesRuntime) {
+#if defined(NANOARROW_IPC_WITH_LZ4)
+  ASSERT_NE(ArrowIpcGetLZ4CompressionFunction(), nullptr);
+#else
+  ASSERT_EQ(ArrowIpcGetLZ4CompressionFunction(), nullptr);
+#endif
+}
+
+TEST(NanoarrowIpcTest, LZ4CompressRoundtrip) {
+  if (ArrowIpcGetLZ4CompressionFunction() == nullptr) {
+    GTEST_SKIP() << "nanoarrow_ipc not built with NANOARROW_IPC_WITH_LZ4";
+  }
+  TestCompressionFunctions(ArrowIpcGetLZ4CompressionFunction(),
+                           ArrowIpcGetLZ4DecompressionFunction());
+}
+
+TEST(NanoarrowIpcTest, SerialCompressor) {
+  struct ArrowError error {};
+  nanoarrow::ipc::UniqueCompressor compressor;
+
+  ASSERT_EQ(ArrowIpcSerialCompressor(compressor.get()), NANOARROW_OK);
+
+  // Check the function setter error
+  ASSERT_EQ(ArrowIpcSerialCompressorSetFunction(
+                compressor.get(), NANOARROW_IPC_COMPRESSION_TYPE_NONE, nullptr),
+            EINVAL);
+
+  // NONE is not a codec that can be used to compress
+  nanoarrow::UniqueBuffer dst;
+  EXPECT_EQ(compressor->compress(compressor.get(), NANOARROW_IPC_COMPRESSION_TYPE_NONE,
+                                 {{nullptr}, 0}, dst.get(), &error),
+            EINVAL);
+  EXPECT_STREQ(error.message, "Unknown compression type with value 0");
+
+  // Check a compress for a supported codec if we have one (or for an error if we don't)
+  if (ArrowIpcGetZstdCompressionFunction() != nullptr) {
+    ASSERT_EQ(compressor->compress(compressor.get(), NANOARROW_IPC_COMPRESSION_TYPE_ZSTD,
+                                   {{kUncompressed012}, sizeof(kUncompressed012)},
+                                   dst.get(), &error),
+              NANOARROW_OK)
+        << error.message;
+    ASSERT_GT(dst->size_bytes, 0);
+
+    uint8_t out[sizeof(kUncompressed012)];
+    std::memset(out, 0, sizeof(out));
+    ASSERT_EQ(ArrowIpcGetZstdDecompressionFunction()({{dst->data}, dst->size_bytes}, out,
+                                                     sizeof(out), &error),
+              NANOARROW_OK)
+        << error.message;
+    EXPECT_TRUE(std::memcmp(out, kUncompressed012, sizeof(kUncompressed012)) == 0);
+  } else {
+    EXPECT_EQ(compressor->compress(compressor.get(), NANOARROW_IPC_COMPRESSION_TYPE_ZSTD,
+                                   {{nullptr}, 0}, dst.get(), &error),
+              ENOTSUP);
+    EXPECT_STREQ(
+        error.message,
+        "Compression type with value 2 not supported by this build of nanoarrow");
+  }
+
+  // Either way, if we explicitly remove support for a codec, we should get an error
+  ASSERT_EQ(ArrowIpcSerialCompressorSetFunction(
+                compressor.get(), NANOARROW_IPC_COMPRESSION_TYPE_ZSTD, nullptr),
+            NANOARROW_OK);
+  EXPECT_EQ(compressor->compress(compressor.get(), NANOARROW_IPC_COMPRESSION_TYPE_ZSTD,
+                                 {{nullptr}, 0}, dst.get(), &error),
             ENOTSUP);
   EXPECT_STREQ(error.message,
                "Compression type with value 2 not supported by this build of nanoarrow");

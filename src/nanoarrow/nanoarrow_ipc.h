@@ -33,6 +33,14 @@
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcSerialDecompressor)
 #define ArrowIpcSerialDecompressorSetFunction \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcSerialDecompressorSetFunction)
+#define ArrowIpcGetZstdCompressionFunction \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcGetZstdCompressionFunction)
+#define ArrowIpcGetLZ4CompressionFunction \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcGetLZ4CompressionFunction)
+#define ArrowIpcSerialCompressor \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcSerialCompressor)
+#define ArrowIpcSerialCompressorSetFunction \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcSerialCompressorSetFunction)
 #define ArrowIpcDecoderInit NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcDecoderInit)
 #define ArrowIpcDecoderReset NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcDecoderReset)
 #define ArrowIpcDecoderSetDecompressor \
@@ -411,6 +419,65 @@ NANOARROW_DLL ArrowErrorCode
 ArrowIpcSerialDecompressorSetFunction(struct ArrowIpcDecompressor* decompressor,
                                       enum ArrowIpcCompressionType compression_type,
                                       ArrowIpcDecompressFunction decompress_function);
+
+/// \brief A user-extensible compressor
+///
+/// The ArrowIpcCompressor is the underlying object that enables buffer compression
+/// in the ArrowIpcEncoder. An implementation of a compressor may support more than one
+/// ArrowIpcCompressionType.
+struct ArrowIpcCompressor {
+  /// \brief Compress a buffer
+  ///
+  /// Compresses src using compression_type and appends the compressed bytes to dst.
+  /// Any content already in dst must be preserved (i.e., implementations may only
+  /// append to dst).
+  ArrowErrorCode (*compress)(struct ArrowIpcCompressor* compressor,
+                             enum ArrowIpcCompressionType compression_type,
+                             struct ArrowBufferView src, struct ArrowBuffer* dst,
+                             struct ArrowError* error);
+
+  /// \brief Release the compressor and any resources it may be holding
+  ///
+  /// Release callback implementations must set the release member to NULL.
+  /// Callers must check that the release callback is not NULL before calling
+  /// compress() or release().
+  void (*release)(struct ArrowIpcCompressor* compressor);
+
+  /// \brief Implementation-specific opaque data
+  void* private_data;
+};
+
+/// \brief A self-contained compression function
+///
+/// Compresses src and appends the compressed bytes to dst. Because the compressed
+/// size is not known in advance, implementations are responsible for reserving
+/// sufficient space in dst (e.g., using the compression library's bound function)
+/// and must only append to dst.
+typedef ArrowErrorCode (*ArrowIpcCompressFunction)(struct ArrowBufferView src,
+                                                   struct ArrowBuffer* dst,
+                                                   struct ArrowError* error);
+
+/// \brief Get the compression function for ZSTD
+///
+/// The result will be NULL if nanoarrow was not built with NANOARROW_IPC_WITH_ZSTD.
+NANOARROW_DLL ArrowIpcCompressFunction ArrowIpcGetZstdCompressionFunction(void);
+
+/// \brief Get the compression function for LZ4
+///
+/// The result will be NULL if nanoarrow was not built with NANOARROW_IPC_WITH_LZ4.
+NANOARROW_DLL ArrowIpcCompressFunction ArrowIpcGetLZ4CompressionFunction(void);
+
+/// \brief An ArrowIpcCompressor implementation that performs compression in serial
+NANOARROW_DLL ArrowErrorCode
+ArrowIpcSerialCompressor(struct ArrowIpcCompressor* compressor);
+
+/// \brief Override the ArrowIpcCompressFunction used for a specific compression type
+///
+/// This may be used to inject support for a particular type of compression if used
+/// with a version of nanoarrow with unknown or minimal capabilities.
+NANOARROW_DLL ArrowErrorCode ArrowIpcSerialCompressorSetFunction(
+    struct ArrowIpcCompressor* compressor, enum ArrowIpcCompressionType compression_type,
+    ArrowIpcCompressFunction compress_function);
 
 /// \brief Decoder for Arrow IPC messages
 ///
