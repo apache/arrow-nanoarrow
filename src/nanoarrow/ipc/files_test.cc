@@ -18,6 +18,9 @@
 #include <errno.h>
 #include <fstream>
 #include <sstream>
+#include <string>
+#include <utility>
+#include <vector>
 
 #include <zlib.h>
 
@@ -212,6 +215,7 @@ class TestFile {
 
   ArrowErrorCode WriteNanoarrowStream(const nanoarrow::UniqueSchema& schema,
                                       const std::vector<nanoarrow::UniqueArray>& arrays,
+                                      enum ArrowIpcCompressionType codec,
                                       struct ArrowBuffer* buffer,
                                       struct ArrowError* error) {
     nanoarrow::ipc::UniqueOutputStream output_stream;
@@ -219,6 +223,7 @@ class TestFile {
 
     nanoarrow::ipc::UniqueWriter writer;
     NANOARROW_RETURN_NOT_OK(ArrowIpcWriterInit(writer.get(), output_stream.get()));
+    NANOARROW_RETURN_NOT_OK(ArrowIpcWriterSetCompression(writer.get(), codec, error));
 
     nanoarrow::UniqueArrayView array_view;
     NANOARROW_RETURN_NOT_OK(
@@ -259,14 +264,27 @@ class TestFile {
       GTEST_FAIL() << MakeError(NANOARROW_OK, "");
     }
 
-    // Write back to a buffer using nanoarrow if supported. We do this here
-    // because we need to move the arrays into the comparison for the Arrow C++
-    // read.
-    nanoarrow::UniqueBuffer roundtripped;
+    // Write back to a buffer using nanoarrow if supported: once uncompressed and once
+    // with each compression codec available in this build. We do this here because we
+    // need to move the arrays into the comparison for the Arrow C++ read.
+    std::vector<std::pair<std::string, enum ArrowIpcCompressionType>> codecs = {
+        {"uncompressed", NANOARROW_IPC_COMPRESSION_TYPE_NONE}};
+    if (ArrowIpcGetLZ4CompressionFunction() != nullptr) {
+      codecs.emplace_back("lz4", NANOARROW_IPC_COMPRESSION_TYPE_LZ4_FRAME);
+    }
+    if (ArrowIpcGetZstdCompressionFunction() != nullptr) {
+      codecs.emplace_back("zstd", NANOARROW_IPC_COMPRESSION_TYPE_ZSTD);
+    }
+
+    std::vector<nanoarrow::UniqueBuffer> roundtripped(codecs.size());
     if (write_supported_) {
-      ASSERT_EQ(WriteNanoarrowStream(schema, arrays, roundtripped.get(), &error),
-                NANOARROW_OK)
-          << error.message;
+      for (size_t i = 0; i < codecs.size(); i++) {
+        SCOPED_TRACE("Write the " + codecs[i].first + " stream using nanoarrow");
+        ASSERT_EQ(WriteNanoarrowStream(schema, arrays, codecs[i].second,
+                                       roundtripped[i].get(), &error),
+                  NANOARROW_OK)
+            << error.message;
+      }
     }
 
     // Read the same file with Arrow C++
@@ -283,28 +301,33 @@ class TestFile {
       return;
     }
 
-    auto maybe_table_roundtripped = ReadTable(BufferInputStream(roundtripped.get()));
-    {
-      SCOPED_TRACE("Read the roundtripped buffer using Arrow C++");
-      FAIL_RESULT_NOT_OK(maybe_table_roundtripped);
+    for (size_t i = 0; i < codecs.size(); i++) {
+      SCOPED_TRACE("Roundtrip of the " + codecs[i].first + " stream");
 
-      AssertEqualsTable(maybe_table_roundtripped.ValueUnsafe(),
-                        maybe_table_arrow.ValueUnsafe());
-    }
+      auto maybe_table_roundtripped = ReadTable(BufferInputStream(roundtripped[i].get()));
+      {
+        SCOPED_TRACE("Read the roundtripped buffer using Arrow C++");
+        FAIL_RESULT_NOT_OK(maybe_table_roundtripped);
 
-    nanoarrow::UniqueSchema roundtripped_schema;
-    std::vector<nanoarrow::UniqueArray> roundtripped_arrays;
-    {
-      SCOPED_TRACE("Read the roundtripped buffer using nanoarrow");
-      nanoarrow::UniqueArrayStream array_stream;
-      ASSERT_EQ(GetArrowArrayStreamIPC(roundtripped.get(), array_stream.get(), &error),
-                NANOARROW_OK);
-      ASSERT_EQ(ReadArrowArrayStreamIPC(array_stream.get(), roundtripped_schema.get(),
-                                        &roundtripped_arrays, &error),
-                NANOARROW_OK);
+        AssertEqualsTable(maybe_table_roundtripped.ValueUnsafe(),
+                          maybe_table_arrow.ValueUnsafe());
+      }
 
-      AssertEqualsTable(std::move(roundtripped_schema), std::move(roundtripped_arrays),
-                        maybe_table_arrow.ValueUnsafe());
+      nanoarrow::UniqueSchema roundtripped_schema;
+      std::vector<nanoarrow::UniqueArray> roundtripped_arrays;
+      {
+        SCOPED_TRACE("Read the roundtripped buffer using nanoarrow");
+        nanoarrow::UniqueArrayStream array_stream;
+        ASSERT_EQ(
+            GetArrowArrayStreamIPC(roundtripped[i].get(), array_stream.get(), &error),
+            NANOARROW_OK);
+        ASSERT_EQ(ReadArrowArrayStreamIPC(array_stream.get(), roundtripped_schema.get(),
+                                          &roundtripped_arrays, &error),
+                  NANOARROW_OK);
+
+        AssertEqualsTable(std::move(roundtripped_schema), std::move(roundtripped_arrays),
+                          maybe_table_arrow.ValueUnsafe());
+      }
     }
   }
 

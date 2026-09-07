@@ -226,6 +226,15 @@ void ArrowIpcWriterReset(struct ArrowIpcWriter* writer) {
   memset(writer, 0, sizeof(struct ArrowIpcWriter));
 }
 
+ArrowErrorCode ArrowIpcWriterSetCompression(struct ArrowIpcWriter* writer,
+                                            enum ArrowIpcCompressionType compression_type,
+                                            struct ArrowError* error) {
+  NANOARROW_DCHECK(writer != NULL && writer->private_data != NULL);
+  struct ArrowIpcWriterPrivate* private =
+      (struct ArrowIpcWriterPrivate*)writer->private_data;
+  return ArrowIpcEncoderSetCompression(&private->encoder, compression_type, error);
+}
+
 static struct ArrowBufferView ArrowBufferToBufferView(const struct ArrowBuffer* buffer) {
   struct ArrowBufferView buffer_view = {
       .data.as_uint8 = buffer->data,

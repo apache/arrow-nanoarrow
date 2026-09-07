@@ -204,3 +204,153 @@ TEST(NanoarrowIpcWriter, FileWriting) {
   auto after_footer = p->bytes_written;
   EXPECT_GT(after_footer, after_eos);
 }
+
+// A struct array with a single int32 column of repeating values (i.e., compressible)
+static constexpr int64_t kCompressibleBatchLength = 1024;
+
+static void InitCompressibleBatch(struct ArrowSchema* schema, struct ArrowArray* array) {
+  ASSERT_EQ(ArrowSchemaInitFromType(schema, NANOARROW_TYPE_STRUCT), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaAllocateChildren(schema, 1), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaInitFromType(schema->children[0], NANOARROW_TYPE_INT32),
+            NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaSetName(schema->children[0], "col"), NANOARROW_OK);
+
+  ASSERT_EQ(ArrowArrayInitFromSchema(array, schema, nullptr), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayStartAppending(array), NANOARROW_OK);
+  for (int64_t i = 0; i < kCompressibleBatchLength; i++) {
+    ASSERT_EQ(ArrowArrayAppendInt(array->children[0], i % 8), NANOARROW_OK);
+    ASSERT_EQ(ArrowArrayFinishElement(array), NANOARROW_OK);
+  }
+  ASSERT_EQ(ArrowArrayFinishBuildingDefault(array, nullptr), NANOARROW_OK);
+}
+
+// Write schema + batch + EOS (optionally as an IPC file) to output using codec
+static void WriteCompressibleBatch(enum ArrowIpcCompressionType codec, bool as_file,
+                                   struct ArrowBuffer* output) {
+  struct ArrowError error;
+
+  nanoarrow::UniqueSchema schema;
+  nanoarrow::UniqueArray array;
+  ASSERT_NO_FATAL_FAILURE(InitCompressibleBatch(schema.get(), array.get()));
+  nanoarrow::UniqueArrayView array_view;
+  ASSERT_EQ(ArrowArrayViewInitFromSchema(array_view.get(), schema.get(), &error),
+            NANOARROW_OK)
+      << error.message;
+  ASSERT_EQ(ArrowArrayViewSetArray(array_view.get(), array.get(), &error), NANOARROW_OK)
+      << error.message;
+
+  nanoarrow::ipc::UniqueOutputStream stream;
+  ASSERT_EQ(ArrowIpcOutputStreamInitBuffer(stream.get(), output), NANOARROW_OK);
+  nanoarrow::ipc::UniqueWriter writer;
+  ASSERT_EQ(ArrowIpcWriterInit(writer.get(), stream.get()), NANOARROW_OK);
+  ASSERT_EQ(ArrowIpcWriterSetCompression(writer.get(), codec, &error), NANOARROW_OK)
+      << error.message;
+
+  if (as_file) {
+    ASSERT_EQ(ArrowIpcWriterStartFile(writer.get(), &error), NANOARROW_OK)
+        << error.message;
+  }
+  ASSERT_EQ(ArrowIpcWriterWriteSchema(writer.get(), schema.get(), &error), NANOARROW_OK)
+      << error.message;
+  ASSERT_EQ(ArrowIpcWriterWriteArrayView(writer.get(), array_view.get(), &error),
+            NANOARROW_OK)
+      << error.message;
+  ASSERT_EQ(ArrowIpcWriterWriteArrayView(writer.get(), nullptr, &error), NANOARROW_OK)
+      << error.message;
+
+  if (as_file) {
+    // The block for the record batch records the (compressed) body length
+    auto* p = static_cast<struct ArrowIpcWriterPrivate*>(writer->private_data);
+    ASSERT_EQ(p->footer.record_batch_blocks.size_bytes, sizeof(struct ArrowIpcFileBlock));
+    auto* block =
+        reinterpret_cast<struct ArrowIpcFileBlock*>(p->footer.record_batch_blocks.data);
+    EXPECT_EQ(block->body_length, p->body_buffer.size_bytes);
+    ASSERT_EQ(ArrowIpcWriterFinalizeFile(writer.get(), &error), NANOARROW_OK)
+        << error.message;
+  }
+}
+
+// Read the stream starting at offset back with the array stream reader and check that
+// the values match what InitCompressibleBatch() produced
+static void CheckCompressibleBatch(const struct ArrowBuffer* output, int64_t offset) {
+  struct ArrowError error;
+
+  nanoarrow::UniqueBuffer input_buffer;
+  ASSERT_EQ(ArrowBufferAppend(input_buffer.get(), output->data + offset,
+                              output->size_bytes - offset),
+            NANOARROW_OK);
+  nanoarrow::ipc::UniqueInputStream input;
+  ASSERT_EQ(ArrowIpcInputStreamInitBuffer(input.get(), input_buffer.get()), NANOARROW_OK);
+  nanoarrow::UniqueArrayStream stream;
+  ASSERT_EQ(ArrowIpcArrayStreamReaderInit(stream.get(), input.get(), nullptr),
+            NANOARROW_OK);
+
+  nanoarrow::UniqueSchema schema;
+  ASSERT_EQ(ArrowArrayStreamGetSchema(stream.get(), schema.get(), &error), NANOARROW_OK)
+      << error.message;
+  EXPECT_STREQ(schema->format, "+s");
+
+  nanoarrow::UniqueArray array;
+  ASSERT_EQ(ArrowArrayStreamGetNext(stream.get(), array.get(), &error), NANOARROW_OK)
+      << error.message;
+  ASSERT_EQ(array->length, kCompressibleBatchLength);
+
+  nanoarrow::UniqueArrayView array_view;
+  ASSERT_EQ(ArrowArrayViewInitFromSchema(array_view.get(), schema.get(), &error),
+            NANOARROW_OK)
+      << error.message;
+  ASSERT_EQ(ArrowArrayViewSetArray(array_view.get(), array.get(), &error), NANOARROW_OK)
+      << error.message;
+  for (int64_t i = 0; i < kCompressibleBatchLength; i++) {
+    ASSERT_EQ(ArrowArrayViewGetIntUnsafe(array_view->children[0], i), i % 8);
+  }
+
+  nanoarrow::UniqueArray eos;
+  ASSERT_EQ(ArrowArrayStreamGetNext(stream.get(), eos.get(), &error), NANOARROW_OK)
+      << error.message;
+  EXPECT_EQ(eos->release, nullptr);
+}
+
+static void TestCompressedWriting(enum ArrowIpcCompressionType codec) {
+  for (bool as_file : {false, true}) {
+    SCOPED_TRACE(as_file ? "file" : "stream");
+
+    nanoarrow::UniqueBuffer uncompressed, compressed;
+    ASSERT_NO_FATAL_FAILURE(WriteCompressibleBatch(NANOARROW_IPC_COMPRESSION_TYPE_NONE,
+                                                   as_file, uncompressed.get()));
+    ASSERT_NO_FATAL_FAILURE(WriteCompressibleBatch(codec, as_file, compressed.get()));
+    EXPECT_LT(compressed->size_bytes, uncompressed->size_bytes);
+
+    // The stream portion of a file follows the padded magic
+    int64_t offset = as_file ? sizeof(NANOARROW_IPC_FILE_PADDED_MAGIC) : 0;
+    ASSERT_NO_FATAL_FAILURE(CheckCompressibleBatch(compressed.get(), offset));
+  }
+}
+
+TEST(NanoarrowIpcWriter, CompressedWritingLZ4) {
+  if (ArrowIpcGetLZ4CompressionFunction() == nullptr) {
+    GTEST_SKIP() << "nanoarrow_ipc not built with NANOARROW_IPC_WITH_LZ4";
+  }
+  TestCompressedWriting(NANOARROW_IPC_COMPRESSION_TYPE_LZ4_FRAME);
+}
+
+TEST(NanoarrowIpcWriter, CompressedWritingZstd) {
+  if (ArrowIpcGetZstdCompressionFunction() == nullptr) {
+    GTEST_SKIP() << "nanoarrow_ipc not built with NANOARROW_IPC_WITH_ZSTD";
+  }
+  TestCompressedWriting(NANOARROW_IPC_COMPRESSION_TYPE_ZSTD);
+}
+
+TEST(NanoarrowIpcWriter, SetCompressionErrors) {
+  nanoarrow::UniqueBuffer output;
+  nanoarrow::ipc::UniqueOutputStream stream;
+  ASSERT_EQ(ArrowIpcOutputStreamInitBuffer(stream.get(), output.get()), NANOARROW_OK);
+  nanoarrow::ipc::UniqueWriter writer;
+  ASSERT_EQ(ArrowIpcWriterInit(writer.get(), stream.get()), NANOARROW_OK);
+
+  struct ArrowError error;
+  EXPECT_EQ(ArrowIpcWriterSetCompression(
+                writer.get(), static_cast<enum ArrowIpcCompressionType>(99), &error),
+            EINVAL);
+  EXPECT_STREQ(error.message, "Unknown compression type with value 99");
+}

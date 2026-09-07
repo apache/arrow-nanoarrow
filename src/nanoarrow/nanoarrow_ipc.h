@@ -118,6 +118,8 @@
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcOutputStreamMove)
 #define ArrowIpcWriterInit NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcWriterInit)
 #define ArrowIpcWriterReset NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcWriterReset)
+#define ArrowIpcWriterSetCompression \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcWriterSetCompression)
 #define ArrowIpcWriterWriteSchema \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcWriterWriteSchema)
 #define ArrowIpcWriterWriteArrayView \
@@ -1043,6 +1045,17 @@ NANOARROW_DLL ArrowErrorCode ArrowIpcWriterInit(
 
 /// \brief Release all resources attached to a writer
 NANOARROW_DLL void ArrowIpcWriterReset(struct ArrowIpcWriter* writer);
+
+/// \brief Set the buffer compression used for subsequently written record batches
+///
+/// See ArrowIpcEncoderSetCompression(). Compression applies to record batches written
+/// after this call (in both stream and file mode) and may be changed between batches.
+///
+/// Returns EINVAL for an unknown compression type and ENOTSUP if the compression type
+/// is not supported by this build of nanoarrow.
+NANOARROW_DLL ArrowErrorCode ArrowIpcWriterSetCompression(
+    struct ArrowIpcWriter* writer, enum ArrowIpcCompressionType compression_type,
+    struct ArrowError* error);
 
 /// \brief Write a schema to the output byte stream
 ///
