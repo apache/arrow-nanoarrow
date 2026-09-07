@@ -100,6 +100,10 @@
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcEncoderFinalizeBuffer)
 #define ArrowIpcEncoderSetMessageMetadata \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcEncoderSetMessageMetadata)
+#define ArrowIpcEncoderSetCompression \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcEncoderSetCompression)
+#define ArrowIpcEncoderSetCompressor \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcEncoderSetCompressor)
 #define ArrowIpcEncoderEncodeSchema \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcEncoderEncodeSchema)
 #define ArrowIpcEncoderEncodeSimpleRecordBatch \
@@ -930,6 +934,32 @@ NANOARROW_DLL ArrowErrorCode ArrowIpcEncoderFinalizeBuffer(
 NANOARROW_DLL ArrowErrorCode
 ArrowIpcEncoderSetMessageMetadata(struct ArrowIpcEncoder* encoder,
                                   struct ArrowBuffer* metadata, struct ArrowError* error);
+
+/// \brief Set the buffer compression used by subsequently encoded RecordBatch messages
+///
+/// When compression_type is not NANOARROW_IPC_COMPRESSION_TYPE_NONE, the body buffers
+/// of every RecordBatch encoded after this call are compressed with the given codec as
+/// described by the Arrow IPC format: each non-empty buffer is written as its
+/// uncompressed length (a little-endian int64) followed by the compressed bytes.
+/// Buffers that do not shrink when compressed are written uncompressed with a length
+/// prefix of -1, and empty buffers are written as-is. The setting persists until it is
+/// changed and does not affect Schema messages.
+///
+/// Returns EINVAL for an unknown compression type and ENOTSUP if the compression type
+/// is not supported by this build of nanoarrow (i.e., nanoarrow was not built with
+/// NANOARROW_IPC_WITH_LZ4 or NANOARROW_IPC_WITH_ZSTD). If a custom compressor was
+/// set with ArrowIpcEncoderSetCompressor(), support is not checked until a RecordBatch
+/// is encoded.
+NANOARROW_DLL ArrowErrorCode ArrowIpcEncoderSetCompression(
+    struct ArrowIpcEncoder* encoder, enum ArrowIpcCompressionType compression_type,
+    struct ArrowError* error);
+
+/// \brief Set the compressor implementation used by this encoder
+///
+/// The encoder takes ownership of compressor. If this is not called, an
+/// ArrowIpcSerialCompressor() is used when compression is first required.
+NANOARROW_DLL ArrowErrorCode ArrowIpcEncoderSetCompressor(
+    struct ArrowIpcEncoder* encoder, struct ArrowIpcCompressor* compressor);
 
 /// \brief Encode an ArrowSchema
 ///

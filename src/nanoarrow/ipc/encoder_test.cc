@@ -17,6 +17,7 @@
 
 #include <gtest/gtest.h>
 
+#include <cstring>
 #include <string>
 #include <utility>
 #include <vector>
@@ -429,4 +430,302 @@ TEST(NanoarrowIpcTest, NanoarrowIpcVisitMessageMetadataError) {
             ENOTSUP);
   EXPECT_EQ(visited, (KeyValues{{"key1", "value1"}}));
   EXPECT_STREQ(error.message, "visitor stopped at key1");
+}
+
+// A record batch whose columns exercise each path of the compressed body builder:
+// - "compressible": int32s with a repeating pattern
+// - "with_nulls": int32s with a validity buffer
+// - "incompressible": pseudo-random bytes, which are stored uncompressed (prefix -1)
+// Columns without nulls have a zero-length validity buffer, which is never compressed.
+class CompressibleRecordBatch {
+ public:
+  static constexpr int64_t kLength = 4096;
+  static constexpr int64_t kBytesPerValue = 16;
+
+  CompressibleRecordBatch() {
+    NANOARROW_THROW_NOT_OK(ArrowSchemaInitFromType(schema_.get(), NANOARROW_TYPE_STRUCT));
+    NANOARROW_THROW_NOT_OK(ArrowSchemaAllocateChildren(schema_.get(), 3));
+    NANOARROW_THROW_NOT_OK(
+        ArrowSchemaInitFromType(schema_->children[0], NANOARROW_TYPE_INT32));
+    NANOARROW_THROW_NOT_OK(ArrowSchemaSetName(schema_->children[0], "compressible"));
+    NANOARROW_THROW_NOT_OK(
+        ArrowSchemaInitFromType(schema_->children[1], NANOARROW_TYPE_INT32));
+    NANOARROW_THROW_NOT_OK(ArrowSchemaSetName(schema_->children[1], "with_nulls"));
+    NANOARROW_THROW_NOT_OK(
+        ArrowSchemaInitFromType(schema_->children[2], NANOARROW_TYPE_BINARY));
+    NANOARROW_THROW_NOT_OK(ArrowSchemaSetName(schema_->children[2], "incompressible"));
+
+    NANOARROW_THROW_NOT_OK(
+        ArrowArrayInitFromSchema(array_.get(), schema_.get(), nullptr));
+    NANOARROW_THROW_NOT_OK(ArrowArrayStartAppending(array_.get()));
+
+    uint32_t state = 2463534242u;
+    uint8_t random_bytes[kBytesPerValue];
+    for (int64_t i = 0; i < kLength; i++) {
+      NANOARROW_THROW_NOT_OK(ArrowArrayAppendInt(array_->children[0], i % 4));
+
+      if (i % 3 == 0) {
+        NANOARROW_THROW_NOT_OK(ArrowArrayAppendNull(array_->children[1], 1));
+      } else {
+        NANOARROW_THROW_NOT_OK(ArrowArrayAppendInt(array_->children[1], i));
+      }
+
+      // xorshift32 so that the bytes are deterministic but not compressible
+      for (int64_t j = 0; j < kBytesPerValue; j += 4) {
+        state ^= state << 13;
+        state ^= state >> 17;
+        state ^= state << 5;
+        std::memcpy(random_bytes + j, &state, sizeof(state));
+      }
+      struct ArrowBufferView bytes = {{random_bytes}, kBytesPerValue};
+      NANOARROW_THROW_NOT_OK(ArrowArrayAppendBytes(array_->children[2], bytes));
+
+      NANOARROW_THROW_NOT_OK(ArrowArrayFinishElement(array_.get()));
+    }
+
+    NANOARROW_THROW_NOT_OK(ArrowArrayFinishBuildingDefault(array_.get(), nullptr));
+    NANOARROW_THROW_NOT_OK(
+        ArrowArrayViewInitFromSchema(array_view_.get(), schema_.get(), nullptr));
+    NANOARROW_THROW_NOT_OK(
+        ArrowArrayViewSetArray(array_view_.get(), array_.get(), nullptr));
+  }
+
+  struct ArrowSchema* schema() { return schema_.get(); }
+  const struct ArrowArrayView* array_view() { return array_view_.get(); }
+
+ private:
+  nanoarrow::UniqueSchema schema_;
+  nanoarrow::UniqueArray array_;
+  nanoarrow::UniqueArrayView array_view_;
+};
+
+static void AssertArrayViewsEqual(const struct ArrowArrayView* expected,
+                                  const struct ArrowArrayView* actual) {
+  ASSERT_EQ(actual->length, expected->length);
+  ASSERT_EQ(actual->null_count, expected->null_count);
+  ASSERT_EQ(actual->n_children, expected->n_children);
+
+  for (int i = 0; i < NANOARROW_MAX_FIXED_BUFFERS; i++) {
+    SCOPED_TRACE("buffer " + std::to_string(i));
+    ASSERT_EQ(actual->buffer_views[i].size_bytes, expected->buffer_views[i].size_bytes);
+    if (expected->buffer_views[i].size_bytes > 0) {
+      EXPECT_EQ(std::memcmp(actual->buffer_views[i].data.data,
+                            expected->buffer_views[i].data.data,
+                            expected->buffer_views[i].size_bytes),
+                0);
+    }
+  }
+
+  for (int64_t i = 0; i < expected->n_children; i++) {
+    SCOPED_TRACE("child " + std::to_string(i));
+    AssertArrayViewsEqual(expected->children[i], actual->children[i]);
+  }
+}
+
+static int64_t ReadLittleEndianInt64(const uint8_t* data) {
+  int64_t value;
+  std::memcpy(&value, data, sizeof(value));
+  if (ArrowIpcSystemEndianness() == NANOARROW_IPC_ENDIANNESS_BIG) {
+    value = static_cast<int64_t>(bswap64(static_cast<uint64_t>(value)));
+  }
+  return value;
+}
+
+static void TestCompressedRecordBatchRoundtrip(enum ArrowIpcCompressionType codec) {
+  nanoarrow::ipc::UniqueEncoder encoder;
+  ASSERT_EQ(ArrowIpcEncoderInit(encoder.get()), NANOARROW_OK);
+  nanoarrow::ipc::UniqueDecoder decoder;
+  ASSERT_EQ(ArrowIpcDecoderInit(decoder.get()), NANOARROW_OK);
+
+  CompressibleRecordBatch batch;
+  struct ArrowError error;
+  ASSERT_EQ(ArrowIpcDecoderSetSchema(decoder.get(), batch.schema(), &error), NANOARROW_OK)
+      << error.message;
+
+  // Encode without compression for reference
+  nanoarrow::UniqueBuffer uncompressed_message, uncompressed_body;
+  ASSERT_EQ(ArrowIpcEncoderEncodeSimpleRecordBatch(encoder.get(), batch.array_view(),
+                                                   uncompressed_body.get(), &error),
+            NANOARROW_OK)
+      << error.message;
+  ASSERT_EQ(ArrowIpcEncoderFinalizeBuffer(encoder.get(), /*encapsulate=*/true,
+                                          uncompressed_message.get()),
+            NANOARROW_OK);
+
+  ASSERT_EQ(ArrowIpcEncoderSetCompression(encoder.get(), codec, &error), NANOARROW_OK)
+      << error.message;
+
+  nanoarrow::UniqueBuffer message, body;
+  ASSERT_EQ(ArrowIpcEncoderEncodeSimpleRecordBatch(encoder.get(), batch.array_view(),
+                                                   body.get(), &error),
+            NANOARROW_OK)
+      << error.message;
+  ASSERT_EQ(
+      ArrowIpcEncoderFinalizeBuffer(encoder.get(), /*encapsulate=*/true, message.get()),
+      NANOARROW_OK);
+
+  // The compressible column should have made the body smaller, and the body must
+  // still be padded to a multiple of 8 bytes
+  EXPECT_LT(body->size_bytes, uncompressed_body->size_bytes);
+  EXPECT_EQ(body->size_bytes % 8, 0);
+
+  // The first buffer in the body is the data buffer of "compressible" (its validity
+  // buffer is empty and takes no space). It should be prefixed with its uncompressed
+  // length.
+  const int64_t int32_data_size = CompressibleRecordBatch::kLength * sizeof(int32_t);
+  EXPECT_EQ(ReadLittleEndianInt64(body->data), int32_data_size);
+
+  // The last buffer in the body is the data buffer of "incompressible", which should
+  // have been stored uncompressed with a prefix of -1 (and is a multiple of 8 bytes,
+  // so ends exactly at the end of the body).
+  const int64_t binary_data_size =
+      CompressibleRecordBatch::kLength * CompressibleRecordBatch::kBytesPerValue;
+  const uint8_t* last_buffer = body->data + body->size_bytes - binary_data_size - 8;
+  EXPECT_EQ(ReadLittleEndianInt64(last_buffer), -1);
+  EXPECT_EQ(std::memcmp(last_buffer + 8,
+                        batch.array_view()->children[2]->buffer_views[2].data.data,
+                        binary_data_size),
+            0);
+
+  // Decode the header: the codec is recorded and the body length is correct
+  struct ArrowBufferView message_view = {{message->data}, message->size_bytes};
+  ASSERT_EQ(ArrowIpcDecoderVerifyHeader(decoder.get(), message_view, &error),
+            NANOARROW_OK)
+      << error.message;
+  ASSERT_EQ(ArrowIpcDecoderDecodeHeader(decoder.get(), message_view, &error),
+            NANOARROW_OK)
+      << error.message;
+  EXPECT_EQ(decoder->message_type, NANOARROW_IPC_MESSAGE_TYPE_RECORD_BATCH);
+  EXPECT_EQ(decoder->codec, codec);
+  EXPECT_EQ(decoder->body_size_bytes, body->size_bytes);
+
+  // Decode the body and compare with the original
+  nanoarrow::UniqueArray decoded;
+  struct ArrowBufferView body_view = {{body->data}, body->size_bytes};
+  ASSERT_EQ(ArrowIpcDecoderDecodeArray(decoder.get(), body_view, -1, decoded.get(),
+                                       NANOARROW_VALIDATION_LEVEL_FULL, &error),
+            NANOARROW_OK)
+      << error.message;
+
+  nanoarrow::UniqueArrayView decoded_view;
+  ASSERT_EQ(ArrowArrayViewInitFromSchema(decoded_view.get(), batch.schema(), &error),
+            NANOARROW_OK)
+      << error.message;
+  ASSERT_EQ(ArrowArrayViewSetArray(decoded_view.get(), decoded.get(), &error),
+            NANOARROW_OK)
+      << error.message;
+  AssertArrayViewsEqual(batch.array_view(), decoded_view.get());
+
+  // Compression can be turned off again
+  ASSERT_EQ(ArrowIpcEncoderSetCompression(encoder.get(),
+                                          NANOARROW_IPC_COMPRESSION_TYPE_NONE, &error),
+            NANOARROW_OK)
+      << error.message;
+  message->size_bytes = 0;
+  body->size_bytes = 0;
+  ASSERT_EQ(ArrowIpcEncoderEncodeSimpleRecordBatch(encoder.get(), batch.array_view(),
+                                                   body.get(), &error),
+            NANOARROW_OK)
+      << error.message;
+  ASSERT_EQ(
+      ArrowIpcEncoderFinalizeBuffer(encoder.get(), /*encapsulate=*/true, message.get()),
+      NANOARROW_OK);
+  EXPECT_EQ(body->size_bytes, uncompressed_body->size_bytes);
+  EXPECT_EQ(std::memcmp(body->data, uncompressed_body->data, body->size_bytes), 0);
+
+  message_view = {{message->data}, message->size_bytes};
+  ASSERT_EQ(ArrowIpcDecoderDecodeHeader(decoder.get(), message_view, &error),
+            NANOARROW_OK)
+      << error.message;
+  EXPECT_EQ(decoder->codec, NANOARROW_IPC_COMPRESSION_TYPE_NONE);
+}
+
+TEST(NanoarrowIpcTest, NanoarrowIpcEncoderCompressedRecordBatchLZ4) {
+  if (ArrowIpcGetLZ4CompressionFunction() == nullptr) {
+    GTEST_SKIP() << "nanoarrow_ipc not built with NANOARROW_IPC_WITH_LZ4";
+  }
+  TestCompressedRecordBatchRoundtrip(NANOARROW_IPC_COMPRESSION_TYPE_LZ4_FRAME);
+}
+
+TEST(NanoarrowIpcTest, NanoarrowIpcEncoderCompressedRecordBatchZstd) {
+  if (ArrowIpcGetZstdCompressionFunction() == nullptr) {
+    GTEST_SKIP() << "nanoarrow_ipc not built with NANOARROW_IPC_WITH_ZSTD";
+  }
+  TestCompressedRecordBatchRoundtrip(NANOARROW_IPC_COMPRESSION_TYPE_ZSTD);
+}
+
+TEST(NanoarrowIpcTest, NanoarrowIpcEncoderSetCompressionErrors) {
+  nanoarrow::ipc::UniqueEncoder encoder;
+  ASSERT_EQ(ArrowIpcEncoderInit(encoder.get()), NANOARROW_OK);
+  struct ArrowError error;
+
+  EXPECT_EQ(ArrowIpcEncoderSetCompression(
+                encoder.get(), static_cast<enum ArrowIpcCompressionType>(99), &error),
+            EINVAL);
+  EXPECT_STREQ(error.message, "Unknown compression type with value 99");
+
+  // NONE is always supported
+  EXPECT_EQ(ArrowIpcEncoderSetCompression(encoder.get(),
+                                          NANOARROW_IPC_COMPRESSION_TYPE_NONE, &error),
+            NANOARROW_OK)
+      << error.message;
+
+  // Codecs that were not built in are rejected when they are set rather than when
+  // the first batch is encoded
+#if defined(NANOARROW_IPC_WITH_LZ4)
+  EXPECT_EQ(ArrowIpcEncoderSetCompression(
+                encoder.get(), NANOARROW_IPC_COMPRESSION_TYPE_LZ4_FRAME, &error),
+            NANOARROW_OK)
+      << error.message;
+#else
+  EXPECT_EQ(ArrowIpcEncoderSetCompression(
+                encoder.get(), NANOARROW_IPC_COMPRESSION_TYPE_LZ4_FRAME, &error),
+            ENOTSUP);
+  EXPECT_STREQ(error.message,
+               "Compression type with value 1 not supported by this build of nanoarrow");
+#endif
+
+#if defined(NANOARROW_IPC_WITH_ZSTD)
+  EXPECT_EQ(ArrowIpcEncoderSetCompression(encoder.get(),
+                                          NANOARROW_IPC_COMPRESSION_TYPE_ZSTD, &error),
+            NANOARROW_OK)
+      << error.message;
+#else
+  EXPECT_EQ(ArrowIpcEncoderSetCompression(encoder.get(),
+                                          NANOARROW_IPC_COMPRESSION_TYPE_ZSTD, &error),
+            ENOTSUP);
+  EXPECT_STREQ(error.message,
+               "Compression type with value 2 not supported by this build of nanoarrow");
+#endif
+}
+
+TEST(NanoarrowIpcTest, NanoarrowIpcEncoderSetCompressor) {
+  nanoarrow::ipc::UniqueEncoder encoder;
+  ASSERT_EQ(ArrowIpcEncoderInit(encoder.get()), NANOARROW_OK);
+  struct ArrowError error;
+
+  // A custom compressor that explicitly does not support LZ4
+  nanoarrow::ipc::UniqueCompressor compressor;
+  ASSERT_EQ(ArrowIpcSerialCompressor(compressor.get()), NANOARROW_OK);
+  ASSERT_EQ(ArrowIpcSerialCompressorSetFunction(
+                compressor.get(), NANOARROW_IPC_COMPRESSION_TYPE_LZ4_FRAME, nullptr),
+            NANOARROW_OK);
+
+  ASSERT_EQ(ArrowIpcEncoderSetCompressor(encoder.get(), compressor.get()), NANOARROW_OK);
+  // The encoder took ownership of the compressor
+  EXPECT_EQ(compressor->release, nullptr);
+
+  // With a custom compressor, support is not checked until a batch is encoded
+  ASSERT_EQ(ArrowIpcEncoderSetCompression(
+                encoder.get(), NANOARROW_IPC_COMPRESSION_TYPE_LZ4_FRAME, &error),
+            NANOARROW_OK)
+      << error.message;
+
+  CompressibleRecordBatch batch;
+  nanoarrow::UniqueBuffer body;
+  EXPECT_EQ(ArrowIpcEncoderEncodeSimpleRecordBatch(encoder.get(), batch.array_view(),
+                                                   body.get(), &error),
+            ENOTSUP);
+  EXPECT_STREQ(error.message,
+               "Compression type with value 1 not supported by this build of nanoarrow");
 }
