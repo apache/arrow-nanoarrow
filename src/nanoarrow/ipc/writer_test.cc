@@ -276,6 +276,29 @@ TEST(NanoarrowIpcWriter, WriteDictionaryBatch) {
 
   // one block tracked in file mode
   EXPECT_EQ(p2->footer.dictionary_blocks.size_bytes, sizeof(struct ArrowIpcFileBlock));
+
+  int64_t bytes_written = p2->bytes_written;
+  EXPECT_EQ(ArrowIpcWriterWriteDictionaryBatch(writer2.get(), /*dictionary_id=*/0,
+                                               /*is_delta=*/0, values_view.get(), &error),
+            ENOTSUP);
+  EXPECT_STREQ(error.message,
+               "IPC file writing supports exactly one non-delta dictionary batch");
+  EXPECT_EQ(p2->bytes_written, bytes_written);
+  EXPECT_EQ(p2->footer.dictionary_blocks.size_bytes, sizeof(struct ArrowIpcFileBlock));
+
+  nanoarrow::ipc::UniqueOutputStream stream3;
+  nanoarrow::UniqueBuffer output3;
+  ASSERT_EQ(ArrowIpcOutputStreamInitBuffer(stream3.get(), output3.get()), NANOARROW_OK);
+
+  nanoarrow::ipc::UniqueWriter writer3;
+  ASSERT_EQ(ArrowIpcWriterInit(writer3.get(), stream3.get()), NANOARROW_OK);
+  ASSERT_EQ(ArrowIpcWriterStartFile(writer3.get(), &error), NANOARROW_OK)
+      << error.message;
+  EXPECT_EQ(ArrowIpcWriterWriteDictionaryBatch(writer3.get(), /*dictionary_id=*/0,
+                                               /*is_delta=*/1, values_view.get(), &error),
+            ENOTSUP);
+  EXPECT_STREQ(error.message,
+               "IPC file writing supports exactly one non-delta dictionary batch");
 }
 
 // Build a struct array with a single dictionary-encoded (int32 -> utf8) child.

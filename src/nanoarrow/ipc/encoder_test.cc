@@ -106,6 +106,29 @@ TEST(NanoarrowIpcTest, NanoarrowIpcFooterEncoding) {
   EXPECT_GT(footer_buffer->size_bytes, raw_schema_buffer->size_bytes);
 }
 
+TEST(NanoarrowIpcTest, NanoarrowIpcEncoderRejectsNestedDictionary) {
+  nanoarrow::UniqueSchema schema;
+  ASSERT_EQ(ArrowSchemaInitFromType(schema.get(), NANOARROW_TYPE_STRUCT), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaAllocateChildren(schema.get(), 1), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaInitFromType(schema->children[0], NANOARROW_TYPE_INT32),
+            NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaAllocateDictionary(schema->children[0]), NANOARROW_OK);
+  ASSERT_EQ(
+      ArrowSchemaInitFromType(schema->children[0]->dictionary, NANOARROW_TYPE_INT32),
+      NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaAllocateDictionary(schema->children[0]->dictionary), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaInitFromType(schema->children[0]->dictionary->dictionary,
+                                    NANOARROW_TYPE_STRING),
+            NANOARROW_OK);
+
+  nanoarrow::ipc::UniqueEncoder encoder;
+  ASSERT_EQ(ArrowIpcEncoderInit(encoder.get()), NANOARROW_OK);
+
+  struct ArrowError error;
+  EXPECT_EQ(ArrowIpcEncoderEncodeSchema(encoder.get(), schema.get(), &error), ENOTSUP);
+  EXPECT_STREQ(error.message, "IPC encoding of nested dictionary values unsupported");
+}
+
 using KeyValues = std::vector<std::pair<std::string, std::string>>;
 
 // Unpack nanoarrow's metadata representation into something comparable

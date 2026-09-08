@@ -324,6 +324,17 @@ ArrowErrorCode ArrowIpcWriterWriteDictionaryBatch(
   struct ArrowIpcWriterPrivate* private =
       (struct ArrowIpcWriterPrivate*)writer->private_data;
 
+  // This check is intentionally minimal: we're allowed to write one dictionary
+  // batch per ID in a file but we would need to add bookkeeping to keep track
+  // of written IDs (and usefully a fingerprint or reference to the dictionary
+  // so we can check if we need to emit it again).
+  if (private->writing_file &&
+      (is_delta || private->footer.dictionary_blocks.size_bytes != 0)) {
+    ArrowErrorSet(error,
+                  "IPC file writing supports exactly one non-delta dictionary batch");
+    return ENOTSUP;
+  }
+
   NANOARROW_ASSERT_OK(ArrowBufferResize(&private->buffer, 0, 0));
   NANOARROW_ASSERT_OK(ArrowBufferResize(&private->body_buffer, 0, 0));
 
@@ -362,6 +373,8 @@ ArrowErrorCode ArrowIpcWriterWriteDictionaryBatch(
 // Emitting a full (non-delta) DictionaryBatch for each dictionary before every
 // RecordBatch keeps each batch's indices valid against the dictionary that precedes
 // it, which is required because each array in the stream carries its own dictionary.
+// In the future we can reduce the number of dictionaries emitted by checking for
+// identical dictionary arrays.
 static ArrowErrorCode ArrowIpcWriterWriteDictionariesForArrayView(
     struct ArrowIpcWriter* writer, const struct ArrowArrayView* array_view,
     int64_t* next_id, struct ArrowError* error) {

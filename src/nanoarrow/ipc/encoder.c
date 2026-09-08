@@ -445,6 +445,13 @@ static ArrowErrorCode ArrowIpcEncodeField(
     flatcc_builder_t* builder, const struct ArrowSchema* schema,
     const struct ArrowIpcDictionaryEncodings* dictionary_encodings,
     struct ArrowError* error) {
+  // Check before ArrowSchemaViewInit(), which assumes dictionary values are not
+  // themselves dictionary-encoded.
+  if (schema->dictionary != NULL && schema->dictionary->dictionary != NULL) {
+    ArrowErrorSet(error, "IPC encoding of nested dictionary values unsupported");
+    return ENOTSUP;
+  }
+
   FLATCC_RETURN_UNLESS_0(Field_name_create_str(builder, schema->name), error);
   FLATCC_RETURN_UNLESS_0(
       Field_nullable_add(builder, (schema->flags & ARROW_FLAG_NULLABLE) != 0), error);
@@ -518,6 +525,15 @@ static ArrowErrorCode ArrowIpcEncodeField(
 
     // Add the dictionary encoding to the field
     FLATCC_RETURN_UNLESS_0(Field_dictionary_add(builder, dict_encoding_ref), error);
+
+    // Support dictionary values with children by encoding children from
+    // schema->dictionary (and add a roundtrip test for a nested value type).
+    // Using schema below would encode the index type's children instead and
+    // produce a Field whose type and children do not agree.
+    if (schema->dictionary->n_children != 0) {
+      ArrowErrorSet(error, "IPC encoding of dictionary values with children unsupported");
+      return ENOTSUP;
+    }
 
     NANOARROW_RETURN_NOT_OK(ArrowSchemaViewInit(&schema_view, schema->dictionary, error));
   }
