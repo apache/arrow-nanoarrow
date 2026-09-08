@@ -18,3 +18,4 @@
 pydata-sphinx-theme
 sphinx<7.2.0
 breathe
+https://github.com/lidavidm/arrow-adbc/archive/gh-2432.zip#subdirectory=docs/source/ext/illiterate_sphinx
