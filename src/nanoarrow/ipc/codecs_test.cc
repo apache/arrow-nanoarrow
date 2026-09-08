@@ -16,6 +16,7 @@
 // under the License.
 
 #include <cstring>
+#include <limits>
 #include <string>
 #include <vector>
 
@@ -238,6 +239,7 @@ static void TestCompressionFunctions(ArrowIpcCompressFunction compress,
   ASSERT_NE(decompress, nullptr);
 
   auto input = CompressibleInput(1 << 20);
+  int64_t default_size = 0;
   for (int level : compression_levels) {
     SCOPED_TRACE("compression level " + std::to_string(level));
     TestCompressRoundtrip(compress, decompress, level, {});
@@ -249,7 +251,16 @@ static void TestCompressionFunctions(ArrowIpcCompressFunction compress,
     // Large enough to span several blocks; a repetitive input must actually shrink
     int64_t compressed_size = TestCompressRoundtrip(compress, decompress, level, input);
     EXPECT_LT(compressed_size, static_cast<int64_t>(input.size() / 10));
+    if (level == NANOARROW_IPC_COMPRESSION_LEVEL_DEFAULT) {
+      default_size = compressed_size;
+    }
   }
+
+  // High acceleration must trade compression ratio for speed on this input. Merely
+  // roundtripping at several levels would also pass if the level were ignored.
+  ASSERT_GT(default_size, 0);
+  int64_t accelerated_size = TestCompressRoundtrip(compress, decompress, -65536, input);
+  EXPECT_GT(accelerated_size, default_size * 2);
 }
 
 TEST(NanoarrowIpcTest, NanoarrowIpcZstdCompressBuildMatchesRuntime) {
@@ -286,6 +297,26 @@ TEST(NanoarrowIpcTest, LZ4CompressRoundtrip) {
   TestCompressionFunctions(ArrowIpcGetLZ4CompressionFunction(),
                            ArrowIpcGetLZ4DecompressionFunction(),
                            {NANOARROW_IPC_COMPRESSION_LEVEL_DEFAULT, -1, 2, 9, 12});
+}
+
+TEST(NanoarrowIpcTest, LZ4CompressMinimumLevels) {
+  auto compress = ArrowIpcGetLZ4CompressionFunction();
+  if (compress == nullptr) {
+    GTEST_SKIP() << "nanoarrow_ipc not built with NANOARROW_IPC_WITH_LZ4";
+  }
+  auto decompress = ArrowIpcGetLZ4DecompressionFunction();
+  ASSERT_NE(decompress, nullptr);
+
+  auto input = CompressibleInput(1 << 20);
+  int64_t accelerated_size = TestCompressRoundtrip(compress, decompress, -65536, input);
+  for (int level : {std::numeric_limits<int>::min(), std::numeric_limits<int>::min() + 1,
+                    std::numeric_limits<int>::min() + 2}) {
+    SCOPED_TRACE("compression level " + std::to_string(level));
+    // The most negative levels must saturate at maximum acceleration rather than
+    // overflow and fall back to the default compression level.
+    EXPECT_EQ(TestCompressRoundtrip(compress, decompress, level, input),
+              accelerated_size);
+  }
 }
 
 // A stand-in compression function that records the level it was called with and

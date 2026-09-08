@@ -466,10 +466,10 @@ struct ArrowIpcCompressor {
 ///
 /// The interpretation of compression_level is codec-specific.
 /// NANOARROW_IPC_COMPRESSION_LEVEL_DEFAULT selects the codec's default level; other
-/// values are passed to the underlying library as-is (for ZSTD, ZSTD_minCLevel() to
+/// values follow the underlying library's conventions (for ZSTD, ZSTD_minCLevel() to
 /// ZSTD_maxCLevel() where negative levels favour speed; for LZ4, up to
 /// LZ4F_compressionLevel_max() where levels >= 3 use LZ4HC and negative levels select
-/// acceleration). Both libraries clamp out-of-range levels.
+/// acceleration). The built-in implementations clamp out-of-range levels.
 typedef ArrowErrorCode (*ArrowIpcCompressFunction)(struct ArrowBufferView src,
                                                    int compression_level,
                                                    struct ArrowBuffer* dst,

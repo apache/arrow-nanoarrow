@@ -16,6 +16,7 @@
 // under the License.
 
 #include <inttypes.h>
+#include <limits.h>
 
 #include "nanoarrow/nanoarrow_ipc.h"
 
@@ -141,6 +142,12 @@ static ArrowErrorCode ArrowIpcDecompressLZ4(struct ArrowBufferView src, uint8_t*
 static ArrowErrorCode ArrowIpcCompressLZ4(struct ArrowBufferView src,
                                           int compression_level, struct ArrowBuffer* dst,
                                           struct ArrowError* error) {
+  // LZ4 computes acceleration as -level + 1 before clamping it. Keep that
+  // calculation representable even for the most negative int values.
+  if (compression_level < 1 - INT_MAX) {
+    compression_level = 1 - INT_MAX;
+  }
+
   // Default preferences except for the compression level (no content size, no
   // checksums).
   // This produces a single complete frame, which is what ArrowIpcDecompressLZ4()

@@ -224,8 +224,10 @@ static void InitCompressibleBatch(struct ArrowSchema* schema, struct ArrowArray*
   ASSERT_EQ(ArrowArrayFinishBuildingDefault(array, nullptr), NANOARROW_OK);
 }
 
-// Write schema + batch + EOS (optionally as an IPC file) to output using codec
-static void WriteCompressibleBatch(enum ArrowIpcCompressionType codec, bool as_file,
+// Write schema + batch + EOS (optionally as an IPC file) using codec and
+// compression_level
+static void WriteCompressibleBatch(enum ArrowIpcCompressionType codec,
+                                   int compression_level, bool as_file,
                                    struct ArrowBuffer* output) {
   struct ArrowError error;
 
@@ -243,8 +245,7 @@ static void WriteCompressibleBatch(enum ArrowIpcCompressionType codec, bool as_f
   ASSERT_EQ(ArrowIpcOutputStreamInitBuffer(stream.get(), output), NANOARROW_OK);
   nanoarrow::ipc::UniqueWriter writer;
   ASSERT_EQ(ArrowIpcWriterInit(writer.get(), stream.get()), NANOARROW_OK);
-  ASSERT_EQ(ArrowIpcWriterSetCompression(writer.get(), codec,
-                                         NANOARROW_IPC_COMPRESSION_LEVEL_DEFAULT, &error),
+  ASSERT_EQ(ArrowIpcWriterSetCompression(writer.get(), codec, compression_level, &error),
             NANOARROW_OK)
       << error.message;
 
@@ -317,15 +318,22 @@ static void TestCompressedWriting(enum ArrowIpcCompressionType codec) {
   for (bool as_file : {false, true}) {
     SCOPED_TRACE(as_file ? "file" : "stream");
 
-    nanoarrow::UniqueBuffer uncompressed, compressed;
-    ASSERT_NO_FATAL_FAILURE(WriteCompressibleBatch(NANOARROW_IPC_COMPRESSION_TYPE_NONE,
-                                                   as_file, uncompressed.get()));
-    ASSERT_NO_FATAL_FAILURE(WriteCompressibleBatch(codec, as_file, compressed.get()));
+    nanoarrow::UniqueBuffer uncompressed, compressed, accelerated;
+    ASSERT_NO_FATAL_FAILURE(WriteCompressibleBatch(
+        NANOARROW_IPC_COMPRESSION_TYPE_NONE, NANOARROW_IPC_COMPRESSION_LEVEL_DEFAULT,
+        as_file, uncompressed.get()));
+    ASSERT_NO_FATAL_FAILURE(WriteCompressibleBatch(
+        codec, NANOARROW_IPC_COMPRESSION_LEVEL_DEFAULT, as_file, compressed.get()));
+    ASSERT_NO_FATAL_FAILURE(
+        WriteCompressibleBatch(codec, -65536, as_file, accelerated.get()));
     EXPECT_LT(compressed->size_bytes, uncompressed->size_bytes);
+    // A nondefault level must reach the codec through the writer and encoder.
+    EXPECT_GT(accelerated->size_bytes, compressed->size_bytes);
 
     // The stream portion of a file follows the padded magic
     int64_t offset = as_file ? sizeof(NANOARROW_IPC_FILE_PADDED_MAGIC) : 0;
     ASSERT_NO_FATAL_FAILURE(CheckCompressibleBatch(compressed.get(), offset));
+    ASSERT_NO_FATAL_FAILURE(CheckCompressibleBatch(accelerated.get(), offset));
   }
 }
 
