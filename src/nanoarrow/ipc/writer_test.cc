@@ -376,6 +376,7 @@ TEST(NanoarrowIpcWriter, RoundtripDictionaryStream) {
   EXPECT_EQ(std::string(v0.data, v0.size_bytes), "foo");
   EXPECT_EQ(std::string(v1.data, v1.size_bytes), "bar");
 
+  roundtrip_array.reset();
   ASSERT_EQ(ArrowArrayStreamGetNext(reader.get(), roundtrip_array.get(), &error),
             NANOARROW_OK)
       << error.message;
