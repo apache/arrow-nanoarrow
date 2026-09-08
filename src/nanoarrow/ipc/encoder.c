@@ -758,15 +758,23 @@ static ArrowErrorCode ArrowIpcEncoderBuildContiguousBodyBufferCallback(
   struct ArrowBuffer* body_buffer =
       (struct ArrowBuffer*)buffer_encoder->encode_buffer_state;
 
-  // zero padding up to the start of the buffer
   int64_t buffer_begin = _ArrowRoundUpToMultipleOf8(body_buffer->size_bytes);
+  // Empty buffers are never compressed (nor length-prefixed), matching Arrow C++.
+  int needs_compression =
+      private->codec != NANOARROW_IPC_COMPRESSION_TYPE_NONE && buffer_view.size_bytes > 0;
+  if (!needs_compression) {
+    // Reserve the data and padding together to avoid growing the buffer twice.
+    int64_t new_size = _ArrowRoundUpToMultipleOf8(buffer_begin + buffer_view.size_bytes);
+    NANOARROW_RETURN_NOT_OK_WITH_ERROR(
+        ArrowBufferReserve(body_buffer, new_size - body_buffer->size_bytes), error);
+  }
+
+  // zero padding up to the start of the buffer
   NANOARROW_RETURN_NOT_OK_WITH_ERROR(
       ArrowBufferAppendFill(body_buffer, 0, buffer_begin - body_buffer->size_bytes),
       error);
 
-  // empty buffers are never compressed (nor length-prefixed), matching Arrow C++
-  if (private->codec != NANOARROW_IPC_COMPRESSION_TYPE_NONE &&
-      buffer_view.size_bytes > 0) {
+  if (needs_compression) {
     NANOARROW_RETURN_NOT_OK(
         ArrowIpcEncoderAppendCompressedBuffer(private, buffer_view, body_buffer, error));
   } else {

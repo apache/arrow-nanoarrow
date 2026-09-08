@@ -499,29 +499,6 @@ class CompressibleRecordBatch {
   nanoarrow::UniqueArrayView array_view_;
 };
 
-static void AssertArrayViewsEqual(const struct ArrowArrayView* expected,
-                                  const struct ArrowArrayView* actual) {
-  ASSERT_EQ(actual->length, expected->length);
-  ASSERT_EQ(actual->null_count, expected->null_count);
-  ASSERT_EQ(actual->n_children, expected->n_children);
-
-  for (int i = 0; i < NANOARROW_MAX_FIXED_BUFFERS; i++) {
-    SCOPED_TRACE("buffer " + std::to_string(i));
-    ASSERT_EQ(actual->buffer_views[i].size_bytes, expected->buffer_views[i].size_bytes);
-    if (expected->buffer_views[i].size_bytes > 0) {
-      EXPECT_EQ(std::memcmp(actual->buffer_views[i].data.data,
-                            expected->buffer_views[i].data.data,
-                            expected->buffer_views[i].size_bytes),
-                0);
-    }
-  }
-
-  for (int64_t i = 0; i < expected->n_children; i++) {
-    SCOPED_TRACE("child " + std::to_string(i));
-    AssertArrayViewsEqual(expected->children[i], actual->children[i]);
-  }
-}
-
 static int64_t ReadLittleEndianInt64(const uint8_t* data) {
   int64_t value;
   std::memcpy(&value, data, sizeof(value));
@@ -614,7 +591,11 @@ static void TestCompressedRecordBatchRoundtrip(enum ArrowIpcCompressionType code
   ASSERT_EQ(ArrowArrayViewSetArray(decoded_view.get(), decoded.get(), &error),
             NANOARROW_OK)
       << error.message;
-  AssertArrayViewsEqual(batch.array_view(), decoded_view.get());
+  int is_equal = 0;
+  ASSERT_EQ(ArrowArrayViewCompare(decoded_view.get(), batch.array_view(),
+                                  NANOARROW_COMPARE_IDENTICAL, &is_equal, &error),
+            NANOARROW_OK);
+  EXPECT_EQ(is_equal, 1) << error.message;
 
   // Compression can be turned off again
   ASSERT_EQ(ArrowIpcEncoderSetCompression(encoder.get(),
@@ -638,6 +619,54 @@ static void TestCompressedRecordBatchRoundtrip(enum ArrowIpcCompressionType code
             NANOARROW_OK)
       << error.message;
   EXPECT_EQ(decoder->codec, NANOARROW_IPC_COMPRESSION_TYPE_NONE);
+}
+
+TEST(NanoarrowIpcTest, NanoarrowIpcEncoderUncompressedRecordBatchAllocation) {
+  nanoarrow::ipc::UniqueEncoder encoder;
+  ASSERT_EQ(ArrowIpcEncoderInit(encoder.get()), NANOARROW_OK);
+
+  // An odd number of int32 values requires four bytes of trailing padding.
+  std::vector<int32_t> values(1025, 42);
+  struct ArrowError error;
+  nanoarrow::UniqueSchema schema;
+  ASSERT_EQ(ArrowSchemaInitFromType(schema.get(), NANOARROW_TYPE_STRUCT), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaAllocateChildren(schema.get(), 1), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaInitFromType(schema->children[0], NANOARROW_TYPE_INT32),
+            NANOARROW_OK);
+  nanoarrow::UniqueArray array;
+  ASSERT_EQ(ArrowArrayInitFromSchema(array.get(), schema.get(), &error), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayStartAppending(array.get()), NANOARROW_OK);
+  for (int32_t value : values) {
+    ASSERT_EQ(ArrowArrayAppendInt(array->children[0], value), NANOARROW_OK);
+    ASSERT_EQ(ArrowArrayFinishElement(array.get()), NANOARROW_OK);
+  }
+  ASSERT_EQ(ArrowArrayFinishBuildingDefault(array.get(), &error), NANOARROW_OK);
+  nanoarrow::UniqueArrayView array_view;
+  ASSERT_EQ(ArrowArrayViewInitFromSchema(array_view.get(), schema.get(), &error),
+            NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayViewSetArray(array_view.get(), array.get(), &error), NANOARROW_OK);
+
+  int allocations = 0;
+  auto allocator = ArrowBufferAllocatorDefault();
+  allocator.private_data = &allocations;
+  allocator.reallocate = [](struct ArrowBufferAllocator* allocator, uint8_t* ptr,
+                            int64_t old_size, int64_t new_size) {
+    ++*static_cast<int*>(allocator->private_data);
+    auto default_allocator = ArrowBufferAllocatorDefault();
+    return default_allocator.reallocate(&default_allocator, ptr, old_size, new_size);
+  };
+  nanoarrow::UniqueBuffer body;
+  ASSERT_EQ(ArrowBufferSetAllocator(body.get(), allocator), NANOARROW_OK);
+
+  ASSERT_EQ(ArrowIpcEncoderEncodeSimpleRecordBatch(encoder.get(), array_view.get(),
+                                                   body.get(), &error),
+            NANOARROW_OK)
+      << error.message;
+  EXPECT_EQ(allocations, 1);
+  ASSERT_EQ(body->size_bytes, 4104);
+  EXPECT_EQ(body->capacity_bytes, 4104);
+  EXPECT_EQ(std::memcmp(body->data, values.data(), 4100), 0);
+  EXPECT_EQ(std::memcmp(body->data + 4100, "\0\0\0\0", 4), 0);
 }
 
 TEST(NanoarrowIpcTest, NanoarrowIpcEncoderCompressedRecordBatchLZ4) {

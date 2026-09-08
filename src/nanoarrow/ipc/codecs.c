@@ -304,8 +304,7 @@ static void ArrowIpcSerialCompressorRelease(struct ArrowIpcCompressor* compresso
 }
 
 ArrowErrorCode ArrowIpcSerialCompressor(struct ArrowIpcCompressor* compressor) {
-  compressor->compress = &ArrowIpcSerialCompressorCompress;
-  compressor->release = &ArrowIpcSerialCompressorRelease;
+  compressor->release = NULL;
   compressor->private_data = ArrowMalloc(sizeof(struct ArrowIpcSerialCompressorPrivate));
   if (compressor->private_data == NULL) {
     return ENOMEM;
@@ -317,6 +316,8 @@ ArrowErrorCode ArrowIpcSerialCompressor(struct ArrowIpcCompressor* compressor) {
   ArrowIpcSerialCompressorSetFunction(compressor,
                                       NANOARROW_IPC_COMPRESSION_TYPE_LZ4_FRAME,
                                       ArrowIpcGetLZ4CompressionFunction());
+  compressor->compress = &ArrowIpcSerialCompressorCompress;
+  compressor->release = &ArrowIpcSerialCompressorRelease;
   return NANOARROW_OK;
 }
 
