@@ -243,7 +243,9 @@ static void WriteCompressibleBatch(enum ArrowIpcCompressionType codec, bool as_f
   ASSERT_EQ(ArrowIpcOutputStreamInitBuffer(stream.get(), output), NANOARROW_OK);
   nanoarrow::ipc::UniqueWriter writer;
   ASSERT_EQ(ArrowIpcWriterInit(writer.get(), stream.get()), NANOARROW_OK);
-  ASSERT_EQ(ArrowIpcWriterSetCompression(writer.get(), codec, &error), NANOARROW_OK)
+  ASSERT_EQ(ArrowIpcWriterSetCompression(writer.get(), codec,
+                                         NANOARROW_IPC_COMPRESSION_LEVEL_DEFAULT, &error),
+            NANOARROW_OK)
       << error.message;
 
   if (as_file) {
@@ -349,8 +351,9 @@ TEST(NanoarrowIpcWriter, SetCompressionErrors) {
   ASSERT_EQ(ArrowIpcWriterInit(writer.get(), stream.get()), NANOARROW_OK);
 
   struct ArrowError error;
-  EXPECT_EQ(ArrowIpcWriterSetCompression(
-                writer.get(), static_cast<enum ArrowIpcCompressionType>(99), &error),
+  EXPECT_EQ(ArrowIpcWriterSetCompression(writer.get(),
+                                         static_cast<enum ArrowIpcCompressionType>(99),
+                                         NANOARROW_IPC_COMPRESSION_LEVEL_DEFAULT, &error),
             EINVAL);
   EXPECT_STREQ(error.message, "Unknown compression type with value 99");
 }

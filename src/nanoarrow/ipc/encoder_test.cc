@@ -529,7 +529,9 @@ static void TestCompressedRecordBatchRoundtrip(enum ArrowIpcCompressionType code
                                           uncompressed_message.get()),
             NANOARROW_OK);
 
-  ASSERT_EQ(ArrowIpcEncoderSetCompression(encoder.get(), codec, &error), NANOARROW_OK)
+  ASSERT_EQ(ArrowIpcEncoderSetCompression(
+                encoder.get(), codec, NANOARROW_IPC_COMPRESSION_LEVEL_DEFAULT, &error),
+            NANOARROW_OK)
       << error.message;
 
   nanoarrow::UniqueBuffer message, body;
@@ -598,9 +600,10 @@ static void TestCompressedRecordBatchRoundtrip(enum ArrowIpcCompressionType code
   EXPECT_EQ(is_equal, 1) << error.message;
 
   // Compression can be turned off again
-  ASSERT_EQ(ArrowIpcEncoderSetCompression(encoder.get(),
-                                          NANOARROW_IPC_COMPRESSION_TYPE_NONE, &error),
-            NANOARROW_OK)
+  ASSERT_EQ(
+      ArrowIpcEncoderSetCompression(encoder.get(), NANOARROW_IPC_COMPRESSION_TYPE_NONE,
+                                    NANOARROW_IPC_COMPRESSION_LEVEL_DEFAULT, &error),
+      NANOARROW_OK)
       << error.message;
   message->size_bytes = 0;
   body->size_bytes = 0;
@@ -689,40 +692,46 @@ TEST(NanoarrowIpcTest, NanoarrowIpcEncoderSetCompressionErrors) {
   struct ArrowError error;
 
   EXPECT_EQ(ArrowIpcEncoderSetCompression(
-                encoder.get(), static_cast<enum ArrowIpcCompressionType>(99), &error),
+                encoder.get(), static_cast<enum ArrowIpcCompressionType>(99),
+                NANOARROW_IPC_COMPRESSION_LEVEL_DEFAULT, &error),
             EINVAL);
   EXPECT_STREQ(error.message, "Unknown compression type with value 99");
 
   // NONE is always supported
-  EXPECT_EQ(ArrowIpcEncoderSetCompression(encoder.get(),
-                                          NANOARROW_IPC_COMPRESSION_TYPE_NONE, &error),
-            NANOARROW_OK)
+  EXPECT_EQ(
+      ArrowIpcEncoderSetCompression(encoder.get(), NANOARROW_IPC_COMPRESSION_TYPE_NONE,
+                                    NANOARROW_IPC_COMPRESSION_LEVEL_DEFAULT, &error),
+      NANOARROW_OK)
       << error.message;
 
   // Codecs that were not built in are rejected when they are set rather than when
   // the first batch is encoded
 #if defined(NANOARROW_IPC_WITH_LZ4)
   EXPECT_EQ(ArrowIpcEncoderSetCompression(
-                encoder.get(), NANOARROW_IPC_COMPRESSION_TYPE_LZ4_FRAME, &error),
+                encoder.get(), NANOARROW_IPC_COMPRESSION_TYPE_LZ4_FRAME,
+                NANOARROW_IPC_COMPRESSION_LEVEL_DEFAULT, &error),
             NANOARROW_OK)
       << error.message;
 #else
   EXPECT_EQ(ArrowIpcEncoderSetCompression(
-                encoder.get(), NANOARROW_IPC_COMPRESSION_TYPE_LZ4_FRAME, &error),
+                encoder.get(), NANOARROW_IPC_COMPRESSION_TYPE_LZ4_FRAME,
+                NANOARROW_IPC_COMPRESSION_LEVEL_DEFAULT, &error),
             ENOTSUP);
   EXPECT_STREQ(error.message,
                "Compression type with value 1 not supported by this build of nanoarrow");
 #endif
 
 #if defined(NANOARROW_IPC_WITH_ZSTD)
-  EXPECT_EQ(ArrowIpcEncoderSetCompression(encoder.get(),
-                                          NANOARROW_IPC_COMPRESSION_TYPE_ZSTD, &error),
-            NANOARROW_OK)
+  EXPECT_EQ(
+      ArrowIpcEncoderSetCompression(encoder.get(), NANOARROW_IPC_COMPRESSION_TYPE_ZSTD,
+                                    NANOARROW_IPC_COMPRESSION_LEVEL_DEFAULT, &error),
+      NANOARROW_OK)
       << error.message;
 #else
-  EXPECT_EQ(ArrowIpcEncoderSetCompression(encoder.get(),
-                                          NANOARROW_IPC_COMPRESSION_TYPE_ZSTD, &error),
-            ENOTSUP);
+  EXPECT_EQ(
+      ArrowIpcEncoderSetCompression(encoder.get(), NANOARROW_IPC_COMPRESSION_TYPE_ZSTD,
+                                    NANOARROW_IPC_COMPRESSION_LEVEL_DEFAULT, &error),
+      ENOTSUP);
   EXPECT_STREQ(error.message,
                "Compression type with value 2 not supported by this build of nanoarrow");
 #endif
@@ -746,7 +755,8 @@ TEST(NanoarrowIpcTest, NanoarrowIpcEncoderSetCompressor) {
 
   // With a custom compressor, support is not checked until a batch is encoded
   ASSERT_EQ(ArrowIpcEncoderSetCompression(
-                encoder.get(), NANOARROW_IPC_COMPRESSION_TYPE_LZ4_FRAME, &error),
+                encoder.get(), NANOARROW_IPC_COMPRESSION_TYPE_LZ4_FRAME,
+                NANOARROW_IPC_COMPRESSION_LEVEL_DEFAULT, &error),
             NANOARROW_OK)
       << error.message;
 
@@ -757,4 +767,83 @@ TEST(NanoarrowIpcTest, NanoarrowIpcEncoderSetCompressor) {
             ENOTSUP);
   EXPECT_STREQ(error.message,
                "Compression type with value 1 not supported by this build of nanoarrow");
+}
+
+// A stand-in compression function that records the level it was called with and
+// "compresses" by copying (so that every buffer takes the uncompressed fallback path)
+static int last_compression_level = 0;
+
+static ArrowErrorCode RecordLevelAndCopy(struct ArrowBufferView src,
+                                         int compression_level, struct ArrowBuffer* dst,
+                                         struct ArrowError* error) {
+  NANOARROW_UNUSED(error);
+  last_compression_level = compression_level;
+  return ArrowBufferAppend(dst, src.data.data, src.size_bytes);
+}
+
+TEST(NanoarrowIpcTest, NanoarrowIpcEncoderCompressionLevel) {
+  nanoarrow::ipc::UniqueEncoder encoder;
+  ASSERT_EQ(ArrowIpcEncoderInit(encoder.get()), NANOARROW_OK);
+  nanoarrow::ipc::UniqueDecoder decoder;
+  ASSERT_EQ(ArrowIpcDecoderInit(decoder.get()), NANOARROW_OK);
+  struct ArrowError error;
+
+  nanoarrow::ipc::UniqueCompressor compressor;
+  ASSERT_EQ(ArrowIpcSerialCompressor(compressor.get()), NANOARROW_OK);
+  ASSERT_EQ(
+      ArrowIpcSerialCompressorSetFunction(
+          compressor.get(), NANOARROW_IPC_COMPRESSION_TYPE_ZSTD, &RecordLevelAndCopy),
+      NANOARROW_OK);
+  ASSERT_EQ(ArrowIpcEncoderSetCompressor(encoder.get(), compressor.get()), NANOARROW_OK);
+  ASSERT_EQ(ArrowIpcEncoderSetCompression(
+                encoder.get(), NANOARROW_IPC_COMPRESSION_TYPE_ZSTD, 11, &error),
+            NANOARROW_OK)
+      << error.message;
+
+  CompressibleRecordBatch batch;
+  ASSERT_EQ(ArrowIpcDecoderSetSchema(decoder.get(), batch.schema(), &error), NANOARROW_OK)
+      << error.message;
+
+  // The level reaches the codec function
+  last_compression_level = 0;
+  nanoarrow::UniqueBuffer message, body;
+  ASSERT_EQ(ArrowIpcEncoderEncodeSimpleRecordBatch(encoder.get(), batch.array_view(),
+                                                   body.get(), &error),
+            NANOARROW_OK)
+      << error.message;
+  ASSERT_EQ(
+      ArrowIpcEncoderFinalizeBuffer(encoder.get(), /*encapsulate=*/true, message.get()),
+      NANOARROW_OK);
+  EXPECT_EQ(last_compression_level, 11);
+
+  // Copying never shrinks a buffer, so every buffer took the uncompressed (-1) path;
+  // the message still declares the codec and must decode
+  struct ArrowBufferView message_view = {{message->data}, message->size_bytes};
+  ASSERT_EQ(ArrowIpcDecoderVerifyHeader(decoder.get(), message_view, &error),
+            NANOARROW_OK)
+      << error.message;
+  ASSERT_EQ(ArrowIpcDecoderDecodeHeader(decoder.get(), message_view, &error),
+            NANOARROW_OK)
+      << error.message;
+  EXPECT_EQ(decoder->codec, NANOARROW_IPC_COMPRESSION_TYPE_ZSTD);
+
+  nanoarrow::UniqueArray decoded;
+  struct ArrowBufferView body_view = {{body->data}, body->size_bytes};
+  ASSERT_EQ(ArrowIpcDecoderDecodeArray(decoder.get(), body_view, -1, decoded.get(),
+                                       NANOARROW_VALIDATION_LEVEL_FULL, &error),
+            NANOARROW_OK)
+      << error.message;
+
+  nanoarrow::UniqueArrayView decoded_view;
+  ASSERT_EQ(ArrowArrayViewInitFromSchema(decoded_view.get(), batch.schema(), &error),
+            NANOARROW_OK)
+      << error.message;
+  ASSERT_EQ(ArrowArrayViewSetArray(decoded_view.get(), decoded.get(), &error),
+            NANOARROW_OK)
+      << error.message;
+  int is_equal = 0;
+  ASSERT_EQ(ArrowArrayViewCompare(decoded_view.get(), batch.array_view(),
+                                  NANOARROW_COMPARE_IDENTICAL, &is_equal, &error),
+            NANOARROW_OK);
+  EXPECT_EQ(is_equal, 1) << error.message;
 }

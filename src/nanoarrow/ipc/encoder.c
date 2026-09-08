@@ -55,6 +55,8 @@ struct ArrowIpcEncoderPrivate {
   struct ArrowIpcCompressor compressor;
   // Whether compressor was provided by ArrowIpcEncoderSetCompressor()
   int custom_compressor;
+  // Compression level passed to the compressor when codec != NONE
+  int compression_level;
 };
 
 ArrowErrorCode ArrowIpcEncoderInit(struct ArrowIpcEncoder* encoder) {
@@ -78,6 +80,7 @@ ArrowErrorCode ArrowIpcEncoderInit(struct ArrowIpcEncoder* encoder) {
   private->codec = NANOARROW_IPC_COMPRESSION_TYPE_NONE;
   private->compressor.release = NULL;
   private->custom_compressor = 0;
+  private->compression_level = NANOARROW_IPC_COMPRESSION_LEVEL_DEFAULT;
   return NANOARROW_OK;
 }
 
@@ -150,7 +153,7 @@ ArrowErrorCode ArrowIpcEncoderSetCompressor(struct ArrowIpcEncoder* encoder,
 
 ArrowErrorCode ArrowIpcEncoderSetCompression(
     struct ArrowIpcEncoder* encoder, enum ArrowIpcCompressionType compression_type,
-    struct ArrowError* error) {
+    int compression_level, struct ArrowError* error) {
   NANOARROW_DCHECK(encoder != NULL && encoder->private_data != NULL);
   struct ArrowIpcEncoderPrivate* private =
       (struct ArrowIpcEncoderPrivate*)encoder->private_data;
@@ -190,6 +193,7 @@ ArrowErrorCode ArrowIpcEncoderSetCompression(
   }
 
   private->codec = compression_type;
+  private->compression_level = compression_level;
   return NANOARROW_OK;
 }
 
@@ -730,7 +734,8 @@ static ArrowErrorCode ArrowIpcEncoderAppendCompressedBuffer(
   int64_t payload_offset = prefix_offset + (int64_t)sizeof(int64_t);
   NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowBufferAppendInt64(body_buffer, 0), error);
   NANOARROW_RETURN_NOT_OK(private->compressor.compress(
-      &private->compressor, private->codec, buffer_view, body_buffer, error));
+      &private->compressor, private->codec, private->compression_level, buffer_view,
+      body_buffer, error));
 
   int64_t prefix = buffer_view.size_bytes;
   if (body_buffer->size_bytes - payload_offset >= buffer_view.size_bytes) {

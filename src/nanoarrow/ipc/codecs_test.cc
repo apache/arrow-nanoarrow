@@ -16,6 +16,7 @@
 // under the License.
 
 #include <cstring>
+#include <string>
 #include <vector>
 
 #include <gmock/gmock-matchers.h>
@@ -187,11 +188,12 @@ TEST(NanoarrowIpcTest, SerialDecompressor) {
                "Compression type with value 2 not supported by this build of nanoarrow");
 }
 
-// Compress input (appending to a buffer that already has content), decompress the
-// appended bytes, and check that the result matches the input. Returns the number of
-// compressed bytes that were appended.
+// Compress input at compression_level (appending to a buffer that already has content),
+// decompress the appended bytes, and check that the result matches the input. Returns
+// the number of compressed bytes that were appended.
 static int64_t TestCompressRoundtrip(ArrowIpcCompressFunction compress,
                                      ArrowIpcDecompressFunction decompress,
+                                     int compression_level,
                                      const std::vector<uint8_t>& input) {
   struct ArrowError error {};
   nanoarrow::UniqueBuffer compressed;
@@ -202,7 +204,7 @@ static int64_t TestCompressRoundtrip(ArrowIpcCompressFunction compress,
   EXPECT_EQ(ArrowBufferAppend(compressed.get(), existing, existing_size), NANOARROW_OK);
 
   EXPECT_EQ(compress({{input.data()}, static_cast<int64_t>(input.size())},
-                     compressed.get(), &error),
+                     compression_level, compressed.get(), &error),
             NANOARROW_OK)
       << error.message;
   EXPECT_GT(compressed->size_bytes, existing_size);
@@ -228,22 +230,26 @@ static std::vector<uint8_t> CompressibleInput(size_t n) {
   return out;
 }
 
-// Check compress/decompress on empty, small, and multi-block inputs
+// Check compress/decompress on empty, small, and multi-block inputs at each level
 static void TestCompressionFunctions(ArrowIpcCompressFunction compress,
-                                     ArrowIpcDecompressFunction decompress) {
+                                     ArrowIpcDecompressFunction decompress,
+                                     const std::vector<int>& compression_levels) {
   ASSERT_NE(compress, nullptr);
   ASSERT_NE(decompress, nullptr);
 
-  TestCompressRoundtrip(compress, decompress, {});
-  TestCompressRoundtrip(
-      compress, decompress,
-      std::vector<uint8_t>(kUncompressed012,
-                           kUncompressed012 + sizeof(kUncompressed012)));
-
-  // Large enough to span several blocks; a repetitive input must actually shrink
   auto input = CompressibleInput(1 << 20);
-  int64_t compressed_size = TestCompressRoundtrip(compress, decompress, input);
-  EXPECT_LT(compressed_size, static_cast<int64_t>(input.size() / 10));
+  for (int level : compression_levels) {
+    SCOPED_TRACE("compression level " + std::to_string(level));
+    TestCompressRoundtrip(compress, decompress, level, {});
+    TestCompressRoundtrip(
+        compress, decompress, level,
+        std::vector<uint8_t>(kUncompressed012,
+                             kUncompressed012 + sizeof(kUncompressed012)));
+
+    // Large enough to span several blocks; a repetitive input must actually shrink
+    int64_t compressed_size = TestCompressRoundtrip(compress, decompress, level, input);
+    EXPECT_LT(compressed_size, static_cast<int64_t>(input.size() / 10));
+  }
 }
 
 TEST(NanoarrowIpcTest, NanoarrowIpcZstdCompressBuildMatchesRuntime) {
@@ -258,8 +264,10 @@ TEST(NanoarrowIpcTest, ZstdCompressRoundtrip) {
   if (ArrowIpcGetZstdCompressionFunction() == nullptr) {
     GTEST_SKIP() << "nanoarrow_ipc not built with NANOARROW_IPC_WITH_ZSTD";
   }
+  // Default, a negative (fast) level, the lowest regular level, and a high level
   TestCompressionFunctions(ArrowIpcGetZstdCompressionFunction(),
-                           ArrowIpcGetZstdDecompressionFunction());
+                           ArrowIpcGetZstdDecompressionFunction(),
+                           {NANOARROW_IPC_COMPRESSION_LEVEL_DEFAULT, -5, 1, 19});
 }
 
 TEST(NanoarrowIpcTest, NanoarrowIpcLZ4CompressBuildMatchesRuntime) {
@@ -274,8 +282,22 @@ TEST(NanoarrowIpcTest, LZ4CompressRoundtrip) {
   if (ArrowIpcGetLZ4CompressionFunction() == nullptr) {
     GTEST_SKIP() << "nanoarrow_ipc not built with NANOARROW_IPC_WITH_LZ4";
   }
+  // Default (fast), acceleration, the last fast level, and LZ4HC levels
   TestCompressionFunctions(ArrowIpcGetLZ4CompressionFunction(),
-                           ArrowIpcGetLZ4DecompressionFunction());
+                           ArrowIpcGetLZ4DecompressionFunction(),
+                           {NANOARROW_IPC_COMPRESSION_LEVEL_DEFAULT, -1, 2, 9, 12});
+}
+
+// A stand-in compression function that records the level it was called with and
+// "compresses" by copying
+static int last_compression_level = 0;
+
+static ArrowErrorCode RecordLevelAndCopy(struct ArrowBufferView src,
+                                         int compression_level, struct ArrowBuffer* dst,
+                                         struct ArrowError* error) {
+  NANOARROW_UNUSED(error);
+  last_compression_level = compression_level;
+  return ArrowBufferAppend(dst, src.data.data, src.size_bytes);
 }
 
 TEST(NanoarrowIpcTest, SerialCompressor) {
@@ -292,13 +314,15 @@ TEST(NanoarrowIpcTest, SerialCompressor) {
   // NONE is not a codec that can be used to compress
   nanoarrow::UniqueBuffer dst;
   EXPECT_EQ(compressor->compress(compressor.get(), NANOARROW_IPC_COMPRESSION_TYPE_NONE,
-                                 {{nullptr}, 0}, dst.get(), &error),
+                                 NANOARROW_IPC_COMPRESSION_LEVEL_DEFAULT, {{nullptr}, 0},
+                                 dst.get(), &error),
             EINVAL);
   EXPECT_STREQ(error.message, "Unknown compression type with value 0");
 
   // Check a compress for a supported codec if we have one (or for an error if we don't)
   if (ArrowIpcGetZstdCompressionFunction() != nullptr) {
     ASSERT_EQ(compressor->compress(compressor.get(), NANOARROW_IPC_COMPRESSION_TYPE_ZSTD,
+                                   NANOARROW_IPC_COMPRESSION_LEVEL_DEFAULT,
                                    {{kUncompressed012}, sizeof(kUncompressed012)},
                                    dst.get(), &error),
               NANOARROW_OK)
@@ -314,6 +338,7 @@ TEST(NanoarrowIpcTest, SerialCompressor) {
     EXPECT_TRUE(std::memcmp(out, kUncompressed012, sizeof(kUncompressed012)) == 0);
   } else {
     EXPECT_EQ(compressor->compress(compressor.get(), NANOARROW_IPC_COMPRESSION_TYPE_ZSTD,
+                                   NANOARROW_IPC_COMPRESSION_LEVEL_DEFAULT,
                                    {{nullptr}, 0}, dst.get(), &error),
               ENOTSUP);
     EXPECT_STREQ(
@@ -326,8 +351,25 @@ TEST(NanoarrowIpcTest, SerialCompressor) {
                 compressor.get(), NANOARROW_IPC_COMPRESSION_TYPE_ZSTD, nullptr),
             NANOARROW_OK);
   EXPECT_EQ(compressor->compress(compressor.get(), NANOARROW_IPC_COMPRESSION_TYPE_ZSTD,
-                                 {{nullptr}, 0}, dst.get(), &error),
+                                 NANOARROW_IPC_COMPRESSION_LEVEL_DEFAULT, {{nullptr}, 0},
+                                 dst.get(), &error),
             ENOTSUP);
   EXPECT_STREQ(error.message,
                "Compression type with value 2 not supported by this build of nanoarrow");
+
+  // The compression level is passed through to the function for the codec
+  ASSERT_EQ(ArrowIpcSerialCompressorSetFunction(compressor.get(),
+                                                NANOARROW_IPC_COMPRESSION_TYPE_LZ4_FRAME,
+                                                &RecordLevelAndCopy),
+            NANOARROW_OK);
+  dst->size_bytes = 0;
+  last_compression_level = 0;
+  ASSERT_EQ(compressor->compress(
+                compressor.get(), NANOARROW_IPC_COMPRESSION_TYPE_LZ4_FRAME, 7,
+                {{kUncompressed012}, sizeof(kUncompressed012)}, dst.get(), &error),
+            NANOARROW_OK)
+      << error.message;
+  EXPECT_EQ(last_compression_level, 7);
+  ASSERT_EQ(dst->size_bytes, static_cast<int64_t>(sizeof(kUncompressed012)));
+  EXPECT_EQ(std::memcmp(dst->data, kUncompressed012, sizeof(kUncompressed012)), 0);
 }

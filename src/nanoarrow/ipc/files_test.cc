@@ -223,7 +223,8 @@ class TestFile {
 
     nanoarrow::ipc::UniqueWriter writer;
     NANOARROW_RETURN_NOT_OK(ArrowIpcWriterInit(writer.get(), output_stream.get()));
-    NANOARROW_RETURN_NOT_OK(ArrowIpcWriterSetCompression(writer.get(), codec, error));
+    NANOARROW_RETURN_NOT_OK(ArrowIpcWriterSetCompression(
+        writer.get(), codec, NANOARROW_IPC_COMPRESSION_LEVEL_DEFAULT, error));
 
     nanoarrow::UniqueArrayView array_view;
     NANOARROW_RETURN_NOT_OK(

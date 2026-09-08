@@ -46,7 +46,7 @@ static ArrowErrorCode ArrowIpcDecompressZstd(struct ArrowBufferView src, uint8_t
 }
 
 static ArrowErrorCode ArrowIpcCompressZstd(struct ArrowBufferView src,
-                                           struct ArrowBuffer* dst,
+                                           int compression_level, struct ArrowBuffer* dst,
                                            struct ArrowError* error) {
   size_t dst_capacity = ZSTD_compressBound((size_t)src.size_bytes);
   if (ZSTD_isError(dst_capacity)) {
@@ -59,7 +59,7 @@ static ArrowErrorCode ArrowIpcCompressZstd(struct ArrowBufferView src,
                                      error);
 
   size_t code = ZSTD_compress((void*)(dst->data + dst->size_bytes), dst_capacity,
-                              src.data.data, (size_t)src.size_bytes, ZSTD_CLEVEL_DEFAULT);
+                              src.data.data, (size_t)src.size_bytes, compression_level);
   if (ZSTD_isError(code)) {
     ArrowErrorSet(error,
                   "ZSTD_compress([buffer with %" PRId64 " bytes]) failed with error '%s'",
@@ -139,13 +139,15 @@ static ArrowErrorCode ArrowIpcDecompressLZ4(struct ArrowBufferView src, uint8_t*
 }
 
 static ArrowErrorCode ArrowIpcCompressLZ4(struct ArrowBufferView src,
-                                          struct ArrowBuffer* dst,
+                                          int compression_level, struct ArrowBuffer* dst,
                                           struct ArrowError* error) {
-  // Default preferences (default compression level, no content size, no checksums).
+  // Default preferences except for the compression level (no content size, no
+  // checksums).
   // This produces a single complete frame, which is what ArrowIpcDecompressLZ4()
   // and Arrow C++ expect.
   LZ4F_preferences_t prefs;
   memset(&prefs, 0, sizeof(prefs));
+  prefs.compressionLevel = compression_level;
 
   size_t dst_capacity = LZ4F_compressFrameBound((size_t)src.size_bytes, &prefs);
   NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowBufferReserve(dst, (int64_t)dst_capacity),
@@ -277,7 +279,8 @@ struct ArrowIpcSerialCompressorPrivate {
 
 static ArrowErrorCode ArrowIpcSerialCompressorCompress(
     struct ArrowIpcCompressor* compressor, enum ArrowIpcCompressionType compression_type,
-    struct ArrowBufferView src, struct ArrowBuffer* dst, struct ArrowError* error) {
+    int compression_level, struct ArrowBufferView src, struct ArrowBuffer* dst,
+    struct ArrowError* error) {
   struct ArrowIpcSerialCompressorPrivate* private_data =
       (struct ArrowIpcSerialCompressorPrivate*)compressor->private_data;
 
@@ -294,7 +297,7 @@ static ArrowErrorCode ArrowIpcSerialCompressorCompress(
     return ENOTSUP;
   }
 
-  NANOARROW_RETURN_NOT_OK(fn(src, dst, error));
+  NANOARROW_RETURN_NOT_OK(fn(src, compression_level, dst, error));
   return NANOARROW_OK;
 }
 
