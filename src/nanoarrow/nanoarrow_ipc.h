@@ -96,6 +96,8 @@
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcEncoderEncodeSchema)
 #define ArrowIpcEncoderEncodeSimpleRecordBatch \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcEncoderEncodeSimpleRecordBatch)
+#define ArrowIpcEncoderEncodeSimpleDictionaryBatch \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcEncoderEncodeSimpleDictionaryBatch)
 #define ArrowIpcOutputStreamInitBuffer \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcOutputStreamInitBuffer)
 #define ArrowIpcOutputStreamInitFile \
@@ -110,6 +112,8 @@
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcWriterWriteSchema)
 #define ArrowIpcWriterWriteArrayView \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcWriterWriteArrayView)
+#define ArrowIpcWriterWriteDictionaryBatch \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcWriterWriteDictionaryBatch)
 #define ArrowIpcWriterWriteArrayStream \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcWriterWriteArrayStream)
 #define ArrowIpcWriterStartFile \
@@ -881,6 +885,20 @@ NANOARROW_DLL ArrowErrorCode ArrowIpcEncoderEncodeSimpleRecordBatch(
     struct ArrowIpcEncoder* encoder, const struct ArrowArrayView* array_view,
     struct ArrowBuffer* body_buffer, struct ArrowError* error);
 
+/// \brief Encode an ArrayView as a DictionaryBatch flatbuffer, embedded in a Message.
+///
+/// dictionary_id must match the id assigned to the dictionary-encoded field in the
+/// schema. is_delta selects DictionaryBatch.isDelta. values_view must not itself be
+/// dictionary-encoded. Body buffers are concatenated into a contiguous, padded
+/// body_buffer.
+///
+/// Returns ENOMEM if allocation fails, EINVAL if values_view is dictionary-encoded,
+/// NANOARROW_OK otherwise.
+NANOARROW_DLL ArrowErrorCode ArrowIpcEncoderEncodeSimpleDictionaryBatch(
+    struct ArrowIpcEncoder* encoder, int64_t dictionary_id, char is_delta,
+    const struct ArrowArrayView* values_view, struct ArrowBuffer* body_buffer,
+    struct ArrowError* error);
+
 /// \brief An user-extensible output data sink
 struct ArrowIpcOutputStream {
   /// \brief Write up to buf_size_bytes from stream into buf
@@ -963,6 +981,17 @@ NANOARROW_DLL ArrowErrorCode ArrowIpcWriterWriteSchema(struct ArrowIpcWriter* wr
 NANOARROW_DLL ArrowErrorCode ArrowIpcWriterWriteArrayView(struct ArrowIpcWriter* writer,
                                                           const struct ArrowArrayView* in,
                                                           struct ArrowError* error);
+
+/// \brief Write a DictionaryBatch message to the output byte stream
+///
+/// dictionary_id must match the id assigned to the dictionary-encoded field in the
+/// schema. is_delta selects DictionaryBatch.isDelta. values_view must not itself be
+/// dictionary-encoded. The writer does not check that a schema was already written.
+///
+/// Errors are propagated from the underlying encoder and output byte stream.
+NANOARROW_DLL ArrowErrorCode ArrowIpcWriterWriteDictionaryBatch(
+    struct ArrowIpcWriter* writer, int64_t dictionary_id, char is_delta,
+    const struct ArrowArrayView* values_view, struct ArrowError* error);
 
 /// \brief Write an entire stream (including EOS) to the output byte stream
 ///

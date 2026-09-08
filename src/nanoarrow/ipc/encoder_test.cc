@@ -106,6 +106,29 @@ TEST(NanoarrowIpcTest, NanoarrowIpcFooterEncoding) {
   EXPECT_GT(footer_buffer->size_bytes, raw_schema_buffer->size_bytes);
 }
 
+TEST(NanoarrowIpcTest, NanoarrowIpcEncoderRejectsNestedDictionary) {
+  nanoarrow::UniqueSchema schema;
+  ASSERT_EQ(ArrowSchemaInitFromType(schema.get(), NANOARROW_TYPE_STRUCT), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaAllocateChildren(schema.get(), 1), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaInitFromType(schema->children[0], NANOARROW_TYPE_INT32),
+            NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaAllocateDictionary(schema->children[0]), NANOARROW_OK);
+  ASSERT_EQ(
+      ArrowSchemaInitFromType(schema->children[0]->dictionary, NANOARROW_TYPE_INT32),
+      NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaAllocateDictionary(schema->children[0]->dictionary), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaInitFromType(schema->children[0]->dictionary->dictionary,
+                                    NANOARROW_TYPE_STRING),
+            NANOARROW_OK);
+
+  nanoarrow::ipc::UniqueEncoder encoder;
+  ASSERT_EQ(ArrowIpcEncoderInit(encoder.get()), NANOARROW_OK);
+
+  struct ArrowError error;
+  EXPECT_EQ(ArrowIpcEncoderEncodeSchema(encoder.get(), schema.get(), &error), ENOTSUP);
+  EXPECT_STREQ(error.message, "IPC encoding of nested dictionary values unsupported");
+}
+
 using KeyValues = std::vector<std::pair<std::string, std::string>>;
 
 // Unpack nanoarrow's metadata representation into something comparable
@@ -429,4 +452,52 @@ TEST(NanoarrowIpcTest, NanoarrowIpcVisitMessageMetadataError) {
             ENOTSUP);
   EXPECT_EQ(visited, (KeyValues{{"key1", "value1"}}));
   EXPECT_STREQ(error.message, "visitor stopped at key1");
+}
+
+TEST(NanoarrowIpcTest, NanoarrowIpcEncoderDictionaryBatch) {
+  nanoarrow::ipc::UniqueEncoder encoder;
+  ASSERT_EQ(ArrowIpcEncoderInit(encoder.get()), NANOARROW_OK);
+
+  // Build a simple Utf8 values array
+  nanoarrow::UniqueSchema values_schema;
+  ASSERT_EQ(ArrowSchemaInitFromType(values_schema.get(), NANOARROW_TYPE_STRING),
+            NANOARROW_OK);
+
+  nanoarrow::UniqueArray values_array;
+  ASSERT_EQ(ArrowArrayInitFromSchema(values_array.get(), values_schema.get(), nullptr),
+            NANOARROW_OK);
+
+  struct ArrowError error;
+  ASSERT_EQ(ArrowArrayStartAppending(values_array.get()), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAppendString(values_array.get(), ArrowCharView("foo")),
+            NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAppendString(values_array.get(), ArrowCharView("bar")),
+            NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayFinishBuildingDefault(values_array.get(), &error), NANOARROW_OK)
+      << error.message;
+
+  nanoarrow::UniqueArrayView values_view;
+  ASSERT_EQ(ArrowArrayViewInitFromSchema(values_view.get(), values_schema.get(), &error),
+            NANOARROW_OK)
+      << error.message;
+  ASSERT_EQ(ArrowArrayViewSetArray(values_view.get(), values_array.get(), &error),
+            NANOARROW_OK)
+      << error.message;
+
+  // Encode a non-delta DictionaryBatch with dictionary_id=0
+  nanoarrow::UniqueBuffer body_buffer;
+  EXPECT_EQ(ArrowIpcEncoderEncodeSimpleDictionaryBatch(encoder.get(), /*dictionary_id=*/0,
+                                                       /*is_delta=*/0, values_view.get(),
+                                                       body_buffer.get(), &error),
+            NANOARROW_OK)
+      << error.message;
+
+  nanoarrow::UniqueBuffer message_buffer;
+  EXPECT_EQ(ArrowIpcEncoderFinalizeBuffer(encoder.get(), /*encapsulate=*/1,
+                                          message_buffer.get()),
+            NANOARROW_OK);
+
+  // The encapsulated message must be non-empty and 8-byte aligned
+  EXPECT_GT(message_buffer->size_bytes, 8);
+  EXPECT_EQ(message_buffer->size_bytes % 8, 0);
 }
