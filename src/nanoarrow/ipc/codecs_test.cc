@@ -155,6 +155,13 @@ TEST(NanoarrowIpcTest, SerialDecompressor) {
                 decompressor.get(), NANOARROW_IPC_COMPRESSION_TYPE_NONE, nullptr),
             EINVAL);
 
+  // NONE is not a codec that can be used to decompress
+  EXPECT_EQ(decompressor->decompress_add(decompressor.get(),
+                                         NANOARROW_IPC_COMPRESSION_TYPE_NONE,
+                                         {{nullptr}, 0}, nullptr, 0, &error),
+            EINVAL);
+  EXPECT_STREQ(error.message, "Unknown decompression type with value 0");
+
   // The serial decompressor never waits and always succeeds when requested to
   EXPECT_EQ(decompressor->decompress_wait(decompressor.get(), 0, &error), NANOARROW_OK);
 
@@ -196,9 +203,10 @@ TEST(NanoarrowIpcTest, CompressionTypeStrings) {
                "lz4");
   EXPECT_STREQ(ArrowIpcCompressionTypeToString(NANOARROW_IPC_COMPRESSION_TYPE_ZSTD),
                "zstd");
-  // 99 is not an enumerator
+  // 3 is not an enumerator but is within the enum's value range (unlike, e.g., 99,
+  // which C++ can't represent in this enum)
   // NOLINTNEXTLINE(clang-analyzer-optin.core.EnumCastOutOfRange)
-  auto unknown_type = static_cast<enum ArrowIpcCompressionType>(99);
+  auto unknown_type = static_cast<enum ArrowIpcCompressionType>(3);
   EXPECT_EQ(ArrowIpcCompressionTypeToString(unknown_type), nullptr);
 
   struct ArrowError error {};
@@ -232,7 +240,7 @@ TEST(NanoarrowIpcTest, CompressionLevelRange) {
                                              &min_level, &max_level),
             EINVAL);
   // NOLINTNEXTLINE(clang-analyzer-optin.core.EnumCastOutOfRange)
-  auto unknown_type = static_cast<enum ArrowIpcCompressionType>(99);
+  auto unknown_type = static_cast<enum ArrowIpcCompressionType>(3);
   EXPECT_EQ(ArrowIpcGetCompressionLevelRange(unknown_type, &min_level, &max_level),
             EINVAL);
 
@@ -393,6 +401,69 @@ TEST(NanoarrowIpcTest, LZ4CompressMinimumLevels) {
   }
 }
 
+// An allocator whose reallocate() fails on the fail_on-th call (1-based) and otherwise
+// delegates to the default allocator
+struct FailingAllocatorState {
+  int calls;
+  int fail_on;
+};
+
+static uint8_t* FailingReallocate(struct ArrowBufferAllocator* allocator, uint8_t* ptr,
+                                  int64_t old_size, int64_t new_size) {
+  auto* state = static_cast<FailingAllocatorState*>(allocator->private_data);
+  auto default_allocator = ArrowBufferAllocatorDefault();
+  if (++state->calls == state->fail_on) {
+    // nanoarrow discards the buffer on failure, so the old allocation is freed here
+    default_allocator.free(&default_allocator, ptr, old_size);
+    return nullptr;
+  }
+  return default_allocator.reallocate(&default_allocator, ptr, old_size, new_size);
+}
+
+static void FailingFree(struct ArrowBufferAllocator* allocator, uint8_t* ptr,
+                        int64_t size) {
+  NANOARROW_UNUSED(allocator);
+  auto default_allocator = ArrowBufferAllocatorDefault();
+  default_allocator.free(&default_allocator, ptr, size);
+}
+
+static struct ArrowBufferAllocator FailingAllocator(FailingAllocatorState* state) {
+  struct ArrowBufferAllocator allocator = ArrowBufferAllocatorDefault();
+  allocator.reallocate = &FailingReallocate;
+  allocator.free = &FailingFree;
+  allocator.private_data = state;
+  return allocator;
+}
+
+TEST(NanoarrowIpcTest, CompressAllocationFailure) {
+  struct ArrowError error {};
+  for (auto compress :
+       {ArrowIpcGetLZ4CompressionFunction(), ArrowIpcGetZstdCompressionFunction()}) {
+    if (compress == nullptr) {
+      continue;
+    }
+
+    FailingAllocatorState state{0, 1};
+    nanoarrow::UniqueBuffer dst;
+    ASSERT_EQ(ArrowBufferSetAllocator(dst.get(), FailingAllocator(&state)), NANOARROW_OK);
+    EXPECT_EQ(compress({{kUncompressed012}, sizeof(kUncompressed012)},
+                       NANOARROW_IPC_COMPRESSION_LEVEL_DEFAULT, dst.get(), &error),
+              ENOMEM);
+    EXPECT_THAT(error.message, ::testing::HasSubstr("ArrowBufferReserve"));
+    EXPECT_EQ(state.calls, 1);
+  }
+}
+
+// A stand-in compression function that always fails
+static ArrowErrorCode FailCompress(struct ArrowBufferView src, int compression_level,
+                                   struct ArrowBuffer* dst, struct ArrowError* error) {
+  NANOARROW_UNUSED(src);
+  NANOARROW_UNUSED(compression_level);
+  NANOARROW_UNUSED(dst);
+  ArrowErrorSet(error, "FailCompress() failed");
+  return EIO;
+}
+
 // A stand-in compression function that records the level it was called with and
 // "compresses" by copying
 static int last_compression_level = 0;
@@ -477,4 +548,16 @@ TEST(NanoarrowIpcTest, SerialCompressor) {
   EXPECT_EQ(last_compression_level, 7);
   ASSERT_EQ(dst->size_bytes, static_cast<int64_t>(sizeof(kUncompressed012)));
   EXPECT_EQ(std::memcmp(dst->data, kUncompressed012, sizeof(kUncompressed012)), 0);
+
+  // Errors from the function for the codec are propagated
+  ASSERT_EQ(
+      ArrowIpcSerialCompressorSetFunction(
+          compressor.get(), NANOARROW_IPC_COMPRESSION_TYPE_LZ4_FRAME, &FailCompress),
+      NANOARROW_OK);
+  EXPECT_EQ(compressor->compress(
+                compressor.get(), NANOARROW_IPC_COMPRESSION_TYPE_LZ4_FRAME,
+                NANOARROW_IPC_COMPRESSION_LEVEL_DEFAULT,
+                {{kUncompressed012}, sizeof(kUncompressed012)}, dst.get(), &error),
+            EIO);
+  EXPECT_STREQ(error.message, "FailCompress() failed");
 }

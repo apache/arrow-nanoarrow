@@ -691,14 +691,15 @@ TEST(NanoarrowIpcTest, NanoarrowIpcEncoderSetCompressionErrors) {
   ASSERT_EQ(ArrowIpcEncoderInit(encoder.get()), NANOARROW_OK);
   struct ArrowError error;
 
-  // 99 is not an enumerator; it exercises the EINVAL path
+  // 3 is not an enumerator but is within the enum's value range (unlike, e.g., 99,
+  // which C++ can't represent in this enum); it exercises the EINVAL path
   // NOLINTNEXTLINE(clang-analyzer-optin.core.EnumCastOutOfRange)
-  auto unknown_type = static_cast<enum ArrowIpcCompressionType>(99);
+  auto unknown_type = static_cast<enum ArrowIpcCompressionType>(3);
   EXPECT_EQ(
       ArrowIpcEncoderSetCompression(encoder.get(), unknown_type,
                                     NANOARROW_IPC_COMPRESSION_LEVEL_DEFAULT, &error),
       EINVAL);
-  EXPECT_STREQ(error.message, "Unknown compression type with value 99");
+  EXPECT_STREQ(error.message, "Unknown compression type with value 3");
 
   // NONE is always supported
   EXPECT_EQ(
@@ -769,10 +770,29 @@ TEST(NanoarrowIpcTest, NanoarrowIpcEncoderSetCompressionErrors) {
 #endif
 }
 
+static void (*original_compressor_release)(struct ArrowIpcCompressor*) = nullptr;
+static int compressor_release_calls = 0;
+
+static void CountingCompressorRelease(struct ArrowIpcCompressor* compressor) {
+  compressor_release_calls++;
+  original_compressor_release(compressor);
+}
+
 TEST(NanoarrowIpcTest, NanoarrowIpcEncoderSetCompressor) {
   nanoarrow::ipc::UniqueEncoder encoder;
   ASSERT_EQ(ArrowIpcEncoderInit(encoder.get()), NANOARROW_OK);
   struct ArrowError error;
+
+  // A compressor whose release we can observe
+  nanoarrow::ipc::UniqueCompressor first_compressor;
+  ASSERT_EQ(ArrowIpcSerialCompressor(first_compressor.get()), NANOARROW_OK);
+  original_compressor_release = first_compressor->release;
+  first_compressor->release = &CountingCompressorRelease;
+  compressor_release_calls = 0;
+  ASSERT_EQ(ArrowIpcEncoderSetCompressor(encoder.get(), first_compressor.get()),
+            NANOARROW_OK);
+  EXPECT_EQ(first_compressor->release, nullptr);
+  EXPECT_EQ(compressor_release_calls, 0);
 
   // A custom compressor that explicitly does not support LZ4
   nanoarrow::ipc::UniqueCompressor compressor;
@@ -782,8 +802,9 @@ TEST(NanoarrowIpcTest, NanoarrowIpcEncoderSetCompressor) {
             NANOARROW_OK);
 
   ASSERT_EQ(ArrowIpcEncoderSetCompressor(encoder.get(), compressor.get()), NANOARROW_OK);
-  // The encoder took ownership of the compressor
+  // The encoder took ownership of the compressor and released the previous one
   EXPECT_EQ(compressor->release, nullptr);
+  EXPECT_EQ(compressor_release_calls, 1);
 
   // With a custom compressor, neither codec support nor the level is checked until
   // a batch is encoded
@@ -878,4 +899,84 @@ TEST(NanoarrowIpcTest, NanoarrowIpcEncoderCompressionLevel) {
                                   NANOARROW_COMPARE_IDENTICAL, &is_equal, &error),
             NANOARROW_OK);
   EXPECT_EQ(is_equal, 1) << error.message;
+}
+
+// An allocator whose reallocate() fails on the fail_on-th call (1-based) and otherwise
+// delegates to the default allocator
+struct FailingAllocatorState {
+  int calls;
+  int fail_on;
+};
+
+static uint8_t* FailingReallocate(struct ArrowBufferAllocator* allocator, uint8_t* ptr,
+                                  int64_t old_size, int64_t new_size) {
+  auto* state = static_cast<FailingAllocatorState*>(allocator->private_data);
+  auto default_allocator = ArrowBufferAllocatorDefault();
+  if (++state->calls == state->fail_on) {
+    // nanoarrow discards the buffer on failure, so the old allocation is freed here
+    default_allocator.free(&default_allocator, ptr, old_size);
+    return nullptr;
+  }
+  return default_allocator.reallocate(&default_allocator, ptr, old_size, new_size);
+}
+
+static void FailingFree(struct ArrowBufferAllocator* allocator, uint8_t* ptr,
+                        int64_t size) {
+  NANOARROW_UNUSED(allocator);
+  auto default_allocator = ArrowBufferAllocatorDefault();
+  default_allocator.free(&default_allocator, ptr, size);
+}
+
+static struct ArrowBufferAllocator FailingAllocator(FailingAllocatorState* state) {
+  struct ArrowBufferAllocator allocator = ArrowBufferAllocatorDefault();
+  allocator.reallocate = &FailingReallocate;
+  allocator.free = &FailingFree;
+  allocator.private_data = state;
+  return allocator;
+}
+
+// Encode a batch with a body allocator that fails on the fail_on-th allocation, for
+// every fail_on until encoding succeeds, so that each allocation site reports ENOMEM
+static void TestEncodeAllocationFailures(enum ArrowIpcCompressionType codec) {
+  struct ArrowError error;
+  CompressibleRecordBatch batch;
+
+  int fail_on = 1;
+  for (; fail_on < 100; fail_on++) {
+    SCOPED_TRACE("fail_on " + std::to_string(fail_on));
+    // A fresh encoder each time so that a failed encode can't affect the next one
+    nanoarrow::ipc::UniqueEncoder encoder;
+    ASSERT_EQ(ArrowIpcEncoderInit(encoder.get()), NANOARROW_OK);
+    ASSERT_EQ(ArrowIpcEncoderSetCompression(
+                  encoder.get(), codec, NANOARROW_IPC_COMPRESSION_LEVEL_DEFAULT, &error),
+              NANOARROW_OK)
+        << error.message;
+
+    FailingAllocatorState state{0, fail_on};
+    nanoarrow::UniqueBuffer body;
+    ASSERT_EQ(ArrowBufferSetAllocator(body.get(), FailingAllocator(&state)),
+              NANOARROW_OK);
+    int result = ArrowIpcEncoderEncodeSimpleRecordBatch(encoder.get(), batch.array_view(),
+                                                        body.get(), &error);
+    if (state.calls < fail_on) {
+      // No allocation failed, so this is one more than the number of allocations
+      EXPECT_EQ(result, NANOARROW_OK) << error.message;
+      break;
+    }
+    EXPECT_EQ(result, ENOMEM);
+  }
+
+  EXPECT_GT(fail_on, 1);
+  EXPECT_LT(fail_on, 100);
+}
+
+TEST(NanoarrowIpcTest, NanoarrowIpcEncoderUncompressedAllocationFailures) {
+  TestEncodeAllocationFailures(NANOARROW_IPC_COMPRESSION_TYPE_NONE);
+}
+
+TEST(NanoarrowIpcTest, NanoarrowIpcEncoderCompressedAllocationFailures) {
+  if (ArrowIpcGetLZ4CompressionFunction() == nullptr) {
+    GTEST_SKIP() << "nanoarrow_ipc not built with NANOARROW_IPC_WITH_LZ4";
+  }
+  TestEncodeAllocationFailures(NANOARROW_IPC_COMPRESSION_TYPE_LZ4_FRAME);
 }

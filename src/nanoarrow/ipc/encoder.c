@@ -57,6 +57,8 @@ struct ArrowIpcEncoderPrivate {
   int custom_compressor;
   // Compression level passed to the compressor when codec != NONE
   int compression_level;
+  // The flatbuffer equivalent of codec (only meaningful when codec != NONE)
+  ns(CompressionType_enum_t) flatbuf_codec;
 };
 
 ArrowErrorCode ArrowIpcEncoderInit(struct ArrowIpcEncoder* encoder) {
@@ -81,6 +83,7 @@ ArrowErrorCode ArrowIpcEncoderInit(struct ArrowIpcEncoder* encoder) {
   private->compressor.release = NULL;
   private->custom_compressor = 0;
   private->compression_level = NANOARROW_IPC_COMPRESSION_LEVEL_DEFAULT;
+  private->flatbuf_codec = ns(CompressionType_LZ4_FRAME);
   return NANOARROW_OK;
 }
 
@@ -158,10 +161,15 @@ ArrowErrorCode ArrowIpcEncoderSetCompression(
   struct ArrowIpcEncoderPrivate* private =
       (struct ArrowIpcEncoderPrivate*)encoder->private_data;
 
+  ns(CompressionType_enum_t) flatbuf_codec = ns(CompressionType_LZ4_FRAME);
   switch (compression_type) {
     case NANOARROW_IPC_COMPRESSION_TYPE_NONE:
+      break;
     case NANOARROW_IPC_COMPRESSION_TYPE_LZ4_FRAME:
+      flatbuf_codec = ns(CompressionType_LZ4_FRAME);
+      break;
     case NANOARROW_IPC_COMPRESSION_TYPE_ZSTD:
+      flatbuf_codec = ns(CompressionType_ZSTD);
       break;
     default:
       ArrowErrorSet(error, "Unknown compression type with value %d",
@@ -202,6 +210,7 @@ ArrowErrorCode ArrowIpcEncoderSetCompression(
   }
 
   private->codec = compression_type;
+  private->flatbuf_codec = flatbuf_codec;
   private->compression_level = compression_level;
   return NANOARROW_OK;
 }
@@ -878,22 +887,9 @@ static ArrowErrorCode ArrowIpcEncoderEncodeRecordBatch(
   FLATCC_RETURN_UNLESS_0(RecordBatch_length_add(builder, array_view->length), error);
 
   if (private->codec != NANOARROW_IPC_COMPRESSION_TYPE_NONE) {
-    ns(CompressionType_enum_t) codec;
-    switch (private->codec) {
-      case NANOARROW_IPC_COMPRESSION_TYPE_LZ4_FRAME:
-        codec = ns(CompressionType_LZ4_FRAME);
-        break;
-      case NANOARROW_IPC_COMPRESSION_TYPE_ZSTD:
-        codec = ns(CompressionType_ZSTD);
-        break;
-      default:
-        ArrowErrorSet(error, "Unknown compression type with value %d",
-                      (int)private->codec);
-        return EINVAL;
-    }
-
     FLATCC_RETURN_UNLESS_0(RecordBatch_compression_start(builder), error);
-    FLATCC_RETURN_UNLESS_0(BodyCompression_codec_add(builder, codec), error);
+    FLATCC_RETURN_UNLESS_0(BodyCompression_codec_add(builder, private->flatbuf_codec),
+                           error);
     FLATCC_RETURN_UNLESS_0(
         BodyCompression_method_add(builder, ns(BodyCompressionMethod_BUFFER)), error);
     FLATCC_RETURN_UNLESS_0(RecordBatch_compression_end(builder), error);

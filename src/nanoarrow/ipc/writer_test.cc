@@ -359,13 +359,14 @@ TEST(NanoarrowIpcWriter, SetCompressionErrors) {
   ASSERT_EQ(ArrowIpcWriterInit(writer.get(), stream.get()), NANOARROW_OK);
 
   struct ArrowError error;
-  // 99 is not an enumerator; it exercises the EINVAL path
+  // 3 is not an enumerator but is within the enum's value range (unlike, e.g., 99,
+  // which C++ can't represent in this enum); it exercises the EINVAL path
   // NOLINTNEXTLINE(clang-analyzer-optin.core.EnumCastOutOfRange)
-  auto unknown_type = static_cast<enum ArrowIpcCompressionType>(99);
+  auto unknown_type = static_cast<enum ArrowIpcCompressionType>(3);
   EXPECT_EQ(ArrowIpcWriterSetCompression(writer.get(), unknown_type,
                                          NANOARROW_IPC_COMPRESSION_LEVEL_DEFAULT, &error),
             EINVAL);
-  EXPECT_STREQ(error.message, "Unknown compression type with value 99");
+  EXPECT_STREQ(error.message, "Unknown compression type with value 3");
 
 #if defined(NANOARROW_IPC_WITH_LZ4)
   EXPECT_EQ(ArrowIpcWriterSetCompression(
