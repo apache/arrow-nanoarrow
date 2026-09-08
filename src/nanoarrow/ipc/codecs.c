@@ -203,6 +203,43 @@ static int ArrowIpcCompressionTypeIsCodec(enum ArrowIpcCompressionType compressi
   }
 }
 
+const char* ArrowIpcCompressionTypeToString(
+    enum ArrowIpcCompressionType compression_type) {
+  switch (compression_type) {
+    case NANOARROW_IPC_COMPRESSION_TYPE_NONE:
+      return "none";
+    case NANOARROW_IPC_COMPRESSION_TYPE_LZ4_FRAME:
+      return "lz4";
+    case NANOARROW_IPC_COMPRESSION_TYPE_ZSTD:
+      return "zstd";
+    default:
+      return NULL;
+  }
+}
+
+ArrowErrorCode ArrowIpcCompressionTypeFromString(
+    const char* name, enum ArrowIpcCompressionType* compression_type_out,
+    struct ArrowError* error) {
+  NANOARROW_DCHECK(compression_type_out != NULL);
+  static const enum ArrowIpcCompressionType types[] = {
+      NANOARROW_IPC_COMPRESSION_TYPE_NONE, NANOARROW_IPC_COMPRESSION_TYPE_LZ4_FRAME,
+      NANOARROW_IPC_COMPRESSION_TYPE_ZSTD};
+
+  if (name != NULL) {
+    for (size_t i = 0; i < sizeof(types) / sizeof(types[0]); i++) {
+      if (strcmp(name, ArrowIpcCompressionTypeToString(types[i])) == 0) {
+        *compression_type_out = types[i];
+        return NANOARROW_OK;
+      }
+    }
+  }
+
+  ArrowErrorSet(error,
+                "Unknown compression type name '%s' (expected 'none', 'lz4', or 'zstd')",
+                name == NULL ? "" : name);
+  return EINVAL;
+}
+
 struct ArrowIpcSerialDecompressorPrivate {
   ArrowIpcDecompressFunction decompress_functions[3];
 };

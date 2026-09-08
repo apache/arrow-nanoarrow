@@ -189,6 +189,42 @@ TEST(NanoarrowIpcTest, SerialDecompressor) {
                "Compression type with value 2 not supported by this build of nanoarrow");
 }
 
+TEST(NanoarrowIpcTest, CompressionTypeStrings) {
+  EXPECT_STREQ(ArrowIpcCompressionTypeToString(NANOARROW_IPC_COMPRESSION_TYPE_NONE),
+               "none");
+  EXPECT_STREQ(ArrowIpcCompressionTypeToString(NANOARROW_IPC_COMPRESSION_TYPE_LZ4_FRAME),
+               "lz4");
+  EXPECT_STREQ(ArrowIpcCompressionTypeToString(NANOARROW_IPC_COMPRESSION_TYPE_ZSTD),
+               "zstd");
+  // 99 is not an enumerator
+  // NOLINTNEXTLINE(clang-analyzer-optin.core.EnumCastOutOfRange)
+  auto unknown_type = static_cast<enum ArrowIpcCompressionType>(99);
+  EXPECT_EQ(ArrowIpcCompressionTypeToString(unknown_type), nullptr);
+
+  struct ArrowError error {};
+  for (auto type :
+       {NANOARROW_IPC_COMPRESSION_TYPE_NONE, NANOARROW_IPC_COMPRESSION_TYPE_LZ4_FRAME,
+        NANOARROW_IPC_COMPRESSION_TYPE_ZSTD}) {
+    enum ArrowIpcCompressionType parsed = unknown_type;
+    ASSERT_EQ(ArrowIpcCompressionTypeFromString(ArrowIpcCompressionTypeToString(type),
+                                                &parsed, &error),
+              NANOARROW_OK)
+        << error.message;
+    EXPECT_EQ(parsed, type);
+  }
+
+  enum ArrowIpcCompressionType parsed = NANOARROW_IPC_COMPRESSION_TYPE_NONE;
+  EXPECT_EQ(ArrowIpcCompressionTypeFromString("LZ4", &parsed, &error), EINVAL);
+  EXPECT_STREQ(error.message,
+               "Unknown compression type name 'LZ4' (expected 'none', 'lz4', or 'zstd')");
+  EXPECT_EQ(ArrowIpcCompressionTypeFromString("", &parsed, &error), EINVAL);
+  EXPECT_EQ(ArrowIpcCompressionTypeFromString(nullptr, &parsed, &error), EINVAL);
+  EXPECT_STREQ(error.message,
+               "Unknown compression type name '' (expected 'none', 'lz4', or 'zstd')");
+  // A failed lookup leaves the output untouched
+  EXPECT_EQ(parsed, NANOARROW_IPC_COMPRESSION_TYPE_NONE);
+}
+
 // Compress input at compression_level (appending to a buffer that already has content),
 // decompress the appended bytes, and check that the result matches the input. Returns
 // the number of compressed bytes that were appended.

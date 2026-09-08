@@ -41,6 +41,10 @@
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcSerialCompressor)
 #define ArrowIpcSerialCompressorSetFunction \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcSerialCompressorSetFunction)
+#define ArrowIpcCompressionTypeToString \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcCompressionTypeToString)
+#define ArrowIpcCompressionTypeFromString \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcCompressionTypeFromString)
 #define ArrowIpcDecoderInit NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcDecoderInit)
 #define ArrowIpcDecoderReset NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcDecoderReset)
 #define ArrowIpcDecoderSetDecompressor \
@@ -496,6 +500,20 @@ ArrowIpcSerialCompressor(struct ArrowIpcCompressor* compressor);
 NANOARROW_DLL ArrowErrorCode ArrowIpcSerialCompressorSetFunction(
     struct ArrowIpcCompressor* compressor, enum ArrowIpcCompressionType compression_type,
     ArrowIpcCompressFunction compress_function);
+
+/// \brief Get the name of a compression type
+///
+/// Returns "none", "lz4", or "zstd", or NULL for an unknown compression type.
+NANOARROW_DLL const char* ArrowIpcCompressionTypeToString(
+    enum ArrowIpcCompressionType compression_type);
+
+/// \brief Look up a compression type by name
+///
+/// Accepts exactly the names returned by ArrowIpcCompressionTypeToString(). Returns
+/// EINVAL (with an error message listing the accepted names) if name is not one of them.
+NANOARROW_DLL ArrowErrorCode ArrowIpcCompressionTypeFromString(
+    const char* name, enum ArrowIpcCompressionType* compression_type_out,
+    struct ArrowError* error);
 
 /// \brief Decoder for Arrow IPC messages
 ///
