@@ -158,15 +158,10 @@ ArrowErrorCode ArrowIpcEncoderSetCompression(
   struct ArrowIpcEncoderPrivate* private =
       (struct ArrowIpcEncoderPrivate*)encoder->private_data;
 
-  ArrowIpcCompressFunction built_in = NULL;
   switch (compression_type) {
     case NANOARROW_IPC_COMPRESSION_TYPE_NONE:
-      break;
     case NANOARROW_IPC_COMPRESSION_TYPE_LZ4_FRAME:
-      built_in = ArrowIpcGetLZ4CompressionFunction();
-      break;
     case NANOARROW_IPC_COMPRESSION_TYPE_ZSTD:
-      built_in = ArrowIpcGetZstdCompressionFunction();
       break;
     default:
       ArrowErrorSet(error, "Unknown compression type with value %d",
@@ -176,14 +171,28 @@ ArrowErrorCode ArrowIpcEncoderSetCompression(
 
   if (compression_type != NANOARROW_IPC_COMPRESSION_TYPE_NONE) {
     // With the default compressor, fail now rather than when the first RecordBatch is
-    // encoded if this build does not support the codec. A custom compressor may support
-    // codecs that were not built in, so it is only checked when a RecordBatch is encoded.
-    if (!private->custom_compressor && built_in == NULL) {
-      ArrowErrorSet(
-          error,
-          "Compression type with value %d not supported by this build of nanoarrow",
-          (int)compression_type);
-      return ENOTSUP;
+    // encoded if this build does not support the codec or the level is out of range.
+    // A custom compressor may support other codecs and levels, so it is only checked
+    // when a RecordBatch is encoded.
+    if (!private->custom_compressor) {
+      int min_level;
+      int max_level;
+      if (ArrowIpcGetCompressionLevelRange(compression_type, &min_level, &max_level) !=
+          NANOARROW_OK) {
+        ArrowErrorSet(
+            error,
+            "Compression type with value %d not supported by this build of nanoarrow",
+            (int)compression_type);
+        return ENOTSUP;
+      }
+
+      if (compression_level < min_level || compression_level > max_level) {
+        ArrowErrorSet(
+            error, "Compression level %d is out of range for %s (expected %d to %d)",
+            compression_level, ArrowIpcCompressionTypeToString(compression_type),
+            min_level, max_level);
+        return EINVAL;
+      }
     }
 
     if (private->compressor.release == NULL) {

@@ -366,4 +366,13 @@ TEST(NanoarrowIpcWriter, SetCompressionErrors) {
                                          NANOARROW_IPC_COMPRESSION_LEVEL_DEFAULT, &error),
             EINVAL);
   EXPECT_STREQ(error.message, "Unknown compression type with value 99");
+
+#if defined(NANOARROW_IPC_WITH_LZ4)
+  EXPECT_EQ(ArrowIpcWriterSetCompression(
+                writer.get(), NANOARROW_IPC_COMPRESSION_TYPE_LZ4_FRAME, 1000000, &error),
+            EINVAL);
+  EXPECT_STREQ(
+      error.message,
+      "Compression level 1000000 is out of range for lz4 (expected -65536 to 12)");
+#endif
 }

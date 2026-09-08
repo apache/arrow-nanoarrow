@@ -225,6 +225,44 @@ TEST(NanoarrowIpcTest, CompressionTypeStrings) {
   EXPECT_EQ(parsed, NANOARROW_IPC_COMPRESSION_TYPE_NONE);
 }
 
+TEST(NanoarrowIpcTest, CompressionLevelRange) {
+  int min_level = 1;
+  int max_level = -1;
+  EXPECT_EQ(ArrowIpcGetCompressionLevelRange(NANOARROW_IPC_COMPRESSION_TYPE_NONE,
+                                             &min_level, &max_level),
+            EINVAL);
+  // NOLINTNEXTLINE(clang-analyzer-optin.core.EnumCastOutOfRange)
+  auto unknown_type = static_cast<enum ArrowIpcCompressionType>(99);
+  EXPECT_EQ(ArrowIpcGetCompressionLevelRange(unknown_type, &min_level, &max_level),
+            EINVAL);
+
+  if (ArrowIpcGetLZ4CompressionFunction() != nullptr) {
+    ASSERT_EQ(ArrowIpcGetCompressionLevelRange(NANOARROW_IPC_COMPRESSION_TYPE_LZ4_FRAME,
+                                               &min_level, &max_level),
+              NANOARROW_OK);
+    EXPECT_EQ(min_level, -65536);
+    EXPECT_EQ(max_level, 12);
+  } else {
+    EXPECT_EQ(ArrowIpcGetCompressionLevelRange(NANOARROW_IPC_COMPRESSION_TYPE_LZ4_FRAME,
+                                               &min_level, &max_level),
+              ENOTSUP);
+  }
+
+  if (ArrowIpcGetZstdCompressionFunction() != nullptr) {
+    ASSERT_EQ(ArrowIpcGetCompressionLevelRange(NANOARROW_IPC_COMPRESSION_TYPE_ZSTD,
+                                               &min_level, &max_level),
+              NANOARROW_OK);
+    // The levels used by the roundtrip tests below must be in range
+    EXPECT_LE(min_level, -5);
+    EXPECT_LE(min_level, NANOARROW_IPC_COMPRESSION_LEVEL_DEFAULT);
+    EXPECT_GE(max_level, 19);
+  } else {
+    EXPECT_EQ(ArrowIpcGetCompressionLevelRange(NANOARROW_IPC_COMPRESSION_TYPE_ZSTD,
+                                               &min_level, &max_level),
+              ENOTSUP);
+  }
+}
+
 // Compress input at compression_level (appending to a buffer that already has content),
 // decompress the appended bytes, and check that the result matches the input. Returns
 // the number of compressed bytes that were appended.

@@ -191,6 +191,42 @@ ArrowIpcCompressFunction ArrowIpcGetLZ4CompressionFunction(void) {
 #endif
 }
 
+ArrowErrorCode ArrowIpcGetCompressionLevelRange(
+    enum ArrowIpcCompressionType compression_type, int* min_level_out,
+    int* max_level_out) {
+  NANOARROW_DCHECK(min_level_out != NULL && max_level_out != NULL);
+  NANOARROW_UNUSED(min_level_out);
+  NANOARROW_UNUSED(max_level_out);
+
+  switch (compression_type) {
+    case NANOARROW_IPC_COMPRESSION_TYPE_ZSTD:
+#if defined(NANOARROW_IPC_WITH_ZSTD)
+#if ZSTD_VERSION_NUMBER >= 10400
+      *min_level_out = ZSTD_minCLevel();
+#else
+      // Negative (fast) levels can't be queried before zstd 1.4.0
+      *min_level_out = NANOARROW_IPC_COMPRESSION_LEVEL_DEFAULT;
+#endif
+      *max_level_out = ZSTD_maxCLevel();
+      return NANOARROW_OK;
+#else
+      return ENOTSUP;
+#endif
+    case NANOARROW_IPC_COMPRESSION_TYPE_LZ4_FRAME:
+#if defined(NANOARROW_IPC_WITH_LZ4)
+      // A negative level selects an acceleration of 1 - level, which lz4 caps at 65537
+      // (LZ4_ACCELERATION_MAX, which is not part of its public headers)
+      *min_level_out = 1 - 65537;
+      *max_level_out = LZ4F_compressionLevel_max();
+      return NANOARROW_OK;
+#else
+      return ENOTSUP;
+#endif
+    default:
+      return EINVAL;
+  }
+}
+
 // The serial decompressor and compressor keep one function per codec, indexed by
 // enum ArrowIpcCompressionType (NONE is never a codec)
 static int ArrowIpcCompressionTypeIsCodec(enum ArrowIpcCompressionType compression_type) {

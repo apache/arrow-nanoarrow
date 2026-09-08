@@ -715,6 +715,35 @@ TEST(NanoarrowIpcTest, NanoarrowIpcEncoderSetCompressionErrors) {
                 NANOARROW_IPC_COMPRESSION_LEVEL_DEFAULT, &error),
             NANOARROW_OK)
       << error.message;
+
+  // Levels outside the codec's range are rejected when set rather than clamped
+  int min_level;
+  int max_level;
+  ASSERT_EQ(ArrowIpcGetCompressionLevelRange(NANOARROW_IPC_COMPRESSION_TYPE_LZ4_FRAME,
+                                             &min_level, &max_level),
+            NANOARROW_OK);
+  EXPECT_EQ(
+      ArrowIpcEncoderSetCompression(
+          encoder.get(), NANOARROW_IPC_COMPRESSION_TYPE_LZ4_FRAME, max_level + 1, &error),
+      EINVAL);
+  EXPECT_EQ(std::string(error.message),
+            "Compression level " + std::to_string(max_level + 1) +
+                " is out of range for lz4 (expected " + std::to_string(min_level) +
+                " to " + std::to_string(max_level) + ")");
+  EXPECT_EQ(
+      ArrowIpcEncoderSetCompression(
+          encoder.get(), NANOARROW_IPC_COMPRESSION_TYPE_LZ4_FRAME, min_level - 1, &error),
+      EINVAL);
+  EXPECT_EQ(
+      ArrowIpcEncoderSetCompression(
+          encoder.get(), NANOARROW_IPC_COMPRESSION_TYPE_LZ4_FRAME, min_level, &error),
+      NANOARROW_OK)
+      << error.message;
+  EXPECT_EQ(
+      ArrowIpcEncoderSetCompression(
+          encoder.get(), NANOARROW_IPC_COMPRESSION_TYPE_LZ4_FRAME, max_level, &error),
+      NANOARROW_OK)
+      << error.message;
 #else
   EXPECT_EQ(ArrowIpcEncoderSetCompression(
                 encoder.get(), NANOARROW_IPC_COMPRESSION_TYPE_LZ4_FRAME,
@@ -756,10 +785,10 @@ TEST(NanoarrowIpcTest, NanoarrowIpcEncoderSetCompressor) {
   // The encoder took ownership of the compressor
   EXPECT_EQ(compressor->release, nullptr);
 
-  // With a custom compressor, support is not checked until a batch is encoded
+  // With a custom compressor, neither codec support nor the level is checked until
+  // a batch is encoded
   ASSERT_EQ(ArrowIpcEncoderSetCompression(
-                encoder.get(), NANOARROW_IPC_COMPRESSION_TYPE_LZ4_FRAME,
-                NANOARROW_IPC_COMPRESSION_LEVEL_DEFAULT, &error),
+                encoder.get(), NANOARROW_IPC_COMPRESSION_TYPE_LZ4_FRAME, 1000000, &error),
             NANOARROW_OK)
       << error.message;
 

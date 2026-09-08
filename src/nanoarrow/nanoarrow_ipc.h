@@ -45,6 +45,8 @@
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcCompressionTypeToString)
 #define ArrowIpcCompressionTypeFromString \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcCompressionTypeFromString)
+#define ArrowIpcGetCompressionLevelRange \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcGetCompressionLevelRange)
 #define ArrowIpcDecoderInit NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcDecoderInit)
 #define ArrowIpcDecoderReset NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcDecoderReset)
 #define ArrowIpcDecoderSetDecompressor \
@@ -468,12 +470,11 @@ struct ArrowIpcCompressor {
 /// reserving sufficient space in dst (e.g., using the compression library's bound
 /// function) and must only append to dst.
 ///
-/// The interpretation of compression_level is codec-specific.
-/// NANOARROW_IPC_COMPRESSION_LEVEL_DEFAULT selects the codec's default level; other
-/// values follow the underlying library's conventions (for ZSTD, ZSTD_minCLevel() to
-/// ZSTD_maxCLevel() where negative levels favour speed; for LZ4, up to
-/// LZ4F_compressionLevel_max() where levels >= 3 use LZ4HC and negative levels select
-/// acceleration). The built-in implementations clamp out-of-range levels.
+/// The interpretation of compression_level is codec-specific:
+/// NANOARROW_IPC_COMPRESSION_LEVEL_DEFAULT selects the codec's default level and other
+/// values follow the underlying library's conventions (see
+/// ArrowIpcGetCompressionLevelRange()). ArrowIpcEncoderSetCompression() rejects levels
+/// outside that range; the built-in functions clamp them if called directly.
 typedef ArrowErrorCode (*ArrowIpcCompressFunction)(struct ArrowBufferView src,
                                                    int compression_level,
                                                    struct ArrowBuffer* dst,
@@ -514,6 +515,18 @@ NANOARROW_DLL const char* ArrowIpcCompressionTypeToString(
 NANOARROW_DLL ArrowErrorCode ArrowIpcCompressionTypeFromString(
     const char* name, enum ArrowIpcCompressionType* compression_type_out,
     struct ArrowError* error);
+
+/// \brief Get the range of compression levels accepted by a codec
+///
+/// The range is inclusive and always contains NANOARROW_IPC_COMPRESSION_LEVEL_DEFAULT.
+/// For ZSTD it is ZSTD_minCLevel() to ZSTD_maxCLevel(), where negative levels favour
+/// speed; for LZ4 it is -65536 to LZ4F_compressionLevel_max(), where levels >= 3 use
+/// LZ4HC and negative levels select an acceleration of 1 - level. Returns ENOTSUP if
+/// the codec is not supported by this build of nanoarrow and EINVAL if compression_type
+/// is not a codec (including NANOARROW_IPC_COMPRESSION_TYPE_NONE).
+NANOARROW_DLL ArrowErrorCode
+ArrowIpcGetCompressionLevelRange(enum ArrowIpcCompressionType compression_type,
+                                 int* min_level_out, int* max_level_out);
 
 /// \brief Decoder for Arrow IPC messages
 ///
@@ -981,11 +994,12 @@ ArrowIpcEncoderSetMessageMetadata(struct ArrowIpcEncoder* encoder,
 /// ArrowIpcCompressFunction for its interpretation. Use
 /// NANOARROW_IPC_COMPRESSION_LEVEL_DEFAULT for the codec's default level.
 ///
-/// Returns EINVAL for an unknown compression type and ENOTSUP if the compression type
-/// is not supported by this build of nanoarrow (i.e., nanoarrow was not built with
-/// NANOARROW_IPC_WITH_LZ4 or NANOARROW_IPC_WITH_ZSTD). If a custom compressor was
-/// set with ArrowIpcEncoderSetCompressor(), support is not checked until a RecordBatch
-/// is encoded.
+/// Returns EINVAL for an unknown compression type or a compression_level outside the
+/// range reported by ArrowIpcGetCompressionLevelRange(), and ENOTSUP if the compression
+/// type is not supported by this build of nanoarrow (i.e., nanoarrow was not built with
+/// NANOARROW_IPC_WITH_LZ4 or NANOARROW_IPC_WITH_ZSTD). If a custom compressor was set
+/// with ArrowIpcEncoderSetCompressor(), neither is checked until a RecordBatch is
+/// encoded.
 NANOARROW_DLL ArrowErrorCode ArrowIpcEncoderSetCompression(
     struct ArrowIpcEncoder* encoder, enum ArrowIpcCompressionType compression_type,
     int compression_level, struct ArrowError* error);
@@ -1086,8 +1100,8 @@ NANOARROW_DLL void ArrowIpcWriterReset(struct ArrowIpcWriter* writer);
 /// after this call (in both stream and file mode) and may be changed between batches.
 /// Use NANOARROW_IPC_COMPRESSION_LEVEL_DEFAULT for the codec's default level.
 ///
-/// Returns EINVAL for an unknown compression type and ENOTSUP if the compression type
-/// is not supported by this build of nanoarrow.
+/// Returns EINVAL for an unknown compression type or an out-of-range compression_level,
+/// and ENOTSUP if the compression type is not supported by this build of nanoarrow.
 NANOARROW_DLL ArrowErrorCode ArrowIpcWriterSetCompression(
     struct ArrowIpcWriter* writer, enum ArrowIpcCompressionType compression_type,
     int compression_level, struct ArrowError* error);
