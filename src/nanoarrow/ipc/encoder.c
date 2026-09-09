@@ -16,6 +16,7 @@
 // under the License.
 
 #include <errno.h>
+#include <inttypes.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -49,6 +50,16 @@ struct ArrowIpcEncoderPrivate {
   // Metadata to attach to the next encoded Message (in nanoarrow's packed
   // representation), or an empty buffer if the next Message has no metadata.
   struct ArrowBuffer message_metadata;
+  // Compressor for the body buffers of subsequently encoded messages (release is
+  // NULL when they are not compressed)
+  struct ArrowIpcCompressor compressor;
+  // Whether compression was declared or encoded since the last Schema message
+  int has_compressed_body;
+  // Views of the body buffers of the message being encoded, in body order
+  struct ArrowBuffer buffer_views;
+  // Compressed copies of those buffers (reused between messages)
+  struct ArrowBuffer* compressed_buffers;
+  int64_t n_compressed_buffers;
 };
 
 ArrowErrorCode ArrowIpcEncoderInit(struct ArrowIpcEncoder* encoder) {
@@ -69,6 +80,11 @@ ArrowErrorCode ArrowIpcEncoderInit(struct ArrowIpcEncoder* encoder) {
   ArrowBufferInit(&private->nodes);
   ArrowIpcDictionaryEncodingsInit(&private->dictionary_encodings);
   ArrowBufferInit(&private->message_metadata);
+  private->compressor.release = NULL;
+  private->has_compressed_body = 0;
+  ArrowBufferInit(&private->buffer_views);
+  private->compressed_buffers = NULL;
+  private->n_compressed_buffers = 0;
   return NANOARROW_OK;
 }
 
@@ -82,6 +98,14 @@ void ArrowIpcEncoderReset(struct ArrowIpcEncoder* encoder) {
     ArrowBufferReset(&private->buffers);
     ArrowIpcDictionaryEncodingsReset(&private->dictionary_encodings);
     ArrowBufferReset(&private->message_metadata);
+    if (private->compressor.release != NULL) {
+      private->compressor.release(&private->compressor);
+    }
+    ArrowBufferReset(&private->buffer_views);
+    for (int64_t i = 0; i < private->n_compressed_buffers; i++) {
+      ArrowBufferReset(&private->compressed_buffers[i]);
+    }
+    ArrowFree(private->compressed_buffers);
     ArrowFree(private);
   }
   memset(encoder, 0, sizeof(struct ArrowIpcEncoder));
@@ -117,6 +141,79 @@ ArrowErrorCode ArrowIpcEncoderSetMessageMetadata(struct ArrowIpcEncoder* encoder
   }
 
   return NANOARROW_OK;
+}
+
+// The codec applied to message bodies (NONE when no compressor is set)
+static enum ArrowIpcCompressionType ArrowIpcEncoderCodec(
+    struct ArrowIpcEncoderPrivate* private) {
+  if (private->compressor.release == NULL) {
+    return NANOARROW_IPC_COMPRESSION_TYPE_NONE;
+  }
+  return private->compressor.compression_type;
+}
+
+ArrowErrorCode ArrowIpcEncoderSetCompressor(struct ArrowIpcEncoder* encoder,
+                                            struct ArrowIpcCompressor* compressor) {
+  NANOARROW_DCHECK(encoder != NULL && encoder->private_data != NULL &&
+                   compressor != NULL && compressor->release != NULL);
+  struct ArrowIpcEncoderPrivate* private =
+      (struct ArrowIpcEncoderPrivate*)encoder->private_data;
+
+  if (private->compressor.release != NULL) {
+    private->compressor.release(&private->compressor);
+  }
+
+  memcpy(&private->compressor, compressor, sizeof(struct ArrowIpcCompressor));
+  compressor->release = NULL;
+  return NANOARROW_OK;
+}
+
+ArrowErrorCode ArrowIpcEncoderSetCompression(
+    struct ArrowIpcEncoder* encoder, enum ArrowIpcCompressionType compression_type,
+    int compression_level, struct ArrowError* error) {
+  NANOARROW_DCHECK(encoder != NULL && encoder->private_data != NULL);
+  struct ArrowIpcEncoderPrivate* private =
+      (struct ArrowIpcEncoderPrivate*)encoder->private_data;
+
+  switch (compression_type) {
+    case NANOARROW_IPC_COMPRESSION_TYPE_NONE:
+      if (private->compressor.release != NULL) {
+        private->compressor.release(&private->compressor);
+      }
+      return NANOARROW_OK;
+    case NANOARROW_IPC_COMPRESSION_TYPE_LZ4_FRAME:
+    case NANOARROW_IPC_COMPRESSION_TYPE_ZSTD:
+      break;
+    default:
+      ArrowErrorSet(error, "Unknown compression type with value %d",
+                    (int)compression_type);
+      return EINVAL;
+  }
+
+  // Fail now rather than when the first message is encoded if this build does not
+  // support the codec or the level is out of range
+  int min_level;
+  int max_level;
+  if (ArrowIpcGetCompressionLevelRange(compression_type, &min_level, &max_level) !=
+      NANOARROW_OK) {
+    ArrowErrorSet(
+        error, "Compression type with value %d not supported by this build of nanoarrow",
+        (int)compression_type);
+    return ENOTSUP;
+  }
+
+  if (compression_level < min_level || compression_level > max_level) {
+    ArrowErrorSet(error,
+                  "Compression level %d is out of range for %s (expected %d to %d)",
+                  compression_level, ArrowIpcCompressionTypeToString(compression_type),
+                  min_level, max_level);
+    return EINVAL;
+  }
+
+  struct ArrowIpcCompressor compressor;
+  NANOARROW_RETURN_NOT_OK_WITH_ERROR(
+      ArrowIpcSerialCompressor(&compressor, compression_type, compression_level), error);
+  return ArrowIpcEncoderSetCompressor(encoder, &compressor);
 }
 
 static ArrowErrorCode ArrowIpcEncoderWriteContinuationAndSize(struct ArrowBuffer* out,
@@ -560,7 +657,7 @@ static ArrowErrorCode ArrowIpcEncodeField(
 
 static ArrowErrorCode ArrowIpcEncodeSchema(
     flatcc_builder_t* builder, const struct ArrowSchema* schema,
-    const struct ArrowIpcDictionaryEncodings* dictionary_encodings,
+    const struct ArrowIpcDictionaryEncodings* dictionary_encodings, int compressed_body,
     struct ArrowError* error) {
   NANOARROW_DCHECK(schema->release != NULL);
 
@@ -593,6 +690,11 @@ static ArrowErrorCode ArrowIpcEncodeSchema(
   FLATCC_RETURN_UNLESS_0(Schema_custom_metadata_end(builder), error);
 
   FLATCC_RETURN_UNLESS_0(Schema_features_start(builder), error);
+  if (compressed_body) {
+    // Declare that bodies in this stream or file may be compressed
+    ns(Feature_enum_t) feature = ns(Feature_COMPRESSED_BODY);
+    FLATCC_RETURN_IF_NULL(ns(Feature_vec_push(builder, &feature)), error);
+  }
   FLATCC_RETURN_UNLESS_0(Schema_features_end(builder), error);
 
   return NANOARROW_OK;
@@ -623,8 +725,9 @@ ArrowErrorCode ArrowIpcEncoderEncodeSchema(struct ArrowIpcEncoder* encoder,
       ArrowIpcDictionaryEncodingsAppendSchema(&private->dictionary_encodings, schema),
       error);
 
-  NANOARROW_RETURN_NOT_OK(
-      ArrowIpcEncodeSchema(builder, schema, &private->dictionary_encodings, error));
+  NANOARROW_RETURN_NOT_OK(ArrowIpcEncodeSchema(
+      builder, schema, &private->dictionary_encodings,
+      ArrowIpcEncoderCodec(private) != NANOARROW_IPC_COMPRESSION_TYPE_NONE, error));
 
   FLATCC_RETURN_UNLESS_0(Message_header_Schema_end(builder), error);
 
@@ -633,6 +736,8 @@ ArrowErrorCode ArrowIpcEncoderEncodeSchema(struct ArrowIpcEncoder* encoder,
   FLATCC_RETURN_UNLESS_0(Message_bodyLength_add(builder, 0), error);
 
   FLATCC_RETURN_IF_NULL(ns(Message_end_as_root(builder)), error);
+  private->has_compressed_body =
+      ArrowIpcEncoderCodec(private) != NANOARROW_IPC_COMPRESSION_TYPE_NONE;
   return NANOARROW_OK;
 }
 
@@ -695,10 +800,191 @@ static ArrowErrorCode ArrowIpcEncoderBuildContiguousBodyBufferCallback(
   return NANOARROW_OK;
 }
 
-static ArrowErrorCode ArrowIpcEncoderEncodeRecordBatchImpl(
+// Make sure there is a scratch ArrowBuffer for each of n compressed buffers
+static ArrowErrorCode ArrowIpcEncoderReserveCompressedBuffers(
+    struct ArrowIpcEncoderPrivate* private, int64_t n) {
+  if (n <= private->n_compressed_buffers) {
+    return NANOARROW_OK;
+  }
+
+  struct ArrowBuffer* buffers =
+      (struct ArrowBuffer*)ArrowMalloc(n * sizeof(struct ArrowBuffer));
+  if (buffers == NULL) {
+    return ENOMEM;
+  }
+
+  if (private->n_compressed_buffers > 0) {
+    memcpy(buffers, private->compressed_buffers,
+           private->n_compressed_buffers * sizeof(struct ArrowBuffer));
+    ArrowFree(private->compressed_buffers);
+  }
+  for (int64_t i = private->n_compressed_buffers; i < n; i++) {
+    ArrowBufferInit(&buffers[i]);
+  }
+
+  private->compressed_buffers = buffers;
+  private->n_compressed_buffers = n;
+  return NANOARROW_OK;
+}
+
+// Replace the collected buffer views of the message being encoded with views of their
+// compressed form: the uncompressed length as a little-endian int64 followed by the
+// compressed bytes. Buffers that do not shrink are stored uncompressed with a prefix of
+// -1 and empty buffers are left as they are, matching Arrow C++. All buffers are queued
+// with the compressor before waiting, so that a compressor may compress them in
+// parallel.
+static ArrowErrorCode ArrowIpcEncoderCompressBuffers(
+    struct ArrowIpcEncoderPrivate* private, struct ArrowError* error) {
+  struct ArrowBufferView* views = (struct ArrowBufferView*)private->buffer_views.data;
+  int64_t n_views = private->buffer_views.size_bytes / (int64_t)sizeof(*views);
+  NANOARROW_RETURN_NOT_OK_WITH_ERROR(
+      ArrowIpcEncoderReserveCompressedBuffers(private, n_views), error);
+
+  // Allocate every prefix before queueing work so allocation failures cannot leave
+  // jobs referring to the caller's source buffers or our scratch buffers.
+  for (int64_t i = 0; i < n_views; i++) {
+    if (views[i].size_bytes == 0) {
+      continue;
+    }
+
+    // placeholder for the prefix, then the compressed bytes
+    struct ArrowBuffer* dst = &private->compressed_buffers[i];
+    NANOARROW_ASSERT_OK(ArrowBufferResize(dst, 0, 0));
+    NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowBufferAppendInt64(dst, 0), error);
+  }
+
+  for (int64_t i = 0; i < n_views; i++) {
+    if (views[i].size_bytes == 0) {
+      continue;
+    }
+
+    int result = private->compressor.compress_add(&private->compressor, views[i],
+                                                  &private->compressed_buffers[i], error);
+    if (result != NANOARROW_OK) {
+      // don't leave queued work referring to our buffers behind
+      struct ArrowError ignored;
+      NANOARROW_UNUSED(
+          private->compressor.compress_wait(&private->compressor, -1, &ignored));
+      return result;
+    }
+  }
+
+  NANOARROW_RETURN_NOT_OK(
+      private->compressor.compress_wait(&private->compressor, -1, error));
+
+  for (int64_t i = 0; i < n_views; i++) {
+    if (views[i].size_bytes == 0) {
+      continue;
+    }
+
+    // a compressor that produced nothing violated its contract; without this check the
+    // buffer would be written with a length prefix and no payload
+    struct ArrowBuffer* dst = &private->compressed_buffers[i];
+    if (dst->size_bytes == (int64_t)sizeof(int64_t)) {
+      ArrowErrorSet(error,
+                    "Compressor produced no output for a buffer of %" PRId64 " bytes",
+                    views[i].size_bytes);
+      return EIO;
+    }
+
+    // if compression did not reduce the size, store the buffer uncompressed instead
+    // (signalled to the reader by a prefix of -1)
+    int64_t prefix = views[i].size_bytes;
+    if (dst->size_bytes - (int64_t)sizeof(int64_t) >= views[i].size_bytes) {
+      dst->size_bytes = sizeof(int64_t);
+      NANOARROW_RETURN_NOT_OK_WITH_ERROR(
+          ArrowBufferAppend(dst, views[i].data.data, views[i].size_bytes), error);
+      prefix = -1;
+    }
+
+    // the prefix is always little endian
+    if (ArrowIpcSystemEndianness() == NANOARROW_IPC_ENDIANNESS_BIG) {
+      prefix = (int64_t)bswap64((uint64_t)prefix);
+    }
+    memcpy(dst->data, &prefix, sizeof(int64_t));
+
+    views[i].data.data = dst->data;
+    views[i].size_bytes = dst->size_bytes;
+  }
+
+  return NANOARROW_OK;
+}
+
+// Encode the collected buffer views of the message being encoded (compressed first if
+// a compressor is set) with the buffer encoder, recording their offsets and lengths
+static ArrowErrorCode ArrowIpcEncoderEncodeBuffers(
     struct ArrowIpcEncoder* encoder, struct ArrowIpcBufferEncoder* buffer_encoder,
-    const struct ArrowArrayView* array_view, struct ArrowBuffer* buffers,
-    struct ArrowBuffer* nodes, struct ArrowError* error) {
+    struct ArrowError* error) {
+  struct ArrowIpcEncoderPrivate* private =
+      (struct ArrowIpcEncoderPrivate*)encoder->private_data;
+
+  if (ArrowIpcEncoderCodec(private) != NANOARROW_IPC_COMPRESSION_TYPE_NONE) {
+    NANOARROW_RETURN_NOT_OK(ArrowIpcEncoderCompressBuffers(private, error));
+  }
+
+  struct ArrowBufferView* views = (struct ArrowBufferView*)private->buffer_views.data;
+  int64_t n_views = private->buffer_views.size_bytes / (int64_t)sizeof(*views);
+  for (int64_t i = 0; i < n_views; i++) {
+    struct ns(Buffer) buffer;
+    NANOARROW_RETURN_NOT_OK(buffer_encoder->encode_buffer(
+        views[i], encoder, buffer_encoder, &buffer.offset, &buffer.length, error));
+    NANOARROW_RETURN_NOT_OK_WITH_ERROR(
+        ArrowBufferAppend(&private->buffers, &buffer, sizeof(buffer)), error);
+  }
+
+  return NANOARROW_OK;
+}
+
+// Add the BodyCompression table to the RecordBatch currently being built, if any
+// compression is enabled. Bodies of RecordBatch and DictionaryBatch messages are both
+// built by the same buffer encoder, so both need this.
+static ArrowErrorCode ArrowIpcEncoderEncodeBodyCompression(
+    struct ArrowIpcEncoderPrivate* private, struct ArrowError* error) {
+  ns(CompressionType_enum_t) codec;
+  switch (ArrowIpcEncoderCodec(private)) {
+    case NANOARROW_IPC_COMPRESSION_TYPE_NONE:
+      return NANOARROW_OK;
+    case NANOARROW_IPC_COMPRESSION_TYPE_LZ4_FRAME:
+      codec = ns(CompressionType_LZ4_FRAME);
+      break;
+    case NANOARROW_IPC_COMPRESSION_TYPE_ZSTD:
+      codec = ns(CompressionType_ZSTD);
+      break;
+    default:
+      ArrowErrorSet(error, "Unknown compression type with value %d",
+                    (int)private->compressor.compression_type);
+      return EINVAL;
+  }
+
+  flatcc_builder_t* builder = &private->builder;
+  FLATCC_RETURN_UNLESS_0(RecordBatch_compression_start(builder), error);
+  FLATCC_RETURN_UNLESS_0(BodyCompression_codec_add(builder, codec), error);
+  FLATCC_RETURN_UNLESS_0(
+      BodyCompression_method_add(builder, ns(BodyCompressionMethod_BUFFER)), error);
+  FLATCC_RETURN_UNLESS_0(RecordBatch_compression_end(builder), error);
+  private->has_compressed_body = 1;
+  return NANOARROW_OK;
+}
+
+// Collect the node and buffer views of an array to be encoded
+static ArrowErrorCode ArrowIpcEncoderCollectArray(struct ArrowIpcEncoderPrivate* private,
+                                                  const struct ArrowArrayView* array_view,
+                                                  struct ArrowError* error) {
+  struct ns(FieldNode) node = {array_view->length, array_view->null_count};
+  NANOARROW_RETURN_NOT_OK_WITH_ERROR(
+      ArrowBufferAppend(&private->nodes, &node, sizeof(node)), error);
+  for (int64_t b = 0; b < array_view->array->n_buffers; ++b) {
+    NANOARROW_RETURN_NOT_OK_WITH_ERROR(
+        ArrowBufferAppend(&private->buffer_views, &array_view->buffer_views[b],
+                          sizeof(struct ArrowBufferView)),
+        error);
+  }
+  return NANOARROW_OK;
+}
+
+static ArrowErrorCode ArrowIpcEncoderEncodeRecordBatchImpl(
+    struct ArrowIpcEncoderPrivate* private, const struct ArrowArrayView* array_view,
+    struct ArrowError* error) {
   if (array_view->offset != 0) {
     ArrowErrorSet(error, "Cannot encode arrays with nonzero offset");
     return ENOTSUP;
@@ -706,29 +992,15 @@ static ArrowErrorCode ArrowIpcEncoderEncodeRecordBatchImpl(
 
   if (array_view->dictionary != NULL) {
     // Values live in a separate DictionaryBatch message per the Arrow IPC spec;
-    // the parent's index node + buffers were already emitted by the caller loop,
+    // the parent's index node + buffers were already collected by the caller loop,
     // so stop recursing here.
     return NANOARROW_OK;
   }
 
   for (int64_t c = 0; c < array_view->n_children; ++c) {
     const struct ArrowArrayView* child = array_view->children[c];
-
-    struct ns(FieldNode) node = {child->length, child->null_count};
-    NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowBufferAppend(nodes, &node, sizeof(node)),
-                                       error);
-
-    for (int64_t b = 0; b < child->array->n_buffers; ++b) {
-      struct ns(Buffer) buffer;
-      NANOARROW_RETURN_NOT_OK(
-          buffer_encoder->encode_buffer(child->buffer_views[b], encoder, buffer_encoder,
-                                        &buffer.offset, &buffer.length, error));
-      NANOARROW_RETURN_NOT_OK_WITH_ERROR(
-          ArrowBufferAppend(buffers, &buffer, sizeof(buffer)), error);
-    }
-
-    NANOARROW_RETURN_NOT_OK(ArrowIpcEncoderEncodeRecordBatchImpl(
-        encoder, buffer_encoder, child, buffers, nodes, error));
+    NANOARROW_RETURN_NOT_OK(ArrowIpcEncoderCollectArray(private, child, error));
+    NANOARROW_RETURN_NOT_OK(ArrowIpcEncoderEncodeRecordBatchImpl(private, child, error));
   }
   return NANOARROW_OK;
 }
@@ -762,10 +1034,14 @@ static ArrowErrorCode ArrowIpcEncoderEncodeRecordBatch(
   FLATCC_RETURN_UNLESS_0(Message_header_RecordBatch_start(builder), error);
   FLATCC_RETURN_UNLESS_0(RecordBatch_length_add(builder, array_view->length), error);
 
+  NANOARROW_RETURN_NOT_OK(ArrowIpcEncoderEncodeBodyCompression(private, error));
+
   NANOARROW_ASSERT_OK(ArrowBufferResize(&private->buffers, 0, 0));
   NANOARROW_ASSERT_OK(ArrowBufferResize(&private->nodes, 0, 0));
-  NANOARROW_RETURN_NOT_OK(ArrowIpcEncoderEncodeRecordBatchImpl(
-      encoder, buffer_encoder, array_view, &private->buffers, &private->nodes, error));
+  NANOARROW_ASSERT_OK(ArrowBufferResize(&private->buffer_views, 0, 0));
+  NANOARROW_RETURN_NOT_OK(
+      ArrowIpcEncoderEncodeRecordBatchImpl(private, array_view, error));
+  NANOARROW_RETURN_NOT_OK(ArrowIpcEncoderEncodeBuffers(encoder, buffer_encoder, error));
 
   FLATCC_RETURN_UNLESS_0(RecordBatch_nodes_create(  //
                              builder, (struct ns(FieldNode)*)private->nodes.data,
@@ -824,25 +1100,18 @@ static ArrowErrorCode ArrowIpcEncoderEncodeDictionaryBatch(
   FLATCC_RETURN_UNLESS_0(DictionaryBatch_id_add(builder, dictionary_id), error);
   FLATCC_RETURN_UNLESS_0(DictionaryBatch_data_start(builder), error);
   FLATCC_RETURN_UNLESS_0(RecordBatch_length_add(builder, values_view->length), error);
+  NANOARROW_RETURN_NOT_OK(ArrowIpcEncoderEncodeBodyCompression(private, error));
 
   NANOARROW_ASSERT_OK(ArrowBufferResize(&private->buffers, 0, 0));
   NANOARROW_ASSERT_OK(ArrowBufferResize(&private->nodes, 0, 0));
+  NANOARROW_ASSERT_OK(ArrowBufferResize(&private->buffer_views, 0, 0));
 
-  // The values array is a single top-level column. Emit the top-level node +
-  // buffers here, then descend into any nested children.
-  struct ns(FieldNode) top_node = {values_view->length, values_view->null_count};
-  NANOARROW_RETURN_NOT_OK_WITH_ERROR(
-      ArrowBufferAppend(&private->nodes, &top_node, sizeof(top_node)), error);
-  for (int64_t b = 0; b < values_view->array->n_buffers; ++b) {
-    struct ns(Buffer) buffer;
-    NANOARROW_RETURN_NOT_OK(buffer_encoder->encode_buffer(
-        values_view->buffer_views[b], encoder, buffer_encoder, &buffer.offset,
-        &buffer.length, error));
-    NANOARROW_RETURN_NOT_OK_WITH_ERROR(
-        ArrowBufferAppend(&private->buffers, &buffer, sizeof(buffer)), error);
-  }
-  NANOARROW_RETURN_NOT_OK(ArrowIpcEncoderEncodeRecordBatchImpl(
-      encoder, buffer_encoder, values_view, &private->buffers, &private->nodes, error));
+  // The values array is a single top-level column: collect it, then descend into any
+  // nested children.
+  NANOARROW_RETURN_NOT_OK(ArrowIpcEncoderCollectArray(private, values_view, error));
+  NANOARROW_RETURN_NOT_OK(
+      ArrowIpcEncoderEncodeRecordBatchImpl(private, values_view, error));
+  NANOARROW_RETURN_NOT_OK(ArrowIpcEncoderEncodeBuffers(encoder, buffer_encoder, error));
 
   FLATCC_RETURN_UNLESS_0(
       RecordBatch_nodes_create(builder, (struct ns(FieldNode)*)private->nodes.data,
@@ -907,8 +1176,11 @@ ArrowErrorCode ArrowIpcEncoderEncodeFooter(struct ArrowIpcEncoder* encoder,
   FLATCC_RETURN_UNLESS_0(Footer_version_add(builder, ns(MetadataVersion_V5)), error);
 
   FLATCC_RETURN_UNLESS_0(Footer_schema_start(builder), error);
-  NANOARROW_RETURN_NOT_OK(
-      ArrowIpcEncodeSchema(builder, &footer->schema, &footer->dictionaries, error));
+  NANOARROW_RETURN_NOT_OK(ArrowIpcEncodeSchema(
+      builder, &footer->schema, &footer->dictionaries,
+      private->has_compressed_body ||
+          ArrowIpcEncoderCodec(private) != NANOARROW_IPC_COMPRESSION_TYPE_NONE,
+      error));
   FLATCC_RETURN_UNLESS_0(Footer_schema_end(builder), error);
 
   const struct ArrowIpcFileBlock* blocks =
