@@ -5322,7 +5322,7 @@ TEST(ArrayTest, ArrayAppendStorageFromArrayViewRunEndEncoded) {
   struct ArrowError error;
   struct ArrowSchema schema;
   ArrowSchemaInit(&schema);
-  ASSERT_EQ(ArrowSchemaSetTypeRunEndEncoded(&schema, NANOARROW_TYPE_INT32), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaSetTypeRunEndEncoded(&schema, NANOARROW_TYPE_INT16), NANOARROW_OK);
   ASSERT_EQ(ArrowSchemaSetType(schema.children[1], NANOARROW_TYPE_STRING), NANOARROW_OK);
 
   struct ArrowArray src;
@@ -5373,6 +5373,85 @@ TEST(ArrayTest, ArrayAppendStorageFromArrayViewRunEndEncoded) {
   ArrowSchemaRelease(&schema);
 }
 
+TEST(ArrayTest, ArrayAppendStorageFromArrayViewRunEndEncodedLengthOverflow) {
+  struct ArrowError error;
+  struct ArrowSchema schema;
+  ArrowSchemaInit(&schema);
+  ASSERT_EQ(ArrowSchemaSetTypeRunEndEncoded(&schema, NANOARROW_TYPE_INT64), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaSetType(schema.children[1], NANOARROW_TYPE_INT32), NANOARROW_OK);
+
+  struct ArrowArray src;
+  ASSERT_EQ(ArrowArrayInitFromSchema(&src, &schema, &error), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayStartAppending(&src), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAppendInt(src.children[0], 1), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAppendInt(src.children[1], 42), NANOARROW_OK);
+  src.length = 1;
+  ASSERT_EQ(ArrowArrayFinishBuildingDefault(&src, &error), NANOARROW_OK);
+
+  struct ArrowArrayView src_view;
+  ASSERT_EQ(ArrowArrayViewInitFromSchema(&src_view, &schema, &error), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayViewSetArray(&src_view, &src, &error), NANOARROW_OK);
+
+  struct ArrowArray dst;
+  ASSERT_EQ(ArrowArrayInitFromSchema(&dst, &schema, &error), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayStartAppending(&dst), NANOARROW_OK);
+  dst.length = INT64_MAX;
+
+  EXPECT_EQ(ArrowArrayAppendStorageFromArrayView(&dst, &src_view, &error), EOVERFLOW);
+  EXPECT_STREQ(error.message,
+               "Expected run-end encoded destination length plus source length to fit "
+               "in int64 but found 9223372036854775807 and 1");
+  EXPECT_EQ(dst.children[0]->length, 0);
+  EXPECT_EQ(dst.children[1]->length, 0);
+
+  ArrowArrayRelease(&dst);
+  ArrowArrayViewReset(&src_view);
+  ArrowArrayRelease(&src);
+  ArrowSchemaRelease(&schema);
+}
+
+TEST(ArrayTest, ArrayAppendStorageFromArrayViewStructWithRunEndEncodedChild) {
+  struct ArrowError error;
+  struct ArrowSchema schema;
+  ArrowSchemaInit(&schema);
+  ASSERT_EQ(ArrowSchemaSetTypeStruct(&schema, 1), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaSetTypeRunEndEncoded(schema.children[0], NANOARROW_TYPE_INT32),
+            NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaSetType(schema.children[0]->children[1], NANOARROW_TYPE_STRING),
+            NANOARROW_OK);
+
+  struct ArrowArray src;
+  ASSERT_EQ(ArrowArrayInitFromSchema(&src, &schema, &error), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayStartAppending(&src), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAppendNull(&src, 1), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAppendInt(src.children[0]->children[0], 1), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAppendString(src.children[0]->children[1], "value"_asv),
+            NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayFinishBuildingDefault(&src, &error), NANOARROW_OK) << error.message;
+
+  struct ArrowArrayView src_view;
+  ASSERT_EQ(ArrowArrayViewInitFromSchema(&src_view, &schema, &error), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayViewSetArray(&src_view, &src, &error), NANOARROW_OK);
+
+  struct ArrowArray dst;
+  ASSERT_EQ(AppendStorageFromArrayViewForTest(&src_view, &dst, &error), NANOARROW_OK)
+      << error.message;
+
+  struct ArrowArrayView dst_view;
+  ASSERT_EQ(ArrowArrayViewInitFromSchema(&dst_view, &schema, &error), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayViewSetArray(&dst_view, &dst, &error), NANOARROW_OK);
+  EXPECT_TRUE(ArrowArrayViewIsNull(&dst_view, 0));
+  EXPECT_EQ(ArrowArrayViewGetIntUnsafe(dst_view.children[0]->children[0], 0), 1);
+  EXPECT_EQ(ArrowArrayViewGetStringUnsafe(dst_view.children[0]->children[1], 0),
+            "value"_asv);
+
+  ArrowArrayViewReset(&dst_view);
+  ArrowArrayRelease(&dst);
+  ArrowArrayViewReset(&src_view);
+  ArrowArrayRelease(&src);
+  ArrowSchemaRelease(&schema);
+}
+
 TEST(ArrayTest, ArrayAppendStorageFromArrayViewRejectsNullToRunEndEncoded) {
   struct ArrowError error;
   struct ArrowArrayView src_view;
@@ -5389,10 +5468,43 @@ TEST(ArrayTest, ArrayAppendStorageFromArrayViewRejectsNullToRunEndEncoded) {
 
   EXPECT_EQ(ArrowArrayAppendStorageFromArrayView(&dst, &src_view, &error), EINVAL);
   EXPECT_STREQ(error.message,
-               "Can't append null storage to an array with run-end encoded storage");
+               "Can't append null storage to an array whose null representation "
+               "requires appending to run-end encoded storage");
   EXPECT_EQ(dst.length, 0);
   EXPECT_EQ(dst.children[0]->length, 0);
   EXPECT_EQ(dst.children[1]->length, 0);
+
+  ArrowArrayRelease(&dst);
+  ArrowSchemaRelease(&schema);
+  ArrowArrayViewReset(&src_view);
+}
+
+TEST(ArrayTest, ArrayAppendStorageFromArrayViewRejectsNullToNestedRunEndEncoded) {
+  struct ArrowError error;
+  struct ArrowArrayView src_view;
+  ArrowArrayViewInitFromType(&src_view, NANOARROW_TYPE_NA);
+  src_view.length = 1;
+
+  struct ArrowSchema schema;
+  ArrowSchemaInit(&schema);
+  ASSERT_EQ(ArrowSchemaSetTypeStruct(&schema, 1), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaSetTypeRunEndEncoded(schema.children[0], NANOARROW_TYPE_INT32),
+            NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaSetType(schema.children[0]->children[1], NANOARROW_TYPE_STRING),
+            NANOARROW_OK);
+
+  struct ArrowArray dst;
+  ASSERT_EQ(ArrowArrayInitFromSchema(&dst, &schema, &error), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayStartAppending(&dst), NANOARROW_OK);
+
+  EXPECT_EQ(ArrowArrayAppendStorageFromArrayView(&dst, &src_view, &error), EINVAL);
+  EXPECT_STREQ(error.message,
+               "Can't append null storage to an array whose null representation "
+               "requires appending to run-end encoded storage");
+  EXPECT_EQ(dst.length, 0);
+  EXPECT_EQ(dst.children[0]->length, 0);
+  EXPECT_EQ(dst.children[0]->children[0]->length, 0);
+  EXPECT_EQ(dst.children[0]->children[1]->length, 0);
 
   ArrowArrayRelease(&dst);
   ArrowSchemaRelease(&schema);

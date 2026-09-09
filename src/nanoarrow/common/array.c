@@ -168,6 +168,49 @@ static int ArrowArrayCanAppendStorageType(enum ArrowType dst_type,
   return dst_type == src_type;
 }
 
+static int ArrowArrayAppendNullMayReachRunEndEncoded(struct ArrowArray* dst) {
+  struct ArrowArrayPrivateData* private_data =
+      (struct ArrowArrayPrivateData*)dst->private_data;
+
+  switch (private_data->storage_type) {
+    case NANOARROW_TYPE_RUN_END_ENCODED:
+      return 1;
+    case NANOARROW_TYPE_FIXED_SIZE_LIST:
+      return private_data->layout.child_size_elements > 0 &&
+             ArrowArrayAppendNullMayReachRunEndEncoded(dst->children[0]);
+    case NANOARROW_TYPE_STRUCT:
+    case NANOARROW_TYPE_SPARSE_UNION:
+      for (int64_t i = 0; i < dst->n_children; i++) {
+        if (ArrowArrayAppendNullMayReachRunEndEncoded(dst->children[i])) {
+          return 1;
+        }
+      }
+      return 0;
+    case NANOARROW_TYPE_DENSE_UNION:
+      return ArrowArrayAppendNullMayReachRunEndEncoded(dst->children[0]);
+    default:
+      return 0;
+  }
+}
+
+static int ArrowArrayViewHasNulls(const struct ArrowArrayView* src) {
+  if (src->length == 0) {
+    return 0;
+  }
+
+  if (src->storage_type == NANOARROW_TYPE_NA) {
+    return 1;
+  }
+
+  if (src->layout.buffer_type[0] != NANOARROW_BUFFER_TYPE_VALIDITY) {
+    return 0;
+  }
+
+  const uint8_t* validity = src->buffer_views[0].data.as_uint8;
+  return validity != NULL &&
+         ArrowBitCountSet(validity, src->offset, src->length) != src->length;
+}
+
 static ArrowErrorCode ArrowArrayCheckCanAppendStorageFromArrayView(
     struct ArrowArray* dst, const struct ArrowArrayView* src, struct ArrowError* error) {
   if (src->offset < 0 || src->length < 0 || src->offset > INT64_MAX - src->length) {
@@ -186,14 +229,6 @@ static ArrowErrorCode ArrowArrayCheckCanAppendStorageFromArrayView(
   struct ArrowArrayPrivateData* private_data =
       (struct ArrowArrayPrivateData*)dst->private_data;
   enum ArrowType dst_type = private_data->storage_type;
-
-  if (src->storage_type == NANOARROW_TYPE_NA &&
-      dst_type == NANOARROW_TYPE_RUN_END_ENCODED) {
-    ArrowErrorSet(error,
-                  "Can't append null storage to an array with run-end encoded "
-                  "storage");
-    return EINVAL;
-  }
 
   if (src->storage_type == NANOARROW_TYPE_DENSE_UNION ||
       src->storage_type == NANOARROW_TYPE_SPARSE_UNION) {
@@ -381,6 +416,14 @@ static int ArrowArrayCanAppendFixedWidthStorage(struct ArrowArray* dst,
          src->layout.element_size_bits[1] % 8 == 0;
 }
 
+static int ArrowArrayCanAppendStructStorage(struct ArrowArray* dst,
+                                            const struct ArrowArrayView* src) {
+  struct ArrowArrayPrivateData* private_data =
+      (struct ArrowArrayPrivateData*)dst->private_data;
+  return private_data->storage_type == NANOARROW_TYPE_STRUCT &&
+         src->storage_type == NANOARROW_TYPE_STRUCT;
+}
+
 static ArrowErrorCode ArrowArrayAppendValidityFromArrayView(
     struct ArrowArray* dst, const struct ArrowArrayView* src, struct ArrowError* error) {
   struct ArrowBitmap* dst_validity = ArrowArrayValidityBitmap(dst);
@@ -459,6 +502,22 @@ static ArrowErrorCode ArrowArrayAppendFixedWidthStorageFromArrayView(
   return NANOARROW_OK;
 }
 
+static ArrowErrorCode ArrowArrayAppendStructStorageFromArrayView(
+    struct ArrowArray* dst, const struct ArrowArrayView* src, struct ArrowError* error) {
+  for (int64_t i = 0; i < src->n_children; i++) {
+    NANOARROW_RETURN_NOT_OK(ArrowArrayAppendStorageFromArrayViewRange(
+        dst->children[i], src->children[i], src->offset, src->length, error));
+  }
+
+  NANOARROW_RETURN_NOT_OK(ArrowArrayAppendValidityFromArrayView(dst, src, error));
+  if (src->buffer_views[0].data.as_uint8 != NULL) {
+    dst->null_count += src->length - ArrowBitCountSet(src->buffer_views[0].data.as_uint8,
+                                                      src->offset, src->length);
+  }
+  dst->length += src->length;
+  return NANOARROW_OK;
+}
+
 static int64_t ArrowArrayViewResolveRun(const struct ArrowArrayView* run_ends,
                                         int64_t logical_offset) {
   if (run_ends->length <= 1) {
@@ -476,20 +535,20 @@ static int64_t ArrowArrayViewResolveRun(const struct ArrowArrayView* run_ends,
           logical_offset + 1, run_ends->buffer_views[1].data.as_int64 + run_ends->offset,
           0, run_ends->length);
     case NANOARROW_TYPE_INT16:
-    default: {
-      int64_t run = 0;
-      while (run + 1 < run_ends->length &&
-             ArrowArrayViewGetIntUnsafe(run_ends, run) <= logical_offset) {
-        run++;
-      }
-      return run;
-    }
+      return ArrowResolveChunk16(
+          (int16_t)(logical_offset + 1),
+          run_ends->buffer_views[1].data.as_int16 + run_ends->offset, 0,
+          (int16_t)run_ends->length);
+    default:
+      return 0;
   }
 }
 
 static ArrowErrorCode ArrowArrayAppendStorageFromArrayViewRange(
     struct ArrowArray* dst, const struct ArrowArrayView* src, int64_t offset,
     int64_t length, struct ArrowError* error) {
+  // Note: src_slice must not be freed; it is a convenience to avoid repeatedly
+  // composing offset and length on top of src in internal calls.
   struct ArrowArrayView src_slice = *src;
   if (offset < 0 || src->offset < 0 || offset > INT64_MAX - src->offset) {
     ArrowErrorSet(error,
@@ -505,8 +564,26 @@ static ArrowErrorCode ArrowArrayAppendStorageFromArrayViewRange(
 
   NANOARROW_RETURN_NOT_OK(ArrowArrayCheckCanAppendStorageFromArrayView(dst, src, error));
 
+  struct ArrowArrayPrivateData* private_data =
+      (struct ArrowArrayPrivateData*)dst->private_data;
+  // Exact struct-to-struct appends copy child storage in bulk, including storage
+  // beneath null parent slots. Other null appends use ArrowArrayAppendNull(), whose
+  // empty child values cannot represent run-end encoded storage.
+  if (!(src->storage_type == NANOARROW_TYPE_STRUCT &&
+        private_data->storage_type == NANOARROW_TYPE_STRUCT) &&
+      ArrowArrayAppendNullMayReachRunEndEncoded(dst) && ArrowArrayViewHasNulls(src)) {
+    ArrowErrorSet(error,
+                  "Can't append null storage to an array whose null representation "
+                  "requires appending to run-end encoded storage");
+    return EINVAL;
+  }
+
   if (ArrowArrayCanAppendFixedWidthStorage(dst, src)) {
     return ArrowArrayAppendFixedWidthStorageFromArrayView(dst, src, error);
+  }
+
+  if (ArrowArrayCanAppendStructStorage(dst, src)) {
+    return ArrowArrayAppendStructStorageFromArrayView(dst, src, error);
   }
 
   if (src->storage_type == NANOARROW_TYPE_RUN_END_ENCODED) {
@@ -520,6 +597,14 @@ static ArrowErrorCode ArrowArrayAppendStorageFromArrayViewRange(
                     "Expected a non-empty run ends array for a non-empty "
                     "run-end encoded array");
       return EINVAL;
+    }
+
+    if (dst->length > INT64_MAX - src->length) {
+      ArrowErrorSet(error,
+                    "Expected run-end encoded destination length plus source length "
+                    "to fit in int64 but found %" PRId64 " and %" PRId64,
+                    dst->length, src->length);
+      return EOVERFLOW;
     }
 
     int64_t first_run = ArrowArrayViewResolveRun(run_ends, src->offset);

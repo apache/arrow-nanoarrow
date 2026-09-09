@@ -1043,6 +1043,8 @@ NANOARROW_DLL ArrowErrorCode ArrowArrayReserve(struct ArrowArray* array,
 /// Struct children are matched by position. Logical type metadata not carried by
 /// ArrowArrayView, including struct field names and decimal precision and scale,
 /// must be checked by the caller.
+/// array_view must not reference storage owned by array or its children because an
+/// append may reallocate and invalidate that storage.
 /// Returns EINVAL for incompatible storage and ENOTSUP for unsupported storage.
 NANOARROW_DLL ArrowErrorCode ArrowArrayAppendStorageFromArrayView(
     struct ArrowArray* array, const struct ArrowArrayView* array_view,
