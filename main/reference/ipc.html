@@ -426,6 +426,12 @@
 <dd><p>Feature flag for a stream that uses compression. </p>
 </dd></dl>
 
+<dl class="cpp macro">
+<dt class="sig sig-object cpp" id="c.NANOARROW_IPC_COMPRESSION_LEVEL_DEFAULT">
+<span class="target" id="group__nanoarrow__ipc_1gacd4e74068dc87412ce1f337c18ba7072"></span><span class="sig-name descname"><span class="n"><span class="pre">NANOARROW_IPC_COMPRESSION_LEVEL_DEFAULT</span></span></span><a class="headerlink" href="#c.NANOARROW_IPC_COMPRESSION_LEVEL_DEFAULT" title="Link to this definition">#</a><br /></dt>
+<dd><p>Compression level that selects the codec’s default level. </p>
+</dd></dl>
+
 </div>
 <div class="breathe-sectiondef docutils container">
 <p class="breathe-sectiondef-title rubric" id="breathe-section-title-typedefs">Typedefs</p>
@@ -434,6 +440,14 @@
 <span id="_CPPv326ArrowIpcDecompressFunction"></span><span id="_CPPv226ArrowIpcDecompressFunction"></span><span id="ArrowIpcDecompressFunction"></span><span class="target" id="group__nanoarrow__ipc_1ga74ed8ec651ecc43c0de70f4a9b556571"></span><span class="k"><span class="pre">typedef</span></span><span class="w"> </span><a class="reference internal" href="c.html#_CPPv414ArrowErrorCode" title="ArrowErrorCode"><span class="n"><span class="pre">ArrowErrorCode</span></span></a><span class="w"> </span><span class="p"><span class="pre">(</span></span><span class="p"><span class="pre">*</span></span><span class="sig-name descname"><span class="n"><span class="pre">ArrowIpcDecompressFunction</span></span></span><span class="p"><span class="pre">)</span></span><span class="p"><span class="pre">(</span></span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="c.html#_CPPv415ArrowBufferView" title="ArrowBufferView"><span class="n"><span class="pre">ArrowBufferView</span></span></a><span class="w"> </span><span class="n"><span class="pre">src</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="n"><span class="pre">uint8_t</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">dst</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="n"><span class="pre">int64_t</span></span><span class="w"> </span><span class="n"><span class="pre">dst_size</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="c.html#_CPPv410ArrowError" title="ArrowError"><span class="n"><span class="pre">ArrowError</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">error</span></span><span class="p"><span class="pre">)</span></span><a class="headerlink" href="#_CPPv426ArrowIpcDecompressFunction" title="Link to this definition">#</a><br /></dt>
 <dd><p>A self-contained decompression function. </p>
 <p>For the most common compression type, ZSTD, this function is sufficient to capture the type of decompression that Arrow IPC requires (i.e., decompression where the uncompressed size was recorded). For other compression types, it may be more efficient to implement a full <a class="reference internal" href="#struct_arrow_ipc_decompressor"><span class="std std-ref">ArrowIpcDecompressor</span></a>, which allows for persistent state/allocations between decodes. </p>
+</dd></dl>
+
+<dl class="cpp type">
+<dt class="sig sig-object cpp" id="_CPPv424ArrowIpcCompressFunction">
+<span id="_CPPv324ArrowIpcCompressFunction"></span><span id="_CPPv224ArrowIpcCompressFunction"></span><span id="ArrowIpcCompressFunction"></span><span class="target" id="group__nanoarrow__ipc_1gad314b87b13d74a62085aa517154c20ac"></span><span class="k"><span class="pre">typedef</span></span><span class="w"> </span><a class="reference internal" href="c.html#_CPPv414ArrowErrorCode" title="ArrowErrorCode"><span class="n"><span class="pre">ArrowErrorCode</span></span></a><span class="w"> </span><span class="p"><span class="pre">(</span></span><span class="p"><span class="pre">*</span></span><span class="sig-name descname"><span class="n"><span class="pre">ArrowIpcCompressFunction</span></span></span><span class="p"><span class="pre">)</span></span><span class="p"><span class="pre">(</span></span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="c.html#_CPPv415ArrowBufferView" title="ArrowBufferView"><span class="n"><span class="pre">ArrowBufferView</span></span></a><span class="w"> </span><span class="n"><span class="pre">src</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="n"><span class="pre">compression_level</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="c.html#_CPPv411ArrowBuffer" title="ArrowBuffer"><span class="n"><span class="pre">ArrowBuffer</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">dst</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="c.html#_CPPv410ArrowError" title="ArrowError"><span class="n"><span class="pre">ArrowError</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">error</span></span><span class="p"><span class="pre">)</span></span><a class="headerlink" href="#_CPPv424ArrowIpcCompressFunction" title="Link to this definition">#</a><br /></dt>
+<dd><p>A self-contained compression function. </p>
+<p>Compresses src at compression_level and appends the compressed bytes to dst. Because the compressed size is not known in advance, implementations are responsible for reserving sufficient space in dst (e.g., using the compression library’s bound function) and must only append to dst.</p>
+<p>The interpretation of compression_level is codec-specific: NANOARROW_IPC_COMPRESSION_LEVEL_DEFAULT selects the codec’s default level and other values follow the underlying library’s conventions (see <a class="reference internal" href="#group__nanoarrow__ipc_1gaa10eebc627e9789d3ec6d31c5f439100"><span class="std std-ref">ArrowIpcGetCompressionLevelRange()</span></a>). <a class="reference internal" href="#group__nanoarrow__ipc_1ga5cdd97b8957f58f661f7a35f77e26035"><span class="std std-ref">ArrowIpcEncoderSetCompression()</span></a> rejects levels outside that range; the built-in functions clamp them if called directly. </p>
 </dd></dl>
 
 <dl class="cpp type">
@@ -686,6 +700,55 @@
 
 <dl class="cpp function">
 <dt class="sig sig-object cpp">
+<span class="target" id="group__nanoarrow__ipc_1ga0d91d7e299290e32b679ed9dea08e4af"></span><span class="sig-name descname"><span class="pre">NANOARROW_DLL</span> <span class="pre">ArrowIpcCompressFunction</span> <span class="pre">ArrowIpcGetZstdCompressionFunction</span> <span class="pre">(void)</span></span></dt>
+<dd><p>Get the compression function for ZSTD. </p>
+<p>The result will be NULL if nanoarrow was not built with NANOARROW_IPC_WITH_ZSTD. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp">
+<span class="target" id="group__nanoarrow__ipc_1ga8164a2df51d6963dc5f0b778842598a8"></span><span class="sig-name descname"><span class="pre">NANOARROW_DLL</span> <span class="pre">ArrowIpcCompressFunction</span> <span class="pre">ArrowIpcGetLZ4CompressionFunction</span> <span class="pre">(void)</span></span></dt>
+<dd><p>Get the compression function for LZ4. </p>
+<p>The result will be NULL if nanoarrow was not built with NANOARROW_IPC_WITH_LZ4. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp">
+<span class="target" id="group__nanoarrow__ipc_1gac65aabe05ccb72cc846613c7e921e644"></span><span class="sig-name descname"><span class="pre">NANOARROW_DLL</span> <span class="pre">ArrowErrorCode</span> <span class="pre">ArrowIpcSerialCompressor</span> <span class="pre">(struct</span> <span class="pre">ArrowIpcCompressor</span> <span class="pre">*compressor,</span> <span class="pre">enum</span> <span class="pre">ArrowIpcCompressionType</span> <span class="pre">compression_type,</span> <span class="pre">int</span> <span class="pre">compression_level)</span></span></dt>
+<dd><p>An <a class="reference internal" href="#struct_arrow_ipc_compressor"><span class="std std-ref">ArrowIpcCompressor</span></a> implementation that performs compression in serial. </p>
+<p>The compressor compresses with compression_type at compression_level (see <a class="reference internal" href="#group__nanoarrow__ipc_1gad314b87b13d74a62085aa517154c20ac"><span class="std std-ref">ArrowIpcCompressFunction</span></a> for the interpretation of the level). Returns EINVAL if compression_type is not a valid compression type; whether it is supported by this build of nanoarrow is not checked until a buffer is compressed. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp">
+<span class="target" id="group__nanoarrow__ipc_1gac4ae18c3396a5449d60f105f876d1343"></span><span class="sig-name descname"><span class="pre">NANOARROW_DLL</span> <span class="pre">ArrowErrorCode</span> <span class="pre">ArrowIpcSerialCompressorSetFunction</span> <span class="pre">(struct</span> <span class="pre">ArrowIpcCompressor</span> <span class="pre">*compressor,</span> <span class="pre">enum</span> <span class="pre">ArrowIpcCompressionType</span> <span class="pre">compression_type,</span> <span class="pre">ArrowIpcCompressFunction</span> <span class="pre">compress_function)</span></span></dt>
+<dd><p>Override the <a class="reference internal" href="#group__nanoarrow__ipc_1gad314b87b13d74a62085aa517154c20ac"><span class="std std-ref">ArrowIpcCompressFunction</span></a> used for a specific compression type. </p>
+<p>This may be used to inject support for a particular type of compression if used with a version of nanoarrow with unknown or minimal capabilities. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp">
+<span class="target" id="group__nanoarrow__ipc_1ga5063b571a0d3bead8119edffffbf06fa"></span><span class="sig-name descname"><span class="pre">NANOARROW_DLL</span> <span class="pre">const</span> <span class="pre">char</span> <span class="pre">*</span> <span class="pre">ArrowIpcCompressionTypeToString</span> <span class="pre">(enum</span> <span class="pre">ArrowIpcCompressionType</span> <span class="pre">compression_type)</span></span></dt>
+<dd><p>Get the name of a compression type. </p>
+<p>Returns “none”, “lz4”, or “zstd”, or “&lt;unknown compression type&gt;” for an unknown compression type (never NULL, so the result is safe to use in a format string). </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp">
+<span class="target" id="group__nanoarrow__ipc_1ga51c00eb81041b9e10b1eb535d8c7d7d5"></span><span class="sig-name descname"><span class="pre">NANOARROW_DLL</span> <span class="pre">ArrowErrorCode</span> <span class="pre">ArrowIpcCompressionTypeFromString</span> <span class="pre">(const</span> <span class="pre">char</span> <span class="pre">*name,</span> <span class="pre">enum</span> <span class="pre">ArrowIpcCompressionType</span> <span class="pre">*compression_type_out,</span> <span class="pre">struct</span> <span class="pre">ArrowError</span> <span class="pre">*error)</span></span></dt>
+<dd><p>Look up a compression type by name. </p>
+<p>Accepts exactly the names returned by <a class="reference internal" href="#group__nanoarrow__ipc_1ga5063b571a0d3bead8119edffffbf06fa"><span class="std std-ref">ArrowIpcCompressionTypeToString()</span></a>. Returns EINVAL (with an error message listing the accepted names) if name is not one of them. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp">
+<span class="target" id="group__nanoarrow__ipc_1gaa10eebc627e9789d3ec6d31c5f439100"></span><span class="sig-name descname"><span class="pre">NANOARROW_DLL</span> <span class="pre">ArrowErrorCode</span> <span class="pre">ArrowIpcGetCompressionLevelRange</span> <span class="pre">(enum</span> <span class="pre">ArrowIpcCompressionType</span> <span class="pre">compression_type,</span> <span class="pre">int</span> <span class="pre">*min_level_out,</span> <span class="pre">int</span> <span class="pre">*max_level_out)</span></span></dt>
+<dd><p>Get the range of compression levels accepted by a codec. </p>
+<p>The range is inclusive and always contains NANOARROW_IPC_COMPRESSION_LEVEL_DEFAULT. For ZSTD it is ZSTD_minCLevel() to ZSTD_maxCLevel(), where negative levels favour speed; for LZ4 it is -65536 to LZ4F_compressionLevel_max(), where levels &gt;= 3 use LZ4HC and negative levels select an acceleration of 1 - level. Returns ENOTSUP if the codec is not supported by this build of nanoarrow and EINVAL if compression_type is not a codec (including NANOARROW_IPC_COMPRESSION_TYPE_NONE). </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp">
 <span class="target" id="group__nanoarrow__ipc_1ga4eabbe9d9ac220cad512e598333aba40"></span><span class="sig-name descname"><span class="pre">NANOARROW_DLL</span> <span class="pre">ArrowErrorCode</span> <span class="pre">ArrowIpcDecoderInit</span> <span class="pre">(struct</span> <span class="pre">ArrowIpcDecoder</span> <span class="pre">*decoder)</span></span></dt>
 <dd><p>Initialize a decoder. </p>
 </dd></dl>
@@ -911,6 +974,23 @@
 
 <dl class="cpp function">
 <dt class="sig sig-object cpp">
+<span class="target" id="group__nanoarrow__ipc_1ga5cdd97b8957f58f661f7a35f77e26035"></span><span class="sig-name descname"><span class="pre">NANOARROW_DLL</span> <span class="pre">ArrowErrorCode</span> <span class="pre">ArrowIpcEncoderSetCompression</span> <span class="pre">(struct</span> <span class="pre">ArrowIpcEncoder</span> <span class="pre">*encoder,</span> <span class="pre">enum</span> <span class="pre">ArrowIpcCompressionType</span> <span class="pre">compression_type,</span> <span class="pre">int</span> <span class="pre">compression_level,</span> <span class="pre">struct</span> <span class="pre">ArrowError</span> <span class="pre">*error)</span></span></dt>
+<dd><p>Compress the bodies of subsequently encoded messages with a built-in codec. </p>
+<p>Installs an <a class="reference internal" href="#group__nanoarrow__ipc_1gac65aabe05ccb72cc846613c7e921e644"><span class="std std-ref">ArrowIpcSerialCompressor()</span></a> configured with compression_type and compression_level, replacing any compressor previously set with this function or with <a class="reference internal" href="#group__nanoarrow__ipc_1gadc56c656e9a896352db86b8a82b3eea2"><span class="std std-ref">ArrowIpcEncoderSetCompressor()</span></a>. NANOARROW_IPC_COMPRESSION_TYPE_NONE removes the compressor. The setting persists until it is changed. Schema messages encoded while a compressor is set declare the COMPRESSED_BODY feature, so compression should be set before the schema is encoded. File footers also declare this feature if compression was declared or used since the most recent Schema message, even if the compressor has since been removed.</p>
+<p>The body buffers of every RecordBatch or DictionaryBatch encoded while a compressor is set are compressed as described by the Arrow IPC format: each non-empty buffer is written as its uncompressed length (a little-endian int64) followed by the compressed bytes. Buffers that do not shrink when compressed are written uncompressed with a length prefix of -1, and empty buffers are written as-is.</p>
+<p>compression_level is passed to the codec unchanged; see <a class="reference internal" href="#group__nanoarrow__ipc_1gad314b87b13d74a62085aa517154c20ac"><span class="std std-ref">ArrowIpcCompressFunction</span></a> for its interpretation and use NANOARROW_IPC_COMPRESSION_LEVEL_DEFAULT for the codec’s default level.</p>
+<p>Returns EINVAL for an unknown compression type or a compression_level outside the range reported by <a class="reference internal" href="#group__nanoarrow__ipc_1gaa10eebc627e9789d3ec6d31c5f439100"><span class="std std-ref">ArrowIpcGetCompressionLevelRange()</span></a>, and ENOTSUP if the compression type is not supported by this build of nanoarrow (i.e., nanoarrow was not built with NANOARROW_IPC_WITH_LZ4 or NANOARROW_IPC_WITH_ZSTD). </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp">
+<span class="target" id="group__nanoarrow__ipc_1gadc56c656e9a896352db86b8a82b3eea2"></span><span class="sig-name descname"><span class="pre">NANOARROW_DLL</span> <span class="pre">ArrowErrorCode</span> <span class="pre">ArrowIpcEncoderSetCompressor</span> <span class="pre">(struct</span> <span class="pre">ArrowIpcEncoder</span> <span class="pre">*encoder,</span> <span class="pre">struct</span> <span class="pre">ArrowIpcCompressor</span> <span class="pre">*compressor)</span></span></dt>
+<dd><p>Compress the bodies of subsequently encoded messages with a custom compressor. </p>
+<p>The encoder takes ownership of compressor and replaces any compressor previously set. The compressor’s compression_type member selects the codec (any level is part of the compressor’s own configuration, like the one given to <a class="reference internal" href="#group__nanoarrow__ipc_1gac65aabe05ccb72cc846613c7e921e644"><span class="std std-ref">ArrowIpcSerialCompressor()</span></a>), and its support is not checked until a message is encoded. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp">
 <span class="target" id="group__nanoarrow__ipc_1gabd2af9c33984ccc5b349b5247ef4655f"></span><span class="sig-name descname"><span class="pre">NANOARROW_DLL</span> <span class="pre">ArrowErrorCode</span> <span class="pre">ArrowIpcEncoderEncodeSchema</span> <span class="pre">(struct</span> <span class="pre">ArrowIpcEncoder</span> <span class="pre">*encoder,</span> <span class="pre">const</span> <span class="pre">struct</span> <span class="pre">ArrowSchema</span> <span class="pre">*schema,</span> <span class="pre">struct</span> <span class="pre">ArrowError</span> <span class="pre">*error)</span></span></dt>
 <dd><p>Encode an <a class="reference internal" href="c.html#struct_arrow_schema"><span class="std std-ref">ArrowSchema</span></a>. </p>
 <p>Returns ENOMEM if allocation fails, NANOARROW_OK otherwise. </p>
@@ -969,6 +1049,14 @@
 <dt class="sig sig-object cpp">
 <span class="target" id="group__nanoarrow__ipc_1ga72bdffe8d0d2d9e911f9f8a91983fc3f"></span><span class="sig-name descname"><span class="pre">NANOARROW_DLL</span> <span class="pre">void</span> <span class="pre">ArrowIpcWriterReset</span> <span class="pre">(struct</span> <span class="pre">ArrowIpcWriter</span> <span class="pre">*writer)</span></span></dt>
 <dd><p>Release all resources attached to a writer. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp">
+<span class="target" id="group__nanoarrow__ipc_1ga559905be44886c882d50db58dcbcaee9"></span><span class="sig-name descname"><span class="pre">NANOARROW_DLL</span> <span class="pre">ArrowErrorCode</span> <span class="pre">ArrowIpcWriterSetCompression</span> <span class="pre">(struct</span> <span class="pre">ArrowIpcWriter</span> <span class="pre">*writer,</span> <span class="pre">enum</span> <span class="pre">ArrowIpcCompressionType</span> <span class="pre">compression_type,</span> <span class="pre">int</span> <span class="pre">compression_level,</span> <span class="pre">struct</span> <span class="pre">ArrowError</span> <span class="pre">*error)</span></span></dt>
+<dd><p>Compress the bodies of subsequently written batches with a built-in codec. </p>
+<p>See <a class="reference internal" href="#group__nanoarrow__ipc_1ga5cdd97b8957f58f661f7a35f77e26035"><span class="std std-ref">ArrowIpcEncoderSetCompression()</span></a>. Compression applies to record batches and dictionary batches written after this call (in both stream and file mode) and may be changed between batches. Set it before writing the schema so that the Schema message declares the COMPRESSED_BODY feature (a file footer declares it whenever compression was declared or used). Use NANOARROW_IPC_COMPRESSION_LEVEL_DEFAULT for the codec’s default level.</p>
+<p>Returns EINVAL for an unknown compression type or an out-of-range compression_level, and ENOTSUP if the compression type is not supported by this build of nanoarrow. </p>
 </dd></dl>
 
 <dl class="cpp function">
@@ -1122,6 +1210,52 @@
 <dl class="cpp var">
 <dt class="sig sig-object cpp" id="_CPPv4N20ArrowIpcDecompressor12private_dataE">
 <span id="_CPPv3N20ArrowIpcDecompressor12private_dataE"></span><span id="_CPPv2N20ArrowIpcDecompressor12private_dataE"></span><span id="ArrowIpcDecompressor::private_data__voidP"></span><span class="target" id="struct_arrow_ipc_decompressor_1a5fcd3442cdede3710ebed7a4e512019b"></span><span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="sig-name descname"><span class="n"><span class="pre">private_data</span></span></span><a class="headerlink" href="#_CPPv4N20ArrowIpcDecompressor12private_dataE" title="Link to this definition">#</a><br /></dt>
+<dd><p>Implementation-specific opaque data. </p>
+</dd></dl>
+
+</div>
+</dd></dl>
+
+<dl class="cpp struct">
+<dt class="sig sig-object cpp" id="_CPPv418ArrowIpcCompressor">
+<span id="_CPPv318ArrowIpcCompressor"></span><span id="_CPPv218ArrowIpcCompressor"></span><span id="ArrowIpcCompressor"></span><span class="target" id="struct_arrow_ipc_compressor"></span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">ArrowIpcCompressor</span></span></span><a class="headerlink" href="#_CPPv418ArrowIpcCompressor" title="Link to this definition">#</a><br /></dt>
+<dd><div class="docutils container">
+<em>#include &lt;nanoarrow_ipc.h&gt;</em></div>
+<p>A user-extensible compressor. </p>
+<p>The <a class="reference internal" href="#struct_arrow_ipc_compressor"><span class="std std-ref">ArrowIpcCompressor</span></a> is the underlying object that enables buffer compression in the <a class="reference internal" href="#struct_arrow_ipc_encoder"><span class="std std-ref">ArrowIpcEncoder</span></a>. Its structure allows it to be backed by a multithreaded implementation; however, this is not required and the default implementation does not implement this. The encoder queues every buffer of a message with <a class="reference internal" href="#struct_arrow_ipc_compressor_1aa881126b5587a4092dbd21f36449c052"><span class="std std-ref">compress_add()</span></a> and then calls <a class="reference internal" href="#struct_arrow_ipc_compressor_1a89db3c1d4cbb7e9c58382231b4757e4b"><span class="std std-ref">compress_wait()</span></a> before it assembles the message body. </p>
+<div class="breathe-sectiondef docutils container">
+<p class="breathe-sectiondef-title rubric" id="breathe-section-title-public-members">Public Members</p>
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4N18ArrowIpcCompressor16compression_typeE">
+<span id="_CPPv3N18ArrowIpcCompressor16compression_typeE"></span><span id="_CPPv2N18ArrowIpcCompressor16compression_typeE"></span><span id="ArrowIpcCompressor::compression_type__ArrowIpcCompressionType"></span><span class="target" id="struct_arrow_ipc_compressor_1a1d0ca4b9af685180e826bef5a2814506"></span><span class="k"><span class="pre">enum</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv423ArrowIpcCompressionType" title="ArrowIpcCompressionType"><span class="n"><span class="pre">ArrowIpcCompressionType</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">compression_type</span></span></span><a class="headerlink" href="#_CPPv4N18ArrowIpcCompressor16compression_typeE" title="Link to this definition">#</a><br /></dt>
+<dd><p>The codec this compressor applies. </p>
+<p>The encoder declares this codec in the messages it encodes, so implementations must compress with it. NANOARROW_IPC_COMPRESSION_TYPE_NONE disables compression. Any other parameters (e.g., a compression level) are part of the implementation. </p>
+</dd></dl>
+
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4N18ArrowIpcCompressor12compress_addE">
+<span id="_CPPv3N18ArrowIpcCompressor12compress_addE"></span><span id="_CPPv2N18ArrowIpcCompressor12compress_addE"></span><span class="target" id="struct_arrow_ipc_compressor_1aa881126b5587a4092dbd21f36449c052"></span><a class="reference internal" href="c.html#_CPPv414ArrowErrorCode" title="ArrowErrorCode"><span class="n"><span class="pre">ArrowErrorCode</span></span></a><span class="w"> </span><span class="p"><span class="pre">(</span></span><span class="p"><span class="pre">*</span></span><span class="sig-name descname"><span class="n"><span class="pre">compress_add</span></span></span><span class="p"><span class="pre">)</span></span><span class="p"><span class="pre">(</span></span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv418ArrowIpcCompressor" title="ArrowIpcCompressor"><span class="n"><span class="pre">ArrowIpcCompressor</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">compressor</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="c.html#_CPPv415ArrowBufferView" title="ArrowBufferView"><span class="n"><span class="pre">ArrowBufferView</span></span></a><span class="w"> </span><span class="n"><span class="pre">src</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="c.html#_CPPv411ArrowBuffer" title="ArrowBuffer"><span class="n"><span class="pre">ArrowBuffer</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">dst</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="c.html#_CPPv410ArrowError" title="ArrowError"><span class="n"><span class="pre">ArrowError</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">error</span></span><span class="p"><span class="pre">)</span></span><a class="headerlink" href="#_CPPv4N18ArrowIpcCompressor12compress_addE" title="Link to this definition">#</a><br /></dt>
+<dd><p>Queue a buffer for compression. </p>
+<p>Compresses src using compression_type and appends the compressed bytes to dst, preserving any content already in dst. The caller must keep src and dst valid and must not access them until the queued work has completed or been cancelled. The content of dst is only valid after <a class="reference internal" href="#struct_arrow_ipc_compressor_1a89db3c1d4cbb7e9c58382231b4757e4b"><span class="std std-ref">compress_wait()</span></a> returns NANOARROW_OK. </p>
+</dd></dl>
+
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4N18ArrowIpcCompressor13compress_waitE">
+<span id="_CPPv3N18ArrowIpcCompressor13compress_waitE"></span><span id="_CPPv2N18ArrowIpcCompressor13compress_waitE"></span><span class="target" id="struct_arrow_ipc_compressor_1a89db3c1d4cbb7e9c58382231b4757e4b"></span><a class="reference internal" href="c.html#_CPPv414ArrowErrorCode" title="ArrowErrorCode"><span class="n"><span class="pre">ArrowErrorCode</span></span></a><span class="w"> </span><span class="p"><span class="pre">(</span></span><span class="p"><span class="pre">*</span></span><span class="sig-name descname"><span class="n"><span class="pre">compress_wait</span></span></span><span class="p"><span class="pre">)</span></span><span class="p"><span class="pre">(</span></span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv418ArrowIpcCompressor" title="ArrowIpcCompressor"><span class="n"><span class="pre">ArrowIpcCompressor</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">compressor</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="n"><span class="pre">int64_t</span></span><span class="w"> </span><span class="n"><span class="pre">timeout_ms</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="c.html#_CPPv410ArrowError" title="ArrowError"><span class="n"><span class="pre">ArrowError</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">error</span></span><span class="p"><span class="pre">)</span></span><a class="headerlink" href="#_CPPv4N18ArrowIpcCompressor13compress_waitE" title="Link to this definition">#</a><br /></dt>
+<dd><p>Wait for any unfinished calls to compress_add to complete. </p>
+<p>Returns NANOARROW_OK if all pending calls completed successfully. Returns ETIMEDOUT if not all remaining calls completed within timeout_ms. A negative timeout waits indefinitely and must complete or cancel all queued work before returning, including when returning an error. </p>
+</dd></dl>
+
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4N18ArrowIpcCompressor7releaseE">
+<span id="_CPPv3N18ArrowIpcCompressor7releaseE"></span><span id="_CPPv2N18ArrowIpcCompressor7releaseE"></span><span class="target" id="struct_arrow_ipc_compressor_1ac037c229da7d04f7032811e8728d9e77"></span><span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="p"><span class="pre">(</span></span><span class="p"><span class="pre">*</span></span><span class="sig-name descname"><span class="n"><span class="pre">release</span></span></span><span class="p"><span class="pre">)</span></span><span class="p"><span class="pre">(</span></span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv418ArrowIpcCompressor" title="ArrowIpcCompressor"><span class="n"><span class="pre">ArrowIpcCompressor</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">compressor</span></span><span class="p"><span class="pre">)</span></span><a class="headerlink" href="#_CPPv4N18ArrowIpcCompressor7releaseE" title="Link to this definition">#</a><br /></dt>
+<dd><p>Release the compressor and any resources it may be holding. </p>
+<p>Implementations must wait for or cancel any queued work before returning. Release callback implementations must set the release member to NULL. Callers must check that the release callback is not NULL before calling <a class="reference internal" href="#struct_arrow_ipc_compressor_1aa881126b5587a4092dbd21f36449c052"><span class="std std-ref">compress_add()</span></a>, <a class="reference internal" href="#struct_arrow_ipc_compressor_1a89db3c1d4cbb7e9c58382231b4757e4b"><span class="std std-ref">compress_wait()</span></a>, or <a class="reference internal" href="#struct_arrow_ipc_compressor_1ac037c229da7d04f7032811e8728d9e77"><span class="std std-ref">release()</span></a>. </p>
+</dd></dl>
+
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4N18ArrowIpcCompressor12private_dataE">
+<span id="_CPPv3N18ArrowIpcCompressor12private_dataE"></span><span id="_CPPv2N18ArrowIpcCompressor12private_dataE"></span><span id="ArrowIpcCompressor::private_data__voidP"></span><span class="target" id="struct_arrow_ipc_compressor_1a6d4b8553a0058ce04f17ebbc4a48921b"></span><span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="sig-name descname"><span class="n"><span class="pre">private_data</span></span></span><a class="headerlink" href="#_CPPv4N18ArrowIpcCompressor12private_dataE" title="Link to this definition">#</a><br /></dt>
 <dd><p>Implementation-specific opaque data. </p>
 </dd></dl>
 
@@ -1376,6 +1510,12 @@
 </dd></dl>
 
 <dl class="cpp type">
+<dt class="sig sig-object cpp" id="_CPPv416UniqueCompressor">
+<span id="_CPPv316UniqueCompressor"></span><span id="_CPPv216UniqueCompressor"></span><span class="target" id="group__nanoarrow__ipc__hpp-unique_1ga2595703ea5edb7833bbd63f0e5630b81"></span><span class="k"><span class="pre">using</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">UniqueCompressor</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="n"><span class="pre">internal</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">Unique</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv418ArrowIpcCompressor" title="ArrowIpcCompressor"><span class="n"><span class="pre">ArrowIpcCompressor</span></span></a><span class="p"><span class="pre">&gt;</span></span><a class="headerlink" href="#_CPPv416UniqueCompressor" title="Link to this definition">#</a><br /></dt>
+<dd><p>Class wrapping a unique struct <a class="reference internal" href="#struct_arrow_ipc_compressor"><span class="std std-ref">ArrowIpcCompressor</span></a>. </p>
+</dd></dl>
+
+<dl class="cpp type">
 <dt class="sig sig-object cpp" id="_CPPv417UniqueInputStream">
 <span id="_CPPv317UniqueInputStream"></span><span id="_CPPv217UniqueInputStream"></span><span class="target" id="group__nanoarrow__ipc__hpp-unique_1gadfb0e1df846a2dde87ab3122f50a8bbf"></span><span class="k"><span class="pre">using</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">UniqueInputStream</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="n"><span class="pre">internal</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">Unique</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv419ArrowIpcInputStream" title="ArrowIpcInputStream"><span class="n"><span class="pre">ArrowIpcInputStream</span></span></a><span class="p"><span class="pre">&gt;</span></span><a class="headerlink" href="#_CPPv417UniqueInputStream" title="Link to this definition">#</a><br /></dt>
 <dd><p>Class wrapping a unique struct <a class="reference internal" href="#struct_arrow_ipc_input_stream"><span class="std std-ref">ArrowIpcInputStream</span></a>. </p>
@@ -1449,7 +1589,9 @@
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#c-api">C API</a><ul class="pst-show_toc_level nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#c.NANOARROW_IPC_FEATURE_DICTIONARY_REPLACEMENT"><code class="docutils literal notranslate"><span class="pre">NANOARROW_IPC_FEATURE_DICTIONARY_REPLACEMENT</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#c.NANOARROW_IPC_FEATURE_COMPRESSED_BODY"><code class="docutils literal notranslate"><span class="pre">NANOARROW_IPC_FEATURE_COMPRESSED_BODY</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#c.NANOARROW_IPC_COMPRESSION_LEVEL_DEFAULT"><code class="docutils literal notranslate"><span class="pre">NANOARROW_IPC_COMPRESSION_LEVEL_DEFAULT</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv426ArrowIpcDecompressFunction"><code class="docutils literal notranslate"><span class="pre">ArrowIpcDecompressFunction</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv424ArrowIpcCompressFunction"><code class="docutils literal notranslate"><span class="pre">ArrowIpcCompressFunction</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv429ArrowIpcMetadataVisitFunction"><code class="docutils literal notranslate"><span class="pre">ArrowIpcMetadataVisitFunction</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv423ArrowIpcMetadataVersion"><code class="docutils literal notranslate"><span class="pre">ArrowIpcMetadataVersion</span></code></a><ul class="nav section-nav flex-column">
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N23ArrowIpcMetadataVersion33NANOARROW_IPC_METADATA_VERSION_V1E"><code class="docutils literal notranslate"><span class="pre">NANOARROW_IPC_METADATA_VERSION_V1</span></code></a></li>
@@ -1507,6 +1649,14 @@
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N20ArrowIpcDecompressor12private_dataE"><code class="docutils literal notranslate"><span class="pre">private_data</span></code></a></li>
 </ul>
 </li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv418ArrowIpcCompressor"><code class="docutils literal notranslate"><span class="pre">ArrowIpcCompressor</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N18ArrowIpcCompressor16compression_typeE"><code class="docutils literal notranslate"><span class="pre">compression_type</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N18ArrowIpcCompressor12compress_addE"><code class="docutils literal notranslate"><span class="pre">compress_add</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N18ArrowIpcCompressor13compress_waitE"><code class="docutils literal notranslate"><span class="pre">compress_wait</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N18ArrowIpcCompressor7releaseE"><code class="docutils literal notranslate"><span class="pre">release</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N18ArrowIpcCompressor12private_dataE"><code class="docutils literal notranslate"><span class="pre">private_data</span></code></a></li>
+</ul>
+</li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv415ArrowIpcDecoder"><code class="docutils literal notranslate"><span class="pre">ArrowIpcDecoder</span></code></a><ul class="nav section-nav flex-column">
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N15ArrowIpcDecoder12message_typeE"><code class="docutils literal notranslate"><span class="pre">message_type</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N15ArrowIpcDecoder16metadata_versionE"><code class="docutils literal notranslate"><span class="pre">metadata_version</span></code></a></li>
@@ -1554,6 +1704,7 @@
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv418UniqueDictionaries"><code class="docutils literal notranslate"><span class="pre">UniqueDictionaries</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv413UniqueEncoder"><code class="docutils literal notranslate"><span class="pre">UniqueEncoder</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv418UniqueDecompressor"><code class="docutils literal notranslate"><span class="pre">UniqueDecompressor</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv416UniqueCompressor"><code class="docutils literal notranslate"><span class="pre">UniqueCompressor</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv417UniqueInputStream"><code class="docutils literal notranslate"><span class="pre">UniqueInputStream</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv418UniqueOutputStream"><code class="docutils literal notranslate"><span class="pre">UniqueOutputStream</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv412UniqueWriter"><code class="docutils literal notranslate"><span class="pre">UniqueWriter</span></code></a></li>
