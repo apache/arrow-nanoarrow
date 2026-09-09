@@ -34,7 +34,7 @@
 #include "flatcc/portable/pendian.h"
 
 #include "flatcc/flatcc_builder.h"
-#include "nanoarrow/ipc/flatcc_generated.h"
+#include "flatcc_generated.h"
 #include "nanoarrow/nanoarrow_gtest_util.hpp"
 #include "nanoarrow/nanoarrow_ipc.hpp"
 
