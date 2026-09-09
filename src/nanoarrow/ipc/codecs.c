@@ -249,7 +249,7 @@ const char* ArrowIpcCompressionTypeToString(
     case NANOARROW_IPC_COMPRESSION_TYPE_ZSTD:
       return "zstd";
     default:
-      return NULL;
+      return "<unknown compression type>";
   }
 }
 
@@ -358,11 +358,11 @@ struct ArrowIpcSerialCompressorPrivate {
 };
 
 static ArrowErrorCode ArrowIpcSerialCompressorCompress(
-    struct ArrowIpcCompressor* compressor, enum ArrowIpcCompressionType compression_type,
-    int compression_level, struct ArrowBufferView src, struct ArrowBuffer* dst,
-    struct ArrowError* error) {
+    struct ArrowIpcCompressor* compressor, struct ArrowBufferView src,
+    struct ArrowBuffer* dst, struct ArrowError* error) {
   struct ArrowIpcSerialCompressorPrivate* private_data =
       (struct ArrowIpcSerialCompressorPrivate*)compressor->private_data;
+  enum ArrowIpcCompressionType compression_type = compressor->compression_type;
 
   if (!ArrowIpcCompressionTypeIsCodec(compression_type)) {
     ArrowErrorSet(error, "Unknown compression type with value %d", (int)compression_type);
@@ -377,7 +377,7 @@ static ArrowErrorCode ArrowIpcSerialCompressorCompress(
     return ENOTSUP;
   }
 
-  NANOARROW_RETURN_NOT_OK(fn(src, compression_level, dst, error));
+  NANOARROW_RETURN_NOT_OK(fn(src, compressor->compression_level, dst, error));
   return NANOARROW_OK;
 }
 
@@ -387,6 +387,8 @@ static void ArrowIpcSerialCompressorRelease(struct ArrowIpcCompressor* compresso
 }
 
 ArrowErrorCode ArrowIpcSerialCompressor(struct ArrowIpcCompressor* compressor) {
+  compressor->compression_type = NANOARROW_IPC_COMPRESSION_TYPE_NONE;
+  compressor->compression_level = NANOARROW_IPC_COMPRESSION_LEVEL_DEFAULT;
   compressor->release = NULL;
   compressor->private_data = ArrowMalloc(sizeof(struct ArrowIpcSerialCompressorPrivate));
   if (compressor->private_data == NULL) {

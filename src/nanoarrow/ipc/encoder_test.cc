@@ -865,25 +865,20 @@ TEST(NanoarrowIpcTest, NanoarrowIpcEncoderSetCompressor) {
   EXPECT_EQ(first_compressor->release, nullptr);
   EXPECT_EQ(compressor_release_calls, 0);
 
-  // A custom compressor that explicitly does not support LZ4
+  // A custom compressor configured for LZ4 that explicitly does not support it
   nanoarrow::ipc::UniqueCompressor compressor;
   ASSERT_EQ(ArrowIpcSerialCompressor(compressor.get()), NANOARROW_OK);
   ASSERT_EQ(ArrowIpcSerialCompressorSetFunction(
                 compressor.get(), NANOARROW_IPC_COMPRESSION_TYPE_LZ4_FRAME, nullptr),
             NANOARROW_OK);
+  compressor->compression_type = NANOARROW_IPC_COMPRESSION_TYPE_LZ4_FRAME;
 
   ASSERT_EQ(ArrowIpcEncoderSetCompressor(encoder.get(), compressor.get()), NANOARROW_OK);
   // The encoder took ownership of the compressor and released the previous one
   EXPECT_EQ(compressor->release, nullptr);
   EXPECT_EQ(compressor_release_calls, 1);
 
-  // With a custom compressor, neither codec support nor the level is checked until
-  // a batch is encoded
-  ASSERT_EQ(ArrowIpcEncoderSetCompression(
-                encoder.get(), NANOARROW_IPC_COMPRESSION_TYPE_LZ4_FRAME, 1000000, &error),
-            NANOARROW_OK)
-      << error.message;
-
+  // With a custom compressor, support is not checked until a batch is encoded
   CompressibleRecordBatch batch;
   nanoarrow::UniqueBuffer body;
   EXPECT_EQ(ArrowIpcEncoderEncodeSimpleRecordBatch(encoder.get(), batch.array_view(),
@@ -891,6 +886,18 @@ TEST(NanoarrowIpcTest, NanoarrowIpcEncoderSetCompressor) {
             ENOTSUP);
   EXPECT_STREQ(error.message,
                "Compression type with value 1 not supported by this build of nanoarrow");
+
+  // NONE removes the custom compressor and batches are encoded uncompressed again
+  ASSERT_EQ(
+      ArrowIpcEncoderSetCompression(encoder.get(), NANOARROW_IPC_COMPRESSION_TYPE_NONE,
+                                    NANOARROW_IPC_COMPRESSION_LEVEL_DEFAULT, &error),
+      NANOARROW_OK)
+      << error.message;
+  body->size_bytes = 0;
+  EXPECT_EQ(ArrowIpcEncoderEncodeSimpleRecordBatch(encoder.get(), batch.array_view(),
+                                                   body.get(), &error),
+            NANOARROW_OK)
+      << error.message;
 }
 
 // A stand-in compression function that records the level it was called with and
@@ -918,11 +925,9 @@ TEST(NanoarrowIpcTest, NanoarrowIpcEncoderCompressionLevel) {
       ArrowIpcSerialCompressorSetFunction(
           compressor.get(), NANOARROW_IPC_COMPRESSION_TYPE_ZSTD, &RecordLevelAndCopy),
       NANOARROW_OK);
+  compressor->compression_type = NANOARROW_IPC_COMPRESSION_TYPE_ZSTD;
+  compressor->compression_level = 11;
   ASSERT_EQ(ArrowIpcEncoderSetCompressor(encoder.get(), compressor.get()), NANOARROW_OK);
-  ASSERT_EQ(ArrowIpcEncoderSetCompression(
-                encoder.get(), NANOARROW_IPC_COMPRESSION_TYPE_ZSTD, 11, &error),
-            NANOARROW_OK)
-      << error.message;
 
   CompressibleRecordBatch batch;
   ASSERT_EQ(ArrowIpcDecoderSetSchema(decoder.get(), batch.schema(), &error), NANOARROW_OK)

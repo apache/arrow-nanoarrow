@@ -207,7 +207,8 @@ TEST(NanoarrowIpcTest, CompressionTypeStrings) {
   // which C++ can't represent in this enum)
   // NOLINTNEXTLINE(clang-analyzer-optin.core.EnumCastOutOfRange)
   auto unknown_type = static_cast<enum ArrowIpcCompressionType>(3);
-  EXPECT_EQ(ArrowIpcCompressionTypeToString(unknown_type), nullptr);
+  EXPECT_STREQ(ArrowIpcCompressionTypeToString(unknown_type),
+               "<unknown compression type>");
 
   struct ArrowError error {};
   for (auto type :
@@ -226,6 +227,9 @@ TEST(NanoarrowIpcTest, CompressionTypeStrings) {
   EXPECT_STREQ(error.message,
                "Unknown compression type name 'LZ4' (expected 'none', 'lz4', or 'zstd')");
   EXPECT_EQ(ArrowIpcCompressionTypeFromString("", &parsed, &error), EINVAL);
+  EXPECT_EQ(
+      ArrowIpcCompressionTypeFromString("<unknown compression type>", &parsed, &error),
+      EINVAL);
   EXPECT_EQ(ArrowIpcCompressionTypeFromString(nullptr, &parsed, &error), EINVAL);
   EXPECT_STREQ(error.message,
                "Unknown compression type name '' (expected 'none', 'lz4', or 'zstd')");
@@ -481,6 +485,8 @@ TEST(NanoarrowIpcTest, SerialCompressor) {
   nanoarrow::ipc::UniqueCompressor compressor;
 
   ASSERT_EQ(ArrowIpcSerialCompressor(compressor.get()), NANOARROW_OK);
+  EXPECT_EQ(compressor->compression_type, NANOARROW_IPC_COMPRESSION_TYPE_NONE);
+  EXPECT_EQ(compressor->compression_level, NANOARROW_IPC_COMPRESSION_LEVEL_DEFAULT);
 
   // Check the function setter error
   ASSERT_EQ(ArrowIpcSerialCompressorSetFunction(
@@ -489,16 +495,14 @@ TEST(NanoarrowIpcTest, SerialCompressor) {
 
   // NONE is not a codec that can be used to compress
   nanoarrow::UniqueBuffer dst;
-  EXPECT_EQ(compressor->compress(compressor.get(), NANOARROW_IPC_COMPRESSION_TYPE_NONE,
-                                 NANOARROW_IPC_COMPRESSION_LEVEL_DEFAULT, {{nullptr}, 0},
-                                 dst.get(), &error),
+  EXPECT_EQ(compressor->compress(compressor.get(), {{nullptr}, 0}, dst.get(), &error),
             EINVAL);
   EXPECT_STREQ(error.message, "Unknown compression type with value 0");
 
   // Check a compress for a supported codec if we have one (or for an error if we don't)
+  compressor->compression_type = NANOARROW_IPC_COMPRESSION_TYPE_ZSTD;
   if (ArrowIpcGetZstdCompressionFunction() != nullptr) {
-    ASSERT_EQ(compressor->compress(compressor.get(), NANOARROW_IPC_COMPRESSION_TYPE_ZSTD,
-                                   NANOARROW_IPC_COMPRESSION_LEVEL_DEFAULT,
+    ASSERT_EQ(compressor->compress(compressor.get(),
                                    {{kUncompressed012}, sizeof(kUncompressed012)},
                                    dst.get(), &error),
               NANOARROW_OK)
@@ -513,9 +517,7 @@ TEST(NanoarrowIpcTest, SerialCompressor) {
         << error.message;
     EXPECT_TRUE(std::memcmp(out, kUncompressed012, sizeof(kUncompressed012)) == 0);
   } else {
-    EXPECT_EQ(compressor->compress(compressor.get(), NANOARROW_IPC_COMPRESSION_TYPE_ZSTD,
-                                   NANOARROW_IPC_COMPRESSION_LEVEL_DEFAULT,
-                                   {{nullptr}, 0}, dst.get(), &error),
+    EXPECT_EQ(compressor->compress(compressor.get(), {{nullptr}, 0}, dst.get(), &error),
               ENOTSUP);
     EXPECT_STREQ(
         error.message,
@@ -526,9 +528,7 @@ TEST(NanoarrowIpcTest, SerialCompressor) {
   ASSERT_EQ(ArrowIpcSerialCompressorSetFunction(
                 compressor.get(), NANOARROW_IPC_COMPRESSION_TYPE_ZSTD, nullptr),
             NANOARROW_OK);
-  EXPECT_EQ(compressor->compress(compressor.get(), NANOARROW_IPC_COMPRESSION_TYPE_ZSTD,
-                                 NANOARROW_IPC_COMPRESSION_LEVEL_DEFAULT, {{nullptr}, 0},
-                                 dst.get(), &error),
+  EXPECT_EQ(compressor->compress(compressor.get(), {{nullptr}, 0}, dst.get(), &error),
             ENOTSUP);
   EXPECT_STREQ(error.message,
                "Compression type with value 2 not supported by this build of nanoarrow");
@@ -538,11 +538,13 @@ TEST(NanoarrowIpcTest, SerialCompressor) {
                                                 NANOARROW_IPC_COMPRESSION_TYPE_LZ4_FRAME,
                                                 &RecordLevelAndCopy),
             NANOARROW_OK);
+  compressor->compression_type = NANOARROW_IPC_COMPRESSION_TYPE_LZ4_FRAME;
+  compressor->compression_level = 7;
   dst->size_bytes = 0;
   last_compression_level = 0;
-  ASSERT_EQ(compressor->compress(
-                compressor.get(), NANOARROW_IPC_COMPRESSION_TYPE_LZ4_FRAME, 7,
-                {{kUncompressed012}, sizeof(kUncompressed012)}, dst.get(), &error),
+  ASSERT_EQ(compressor->compress(compressor.get(),
+                                 {{kUncompressed012}, sizeof(kUncompressed012)},
+                                 dst.get(), &error),
             NANOARROW_OK)
       << error.message;
   EXPECT_EQ(last_compression_level, 7);
@@ -554,10 +556,9 @@ TEST(NanoarrowIpcTest, SerialCompressor) {
       ArrowIpcSerialCompressorSetFunction(
           compressor.get(), NANOARROW_IPC_COMPRESSION_TYPE_LZ4_FRAME, &FailCompress),
       NANOARROW_OK);
-  EXPECT_EQ(compressor->compress(
-                compressor.get(), NANOARROW_IPC_COMPRESSION_TYPE_LZ4_FRAME,
-                NANOARROW_IPC_COMPRESSION_LEVEL_DEFAULT,
-                {{kUncompressed012}, sizeof(kUncompressed012)}, dst.get(), &error),
+  EXPECT_EQ(compressor->compress(compressor.get(),
+                                 {{kUncompressed012}, sizeof(kUncompressed012)},
+                                 dst.get(), &error),
             EIO);
   EXPECT_STREQ(error.message, "FailCompress() failed");
 }

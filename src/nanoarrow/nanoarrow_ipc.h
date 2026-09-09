@@ -442,19 +442,27 @@ ArrowIpcSerialDecompressorSetFunction(struct ArrowIpcDecompressor* decompressor,
 /// \brief A user-extensible compressor
 ///
 /// The ArrowIpcCompressor is the underlying object that enables buffer compression
-/// in the ArrowIpcEncoder. An implementation of a compressor may support more than one
-/// ArrowIpcCompressionType.
+/// in the ArrowIpcEncoder. It carries the codec and level it compresses with, so
+/// that an encoder needs nothing but a compressor to describe its compression.
 struct ArrowIpcCompressor {
+  /// \brief The codec this compressor applies
+  ///
+  /// NANOARROW_IPC_COMPRESSION_TYPE_NONE disables compression.
+  enum ArrowIpcCompressionType compression_type;
+
+  /// \brief The level passed to the codec
+  ///
+  /// See ArrowIpcCompressFunction for its interpretation.
+  int compression_level;
+
   /// \brief Compress a buffer
   ///
   /// Compresses src using compression_type at compression_level and appends the
   /// compressed bytes to dst. Any content already in dst must be preserved (i.e.,
-  /// implementations may only append to dst). See ArrowIpcCompressFunction for the
-  /// interpretation of compression_level.
+  /// implementations may only append to dst).
   ArrowErrorCode (*compress)(struct ArrowIpcCompressor* compressor,
-                             enum ArrowIpcCompressionType compression_type,
-                             int compression_level, struct ArrowBufferView src,
-                             struct ArrowBuffer* dst, struct ArrowError* error);
+                             struct ArrowBufferView src, struct ArrowBuffer* dst,
+                             struct ArrowError* error);
 
   /// \brief Release the compressor and any resources it may be holding
   ///
@@ -495,6 +503,10 @@ NANOARROW_DLL ArrowIpcCompressFunction ArrowIpcGetZstdCompressionFunction(void);
 NANOARROW_DLL ArrowIpcCompressFunction ArrowIpcGetLZ4CompressionFunction(void);
 
 /// \brief An ArrowIpcCompressor implementation that performs compression in serial
+///
+/// The compressor is initialized with NANOARROW_IPC_COMPRESSION_TYPE_NONE and
+/// NANOARROW_IPC_COMPRESSION_LEVEL_DEFAULT; set its compression_type and
+/// compression_level members to configure it.
 NANOARROW_DLL ArrowErrorCode
 ArrowIpcSerialCompressor(struct ArrowIpcCompressor* compressor);
 
@@ -508,7 +520,8 @@ NANOARROW_DLL ArrowErrorCode ArrowIpcSerialCompressorSetFunction(
 
 /// \brief Get the name of a compression type
 ///
-/// Returns "none", "lz4", or "zstd", or NULL for an unknown compression type.
+/// Returns "none", "lz4", or "zstd", or "<unknown compression type>" for an unknown
+/// compression type (never NULL, so the result is safe to use in a format string).
 NANOARROW_DLL const char* ArrowIpcCompressionTypeToString(
     enum ArrowIpcCompressionType compression_type);
 
@@ -984,34 +997,37 @@ NANOARROW_DLL ArrowErrorCode
 ArrowIpcEncoderSetMessageMetadata(struct ArrowIpcEncoder* encoder,
                                   struct ArrowBuffer* metadata, struct ArrowError* error);
 
-/// \brief Set the buffer compression used by subsequently encoded RecordBatch messages
+/// \brief Compress the bodies of subsequently encoded messages with a built-in codec
 ///
-/// When compression_type is not NANOARROW_IPC_COMPRESSION_TYPE_NONE, the body buffers
-/// of every RecordBatch encoded after this call are compressed with the given codec as
-/// described by the Arrow IPC format: each non-empty buffer is written as its
-/// uncompressed length (a little-endian int64) followed by the compressed bytes.
-/// Buffers that do not shrink when compressed are written uncompressed with a length
-/// prefix of -1, and empty buffers are written as-is. The setting persists until it is
-/// changed and does not affect Schema messages.
+/// Installs an ArrowIpcSerialCompressor() configured with compression_type and
+/// compression_level, replacing any compressor previously set with this function or
+/// with ArrowIpcEncoderSetCompressor(). NANOARROW_IPC_COMPRESSION_TYPE_NONE removes the
+/// compressor. The setting persists until it is changed and does not affect Schema
+/// messages.
 ///
-/// compression_level is passed to the compressor unchanged; see
-/// ArrowIpcCompressFunction for its interpretation. Use
-/// NANOARROW_IPC_COMPRESSION_LEVEL_DEFAULT for the codec's default level.
+/// The body buffers of every RecordBatch or DictionaryBatch encoded while a compressor
+/// is set are compressed as described by the Arrow IPC format: each non-empty buffer
+/// is written as its uncompressed length (a little-endian int64) followed by the
+/// compressed bytes. Buffers that do not shrink when compressed are written
+/// uncompressed with a length prefix of -1, and empty buffers are written as-is.
+///
+/// compression_level is passed to the codec unchanged; see ArrowIpcCompressFunction
+/// for its interpretation and use NANOARROW_IPC_COMPRESSION_LEVEL_DEFAULT for the
+/// codec's default level.
 ///
 /// Returns EINVAL for an unknown compression type or a compression_level outside the
 /// range reported by ArrowIpcGetCompressionLevelRange(), and ENOTSUP if the compression
 /// type is not supported by this build of nanoarrow (i.e., nanoarrow was not built with
-/// NANOARROW_IPC_WITH_LZ4 or NANOARROW_IPC_WITH_ZSTD). If a custom compressor was set
-/// with ArrowIpcEncoderSetCompressor(), neither is checked until a RecordBatch is
-/// encoded.
+/// NANOARROW_IPC_WITH_LZ4 or NANOARROW_IPC_WITH_ZSTD).
 NANOARROW_DLL ArrowErrorCode ArrowIpcEncoderSetCompression(
     struct ArrowIpcEncoder* encoder, enum ArrowIpcCompressionType compression_type,
     int compression_level, struct ArrowError* error);
 
-/// \brief Set the compressor implementation used by this encoder
+/// \brief Compress the bodies of subsequently encoded messages with a custom compressor
 ///
-/// The encoder takes ownership of compressor. If this is not called, an
-/// ArrowIpcSerialCompressor() is used when compression is first required.
+/// The encoder takes ownership of compressor and replaces any compressor previously
+/// set. The compressor's compression_type and compression_level members select the
+/// codec and level, and they are not checked until a message is encoded.
 NANOARROW_DLL ArrowErrorCode ArrowIpcEncoderSetCompressor(
     struct ArrowIpcEncoder* encoder, struct ArrowIpcCompressor* compressor);
 
@@ -1112,11 +1128,12 @@ NANOARROW_DLL ArrowErrorCode ArrowIpcWriterInit(
 /// \brief Release all resources attached to a writer
 NANOARROW_DLL void ArrowIpcWriterReset(struct ArrowIpcWriter* writer);
 
-/// \brief Set the buffer compression used for subsequently written record batches
+/// \brief Compress the bodies of subsequently written batches with a built-in codec
 ///
-/// See ArrowIpcEncoderSetCompression(). Compression applies to record batches written
-/// after this call (in both stream and file mode) and may be changed between batches.
-/// Use NANOARROW_IPC_COMPRESSION_LEVEL_DEFAULT for the codec's default level.
+/// See ArrowIpcEncoderSetCompression(). Compression applies to record batches and
+/// dictionary batches written after this call (in both stream and file mode) and may
+/// be changed between batches. Use NANOARROW_IPC_COMPRESSION_LEVEL_DEFAULT for the
+/// codec's default level.
 ///
 /// Returns EINVAL for an unknown compression type or an out-of-range compression_level,
 /// and ENOTSUP if the compression type is not supported by this build of nanoarrow.
