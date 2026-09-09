@@ -5230,6 +5230,58 @@ TEST(ArrayTest, ArrayAppendStorageFromArrayViewNestedAndSliced) {
   ArrowSchemaRelease(&schema);
 }
 
+TEST(ArrayTest, ArrayAppendStorageFromArrayViewNestedDecimal) {
+  struct ArrowError error;
+  struct ArrowSchema schema;
+  ArrowSchemaInit(&schema);
+  ASSERT_EQ(ArrowSchemaSetTypeStruct(&schema, 2), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaSetName(schema.children[0], "scalar"), NANOARROW_OK);
+  ASSERT_EQ(
+      ArrowSchemaSetTypeDecimal(schema.children[0], NANOARROW_TYPE_DECIMAL128, 10, 2),
+      NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaSetName(schema.children[1], "values"), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaSetType(schema.children[1], NANOARROW_TYPE_LIST), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaSetTypeDecimal(schema.children[1]->children[0],
+                                      NANOARROW_TYPE_DECIMAL128, 10, 2),
+            NANOARROW_OK);
+
+  struct ArrowArray src;
+  ASSERT_EQ(ArrowArrayInitFromSchema(&src, &schema, &error), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayStartAppending(&src), NANOARROW_OK);
+  struct ArrowDecimal decimal;
+  ArrowDecimalInit(&decimal, 128, 10, 2);
+  ArrowDecimalSetInt(&decimal, 1234);
+  ASSERT_EQ(ArrowArrayAppendDecimal(src.children[0], &decimal), NANOARROW_OK);
+  ArrowDecimalSetInt(&decimal, 5678);
+  ASSERT_EQ(ArrowArrayAppendDecimal(src.children[1]->children[0], &decimal),
+            NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayFinishElement(src.children[1]), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayFinishElement(&src), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayFinishBuildingDefault(&src, &error), NANOARROW_OK) << error.message;
+
+  struct ArrowArrayView src_view;
+  ASSERT_EQ(ArrowArrayViewInitFromSchema(&src_view, &schema, &error), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayViewSetArray(&src_view, &src, &error), NANOARROW_OK);
+  struct ArrowArray dst;
+  ASSERT_EQ(AppendStorageFromArrayViewForTest(&src_view, &dst, &error), NANOARROW_OK)
+      << error.message;
+
+  struct ArrowArrayView dst_view;
+  ASSERT_EQ(ArrowArrayViewInitFromSchema(&dst_view, &schema, &error), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayViewSetArray(&dst_view, &dst, &error), NANOARROW_OK);
+  int identical = 0;
+  ASSERT_EQ(ArrowArrayViewCompare(&src_view, &dst_view, NANOARROW_COMPARE_IDENTICAL,
+                                  &identical, &error),
+            NANOARROW_OK);
+  EXPECT_EQ(identical, 1) << error.message;
+
+  ArrowArrayViewReset(&dst_view);
+  ArrowArrayRelease(&dst);
+  ArrowArrayViewReset(&src_view);
+  ArrowArrayRelease(&src);
+  ArrowSchemaRelease(&schema);
+}
+
 TEST(ArrayTest, ArrayAppendStorageFromArrayViewRejectsUnions) {
   for (enum ArrowType union_type :
        {NANOARROW_TYPE_DENSE_UNION, NANOARROW_TYPE_SPARSE_UNION}) {
@@ -5319,6 +5371,32 @@ TEST(ArrayTest, ArrayAppendStorageFromArrayViewRunEndEncoded) {
   ArrowArrayViewReset(&src_view);
   ArrowArrayRelease(&src);
   ArrowSchemaRelease(&schema);
+}
+
+TEST(ArrayTest, ArrayAppendStorageFromArrayViewRejectsNullToRunEndEncoded) {
+  struct ArrowError error;
+  struct ArrowArrayView src_view;
+  ArrowArrayViewInitFromType(&src_view, NANOARROW_TYPE_NA);
+  src_view.length = 1;
+
+  struct ArrowSchema schema;
+  ArrowSchemaInit(&schema);
+  ASSERT_EQ(ArrowSchemaSetTypeRunEndEncoded(&schema, NANOARROW_TYPE_INT32), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaSetType(schema.children[1], NANOARROW_TYPE_STRING), NANOARROW_OK);
+  struct ArrowArray dst;
+  ASSERT_EQ(ArrowArrayInitFromSchema(&dst, &schema, &error), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayStartAppending(&dst), NANOARROW_OK);
+
+  EXPECT_EQ(ArrowArrayAppendStorageFromArrayView(&dst, &src_view, &error), EINVAL);
+  EXPECT_STREQ(error.message,
+               "Can't append null storage to an array with run-end encoded storage");
+  EXPECT_EQ(dst.length, 0);
+  EXPECT_EQ(dst.children[0]->length, 0);
+  EXPECT_EQ(dst.children[1]->length, 0);
+
+  ArrowArrayRelease(&dst);
+  ArrowSchemaRelease(&schema);
+  ArrowArrayViewReset(&src_view);
 }
 
 TEST(ArrayTest, ArrayAppendStorageFromArrayViewFixedWidthSlicedValidity) {
