@@ -247,8 +247,21 @@ if(NANOARROW_IPC)
     # This could be configurable if shared zstd is a must
     if(TARGET zstd::libzstd_static)
       set(NANOARROW_IPC_EXTRA_LIBS zstd::libzstd_static)
-    else()
+    elseif(TARGET zstd::libzstd)
       set(NANOARROW_IPC_EXTRA_LIBS zstd::libzstd)
+    else()
+      set(NANOARROW_IPC_EXTRA_LIBS zstd::libzstd_shared)
+    endif()
+
+    # A static libzstd from a system package manager is usually not built with -fPIC
+    # and can't be linked into a shared object, so the shared nanoarrow_ipc library
+    # links the shared libzstd instead
+    if(TARGET zstd::libzstd_shared)
+      set(NANOARROW_IPC_EXTRA_LIBS_SHARED zstd::libzstd_shared)
+    elseif(TARGET zstd::libzstd)
+      set(NANOARROW_IPC_EXTRA_LIBS_SHARED zstd::libzstd)
+    else()
+      set(NANOARROW_IPC_EXTRA_LIBS_SHARED zstd::libzstd_static)
     endif()
   endif()
 
@@ -276,6 +289,7 @@ if(NANOARROW_IPC)
 
     set(NANOARROW_IPC_EXTRA_FLAGS ${NANOARROW_IPC_EXTRA_FLAGS} "-DNANOARROW_IPC_WITH_LZ4")
     set(NANOARROW_IPC_EXTRA_LIBS ${NANOARROW_IPC_EXTRA_LIBS} lz4::lz4)
+    set(NANOARROW_IPC_EXTRA_LIBS_SHARED ${NANOARROW_IPC_EXTRA_LIBS_SHARED} lz4::lz4)
   endif()
 
   if(NOT NANOARROW_BUNDLE)
@@ -294,7 +308,7 @@ if(NANOARROW_IPC)
 
   add_library(nanoarrow_ipc_shared SHARED ${NANOARROW_IPC_BUILD_SOURCES})
   target_link_libraries(nanoarrow_ipc_shared
-                        PRIVATE flatccrt ${NANOARROW_IPC_EXTRA_LIBS}
+                        PRIVATE flatccrt ${NANOARROW_IPC_EXTRA_LIBS_SHARED}
                         PUBLIC nanoarrow_shared nanoarrow_coverage_config)
 
   install(FILES src/nanoarrow/nanoarrow_ipc.h src/nanoarrow/nanoarrow_ipc.hpp

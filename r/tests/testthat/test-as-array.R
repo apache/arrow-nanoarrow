@@ -824,6 +824,29 @@ test_that("as_nanoarrow_array() works for list(integer()) -> na_list(na_int32())
   expect_identical(array$children[[1]]$length, 10L)
 })
 
+test_that("as_nanoarrow_array() works for list(integer64()) -> na_list(na_int64())", {
+  # GH932: unlist() silently strips the integer64 class from list elements,
+  # reinterpreting the underlying int64 bit pattern as a double and corrupting
+  # values before the child array is even built.
+  skip_if_not_installed("bit64")
+
+  big <- bit64::as.integer64(c("9223372036854775295", "2"))
+  x <- list(big, bit64::as.integer64("3"))
+  array <- as_nanoarrow_array(x, schema = na_list(na_int64()))
+
+  expect_identical(infer_nanoarrow_schema(array)$format, "+l")
+  expect_identical(array$length, 2L)
+  expect_identical(array$null_count, 0L)
+  expect_identical(infer_nanoarrow_schema(array$children[[1]])$format, "l")
+  expect_identical(array$children[[1]]$length, 3L)
+
+  to <- vctrs::new_list_of(list(), ptype = bit64::integer64())
+  expect_identical(
+    convert_array(array, to),
+    vctrs::new_list_of(list(big, bit64::as.integer64("3")), ptype = bit64::integer64())
+  )
+})
+
 test_that("as_nanoarrow_array() works for unspecified() -> na_na()", {
   skip_if_not_installed("vctrs")
 

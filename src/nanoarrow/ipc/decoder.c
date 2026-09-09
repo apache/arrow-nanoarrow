@@ -1390,14 +1390,45 @@ static int ArrowIpcDecoderDecodeSchemaHeader(struct ArrowIpcDecoder* decoder,
   return NANOARROW_OK;
 }
 
+// Decode the BodyCompression of a RecordBatch (which is also nested in every
+// DictionaryBatch) into codec_out
+static ArrowErrorCode ArrowIpcDecoderDecodeBodyCompression(
+    ns(RecordBatch_table_t) batch, enum ArrowIpcCompressionType* codec_out,
+    struct ArrowError* error) {
+  if (batch == NULL || !ns(RecordBatch_compression_is_present(batch))) {
+    *codec_out = NANOARROW_IPC_COMPRESSION_TYPE_NONE;
+    return NANOARROW_OK;
+  }
+
+  ns(BodyCompression_table_t) compression = ns(RecordBatch_compression(batch));
+  ns(CompressionType_enum_t) codec = ns(BodyCompression_codec(compression));
+  switch (codec) {
+    case ns(CompressionType_LZ4_FRAME):
+      *codec_out = NANOARROW_IPC_COMPRESSION_TYPE_LZ4_FRAME;
+      return NANOARROW_OK;
+    case ns(CompressionType_ZSTD):
+      *codec_out = NANOARROW_IPC_COMPRESSION_TYPE_ZSTD;
+      return NANOARROW_OK;
+    default:
+      ArrowErrorSet(error, "Unrecognized RecordBatch BodyCompression codec value: %d",
+                    (int)codec);
+      return EINVAL;
+  }
+}
+
 static int ArrowIpcDecoderDecodeDictionaryBatchHeader(
-    struct ArrowIpcDecoder* decoder, flatbuffers_generic_t message_header) {
+    struct ArrowIpcDecoder* decoder, flatbuffers_generic_t message_header,
+    struct ArrowError* error) {
   struct ArrowIpcDecoderPrivate* private_data =
       (struct ArrowIpcDecoderPrivate*)decoder->private_data;
 
   ns(DictionaryBatch_table_t) dictionary = (ns(DictionaryBatch_table_t))message_header;
   private_data->dictionary.id = ns(DictionaryBatch_id(dictionary));
   private_data->dictionary.is_delta = ns(DictionaryBatch_isDelta(dictionary));
+
+  // The dictionary values are a RecordBatch with its own compression setting
+  NANOARROW_RETURN_NOT_OK(ArrowIpcDecoderDecodeBodyCompression(
+      ns(DictionaryBatch_data(dictionary)), &decoder->codec, error));
 
   decoder->dictionary = &private_data->dictionary;
   return NANOARROW_OK;
@@ -1437,24 +1468,8 @@ static int ArrowIpcDecoderDecodeRecordBatchHeader(struct ArrowIpcDecoder* decode
     return EINVAL;
   }
 
-  if (ns(RecordBatch_compression_is_present(batch))) {
-    ns(BodyCompression_table_t) compression = ns(RecordBatch_compression(batch));
-    ns(CompressionType_enum_t) codec = ns(BodyCompression_codec(compression));
-    switch (codec) {
-      case ns(CompressionType_LZ4_FRAME):
-        decoder->codec = NANOARROW_IPC_COMPRESSION_TYPE_LZ4_FRAME;
-        break;
-      case ns(CompressionType_ZSTD):
-        decoder->codec = NANOARROW_IPC_COMPRESSION_TYPE_ZSTD;
-        break;
-      default:
-        ArrowErrorSet(error, "Unrecognized RecordBatch BodyCompression codec value: %d",
-                      (int)codec);
-        return EINVAL;
-    }
-  } else {
-    decoder->codec = NANOARROW_IPC_COMPRESSION_TYPE_NONE;
-  }
+  NANOARROW_RETURN_NOT_OK(
+      ArrowIpcDecoderDecodeBodyCompression(batch, &decoder->codec, error));
 
   // Copying field node and buffer information is separate so as only to pay for the
   // nodes that are actually accessed.
@@ -1721,7 +1736,7 @@ ArrowErrorCode ArrowIpcDecoderDecodeHeader(struct ArrowIpcDecoder* decoder,
       break;
     case ns(MessageHeader_DictionaryBatch):
       NANOARROW_RETURN_NOT_OK(
-          ArrowIpcDecoderDecodeDictionaryBatchHeader(decoder, message_header));
+          ArrowIpcDecoderDecodeDictionaryBatchHeader(decoder, message_header, error));
       break;
     case ns(MessageHeader_RecordBatch):
       NANOARROW_RETURN_NOT_OK(
@@ -2811,8 +2826,10 @@ static ArrowErrorCode ArrowIpcDecoderDecodeDictionaryInternal(
       (struct ArrowIpcDecoderPrivate*)dictionary->decoder.private_data;
   dictionary->decoder.message_type = NANOARROW_IPC_MESSAGE_TYPE_RECORD_BATCH;
   dictionary_decoder_private_data->last_message = record_batch;
-  // Transfer the endianness setting so that buffers are byte-swapped if needed
+  // Transfer the endianness and compression settings so that buffers are byte-swapped
+  // and decompressed if needed (the nested decoder uses a default decompressor)
   dictionary_decoder_private_data->endianness = private_data->endianness;
+  dictionary->decoder.codec = decoder->codec;
 
   struct ArrowArrayView* array_view;
   NANOARROW_RETURN_NOT_OK(ArrowIpcDecoderDecodeArrayViewInternal(

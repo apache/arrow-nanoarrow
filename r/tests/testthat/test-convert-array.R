@@ -744,6 +744,24 @@ test_that("convert to vector works for valid integer64()", {
   )
 })
 
+test_that("convert to vector works for int64 with a nonzero offset", {
+  # GH932: the int64 materializer read from buffer_views[1].data.as_int32
+  # (i.e., with int32-sized pointer arithmetic) instead of as_int64, so any
+  # slice with a nonzero starting offset (e.g., a list child sliced per-row)
+  # read from the wrong memory location.
+  skip_if_not_installed("bit64")
+
+  vals <- bit64::as.integer64(c("9223372036854775295", "2", "3"))
+  array <- as_nanoarrow_array(vals, schema = na_int64())
+
+  sliced <- nanoarrow_array_modify(array, list(offset = 1L, length = 2L))
+
+  expect_identical(
+    convert_array(sliced, bit64::integer64()),
+    vals[2:3]
+  )
+})
+
 test_that("convert to vector works for null -> integer64()", {
   skip_if_not_installed("bit64")
 

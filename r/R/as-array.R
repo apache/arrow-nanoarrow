@@ -257,7 +257,7 @@ as_nanoarrow_array.list <- function(x, ..., schema = NULL) {
 
   array <- nanoarrow_array_init(schema)
 
-  child <- unlist(x, recursive = FALSE, use.names = FALSE)
+  child <- do.call(c, x)
   if (is.null(child)) {
     child_array <- as_nanoarrow_array.vctrs_unspecified(logical(), schema = na_na())
   } else {
