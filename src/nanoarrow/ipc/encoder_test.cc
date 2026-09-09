@@ -856,7 +856,10 @@ TEST(NanoarrowIpcTest, NanoarrowIpcEncoderSetCompressor) {
 
   // A compressor whose release we can observe
   nanoarrow::ipc::UniqueCompressor first_compressor;
-  ASSERT_EQ(ArrowIpcSerialCompressor(first_compressor.get()), NANOARROW_OK);
+  ASSERT_EQ(ArrowIpcSerialCompressor(first_compressor.get(),
+                                     NANOARROW_IPC_COMPRESSION_TYPE_NONE,
+                                     NANOARROW_IPC_COMPRESSION_LEVEL_DEFAULT),
+            NANOARROW_OK);
   original_compressor_release = first_compressor->release;
   first_compressor->release = &CountingCompressorRelease;
   compressor_release_calls = 0;
@@ -867,11 +870,13 @@ TEST(NanoarrowIpcTest, NanoarrowIpcEncoderSetCompressor) {
 
   // A custom compressor configured for LZ4 that explicitly does not support it
   nanoarrow::ipc::UniqueCompressor compressor;
-  ASSERT_EQ(ArrowIpcSerialCompressor(compressor.get()), NANOARROW_OK);
+  ASSERT_EQ(
+      ArrowIpcSerialCompressor(compressor.get(), NANOARROW_IPC_COMPRESSION_TYPE_LZ4_FRAME,
+                               NANOARROW_IPC_COMPRESSION_LEVEL_DEFAULT),
+      NANOARROW_OK);
   ASSERT_EQ(ArrowIpcSerialCompressorSetFunction(
                 compressor.get(), NANOARROW_IPC_COMPRESSION_TYPE_LZ4_FRAME, nullptr),
             NANOARROW_OK);
-  compressor->compression_type = NANOARROW_IPC_COMPRESSION_TYPE_LZ4_FRAME;
 
   ASSERT_EQ(ArrowIpcEncoderSetCompressor(encoder.get(), compressor.get()), NANOARROW_OK);
   // The encoder took ownership of the compressor and released the previous one
@@ -920,13 +925,13 @@ TEST(NanoarrowIpcTest, NanoarrowIpcEncoderCompressionLevel) {
   struct ArrowError error;
 
   nanoarrow::ipc::UniqueCompressor compressor;
-  ASSERT_EQ(ArrowIpcSerialCompressor(compressor.get()), NANOARROW_OK);
+  ASSERT_EQ(
+      ArrowIpcSerialCompressor(compressor.get(), NANOARROW_IPC_COMPRESSION_TYPE_ZSTD, 11),
+      NANOARROW_OK);
   ASSERT_EQ(
       ArrowIpcSerialCompressorSetFunction(
           compressor.get(), NANOARROW_IPC_COMPRESSION_TYPE_ZSTD, &RecordLevelAndCopy),
       NANOARROW_OK);
-  compressor->compression_type = NANOARROW_IPC_COMPRESSION_TYPE_ZSTD;
-  compressor->compression_level = 11;
   ASSERT_EQ(ArrowIpcEncoderSetCompressor(encoder.get(), compressor.get()), NANOARROW_OK);
 
   CompressibleRecordBatch batch;
@@ -1191,4 +1196,57 @@ TEST(NanoarrowIpcTest, NanoarrowIpcEncoderCompressedDictionaryBatchZstd) {
     GTEST_SKIP() << "nanoarrow_ipc not built with NANOARROW_IPC_WITH_ZSTD";
   }
   TestCompressedDictionaryBatch(NANOARROW_IPC_COMPRESSION_TYPE_ZSTD);
+}
+
+// Schemas encoded while a compressor is set declare the COMPRESSED_BODY feature
+TEST(NanoarrowIpcTest, NanoarrowIpcEncoderSchemaDeclaresCompression) {
+  nanoarrow::ipc::UniqueEncoder encoder;
+  ASSERT_EQ(ArrowIpcEncoderInit(encoder.get()), NANOARROW_OK);
+  nanoarrow::ipc::UniqueDecoder decoder;
+  ASSERT_EQ(ArrowIpcDecoderInit(decoder.get()), NANOARROW_OK);
+  SimpleRecordBatch batch;
+  struct ArrowError error;
+
+  auto encode_and_decode_schema = [&](nanoarrow::UniqueBuffer& message) {
+    message->size_bytes = 0;
+    ASSERT_EQ(ArrowIpcEncoderEncodeSchema(encoder.get(), batch.schema(), &error),
+              NANOARROW_OK)
+        << error.message;
+    ASSERT_EQ(
+        ArrowIpcEncoderFinalizeBuffer(encoder.get(), /*encapsulate=*/true, message.get()),
+        NANOARROW_OK);
+    struct ArrowBufferView message_view = {{message->data}, message->size_bytes};
+    ASSERT_EQ(ArrowIpcDecoderVerifyHeader(decoder.get(), message_view, &error),
+              NANOARROW_OK)
+        << error.message;
+    ASSERT_EQ(ArrowIpcDecoderDecodeHeader(decoder.get(), message_view, &error),
+              NANOARROW_OK)
+        << error.message;
+    ASSERT_EQ(decoder->message_type, NANOARROW_IPC_MESSAGE_TYPE_SCHEMA);
+  };
+
+  // Without a compressor no feature is declared
+  nanoarrow::UniqueBuffer message;
+  ASSERT_NO_FATAL_FAILURE(encode_and_decode_schema(message));
+  EXPECT_EQ(decoder->feature_flags & NANOARROW_IPC_FEATURE_COMPRESSED_BODY, 0);
+
+  // Any compressor (encoding a schema never runs it) declares the feature
+  nanoarrow::ipc::UniqueCompressor compressor;
+  ASSERT_EQ(
+      ArrowIpcSerialCompressor(compressor.get(), NANOARROW_IPC_COMPRESSION_TYPE_LZ4_FRAME,
+                               NANOARROW_IPC_COMPRESSION_LEVEL_DEFAULT),
+      NANOARROW_OK);
+  ASSERT_EQ(ArrowIpcEncoderSetCompressor(encoder.get(), compressor.get()), NANOARROW_OK);
+  ASSERT_NO_FATAL_FAILURE(encode_and_decode_schema(message));
+  EXPECT_EQ(decoder->feature_flags & NANOARROW_IPC_FEATURE_COMPRESSED_BODY,
+            NANOARROW_IPC_FEATURE_COMPRESSED_BODY);
+
+  // Removing the compressor removes the declaration again
+  ASSERT_EQ(
+      ArrowIpcEncoderSetCompression(encoder.get(), NANOARROW_IPC_COMPRESSION_TYPE_NONE,
+                                    NANOARROW_IPC_COMPRESSION_LEVEL_DEFAULT, &error),
+      NANOARROW_OK)
+      << error.message;
+  ASSERT_NO_FATAL_FAILURE(encode_and_decode_schema(message));
+  EXPECT_EQ(decoder->feature_flags & NANOARROW_IPC_FEATURE_COMPRESSED_BODY, 0);
 }

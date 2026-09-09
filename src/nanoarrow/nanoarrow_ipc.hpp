@@ -132,7 +132,6 @@ inline void release_pointer(struct ArrowIpcDecompressor* data) {
 template <>
 inline void init_pointer(struct ArrowIpcCompressor* data) {
   data->compression_type = NANOARROW_IPC_COMPRESSION_TYPE_NONE;
-  data->compression_level = NANOARROW_IPC_COMPRESSION_LEVEL_DEFAULT;
   data->private_data = nullptr;
   data->release = nullptr;
 }

@@ -355,11 +355,13 @@ ArrowErrorCode ArrowIpcSerialDecompressorSetFunction(
 
 struct ArrowIpcSerialCompressorPrivate {
   ArrowIpcCompressFunction compress_functions[3];
+  int compression_level;
 };
 
-static ArrowErrorCode ArrowIpcSerialCompressorCompress(
-    struct ArrowIpcCompressor* compressor, struct ArrowBufferView src,
-    struct ArrowBuffer* dst, struct ArrowError* error) {
+static ArrowErrorCode ArrowIpcSerialCompressorAdd(struct ArrowIpcCompressor* compressor,
+                                                  struct ArrowBufferView src,
+                                                  struct ArrowBuffer* dst,
+                                                  struct ArrowError* error) {
   struct ArrowIpcSerialCompressorPrivate* private_data =
       (struct ArrowIpcSerialCompressorPrivate*)compressor->private_data;
   enum ArrowIpcCompressionType compression_type = compressor->compression_type;
@@ -377,7 +379,17 @@ static ArrowErrorCode ArrowIpcSerialCompressorCompress(
     return ENOTSUP;
   }
 
-  NANOARROW_RETURN_NOT_OK(fn(src, compressor->compression_level, dst, error));
+  // Compression happens synchronously, so there is never anything to wait for
+  NANOARROW_RETURN_NOT_OK(fn(src, private_data->compression_level, dst, error));
+  return NANOARROW_OK;
+}
+
+static ArrowErrorCode ArrowIpcSerialCompressorWait(struct ArrowIpcCompressor* compressor,
+                                                   int64_t timeout_ms,
+                                                   struct ArrowError* error) {
+  NANOARROW_UNUSED(compressor);
+  NANOARROW_UNUSED(timeout_ms);
+  NANOARROW_UNUSED(error);
   return NANOARROW_OK;
 }
 
@@ -386,22 +398,33 @@ static void ArrowIpcSerialCompressorRelease(struct ArrowIpcCompressor* compresso
   compressor->release = NULL;
 }
 
-ArrowErrorCode ArrowIpcSerialCompressor(struct ArrowIpcCompressor* compressor) {
-  compressor->compression_type = NANOARROW_IPC_COMPRESSION_TYPE_NONE;
-  compressor->compression_level = NANOARROW_IPC_COMPRESSION_LEVEL_DEFAULT;
+ArrowErrorCode ArrowIpcSerialCompressor(struct ArrowIpcCompressor* compressor,
+                                        enum ArrowIpcCompressionType compression_type,
+                                        int compression_level) {
   compressor->release = NULL;
-  compressor->private_data = ArrowMalloc(sizeof(struct ArrowIpcSerialCompressorPrivate));
-  if (compressor->private_data == NULL) {
+  if (compression_type != NANOARROW_IPC_COMPRESSION_TYPE_NONE &&
+      !ArrowIpcCompressionTypeIsCodec(compression_type)) {
+    return EINVAL;
+  }
+
+  struct ArrowIpcSerialCompressorPrivate* private_data =
+      (struct ArrowIpcSerialCompressorPrivate*)ArrowMalloc(
+          sizeof(struct ArrowIpcSerialCompressorPrivate));
+  if (private_data == NULL) {
     return ENOMEM;
   }
 
-  memset(compressor->private_data, 0, sizeof(struct ArrowIpcSerialCompressorPrivate));
+  memset(private_data, 0, sizeof(struct ArrowIpcSerialCompressorPrivate));
+  private_data->compression_level = compression_level;
+  compressor->compression_type = compression_type;
+  compressor->private_data = private_data;
   ArrowIpcSerialCompressorSetFunction(compressor, NANOARROW_IPC_COMPRESSION_TYPE_ZSTD,
                                       ArrowIpcGetZstdCompressionFunction());
   ArrowIpcSerialCompressorSetFunction(compressor,
                                       NANOARROW_IPC_COMPRESSION_TYPE_LZ4_FRAME,
                                       ArrowIpcGetLZ4CompressionFunction());
-  compressor->compress = &ArrowIpcSerialCompressorCompress;
+  compressor->compress_add = &ArrowIpcSerialCompressorAdd;
+  compressor->compress_wait = &ArrowIpcSerialCompressorWait;
   compressor->release = &ArrowIpcSerialCompressorRelease;
   return NANOARROW_OK;
 }

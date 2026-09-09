@@ -515,6 +515,30 @@ static void CheckCompressibleBatch(const struct ArrowBuffer* output, int64_t off
   EXPECT_EQ(eos->release, nullptr);
 }
 
+// Check whether the schema message (of a stream) or the footer (of a file) declares
+// the COMPRESSED_BODY feature
+static void CheckDeclaresCompression(const struct ArrowBuffer* output, bool as_file,
+                                     bool expected) {
+  struct ArrowError error;
+  nanoarrow::ipc::UniqueDecoder decoder;
+  ASSERT_EQ(ArrowIpcDecoderInit(decoder.get()), NANOARROW_OK);
+  struct ArrowBufferView view = {{output->data}, output->size_bytes};
+  if (as_file) {
+    ASSERT_EQ(ArrowIpcDecoderVerifyFooter(decoder.get(), view, &error), NANOARROW_OK)
+        << error.message;
+    ASSERT_EQ(ArrowIpcDecoderDecodeFooter(decoder.get(), view, &error), NANOARROW_OK)
+        << error.message;
+  } else {
+    ASSERT_EQ(ArrowIpcDecoderVerifyHeader(decoder.get(), view, &error), NANOARROW_OK)
+        << error.message;
+    ASSERT_EQ(ArrowIpcDecoderDecodeHeader(decoder.get(), view, &error), NANOARROW_OK)
+        << error.message;
+    ASSERT_EQ(decoder->message_type, NANOARROW_IPC_MESSAGE_TYPE_SCHEMA);
+  }
+  EXPECT_EQ((decoder->feature_flags & NANOARROW_IPC_FEATURE_COMPRESSED_BODY) != 0,
+            expected);
+}
+
 static void TestCompressedWriting(enum ArrowIpcCompressionType codec) {
   for (bool as_file : {false, true}) {
     SCOPED_TRACE(as_file ? "file" : "stream");
@@ -535,6 +559,10 @@ static void TestCompressedWriting(enum ArrowIpcCompressionType codec) {
     int64_t offset = as_file ? sizeof(NANOARROW_IPC_FILE_PADDED_MAGIC) : 0;
     ASSERT_NO_FATAL_FAILURE(CheckCompressibleBatch(compressed.get(), offset));
     ASSERT_NO_FATAL_FAILURE(CheckCompressibleBatch(accelerated.get(), offset));
+
+    // The schema message (or the file footer) declares that bodies are compressed
+    ASSERT_NO_FATAL_FAILURE(CheckDeclaresCompression(compressed.get(), as_file, true));
+    ASSERT_NO_FATAL_FAILURE(CheckDeclaresCompression(uncompressed.get(), as_file, false));
   }
 }
 

@@ -390,12 +390,6 @@ static int ArrowIpcArrayStreamReaderReadSchemaIfNeeded(
   }
 
   // ...or if it uses features we don't support
-  if (private_data->decoder.feature_flags & NANOARROW_IPC_FEATURE_COMPRESSED_BODY) {
-    ArrowErrorSet(&private_data->error,
-                  "This stream uses unsupported feature COMPRESSED_BODY");
-    return EINVAL;
-  }
-
   if (private_data->decoder.feature_flags &
       NANOARROW_IPC_FEATURE_DICTIONARY_REPLACEMENT) {
     ArrowErrorSet(&private_data->error,
