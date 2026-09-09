@@ -328,6 +328,86 @@ ArrowErrorCode ArrowIpcWriterWriteArrayView(struct ArrowIpcWriter* writer,
   return NANOARROW_OK;
 }
 
+ArrowErrorCode ArrowIpcWriterWriteDictionaryBatch(
+    struct ArrowIpcWriter* writer, int64_t dictionary_id, char is_delta,
+    const struct ArrowArrayView* values_view, struct ArrowError* error) {
+  NANOARROW_DCHECK(writer != NULL && writer->private_data != NULL && values_view != NULL);
+  struct ArrowIpcWriterPrivate* private =
+      (struct ArrowIpcWriterPrivate*)writer->private_data;
+
+  // This check is intentionally minimal: we're allowed to write one dictionary
+  // batch per ID in a file but we would need to add bookkeeping to keep track
+  // of written IDs (and usefully a fingerprint or reference to the dictionary
+  // so we can check if we need to emit it again).
+  if (private->writing_file &&
+      (is_delta || private->footer.dictionary_blocks.size_bytes != 0)) {
+    ArrowErrorSet(error,
+                  "IPC file writing supports exactly one non-delta dictionary batch");
+    return ENOTSUP;
+  }
+
+  NANOARROW_ASSERT_OK(ArrowBufferResize(&private->buffer, 0, 0));
+  NANOARROW_ASSERT_OK(ArrowBufferResize(&private->body_buffer, 0, 0));
+
+  NANOARROW_RETURN_NOT_OK(ArrowIpcEncoderEncodeSimpleDictionaryBatch(
+      &private->encoder, dictionary_id, is_delta, values_view, &private->body_buffer,
+      error));
+  NANOARROW_RETURN_NOT_OK_WITH_ERROR(
+      ArrowIpcEncoderFinalizeBuffer(&private->encoder, /*encapsulate=*/1,
+                                    &private->buffer),
+      error);
+
+  if (private->writing_file) {
+    _NANOARROW_CHECK_RANGE(private->buffer.size_bytes, 0, INT32_MAX);
+    struct ArrowIpcFileBlock block = {
+        .offset = private->bytes_written,
+        .metadata_length = (int32_t) private->buffer.size_bytes,
+        .body_length = private->body_buffer.size_bytes,
+    };
+    NANOARROW_RETURN_NOT_OK_WITH_ERROR(
+        ArrowBufferAppend(&private->footer.dictionary_blocks, &block, sizeof(block)),
+        error);
+  }
+  private->bytes_written += private->buffer.size_bytes;
+  private->bytes_written += private->body_buffer.size_bytes;
+
+  NANOARROW_RETURN_NOT_OK(ArrowIpcOutputStreamWrite(
+      &private->output_stream, ArrowBufferToBufferView(&private->buffer), error));
+  NANOARROW_RETURN_NOT_OK(ArrowIpcOutputStreamWrite(
+      &private->output_stream, ArrowBufferToBufferView(&private->body_buffer), error));
+  return NANOARROW_OK;
+}
+
+// Walk the array in the same depth-first order the schema encoder uses to assign
+// dictionary ids (see ArrowIpcDictionaryEncodingsAppendSchema): a dictionary-encoded
+// node claims the next id before descending into its children and then its values.
+// Emitting a full (non-delta) DictionaryBatch for each dictionary before every
+// RecordBatch keeps each batch's indices valid against the dictionary that precedes
+// it, which is required because each array in the stream carries its own dictionary.
+// In the future we can reduce the number of dictionaries emitted by checking for
+// identical dictionary arrays.
+static ArrowErrorCode ArrowIpcWriterWriteDictionariesForArrayView(
+    struct ArrowIpcWriter* writer, const struct ArrowArrayView* array_view,
+    int64_t* next_id, struct ArrowError* error) {
+  if (array_view->dictionary != NULL) {
+    int64_t dictionary_id = (*next_id)++;
+    NANOARROW_RETURN_NOT_OK(ArrowIpcWriterWriteDictionaryBatch(
+        writer, dictionary_id, /*is_delta=*/0, array_view->dictionary, error));
+  }
+
+  for (int64_t i = 0; i < array_view->n_children; i++) {
+    NANOARROW_RETURN_NOT_OK(ArrowIpcWriterWriteDictionariesForArrayView(
+        writer, array_view->children[i], next_id, error));
+  }
+
+  if (array_view->dictionary != NULL) {
+    NANOARROW_RETURN_NOT_OK(ArrowIpcWriterWriteDictionariesForArrayView(
+        writer, array_view->dictionary, next_id, error));
+  }
+
+  return NANOARROW_OK;
+}
+
 static ArrowErrorCode ArrowIpcWriterWriteArrayStreamImpl(
     struct ArrowIpcWriter* writer, struct ArrowArrayStream* in,
     struct ArrowSchema* schema, struct ArrowArray* array,
@@ -343,6 +423,11 @@ static ArrowErrorCode ArrowIpcWriterWriteArrayStreamImpl(
     }
 
     NANOARROW_RETURN_NOT_OK(ArrowArrayViewSetArray(array_view, array, error));
+
+    int64_t next_dictionary_id = 0;
+    NANOARROW_RETURN_NOT_OK(ArrowIpcWriterWriteDictionariesForArrayView(
+        writer, array_view, &next_dictionary_id, error));
+
     NANOARROW_RETURN_NOT_OK(ArrowIpcWriterWriteArrayView(writer, array_view, error));
     ArrowArrayRelease(array);
   }

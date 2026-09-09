@@ -541,6 +541,13 @@ static ArrowErrorCode ArrowIpcEncodeField(
     flatcc_builder_t* builder, const struct ArrowSchema* schema,
     const struct ArrowIpcDictionaryEncodings* dictionary_encodings,
     struct ArrowError* error) {
+  // Check before ArrowSchemaViewInit(), which assumes dictionary values are not
+  // themselves dictionary-encoded.
+  if (schema->dictionary != NULL && schema->dictionary->dictionary != NULL) {
+    ArrowErrorSet(error, "IPC encoding of nested dictionary values unsupported");
+    return ENOTSUP;
+  }
+
   FLATCC_RETURN_UNLESS_0(Field_name_create_str(builder, schema->name), error);
   FLATCC_RETURN_UNLESS_0(
       Field_nullable_add(builder, (schema->flags & ARROW_FLAG_NULLABLE) != 0), error);
@@ -614,6 +621,15 @@ static ArrowErrorCode ArrowIpcEncodeField(
 
     // Add the dictionary encoding to the field
     FLATCC_RETURN_UNLESS_0(Field_dictionary_add(builder, dict_encoding_ref), error);
+
+    // Support dictionary values with children by encoding children from
+    // schema->dictionary (and add a roundtrip test for a nested value type).
+    // Using schema below would encode the index type's children instead and
+    // produce a Field whose type and children do not agree.
+    if (schema->dictionary->n_children != 0) {
+      ArrowErrorSet(error, "IPC encoding of dictionary values with children unsupported");
+      return ENOTSUP;
+    }
 
     NANOARROW_RETURN_NOT_OK(ArrowSchemaViewInit(&schema_view, schema->dictionary, error));
   }
@@ -821,6 +837,25 @@ static ArrowErrorCode ArrowIpcEncoderBuildContiguousBodyBufferCallback(
   return NANOARROW_OK;
 }
 
+// Add the BodyCompression table to the RecordBatch currently being built, if any
+// compression is enabled. Bodies of RecordBatch and DictionaryBatch messages are both
+// built by the same buffer encoder, so both need this.
+static ArrowErrorCode ArrowIpcEncoderEncodeBodyCompression(
+    struct ArrowIpcEncoderPrivate* private, struct ArrowError* error) {
+  if (private->codec == NANOARROW_IPC_COMPRESSION_TYPE_NONE) {
+    return NANOARROW_OK;
+  }
+
+  flatcc_builder_t* builder = &private->builder;
+  FLATCC_RETURN_UNLESS_0(RecordBatch_compression_start(builder), error);
+  FLATCC_RETURN_UNLESS_0(BodyCompression_codec_add(builder, private->flatbuf_codec),
+                         error);
+  FLATCC_RETURN_UNLESS_0(
+      BodyCompression_method_add(builder, ns(BodyCompressionMethod_BUFFER)), error);
+  FLATCC_RETURN_UNLESS_0(RecordBatch_compression_end(builder), error);
+  return NANOARROW_OK;
+}
+
 static ArrowErrorCode ArrowIpcEncoderEncodeRecordBatchImpl(
     struct ArrowIpcEncoder* encoder, struct ArrowIpcBufferEncoder* buffer_encoder,
     const struct ArrowArrayView* array_view, struct ArrowBuffer* buffers,
@@ -831,8 +866,10 @@ static ArrowErrorCode ArrowIpcEncoderEncodeRecordBatchImpl(
   }
 
   if (array_view->dictionary != NULL) {
-    ArrowErrorSet(error, "Cannot encode dictionary arrays");
-    return ENOTSUP;
+    // Values live in a separate DictionaryBatch message per the Arrow IPC spec;
+    // the parent's index node + buffers were already emitted by the caller loop,
+    // so stop recursing here.
+    return NANOARROW_OK;
   }
 
   for (int64_t c = 0; c < array_view->n_children; ++c) {
@@ -886,14 +923,7 @@ static ArrowErrorCode ArrowIpcEncoderEncodeRecordBatch(
   FLATCC_RETURN_UNLESS_0(Message_header_RecordBatch_start(builder), error);
   FLATCC_RETURN_UNLESS_0(RecordBatch_length_add(builder, array_view->length), error);
 
-  if (private->codec != NANOARROW_IPC_COMPRESSION_TYPE_NONE) {
-    FLATCC_RETURN_UNLESS_0(RecordBatch_compression_start(builder), error);
-    FLATCC_RETURN_UNLESS_0(BodyCompression_codec_add(builder, private->flatbuf_codec),
-                           error);
-    FLATCC_RETURN_UNLESS_0(
-        BodyCompression_method_add(builder, ns(BodyCompressionMethod_BUFFER)), error);
-    FLATCC_RETURN_UNLESS_0(RecordBatch_compression_end(builder), error);
-  }
+  NANOARROW_RETURN_NOT_OK(ArrowIpcEncoderEncodeBodyCompression(private, error));
 
   NANOARROW_ASSERT_OK(ArrowBufferResize(&private->buffers, 0, 0));
   NANOARROW_ASSERT_OK(ArrowBufferResize(&private->nodes, 0, 0));
@@ -932,6 +962,82 @@ ArrowErrorCode ArrowIpcEncoderEncodeSimpleRecordBatch(
   };
 
   return ArrowIpcEncoderEncodeRecordBatch(encoder, &buffer_encoder, array_view, error);
+}
+
+static ArrowErrorCode ArrowIpcEncoderEncodeDictionaryBatch(
+    struct ArrowIpcEncoder* encoder, struct ArrowIpcBufferEncoder* buffer_encoder,
+    int64_t dictionary_id, char is_delta, const struct ArrowArrayView* values_view,
+    struct ArrowError* error) {
+  NANOARROW_DCHECK(encoder != NULL && encoder->private_data != NULL &&
+                   buffer_encoder != NULL && buffer_encoder->encode_buffer != NULL);
+  if (values_view->dictionary != NULL) {
+    ArrowErrorSet(error,
+                  "DictionaryBatch values array must not itself be dictionary-encoded");
+    return EINVAL;
+  }
+
+  struct ArrowIpcEncoderPrivate* private =
+      (struct ArrowIpcEncoderPrivate*)encoder->private_data;
+  flatcc_builder_t* builder = &private->builder;
+
+  FLATCC_RETURN_UNLESS_0(Message_start_as_root(builder), error);
+  FLATCC_RETURN_UNLESS_0(Message_version_add(builder, ns(MetadataVersion_V5)), error);
+
+  FLATCC_RETURN_UNLESS_0(Message_header_DictionaryBatch_start(builder), error);
+  FLATCC_RETURN_UNLESS_0(DictionaryBatch_id_add(builder, dictionary_id), error);
+  FLATCC_RETURN_UNLESS_0(DictionaryBatch_data_start(builder), error);
+  FLATCC_RETURN_UNLESS_0(RecordBatch_length_add(builder, values_view->length), error);
+  NANOARROW_RETURN_NOT_OK(ArrowIpcEncoderEncodeBodyCompression(private, error));
+
+  NANOARROW_ASSERT_OK(ArrowBufferResize(&private->buffers, 0, 0));
+  NANOARROW_ASSERT_OK(ArrowBufferResize(&private->nodes, 0, 0));
+
+  // The values array is a single top-level column. Emit the top-level node +
+  // buffers here, then descend into any nested children.
+  struct ns(FieldNode) top_node = {values_view->length, values_view->null_count};
+  NANOARROW_RETURN_NOT_OK_WITH_ERROR(
+      ArrowBufferAppend(&private->nodes, &top_node, sizeof(top_node)), error);
+  for (int64_t b = 0; b < values_view->array->n_buffers; ++b) {
+    struct ns(Buffer) buffer;
+    NANOARROW_RETURN_NOT_OK(buffer_encoder->encode_buffer(
+        values_view->buffer_views[b], encoder, buffer_encoder, &buffer.offset,
+        &buffer.length, error));
+    NANOARROW_RETURN_NOT_OK_WITH_ERROR(
+        ArrowBufferAppend(&private->buffers, &buffer, sizeof(buffer)), error);
+  }
+  NANOARROW_RETURN_NOT_OK(ArrowIpcEncoderEncodeRecordBatchImpl(
+      encoder, buffer_encoder, values_view, &private->buffers, &private->nodes, error));
+
+  FLATCC_RETURN_UNLESS_0(
+      RecordBatch_nodes_create(builder, (struct ns(FieldNode)*)private->nodes.data,
+                               private->nodes.size_bytes / sizeof(struct ns(FieldNode))),
+      error);
+  FLATCC_RETURN_UNLESS_0(
+      RecordBatch_buffers_create(builder, (struct ns(Buffer)*)private->buffers.data,
+                                 private->buffers.size_bytes / sizeof(struct ns(Buffer))),
+      error);
+  FLATCC_RETURN_UNLESS_0(DictionaryBatch_data_end(builder), error);
+  FLATCC_RETURN_UNLESS_0(DictionaryBatch_isDelta_add(builder, is_delta ? 1 : 0), error);
+  FLATCC_RETURN_UNLESS_0(Message_header_DictionaryBatch_end(builder), error);
+  FLATCC_RETURN_UNLESS_0(Message_bodyLength_add(builder, buffer_encoder->body_length),
+                         error);
+  FLATCC_RETURN_IF_NULL(ns(Message_end_as_root(builder)), error);
+  return NANOARROW_OK;
+}
+
+ArrowErrorCode ArrowIpcEncoderEncodeSimpleDictionaryBatch(
+    struct ArrowIpcEncoder* encoder, int64_t dictionary_id, char is_delta,
+    const struct ArrowArrayView* values_view, struct ArrowBuffer* body_buffer,
+    struct ArrowError* error) {
+  NANOARROW_DCHECK(encoder != NULL && encoder->private_data != NULL &&
+                   body_buffer != NULL);
+  struct ArrowIpcBufferEncoder buffer_encoder = {
+      .encode_buffer = &ArrowIpcEncoderBuildContiguousBodyBufferCallback,
+      .encode_buffer_state = body_buffer,
+      .body_length = 0,
+  };
+  return ArrowIpcEncoderEncodeDictionaryBatch(encoder, &buffer_encoder, dictionary_id,
+                                              is_delta, values_view, error);
 }
 
 void ArrowIpcFooterInit(struct ArrowIpcFooter* footer) {
@@ -987,6 +1093,25 @@ ArrowErrorCode ArrowIpcEncoderEncodeFooter(struct ArrowIpcEncoder* encoder,
     flatcc_RecordBatch_blocks[i] = block;
   }
   FLATCC_RETURN_UNLESS_0(Footer_recordBatches_end(builder), error);
+
+  const struct ArrowIpcFileBlock* dict_blocks =
+      (struct ArrowIpcFileBlock*)footer->dictionary_blocks.data;
+  int64_t n_dict_blocks =
+      footer->dictionary_blocks.size_bytes / sizeof(struct ArrowIpcFileBlock);
+
+  FLATCC_RETURN_UNLESS_0(Footer_dictionaries_start(builder), error);
+  struct ns(Block)* flatcc_dict_blocks =
+      ns(Footer_dictionaries_extend(builder, n_dict_blocks));
+  FLATCC_RETURN_IF_NULL(flatcc_dict_blocks, error);
+  for (int64_t i = 0; i < n_dict_blocks; i++) {
+    struct ns(Block) block = {
+        dict_blocks[i].offset,
+        dict_blocks[i].metadata_length,
+        dict_blocks[i].body_length,
+    };
+    flatcc_dict_blocks[i] = block;
+  }
+  FLATCC_RETURN_UNLESS_0(Footer_dictionaries_end(builder), error);
 
   FLATCC_RETURN_IF_NULL(ns(Footer_end_as_root(builder)), error);
   return NANOARROW_OK;
