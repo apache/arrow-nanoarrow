@@ -457,18 +457,19 @@ struct ArrowIpcCompressor {
   /// \brief Queue a buffer for compression
   ///
   /// Compresses src using compression_type and appends the compressed bytes to dst,
-  /// preserving any content already in dst. The content of dst is undefined until the
-  /// next call to compress_wait() returns NANOARROW_OK, and the caller must not use
-  /// src or dst until then.
+  /// preserving any content already in dst. The caller must keep src and dst valid
+  /// and must not access them until the queued work has completed or been cancelled.
+  /// The content of dst is only valid after compress_wait() returns NANOARROW_OK.
   ArrowErrorCode (*compress_add)(struct ArrowIpcCompressor* compressor,
                                  struct ArrowBufferView src, struct ArrowBuffer* dst,
                                  struct ArrowError* error);
 
   /// \brief Wait for any unfinished calls to compress_add to complete
   ///
-  /// Returns NANOARROW_OK if all pending calls completed. Returns ETIMEDOUT if not all
-  /// remaining calls completed within timeout_ms (a negative timeout waits
-  /// indefinitely).
+  /// Returns NANOARROW_OK if all pending calls completed successfully. Returns
+  /// ETIMEDOUT if not all remaining calls completed within timeout_ms. A negative
+  /// timeout waits indefinitely and must complete or cancel all queued work before
+  /// returning, including when returning an error.
   ArrowErrorCode (*compress_wait)(struct ArrowIpcCompressor* compressor,
                                   int64_t timeout_ms, struct ArrowError* error);
 
@@ -1013,9 +1014,11 @@ ArrowIpcEncoderSetMessageMetadata(struct ArrowIpcEncoder* encoder,
 /// Installs an ArrowIpcSerialCompressor() configured with compression_type and
 /// compression_level, replacing any compressor previously set with this function or
 /// with ArrowIpcEncoderSetCompressor(). NANOARROW_IPC_COMPRESSION_TYPE_NONE removes the
-/// compressor. The setting persists until it is changed. Schema messages (and file
-/// footers) encoded while a compressor is set declare the COMPRESSED_BODY feature, so
-/// compression should be set before the schema is encoded.
+/// compressor. The setting persists until it is changed. Schema messages encoded while
+/// a compressor is set declare the COMPRESSED_BODY feature, so compression should be
+/// set before the schema is encoded. File footers also declare this feature if
+/// compression was declared or used since the most recent Schema message, even if the
+/// compressor has since been removed.
 ///
 /// The body buffers of every RecordBatch or DictionaryBatch encoded while a compressor
 /// is set are compressed as described by the Arrow IPC format: each non-empty buffer
@@ -1146,9 +1149,10 @@ NANOARROW_DLL void ArrowIpcWriterReset(struct ArrowIpcWriter* writer);
 ///
 /// See ArrowIpcEncoderSetCompression(). Compression applies to record batches and
 /// dictionary batches written after this call (in both stream and file mode) and may
-/// be changed between batches. Set it before writing the schema so that the stream
-/// (or the file footer) declares the COMPRESSED_BODY feature. Use
-/// NANOARROW_IPC_COMPRESSION_LEVEL_DEFAULT for the codec's default level.
+/// be changed between batches. Set it before writing the schema so that the Schema
+/// message declares the COMPRESSED_BODY feature (a file footer declares it whenever
+/// compression was declared or used). Use NANOARROW_IPC_COMPRESSION_LEVEL_DEFAULT for
+/// the codec's default level.
 ///
 /// Returns EINVAL for an unknown compression type or an out-of-range compression_level,
 /// and ENOTSUP if the compression type is not supported by this build of nanoarrow.

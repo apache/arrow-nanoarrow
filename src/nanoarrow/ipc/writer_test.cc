@@ -566,6 +566,59 @@ static void TestCompressedWriting(enum ArrowIpcCompressionType codec) {
   }
 }
 
+TEST(NanoarrowIpcWriter, FileRetainsCompressionDeclaration) {
+  if (ArrowIpcGetLZ4CompressionFunction() == nullptr &&
+      ArrowIpcGetZstdCompressionFunction() == nullptr) {
+    GTEST_SKIP() << "nanoarrow_ipc not built with NANOARROW_IPC_WITH_LZ4 or "
+                    "NANOARROW_IPC_WITH_ZSTD";
+  }
+
+  for (auto codec :
+       {NANOARROW_IPC_COMPRESSION_TYPE_LZ4_FRAME, NANOARROW_IPC_COMPRESSION_TYPE_ZSTD}) {
+    int min_level, max_level;
+    if (ArrowIpcGetCompressionLevelRange(codec, &min_level, &max_level) == ENOTSUP) {
+      continue;
+    }
+    SCOPED_TRACE(ArrowIpcCompressionTypeToString(codec));
+    for (bool write_compressed_batch : {false, true}) {
+      SCOPED_TRACE(write_compressed_batch ? "compressed batch" : "schema only");
+      struct ArrowError error;
+      nanoarrow::UniqueSchema schema;
+      nanoarrow::UniqueArray array;
+      ASSERT_NO_FATAL_FAILURE(InitCompressibleBatch(schema.get(), array.get()));
+      nanoarrow::UniqueArrayView view;
+      ASSERT_EQ(ArrowArrayViewInitFromSchema(view.get(), schema.get(), &error),
+                NANOARROW_OK);
+      ASSERT_EQ(ArrowArrayViewSetArray(view.get(), array.get(), &error), NANOARROW_OK);
+      nanoarrow::UniqueBuffer output;
+      nanoarrow::ipc::UniqueOutputStream stream;
+      ASSERT_EQ(ArrowIpcOutputStreamInitBuffer(stream.get(), output.get()), NANOARROW_OK);
+      nanoarrow::ipc::UniqueWriter writer;
+      ASSERT_EQ(ArrowIpcWriterInit(writer.get(), stream.get()), NANOARROW_OK);
+      ASSERT_EQ(ArrowIpcWriterSetCompression(
+                    writer.get(), codec, NANOARROW_IPC_COMPRESSION_LEVEL_DEFAULT, &error),
+                NANOARROW_OK);
+      ASSERT_EQ(ArrowIpcWriterStartFile(writer.get(), &error), NANOARROW_OK);
+      ASSERT_EQ(ArrowIpcWriterWriteSchema(writer.get(), schema.get(), &error),
+                NANOARROW_OK);
+      if (write_compressed_batch) {
+        ASSERT_EQ(ArrowIpcWriterWriteArrayView(writer.get(), view.get(), &error),
+                  NANOARROW_OK);
+      }
+      ASSERT_EQ(
+          ArrowIpcWriterSetCompression(writer.get(), NANOARROW_IPC_COMPRESSION_TYPE_NONE,
+                                       NANOARROW_IPC_COMPRESSION_LEVEL_DEFAULT, &error),
+          NANOARROW_OK);
+      ASSERT_EQ(ArrowIpcWriterWriteArrayView(writer.get(), view.get(), &error),
+                NANOARROW_OK);
+      ASSERT_EQ(ArrowIpcWriterWriteArrayView(writer.get(), nullptr, &error),
+                NANOARROW_OK);
+      ASSERT_EQ(ArrowIpcWriterFinalizeFile(writer.get(), &error), NANOARROW_OK);
+      ASSERT_NO_FATAL_FAILURE(CheckDeclaresCompression(output.get(), true, true));
+    }
+  }
+}
+
 TEST(NanoarrowIpcWriter, CompressedWritingLZ4) {
   if (ArrowIpcGetLZ4CompressionFunction() == nullptr) {
     GTEST_SKIP() << "nanoarrow_ipc not built with NANOARROW_IPC_WITH_LZ4";

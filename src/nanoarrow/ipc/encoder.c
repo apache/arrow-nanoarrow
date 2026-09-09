@@ -16,6 +16,7 @@
 // under the License.
 
 #include <errno.h>
+#include <inttypes.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -52,6 +53,8 @@ struct ArrowIpcEncoderPrivate {
   // Compressor for the body buffers of subsequently encoded messages (release is
   // NULL when they are not compressed)
   struct ArrowIpcCompressor compressor;
+  // Whether compression was declared or encoded since the last Schema message
+  int has_compressed_body;
   // Views of the body buffers of the message being encoded, in body order
   struct ArrowBuffer buffer_views;
   // Compressed copies of those buffers (reused between messages)
@@ -78,6 +81,7 @@ ArrowErrorCode ArrowIpcEncoderInit(struct ArrowIpcEncoder* encoder) {
   ArrowIpcDictionaryEncodingsInit(&private->dictionary_encodings);
   ArrowBufferInit(&private->message_metadata);
   private->compressor.release = NULL;
+  private->has_compressed_body = 0;
   ArrowBufferInit(&private->buffer_views);
   private->compressed_buffers = NULL;
   private->n_compressed_buffers = 0;
@@ -732,6 +736,8 @@ ArrowErrorCode ArrowIpcEncoderEncodeSchema(struct ArrowIpcEncoder* encoder,
   FLATCC_RETURN_UNLESS_0(Message_bodyLength_add(builder, 0), error);
 
   FLATCC_RETURN_IF_NULL(ns(Message_end_as_root(builder)), error);
+  private->has_compressed_body =
+      ArrowIpcEncoderCodec(private) != NANOARROW_IPC_COMPRESSION_TYPE_NONE;
   return NANOARROW_OK;
 }
 
@@ -834,6 +840,8 @@ static ArrowErrorCode ArrowIpcEncoderCompressBuffers(
   NANOARROW_RETURN_NOT_OK_WITH_ERROR(
       ArrowIpcEncoderReserveCompressedBuffers(private, n_views), error);
 
+  // Allocate every prefix before queueing work so allocation failures cannot leave
+  // jobs referring to the caller's source buffers or our scratch buffers.
   for (int64_t i = 0; i < n_views; i++) {
     if (views[i].size_bytes == 0) {
       continue;
@@ -843,8 +851,15 @@ static ArrowErrorCode ArrowIpcEncoderCompressBuffers(
     struct ArrowBuffer* dst = &private->compressed_buffers[i];
     NANOARROW_ASSERT_OK(ArrowBufferResize(dst, 0, 0));
     NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowBufferAppendInt64(dst, 0), error);
-    int result =
-        private->compressor.compress_add(&private->compressor, views[i], dst, error);
+  }
+
+  for (int64_t i = 0; i < n_views; i++) {
+    if (views[i].size_bytes == 0) {
+      continue;
+    }
+
+    int result = private->compressor.compress_add(&private->compressor, views[i],
+                                                  &private->compressed_buffers[i], error);
     if (result != NANOARROW_OK) {
       // don't leave queued work referring to our buffers behind
       struct ArrowError ignored;
@@ -862,9 +877,18 @@ static ArrowErrorCode ArrowIpcEncoderCompressBuffers(
       continue;
     }
 
+    // a compressor that produced nothing violated its contract; without this check the
+    // buffer would be written with a length prefix and no payload
+    struct ArrowBuffer* dst = &private->compressed_buffers[i];
+    if (dst->size_bytes == (int64_t)sizeof(int64_t)) {
+      ArrowErrorSet(error,
+                    "Compressor produced no output for a buffer of %" PRId64 " bytes",
+                    views[i].size_bytes);
+      return EIO;
+    }
+
     // if compression did not reduce the size, store the buffer uncompressed instead
     // (signalled to the reader by a prefix of -1)
-    struct ArrowBuffer* dst = &private->compressed_buffers[i];
     int64_t prefix = views[i].size_bytes;
     if (dst->size_bytes - (int64_t)sizeof(int64_t) >= views[i].size_bytes) {
       dst->size_bytes = sizeof(int64_t);
@@ -938,6 +962,7 @@ static ArrowErrorCode ArrowIpcEncoderEncodeBodyCompression(
   FLATCC_RETURN_UNLESS_0(
       BodyCompression_method_add(builder, ns(BodyCompressionMethod_BUFFER)), error);
   FLATCC_RETURN_UNLESS_0(RecordBatch_compression_end(builder), error);
+  private->has_compressed_body = 1;
   return NANOARROW_OK;
 }
 
@@ -1153,7 +1178,9 @@ ArrowErrorCode ArrowIpcEncoderEncodeFooter(struct ArrowIpcEncoder* encoder,
   FLATCC_RETURN_UNLESS_0(Footer_schema_start(builder), error);
   NANOARROW_RETURN_NOT_OK(ArrowIpcEncodeSchema(
       builder, &footer->schema, &footer->dictionaries,
-      ArrowIpcEncoderCodec(private) != NANOARROW_IPC_COMPRESSION_TYPE_NONE, error));
+      private->has_compressed_body ||
+          ArrowIpcEncoderCodec(private) != NANOARROW_IPC_COMPRESSION_TYPE_NONE,
+      error));
   FLATCC_RETURN_UNLESS_0(Footer_schema_end(builder), error);
 
   const struct ArrowIpcFileBlock* blocks =

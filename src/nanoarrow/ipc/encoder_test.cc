@@ -15,6 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
+#include <gmock/gmock-matchers.h>
 #include <gtest/gtest.h>
 
 #include <cstring>
@@ -1016,6 +1017,161 @@ static struct ArrowBufferAllocator FailingAllocator(FailingAllocatorState* state
   return allocator;
 }
 
+// Defer all work until Wait(), as a compressor backed by a thread pool could do.
+// Copying forces the uncompressed fallback and works without either codec built in.
+struct DeferredCompressor {
+  struct Job {
+    struct ArrowBufferView src;
+    struct ArrowBuffer* dst;
+  };
+  std::vector<Job> pending;
+  std::vector<struct ArrowBuffer*> destinations;
+  size_t max_pending = 0;
+  int adds = 0;
+  int waits = 0;
+  int fail_on_add = 0;
+  bool fail_wait = false;
+  bool produce_nothing = false;
+
+  static ArrowErrorCode Add(struct ArrowIpcCompressor* compressor,
+                            struct ArrowBufferView src, struct ArrowBuffer* dst,
+                            struct ArrowError* error) {
+    auto* state = static_cast<DeferredCompressor*>(compressor->private_data);
+    if (++state->adds == state->fail_on_add) {
+      ArrowErrorSet(error, "Deferred add failed");
+      return EIO;
+    }
+    state->pending.push_back({src, dst});
+    state->destinations.push_back(dst);
+    if (state->pending.size() > state->max_pending) {
+      state->max_pending = state->pending.size();
+    }
+    return NANOARROW_OK;
+  }
+
+  static ArrowErrorCode Wait(struct ArrowIpcCompressor* compressor, int64_t timeout_ms,
+                             struct ArrowError* error) {
+    EXPECT_LT(timeout_ms, 0);
+    auto* state = static_cast<DeferredCompressor*>(compressor->private_data);
+    ++state->waits;
+    int result = NANOARROW_OK;
+    for (const auto& job : state->pending) {
+      if (result == NANOARROW_OK && !state->produce_nothing) {
+        result = ArrowBufferAppend(job.dst, job.src.data.data, job.src.size_bytes);
+      }
+    }
+    // Complete or cancel every job, including when reporting an error.
+    state->pending.clear();
+    if (state->fail_wait) {
+      ArrowErrorSet(error, "Deferred wait failed");
+      return EIO;
+    }
+    return result;
+  }
+
+  static void Release(struct ArrowIpcCompressor* compressor) {
+    auto* state = static_cast<DeferredCompressor*>(compressor->private_data);
+    state->pending.clear();
+    compressor->release = nullptr;
+  }
+
+  struct ArrowIpcCompressor MakeCompressor() {
+    struct ArrowIpcCompressor compressor {};
+    compressor.compression_type = NANOARROW_IPC_COMPRESSION_TYPE_LZ4_FRAME;
+    compressor.compress_add = &Add;
+    compressor.compress_wait = &Wait;
+    compressor.release = &Release;
+    compressor.private_data = this;
+    return compressor;
+  }
+};
+
+TEST(NanoarrowIpcTest, NanoarrowIpcEncoderDeferredCompressionAllocationFailure) {
+  struct ArrowError error;
+  CompressibleRecordBatch batch;
+  DeferredCompressor state;
+  FailingAllocatorState allocator_state{0, 1};
+  nanoarrow::ipc::UniqueEncoder encoder;
+  ASSERT_EQ(ArrowIpcEncoderInit(encoder.get()), NANOARROW_OK);
+  auto compressor = state.MakeCompressor();
+  ASSERT_EQ(ArrowIpcEncoderSetCompressor(encoder.get(), &compressor), NANOARROW_OK);
+
+  nanoarrow::UniqueBuffer body, message;
+  ASSERT_EQ(ArrowIpcEncoderEncodeSimpleRecordBatch(encoder.get(), batch.array_view(),
+                                                   body.get(), &error),
+            NANOARROW_OK)
+      << error.message;
+  ASSERT_EQ(ArrowIpcEncoderFinalizeBuffer(encoder.get(), true, message.get()),
+            NANOARROW_OK);
+  EXPECT_TRUE(state.pending.empty());
+  EXPECT_GT(state.max_pending, 1);
+  EXPECT_EQ(state.waits, 1);
+
+  nanoarrow::ipc::UniqueDecoder decoder;
+  ASSERT_EQ(ArrowIpcDecoderInit(decoder.get()), NANOARROW_OK);
+  ASSERT_EQ(ArrowIpcDecoderSetSchema(decoder.get(), batch.schema(), &error),
+            NANOARROW_OK);
+  struct ArrowBufferView message_view = {{message->data}, message->size_bytes};
+  ASSERT_EQ(ArrowIpcDecoderVerifyHeader(decoder.get(), message_view, &error),
+            NANOARROW_OK);
+  ASSERT_EQ(ArrowIpcDecoderDecodeHeader(decoder.get(), message_view, &error),
+            NANOARROW_OK);
+  nanoarrow::UniqueArray decoded;
+  ASSERT_EQ(
+      ArrowIpcDecoderDecodeArray(decoder.get(), {{body->data}, body->size_bytes}, -1,
+                                 decoded.get(), NANOARROW_VALIDATION_LEVEL_FULL, &error),
+      NANOARROW_OK)
+      << error.message;
+  nanoarrow::UniqueArrayView decoded_view;
+  ASSERT_EQ(ArrowArrayViewInitFromSchema(decoded_view.get(), batch.schema(), &error),
+            NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayViewSetArray(decoded_view.get(), decoded.get(), &error),
+            NANOARROW_OK);
+  int is_equal = 0;
+  ASSERT_EQ(ArrowArrayViewCompare(decoded_view.get(), batch.array_view(),
+                                  NANOARROW_COMPARE_IDENTICAL, &is_equal, &error),
+            NANOARROW_OK);
+  EXPECT_EQ(is_equal, 1) << error.message;
+
+  // Scratch buffers are reused (by index) for the next message, which is what keeps the
+  // pointers captured above valid. Make a later prefix allocation fail, after an
+  // earlier buffer could have been queued with the compressor.
+  ASSERT_GT(state.destinations.size(), 1);
+  struct ArrowBuffer* failing_buffer = state.destinations[1];
+  ArrowBufferReset(failing_buffer);
+  ASSERT_EQ(ArrowBufferSetAllocator(failing_buffer, FailingAllocator(&allocator_state)),
+            NANOARROW_OK);
+  body->size_bytes = 0;
+  EXPECT_EQ(ArrowIpcEncoderEncodeSimpleRecordBatch(encoder.get(), batch.array_view(),
+                                                   body.get(), &error),
+            ENOMEM);
+  EXPECT_EQ(allocator_state.calls, 1);
+  EXPECT_TRUE(state.pending.empty());
+}
+
+TEST(NanoarrowIpcTest, NanoarrowIpcEncoderDeferredCompressionErrors) {
+  for (bool fail_wait : {false, true}) {
+    SCOPED_TRACE(fail_wait ? "wait error" : "add error");
+    struct ArrowError error;
+    CompressibleRecordBatch batch;
+    DeferredCompressor state;
+    state.fail_wait = fail_wait;
+    state.fail_on_add = fail_wait ? 0 : 2;
+    nanoarrow::ipc::UniqueEncoder encoder;
+    ASSERT_EQ(ArrowIpcEncoderInit(encoder.get()), NANOARROW_OK);
+    auto compressor = state.MakeCompressor();
+    ASSERT_EQ(ArrowIpcEncoderSetCompressor(encoder.get(), &compressor), NANOARROW_OK);
+    nanoarrow::UniqueBuffer body;
+    EXPECT_EQ(ArrowIpcEncoderEncodeSimpleRecordBatch(encoder.get(), batch.array_view(),
+                                                     body.get(), &error),
+              EIO);
+    EXPECT_STREQ(error.message,
+                 fail_wait ? "Deferred wait failed" : "Deferred add failed");
+    EXPECT_TRUE(state.pending.empty());
+    EXPECT_EQ(state.waits, 1);
+  }
+}
+
 // Encode a batch with a body allocator that fails on the fail_on-th allocation, for
 // every fail_on until encoding succeeds, so that each allocation site reports ENOMEM
 static void TestEncodeAllocationFailures(enum ArrowIpcCompressionType codec) {
@@ -1249,4 +1405,159 @@ TEST(NanoarrowIpcTest, NanoarrowIpcEncoderSchemaDeclaresCompression) {
       << error.message;
   ASSERT_NO_FATAL_FAILURE(encode_and_decode_schema(message));
   EXPECT_EQ(decoder->feature_flags & NANOARROW_IPC_FEATURE_COMPRESSED_BODY, 0);
+}
+
+TEST(NanoarrowIpcTest, NanoarrowIpcEncoderFooterCompressionHistory) {
+  for (bool dictionary_batch : {false, true}) {
+    SCOPED_TRACE(dictionary_batch ? "dictionary batch" : "record batch");
+    struct ArrowError error;
+    CompressibleRecordBatch batch;
+    DeferredCompressor state;
+    nanoarrow::ipc::UniqueEncoder encoder;
+    ASSERT_EQ(ArrowIpcEncoderInit(encoder.get()), NANOARROW_OK);
+    auto compressor = state.MakeCompressor();
+    ASSERT_EQ(ArrowIpcEncoderSetCompressor(encoder.get(), &compressor), NANOARROW_OK);
+
+    // Low-level callers can encode a body without first encoding a Schema message.
+    nanoarrow::UniqueBuffer body, message;
+    if (dictionary_batch) {
+      ASSERT_EQ(ArrowIpcEncoderEncodeSimpleDictionaryBatch(
+                    encoder.get(), 0, false, batch.array_view()->children[0], body.get(),
+                    &error),
+                NANOARROW_OK);
+    } else {
+      ASSERT_EQ(ArrowIpcEncoderEncodeSimpleRecordBatch(encoder.get(), batch.array_view(),
+                                                       body.get(), &error),
+                NANOARROW_OK);
+    }
+    ASSERT_EQ(
+        ArrowIpcEncoderFinalizeBuffer(encoder.get(), /*encapsulate=*/true, message.get()),
+        NANOARROW_OK);
+    ASSERT_EQ(
+        ArrowIpcEncoderSetCompression(encoder.get(), NANOARROW_IPC_COMPRESSION_TYPE_NONE,
+                                      NANOARROW_IPC_COMPRESSION_LEVEL_DEFAULT, &error),
+        NANOARROW_OK);
+
+    nanoarrow::ipc::UniqueFooter footer;
+    ASSERT_EQ(ArrowSchemaDeepCopy(batch.schema(), &footer->schema), NANOARROW_OK);
+    auto check_footer = [&](bool expected) {
+      ASSERT_EQ(ArrowIpcEncoderEncodeFooter(encoder.get(), footer.get(), &error),
+                NANOARROW_OK);
+      nanoarrow::UniqueBuffer buffer;
+      ASSERT_EQ(ArrowIpcEncoderFinalizeBuffer(encoder.get(), /*encapsulate=*/false,
+                                              buffer.get()),
+                NANOARROW_OK);
+      int32_t footer_size = static_cast<int32_t>(buffer->size_bytes);
+      if (ArrowIpcSystemEndianness() == NANOARROW_IPC_ENDIANNESS_BIG) {
+        footer_size = static_cast<int32_t>(bswap32(static_cast<uint32_t>(footer_size)));
+      }
+      ASSERT_EQ(ArrowBufferAppendInt32(buffer.get(), footer_size), NANOARROW_OK);
+      ASSERT_EQ(ArrowBufferAppend(buffer.get(), "ARROW1", 6), NANOARROW_OK);
+
+      nanoarrow::ipc::UniqueDecoder decoder;
+      ASSERT_EQ(ArrowIpcDecoderInit(decoder.get()), NANOARROW_OK);
+      struct ArrowBufferView view = {{buffer->data}, buffer->size_bytes};
+      ASSERT_EQ(ArrowIpcDecoderVerifyFooter(decoder.get(), view, &error), NANOARROW_OK)
+          << error.message;
+      ASSERT_EQ(ArrowIpcDecoderDecodeFooter(decoder.get(), view, &error), NANOARROW_OK)
+          << error.message;
+      EXPECT_EQ((decoder->feature_flags & NANOARROW_IPC_FEATURE_COMPRESSED_BODY) != 0,
+                expected);
+    };
+    ASSERT_NO_FATAL_FAILURE(check_footer(true));
+
+    // A new schema starts a new file's history on the same encoder.
+    ASSERT_EQ(ArrowIpcEncoderEncodeSchema(encoder.get(), batch.schema(), &error),
+              NANOARROW_OK);
+    message->size_bytes = 0;
+    ASSERT_EQ(
+        ArrowIpcEncoderFinalizeBuffer(encoder.get(), /*encapsulate=*/true, message.get()),
+        NANOARROW_OK);
+    ASSERT_NO_FATAL_FAILURE(check_footer(false));
+  }
+}
+
+// The scratch buffers for compressed bodies grow when a message has more buffers than
+// any encoded before it; the existing ones are moved and stay usable
+TEST(NanoarrowIpcTest, NanoarrowIpcEncoderCompressedBuffersGrow) {
+  struct ArrowError error;
+  CompressibleRecordBatch batch;
+  DeferredCompressor state;
+  nanoarrow::ipc::UniqueEncoder encoder;
+  ASSERT_EQ(ArrowIpcEncoderInit(encoder.get()), NANOARROW_OK);
+  auto compressor = state.MakeCompressor();
+  ASSERT_EQ(ArrowIpcEncoderSetCompressor(encoder.get(), &compressor), NANOARROW_OK);
+
+  // A DictionaryBatch of a single int32 column needs two scratch buffers...
+  nanoarrow::UniqueBuffer body, message;
+  ASSERT_EQ(
+      ArrowIpcEncoderEncodeSimpleDictionaryBatch(
+          encoder.get(), 0, false, batch.array_view()->children[0], body.get(), &error),
+      NANOARROW_OK)
+      << error.message;
+  ASSERT_EQ(
+      ArrowIpcEncoderFinalizeBuffer(encoder.get(), /*encapsulate=*/true, message.get()),
+      NANOARROW_OK);
+  size_t n_small = state.destinations.size();
+  EXPECT_GT(n_small, 0);
+
+  // ...and the RecordBatch of all three columns needs more
+  body->size_bytes = 0;
+  message->size_bytes = 0;
+  ASSERT_EQ(ArrowIpcEncoderEncodeSimpleRecordBatch(encoder.get(), batch.array_view(),
+                                                   body.get(), &error),
+            NANOARROW_OK)
+      << error.message;
+  ASSERT_EQ(
+      ArrowIpcEncoderFinalizeBuffer(encoder.get(), /*encapsulate=*/true, message.get()),
+      NANOARROW_OK);
+  EXPECT_GT(state.destinations.size() - n_small, n_small);
+
+  nanoarrow::ipc::UniqueDecoder decoder;
+  ASSERT_EQ(ArrowIpcDecoderInit(decoder.get()), NANOARROW_OK);
+  ASSERT_EQ(ArrowIpcDecoderSetSchema(decoder.get(), batch.schema(), &error),
+            NANOARROW_OK);
+  struct ArrowBufferView message_view = {{message->data}, message->size_bytes};
+  ASSERT_EQ(ArrowIpcDecoderVerifyHeader(decoder.get(), message_view, &error),
+            NANOARROW_OK)
+      << error.message;
+  ASSERT_EQ(ArrowIpcDecoderDecodeHeader(decoder.get(), message_view, &error),
+            NANOARROW_OK)
+      << error.message;
+  nanoarrow::UniqueArray decoded;
+  ASSERT_EQ(
+      ArrowIpcDecoderDecodeArray(decoder.get(), {{body->data}, body->size_bytes}, -1,
+                                 decoded.get(), NANOARROW_VALIDATION_LEVEL_FULL, &error),
+      NANOARROW_OK)
+      << error.message;
+  nanoarrow::UniqueArrayView decoded_view;
+  ASSERT_EQ(ArrowArrayViewInitFromSchema(decoded_view.get(), batch.schema(), &error),
+            NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayViewSetArray(decoded_view.get(), decoded.get(), &error),
+            NANOARROW_OK);
+  int is_equal = 0;
+  ASSERT_EQ(ArrowArrayViewCompare(decoded_view.get(), batch.array_view(),
+                                  NANOARROW_COMPARE_IDENTICAL, &is_equal, &error),
+            NANOARROW_OK);
+  EXPECT_EQ(is_equal, 1) << error.message;
+}
+
+// A compressor that reports success without producing output is an error rather
+// than a buffer with a length prefix and no payload
+TEST(NanoarrowIpcTest, NanoarrowIpcEncoderCompressorWithoutOutput) {
+  struct ArrowError error;
+  CompressibleRecordBatch batch;
+  DeferredCompressor state;
+  state.produce_nothing = true;
+  nanoarrow::ipc::UniqueEncoder encoder;
+  ASSERT_EQ(ArrowIpcEncoderInit(encoder.get()), NANOARROW_OK);
+  auto compressor = state.MakeCompressor();
+  ASSERT_EQ(ArrowIpcEncoderSetCompressor(encoder.get(), &compressor), NANOARROW_OK);
+
+  nanoarrow::UniqueBuffer body;
+  EXPECT_EQ(ArrowIpcEncoderEncodeSimpleRecordBatch(encoder.get(), batch.array_view(),
+                                                   body.get(), &error),
+            EIO);
+  EXPECT_THAT(error.message,
+              ::testing::StartsWith("Compressor produced no output for a buffer of"));
 }

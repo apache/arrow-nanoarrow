@@ -149,9 +149,8 @@ static ArrowErrorCode ArrowIpcCompressLZ4(struct ArrowBufferView src,
   }
 
   // Default preferences except for the compression level (no content size, no
-  // checksums).
-  // This produces a single complete frame, which is what ArrowIpcDecompressLZ4()
-  // and Arrow C++ expect.
+  // checksums). This produces a single complete frame, which is what
+  // ArrowIpcDecompressLZ4() and Arrow C++ expect.
   LZ4F_preferences_t prefs;
   memset(&prefs, 0, sizeof(prefs));
   prefs.compressionLevel = compression_level;
@@ -195,6 +194,7 @@ ArrowErrorCode ArrowIpcGetCompressionLevelRange(
     enum ArrowIpcCompressionType compression_type, int* min_level_out,
     int* max_level_out) {
   NANOARROW_DCHECK(min_level_out != NULL && max_level_out != NULL);
+  // (unused when neither codec is built in)
   NANOARROW_UNUSED(min_level_out);
   NANOARROW_UNUSED(max_level_out);
 
