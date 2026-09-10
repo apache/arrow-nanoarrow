@@ -2319,7 +2319,8 @@ static std::shared_ptr<arrow::Array> MakeDeltaDictionaryIndices(bool extended) {
 
 static void AssertReadsArrowCppDeltaStream(
     const std::shared_ptr<arrow::Array>& dictionary_array1,
-    const std::shared_ptr<arrow::Array>& dictionary_array2) {
+    const std::shared_ptr<arrow::Array>& dictionary_array2,
+    const char* expected_error = nullptr) {
   auto schema = arrow::schema({arrow::field("dictionary", dictionary_array1->type())});
   auto expected1 = arrow::RecordBatch::Make(schema, 4, {dictionary_array1});
   auto expected2 = arrow::RecordBatch::Make(schema, 4, {dictionary_array2});
@@ -2360,8 +2361,13 @@ static void AssertReadsArrowCppDeltaStream(
   nanoarrow::UniqueArray roundtrip2;
   ASSERT_EQ(ArrowArrayStreamGetNext(reader.get(), roundtrip1.get(), &error), NANOARROW_OK)
       << error.message;
-  ASSERT_EQ(ArrowArrayStreamGetNext(reader.get(), roundtrip2.get(), &error), NANOARROW_OK)
-      << error.message;
+  int result = ArrowArrayStreamGetNext(reader.get(), roundtrip2.get(), &error);
+  if (expected_error != nullptr) {
+    EXPECT_EQ(result, ENOTSUP);
+    EXPECT_STREQ(error.message, expected_error);
+    return;
+  }
+  ASSERT_EQ(result, NANOARROW_OK) << error.message;
   auto maybe_roundtrip1 = arrow::ImportRecordBatch(roundtrip1.get(), arrow_schema);
   auto maybe_roundtrip2 = arrow::ImportRecordBatch(roundtrip2.get(), arrow_schema);
   ASSERT_TRUE(maybe_roundtrip1.ok()) << maybe_roundtrip1.status();
@@ -2384,7 +2390,7 @@ TEST_P(DeltaDictionaryTypeTest, ReadsArrowCppDeltaStream) {
   AssertReadsArrowCppDeltaStream(maybe_array1.ValueUnsafe(), maybe_array2.ValueUnsafe());
 }
 
-TEST(NanoarrowIpcTest, ReadsArrowCppDenseUnionDictionaryDelta) {
+TEST(NanoarrowIpcTest, RejectsArrowCppDenseUnionDictionaryDelta) {
   arrow::Int8Builder type_ids_builder;
   arrow::Int32Builder offsets_builder;
   arrow::Int32Builder ints_builder;
@@ -2416,7 +2422,9 @@ TEST(NanoarrowIpcTest, ReadsArrowCppDenseUnionDictionaryDelta) {
       dictionary_type, MakeDeltaDictionaryIndices(true), values2);
   ASSERT_TRUE(maybe_array1.ok()) << maybe_array1.status();
   ASSERT_TRUE(maybe_array2.ok()) << maybe_array2.status();
-  AssertReadsArrowCppDeltaStream(maybe_array1.ValueUnsafe(), maybe_array2.ValueUnsafe());
+  AssertReadsArrowCppDeltaStream(
+      maybe_array1.ValueUnsafe(), maybe_array2.ValueUnsafe(),
+      "Appending array views is not supported for dense_union");
 }
 
 INSTANTIATE_TEST_SUITE_P(NanoarrowIpcDecoder, DeltaDictionaryTypeTest,

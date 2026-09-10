@@ -789,8 +789,8 @@ static ArrowErrorCode ArrowIpcWriterWriteDictionariesForArrayView(
     for (int64_t i = n_dictionaries - 1; i >= 0; i--) {
       int emitted = 0;
       result = ArrowIpcWriterWriteDictionaryBatchIfChanged(
-          writer, dictionary_views[i].dictionary_id,
-          dictionary_views[i].values_view, dictionary_views[i].force_emit,
+          writer, dictionary_views[i].dictionary_id, dictionary_views[i].values_view,
+          dictionary_views[i].force_emit,
           /*allow_delta=*/1, &emitted, error);
       if (result != NANOARROW_OK) {
         break;

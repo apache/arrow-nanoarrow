@@ -1676,6 +1676,8 @@ TEST(NanoarrowIpcTest, NanoarrowIpcEncoderCompressorWithoutOutput) {
             EIO);
   EXPECT_THAT(error.message,
               ::testing::StartsWith("Compressor produced no output for a buffer of"));
+}
+
 TEST(NanoarrowIpcTest, NanoarrowIpcEncoderRejectsNestedDictionaryBatch) {
   nanoarrow::UniqueSchema schema;
   ASSERT_EQ(ArrowSchemaInitFromType(schema.get(), NANOARROW_TYPE_INT32), NANOARROW_OK);

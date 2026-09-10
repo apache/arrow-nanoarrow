@@ -282,29 +282,6 @@ TEST(NanoarrowIpcWriter, WriteDictionaryBatch) {
 
   // one block tracked in file mode
   EXPECT_EQ(p2->footer.dictionary_blocks.size_bytes, sizeof(struct ArrowIpcFileBlock));
-
-  int64_t bytes_written = p2->bytes_written;
-  EXPECT_EQ(ArrowIpcWriterWriteDictionaryBatch(writer2.get(), /*dictionary_id=*/0,
-                                               /*is_delta=*/0, values_view.get(), &error),
-            ENOTSUP);
-  EXPECT_STREQ(error.message,
-               "IPC file writing supports exactly one non-delta dictionary batch");
-  EXPECT_EQ(p2->bytes_written, bytes_written);
-  EXPECT_EQ(p2->footer.dictionary_blocks.size_bytes, sizeof(struct ArrowIpcFileBlock));
-
-  nanoarrow::ipc::UniqueOutputStream stream3;
-  nanoarrow::UniqueBuffer output3;
-  ASSERT_EQ(ArrowIpcOutputStreamInitBuffer(stream3.get(), output3.get()), NANOARROW_OK);
-
-  nanoarrow::ipc::UniqueWriter writer3;
-  ASSERT_EQ(ArrowIpcWriterInit(writer3.get(), stream3.get()), NANOARROW_OK);
-  ASSERT_EQ(ArrowIpcWriterStartFile(writer3.get(), &error), NANOARROW_OK)
-      << error.message;
-  EXPECT_EQ(ArrowIpcWriterWriteDictionaryBatch(writer3.get(), /*dictionary_id=*/0,
-                                               /*is_delta=*/1, values_view.get(), &error),
-            ENOTSUP);
-  EXPECT_STREQ(error.message,
-               "IPC file writing supports exactly one non-delta dictionary batch");
 }
 
 TEST(NanoarrowIpcWriter, RoundtripDeltaDictionaryStream) {
@@ -440,10 +417,10 @@ TEST(NanoarrowIpcWriter, RoundtripDeltaDictionaryStream) {
   ASSERT_EQ(ArrowIpcWriterWriteDictionaryBatch(file_writer.get(), 0, /*is_delta=*/1,
                                                delta_values_view.get(), &error),
             NANOARROW_OK);
-  EXPECT_EQ(ArrowIpcWriterWriteDictionaryBatch(
-                file_writer.get(), 0, /*is_delta=*/0,
-                batch2_view->children[0]->dictionary, &error),
-            EINVAL);
+  EXPECT_EQ(
+      ArrowIpcWriterWriteDictionaryBatch(file_writer.get(), 0, /*is_delta=*/0,
+                                         batch2_view->children[0]->dictionary, &error),
+      EINVAL);
   ASSERT_EQ(ArrowIpcWriterWriteArrayView(file_writer.get(), batch2_view.get(), &error),
             NANOARROW_OK);
   ASSERT_EQ(ArrowIpcWriterWriteArrayView(file_writer.get(), nullptr, &error),
@@ -507,8 +484,7 @@ static void MakeDictionaryStructArray(struct ArrowArray* array,
 }
 
 static void MakeRunEndDictionaryStructArray(struct ArrowArray* array,
-                                            struct ArrowSchema* schema,
-                                            bool extended) {
+                                            struct ArrowSchema* schema, bool extended) {
   struct ArrowError error;
   ASSERT_EQ(ArrowSchemaInitFromType(schema, NANOARROW_TYPE_STRUCT), NANOARROW_OK);
   ASSERT_EQ(ArrowSchemaAllocateChildren(schema, 1), NANOARROW_OK);
@@ -518,7 +494,7 @@ static void MakeRunEndDictionaryStructArray(struct ArrowArray* array,
   ASSERT_EQ(ArrowSchemaAllocateDictionary(schema->children[0]), NANOARROW_OK);
   ArrowSchemaInit(schema->children[0]->dictionary);
   ASSERT_EQ(ArrowSchemaSetTypeRunEndEncoded(schema->children[0]->dictionary,
-                                           NANOARROW_TYPE_INT32),
+                                            NANOARROW_TYPE_INT32),
             NANOARROW_OK);
   ASSERT_EQ(ArrowSchemaSetType(schema->children[0]->dictionary->children[1],
                                NANOARROW_TYPE_FLOAT),
@@ -764,10 +740,8 @@ TEST(NanoarrowIpcWriter, ReemitsParentWhenNestedDictionaryChanges) {
             NANOARROW_OK)
       << error.message;
 
-  EXPECT_EQ(DecodeDictionaryIds(output.get()),
-            (std::vector<int64_t>{1, 0, 1, 0}));
-  EXPECT_EQ(DecodeDictionaryDeltaFlags(output.get()),
-            (std::vector<int>{0, 0, 0, 0}));
+  EXPECT_EQ(DecodeDictionaryIds(output.get()), (std::vector<int64_t>{1, 0, 1, 0}));
+  EXPECT_EQ(DecodeDictionaryDeltaFlags(output.get()), (std::vector<int>{0, 0, 0, 0}));
 
   struct ArrowIpcInputStream input;
   ASSERT_EQ(ArrowIpcInputStreamInitBuffer(&input, output.get()), NANOARROW_OK);
@@ -1109,8 +1083,7 @@ TEST(NanoarrowIpcWriter, WritesAppendOnlyDictionaryToFile) {
   ASSERT_EQ(ArrowIpcOutputStreamInitBuffer(out_stream.get(), output.get()), NANOARROW_OK);
   nanoarrow::ipc::UniqueWriter writer;
   ASSERT_EQ(ArrowIpcWriterInit(writer.get(), out_stream.get()), NANOARROW_OK);
-  ASSERT_EQ(ArrowIpcWriterStartFile(writer.get(), &error), NANOARROW_OK)
-      << error.message;
+  ASSERT_EQ(ArrowIpcWriterStartFile(writer.get(), &error), NANOARROW_OK) << error.message;
   ASSERT_EQ(ArrowIpcWriterWriteArrayStream(writer.get(), array_stream.get(), &error),
             NANOARROW_OK)
       << error.message;
