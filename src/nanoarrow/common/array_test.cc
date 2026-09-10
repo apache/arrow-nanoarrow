@@ -5319,58 +5319,67 @@ TEST(ArrayTest, ArrayAppendStorageFromArrayViewRejectsUnions) {
 }
 
 TEST(ArrayTest, ArrayAppendStorageFromArrayViewRunEndEncoded) {
-  struct ArrowError error;
-  struct ArrowSchema schema;
-  ArrowSchemaInit(&schema);
-  ASSERT_EQ(ArrowSchemaSetTypeRunEndEncoded(&schema, NANOARROW_TYPE_INT16), NANOARROW_OK);
-  ASSERT_EQ(ArrowSchemaSetType(schema.children[1], NANOARROW_TYPE_STRING), NANOARROW_OK);
+  for (enum ArrowType run_end_type :
+       {NANOARROW_TYPE_INT16, NANOARROW_TYPE_INT32, NANOARROW_TYPE_INT64}) {
+    SCOPED_TRACE(ArrowTypeString(run_end_type));
+    struct ArrowError error;
+    struct ArrowSchema schema;
+    ArrowSchemaInit(&schema);
+    ASSERT_EQ(ArrowSchemaSetTypeRunEndEncoded(&schema, run_end_type), NANOARROW_OK);
+    ASSERT_EQ(ArrowSchemaSetType(schema.children[1], NANOARROW_TYPE_STRING),
+              NANOARROW_OK);
 
-  struct ArrowArray src;
-  ASSERT_EQ(ArrowArrayInitFromSchema(&src, &schema, &error), NANOARROW_OK);
-  ASSERT_EQ(ArrowArrayStartAppending(&src), NANOARROW_OK);
-  ASSERT_EQ(ArrowArrayAppendInt(src.children[0], 2), NANOARROW_OK);
-  ASSERT_EQ(ArrowArrayAppendInt(src.children[0], 3), NANOARROW_OK);
-  ASSERT_EQ(ArrowArrayAppendString(src.children[1], "a"_asv), NANOARROW_OK);
-  ASSERT_EQ(ArrowArrayAppendString(src.children[1], "b"_asv), NANOARROW_OK);
-  src.length = 3;
-  ASSERT_EQ(ArrowArrayFinishBuildingDefault(&src, &error), NANOARROW_OK);
+    struct ArrowArray src;
+    ASSERT_EQ(ArrowArrayInitFromSchema(&src, &schema, &error), NANOARROW_OK);
+    ASSERT_EQ(ArrowArrayStartAppending(&src), NANOARROW_OK);
+    ASSERT_EQ(ArrowArrayAppendInt(src.children[0], 2), NANOARROW_OK);
+    ASSERT_EQ(ArrowArrayAppendInt(src.children[0], 3), NANOARROW_OK);
+    ASSERT_EQ(ArrowArrayAppendString(src.children[1], "a"_asv), NANOARROW_OK);
+    ASSERT_EQ(ArrowArrayAppendString(src.children[1], "b"_asv), NANOARROW_OK);
+    src.length = 3;
+    ASSERT_EQ(ArrowArrayFinishBuildingDefault(&src, &error), NANOARROW_OK);
 
-  struct ArrowArrayView src_view;
-  ASSERT_EQ(ArrowArrayViewInitFromSchema(&src_view, &schema, &error), NANOARROW_OK);
-  ASSERT_EQ(ArrowArrayViewSetArray(&src_view, &src, &error), NANOARROW_OK);
-  struct ArrowArray dst;
-  ASSERT_EQ(ArrowArrayInitFromArrayView(&dst, &src_view, &error), NANOARROW_OK);
-  ASSERT_EQ(ArrowArrayStartAppending(&dst), NANOARROW_OK);
-  ASSERT_EQ(ArrowArrayAppendStorageFromArrayView(&dst, &src_view, &error), NANOARROW_OK);
-  ASSERT_EQ(ArrowArrayAppendStorageFromArrayView(&dst, &src_view, &error), NANOARROW_OK);
-  ASSERT_EQ(ArrowArrayFinishBuildingDefault(&dst, &error), NANOARROW_OK) << error.message;
-  EXPECT_EQ(dst.length, 6);
+    struct ArrowArrayView src_view;
+    ASSERT_EQ(ArrowArrayViewInitFromSchema(&src_view, &schema, &error), NANOARROW_OK);
+    ASSERT_EQ(ArrowArrayViewSetArray(&src_view, &src, &error), NANOARROW_OK);
+    struct ArrowArray dst;
+    ASSERT_EQ(ArrowArrayInitFromArrayView(&dst, &src_view, &error), NANOARROW_OK);
+    ASSERT_EQ(ArrowArrayStartAppending(&dst), NANOARROW_OK);
+    ASSERT_EQ(ArrowArrayAppendStorageFromArrayView(&dst, &src_view, &error),
+              NANOARROW_OK);
+    ASSERT_EQ(ArrowArrayAppendStorageFromArrayView(&dst, &src_view, &error),
+              NANOARROW_OK);
+    ASSERT_EQ(ArrowArrayFinishBuildingDefault(&dst, &error), NANOARROW_OK)
+        << error.message;
+    EXPECT_EQ(dst.length, 6);
 
-  struct ArrowArrayView dst_view;
-  ASSERT_EQ(ArrowArrayViewInitFromSchema(&dst_view, &schema, &error), NANOARROW_OK);
-  ASSERT_EQ(ArrowArrayViewSetArray(&dst_view, &dst, &error), NANOARROW_OK);
-  EXPECT_EQ(ArrowArrayViewGetIntUnsafe(dst_view.children[0], 2), 5);
-  EXPECT_EQ(ArrowArrayViewGetIntUnsafe(dst_view.children[0], 3), 6);
-  ArrowArrayViewReset(&dst_view);
+    struct ArrowArrayView dst_view;
+    ASSERT_EQ(ArrowArrayViewInitFromSchema(&dst_view, &schema, &error), NANOARROW_OK);
+    ASSERT_EQ(ArrowArrayViewSetArray(&dst_view, &dst, &error), NANOARROW_OK);
+    EXPECT_EQ(ArrowArrayViewGetIntUnsafe(dst_view.children[0], 2), 5);
+    EXPECT_EQ(ArrowArrayViewGetIntUnsafe(dst_view.children[0], 3), 6);
+    ArrowArrayViewReset(&dst_view);
 
-  src_view.offset = 1;
-  src_view.length = 1;
-  ASSERT_EQ(ArrowArrayAppendStorageFromArrayView(&dst, &src_view, &error), NANOARROW_OK)
-      << error.message;
-  ASSERT_EQ(ArrowArrayFinishBuildingDefault(&dst, &error), NANOARROW_OK) << error.message;
-  EXPECT_EQ(dst.length, 7);
-  EXPECT_EQ(dst.children[0]->length, 5);
-  EXPECT_EQ(dst.children[1]->length, 5);
-  ASSERT_EQ(ArrowArrayViewInitFromSchema(&dst_view, &schema, &error), NANOARROW_OK);
-  ASSERT_EQ(ArrowArrayViewSetArray(&dst_view, &dst, &error), NANOARROW_OK);
-  EXPECT_EQ(ArrowArrayViewGetIntUnsafe(dst_view.children[0], 4), 7);
-  EXPECT_EQ(ArrowArrayViewGetStringUnsafe(dst_view.children[1], 4), "a"_asv);
+    src_view.offset = 1;
+    src_view.length = 1;
+    ASSERT_EQ(ArrowArrayAppendStorageFromArrayView(&dst, &src_view, &error), NANOARROW_OK)
+        << error.message;
+    ASSERT_EQ(ArrowArrayFinishBuildingDefault(&dst, &error), NANOARROW_OK)
+        << error.message;
+    EXPECT_EQ(dst.length, 7);
+    EXPECT_EQ(dst.children[0]->length, 5);
+    EXPECT_EQ(dst.children[1]->length, 5);
+    ASSERT_EQ(ArrowArrayViewInitFromSchema(&dst_view, &schema, &error), NANOARROW_OK);
+    ASSERT_EQ(ArrowArrayViewSetArray(&dst_view, &dst, &error), NANOARROW_OK);
+    EXPECT_EQ(ArrowArrayViewGetIntUnsafe(dst_view.children[0], 4), 7);
+    EXPECT_EQ(ArrowArrayViewGetStringUnsafe(dst_view.children[1], 4), "a"_asv);
 
-  ArrowArrayViewReset(&dst_view);
-  ArrowArrayRelease(&dst);
-  ArrowArrayViewReset(&src_view);
-  ArrowArrayRelease(&src);
-  ArrowSchemaRelease(&schema);
+    ArrowArrayViewReset(&dst_view);
+    ArrowArrayRelease(&dst);
+    ArrowArrayViewReset(&src_view);
+    ArrowArrayRelease(&src);
+    ArrowSchemaRelease(&schema);
+  }
 }
 
 TEST(ArrayTest, ArrayAppendStorageFromArrayViewRunEndEncodedLengthOverflow) {
