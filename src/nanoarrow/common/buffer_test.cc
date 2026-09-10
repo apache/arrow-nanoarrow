@@ -647,6 +647,16 @@ TEST(BitmapTest, BitmapTestAppendInt8Unsafe) {
     EXPECT_EQ(ArrowBitGet(bitmap.buffer.data, i), test_values[i - 136]);
   }
 
+  // Append fewer values than are needed to complete the current byte
+  int8_t short_values[] = {1, 0, 1};
+  ASSERT_EQ(ArrowBitmapReserve(&bitmap, 3), NANOARROW_OK);
+  ArrowBitmapAppendInt8Unsafe(&bitmap, short_values, 3);
+  EXPECT_EQ(bitmap.size_bits, 207);
+  EXPECT_EQ(bitmap.buffer.size_bytes, 26);
+  for (int i = 0; i < 3; i++) {
+    EXPECT_EQ(ArrowBitGet(bitmap.buffer.data, 204 + i), short_values[i]);
+  }
+
   ArrowBitmapReset(&bitmap);
 }
 
@@ -700,6 +710,16 @@ TEST(BitmapTest, BitmapTestAppendInt32Unsafe) {
   }
   for (int i = 136; i < 204; i++) {
     EXPECT_EQ(ArrowBitGet(bitmap.buffer.data, i), test_values[i - 136]);
+  }
+
+  // Append fewer values than are needed to complete the current byte
+  int32_t short_values[] = {1, 0, 1};
+  ASSERT_EQ(ArrowBitmapReserve(&bitmap, 3), NANOARROW_OK);
+  ArrowBitmapAppendInt32Unsafe(&bitmap, short_values, 3);
+  EXPECT_EQ(bitmap.size_bits, 207);
+  EXPECT_EQ(bitmap.buffer.size_bytes, 26);
+  for (int i = 0; i < 3; i++) {
+    EXPECT_EQ(ArrowBitGet(bitmap.buffer.data, 204 + i), short_values[i]);
   }
 
   ArrowBitmapReset(&bitmap);

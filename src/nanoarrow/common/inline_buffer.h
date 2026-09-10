@@ -656,6 +656,10 @@ static inline void ArrowBitmapAppendInt8Unsafe(struct ArrowBitmap* bitmap,
   // First byte
   if ((out_i_cursor % 8) != 0) {
     int64_t n_partial_bits = _ArrowRoundUpToMultipleOf8(out_i_cursor) - out_i_cursor;
+    if (n_partial_bits > n_remaining) {
+      n_partial_bits = n_remaining;
+    }
+
     for (int i = 0; i < n_partial_bits; i++) {
       ArrowBitSetTo(bitmap->buffer.data, out_i_cursor++, values[i]);
     }
@@ -706,6 +710,10 @@ static inline void ArrowBitmapAppendInt32Unsafe(struct ArrowBitmap* bitmap,
   // First byte
   if ((out_i_cursor % 8) != 0) {
     int64_t n_partial_bits = _ArrowRoundUpToMultipleOf8(out_i_cursor) - out_i_cursor;
+    if (n_partial_bits > n_remaining) {
+      n_partial_bits = n_remaining;
+    }
+
     for (int i = 0; i < n_partial_bits; i++) {
       ArrowBitSetTo(bitmap->buffer.data, out_i_cursor++, (uint8_t)values[i]);
     }
