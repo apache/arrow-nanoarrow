@@ -248,28 +248,29 @@ TEST(NanoarrowIpcTest, NanoarrowIpcEncoderMessageMetadataRoundtrip) {
 
   EXPECT_EQ(DecodeMessageMetadata(message.get(), decoder.get()), key_values);
 
-  // Values can also be read in place, without copying
-  struct ArrowStringView value = ArrowCharView(nullptr);
-  ASSERT_EQ(ArrowIpcDecoderGetMessageMetadataValue(
-                decoder.get(), ArrowCharView("cache-control"), &value, &error),
+  // Single keys are read from the decoded metadata with ArrowMetadataGetValue()
+  nanoarrow::UniqueBuffer packed;
+  ASSERT_EQ(ArrowIpcDecoderGetMessageMetadata(decoder.get(), packed.get(), &error),
             NANOARROW_OK)
       << error.message;
+  const char* packed_metadata = reinterpret_cast<const char*>(packed->data);
+
+  struct ArrowStringView value = ArrowCharView(nullptr);
+  ASSERT_EQ(
+      ArrowMetadataGetValue(packed_metadata, ArrowCharView("cache-control"), &value),
+      NANOARROW_OK);
   EXPECT_EQ(std::string(value.data, value.size_bytes), "no-store");
 
   // A key that isn't present leaves value_out untouched
   value = ArrowCharView(nullptr);
-  ASSERT_EQ(ArrowIpcDecoderGetMessageMetadataValue(
-                decoder.get(), ArrowCharView("not-a-key"), &value, &error),
-            NANOARROW_OK)
-      << error.message;
+  ASSERT_EQ(ArrowMetadataGetValue(packed_metadata, ArrowCharView("not-a-key"), &value),
+            NANOARROW_OK);
   EXPECT_EQ(value.data, nullptr);
 
   // A key which is a prefix of a present key is not a match
   value = ArrowCharView(nullptr);
-  ASSERT_EQ(ArrowIpcDecoderGetMessageMetadataValue(decoder.get(), ArrowCharView("cache"),
-                                                   &value, &error),
-            NANOARROW_OK)
-      << error.message;
+  ASSERT_EQ(ArrowMetadataGetValue(packed_metadata, ArrowCharView("cache"), &value),
+            NANOARROW_OK);
   EXPECT_EQ(value.data, nullptr);
 
   // The metadata applied to exactly one message: the next one has none
@@ -395,12 +396,20 @@ TEST(NanoarrowIpcTest, NanoarrowIpcEncoderMessageMetadataEmpty) {
   ASSERT_EQ(message->size_bytes, baseline->size_bytes);
   EXPECT_EQ(memcmp(message->data, baseline->data, message->size_bytes), 0);
 
-  // Reading in place from a message without metadata finds nothing
-  struct ArrowStringView value = ArrowCharView(nullptr);
-  ASSERT_EQ(ArrowIpcDecoderGetMessageMetadataValue(decoder.get(), ArrowCharView("key"),
-                                                   &value, &error),
+  // The decoded metadata of a message without any is empty, and is still safe to
+  // hand to ArrowMetadataGetValue()
+  EXPECT_EQ(DecodeMessageMetadata(message.get(), decoder.get()), KeyValues{});
+
+  nanoarrow::UniqueBuffer packed;
+  ASSERT_EQ(ArrowIpcDecoderGetMessageMetadata(decoder.get(), packed.get(), &error),
             NANOARROW_OK)
       << error.message;
+  ASSERT_EQ(packed->data, nullptr);
+
+  struct ArrowStringView value = ArrowCharView(nullptr);
+  ASSERT_EQ(ArrowMetadataGetValue(reinterpret_cast<const char*>(packed->data),
+                                  ArrowCharView("key"), &value),
+            NANOARROW_OK);
   EXPECT_EQ(value.data, nullptr);
 }
 
