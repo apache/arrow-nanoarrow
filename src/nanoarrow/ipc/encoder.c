@@ -46,6 +46,7 @@ struct ArrowIpcEncoderPrivate {
   struct ArrowBuffer buffers;
   struct ArrowBuffer nodes;
   int encoding_footer;
+  int dictionary_replacement;
   struct ArrowIpcDictionaryEncodings dictionary_encodings;
   // Metadata to attach to the next encoded Message (in nanoarrow's packed
   // representation), or an empty buffer if the next Message has no metadata.
@@ -76,6 +77,7 @@ ArrowErrorCode ArrowIpcEncoderInit(struct ArrowIpcEncoder* encoder) {
     return ESPIPE;
   }
   private->encoding_footer = 0;
+  private->dictionary_replacement = 0;
   ArrowBufferInit(&private->buffers);
   ArrowBufferInit(&private->nodes);
   ArrowIpcDictionaryEncodingsInit(&private->dictionary_encodings);
@@ -214,6 +216,14 @@ ArrowErrorCode ArrowIpcEncoderSetCompression(
   NANOARROW_RETURN_NOT_OK_WITH_ERROR(
       ArrowIpcSerialCompressor(&compressor, compression_type, compression_level), error);
   return ArrowIpcEncoderSetCompressor(encoder, &compressor);
+}
+
+void ArrowIpcEncoderSetDictionaryReplacement(struct ArrowIpcEncoder* encoder,
+                                             char enabled) {
+  NANOARROW_DCHECK(encoder != NULL && encoder->private_data != NULL);
+  struct ArrowIpcEncoderPrivate* private =
+      (struct ArrowIpcEncoderPrivate*)encoder->private_data;
+  private->dictionary_replacement = enabled != 0;
 }
 
 static ArrowErrorCode ArrowIpcEncoderWriteContinuationAndSize(struct ArrowBuffer* out,
@@ -555,6 +565,7 @@ static ArrowErrorCode ArrowIpcEncodeField(
 
   struct ArrowSchemaView schema_view;
   NANOARROW_RETURN_NOT_OK(ArrowSchemaViewInit(&schema_view, schema, error));
+  const struct ArrowSchema* value_schema = schema;
 
   if (schema_view.type == NANOARROW_TYPE_DICTIONARY) {
     const struct ArrowIpcDictionaryEncoding* encoding =
@@ -623,24 +634,16 @@ static ArrowErrorCode ArrowIpcEncodeField(
     // Add the dictionary encoding to the field
     FLATCC_RETURN_UNLESS_0(Field_dictionary_add(builder, dict_encoding_ref), error);
 
-    // Support dictionary values with children by encoding children from
-    // schema->dictionary (and add a roundtrip test for a nested value type).
-    // Using schema below would encode the index type's children instead and
-    // produce a Field whose type and children do not agree.
-    if (schema->dictionary->n_children != 0) {
-      ArrowErrorSet(error, "IPC encoding of dictionary values with children unsupported");
-      return ENOTSUP;
-    }
-
-    NANOARROW_RETURN_NOT_OK(ArrowSchemaViewInit(&schema_view, schema->dictionary, error));
+    value_schema = schema->dictionary;
+    NANOARROW_RETURN_NOT_OK(ArrowSchemaViewInit(&schema_view, value_schema, error));
   }
 
   NANOARROW_RETURN_NOT_OK(ArrowIpcEncodeFieldType(builder, &schema_view, error));
 
-  if (schema->n_children != 0) {
+  if (value_schema->n_children != 0) {
     FLATCC_RETURN_UNLESS_0(Field_children_start(builder), error);
     NANOARROW_RETURN_NOT_OK(
-        ArrowIpcEncodeFields(builder, schema, &ns(Field_children_push_start),
+        ArrowIpcEncodeFields(builder, value_schema, &ns(Field_children_push_start),
                              &ns(Field_children_push_end), dictionary_encodings, error));
     FLATCC_RETURN_UNLESS_0(Field_children_end(builder), error);
   }
@@ -658,7 +661,7 @@ static ArrowErrorCode ArrowIpcEncodeField(
 static ArrowErrorCode ArrowIpcEncodeSchema(
     flatcc_builder_t* builder, const struct ArrowSchema* schema,
     const struct ArrowIpcDictionaryEncodings* dictionary_encodings, int compressed_body,
-    struct ArrowError* error) {
+    int dictionary_replacement, struct ArrowError* error) {
   NANOARROW_DCHECK(schema->release != NULL);
 
   if (strcmp(schema->format, "+s") != 0) {
@@ -695,6 +698,10 @@ static ArrowErrorCode ArrowIpcEncodeSchema(
     ns(Feature_enum_t) feature = ns(Feature_COMPRESSED_BODY);
     FLATCC_RETURN_IF_NULL(ns(Feature_vec_push(builder, &feature)), error);
   }
+  if (dictionary_replacement && dictionary_encodings->encodings.size_bytes > 0) {
+    ns(Feature_enum_t) feature = ns(Feature_DICTIONARY_REPLACEMENT);
+    FLATCC_RETURN_IF_NULL(ns(Feature_vec_push(builder, &feature)), error);
+  }
   FLATCC_RETURN_UNLESS_0(Schema_features_end(builder), error);
 
   return NANOARROW_OK;
@@ -727,7 +734,8 @@ ArrowErrorCode ArrowIpcEncoderEncodeSchema(struct ArrowIpcEncoder* encoder,
 
   NANOARROW_RETURN_NOT_OK(ArrowIpcEncodeSchema(
       builder, schema, &private->dictionary_encodings,
-      ArrowIpcEncoderCodec(private) != NANOARROW_IPC_COMPRESSION_TYPE_NONE, error));
+      ArrowIpcEncoderCodec(private) != NANOARROW_IPC_COMPRESSION_TYPE_NONE,
+      private->dictionary_replacement, error));
 
   FLATCC_RETURN_UNLESS_0(Message_header_Schema_end(builder), error);
 
@@ -1124,6 +1132,9 @@ static ArrowErrorCode ArrowIpcEncoderEncodeDictionaryBatch(
   FLATCC_RETURN_UNLESS_0(DictionaryBatch_data_end(builder), error);
   FLATCC_RETURN_UNLESS_0(DictionaryBatch_isDelta_add(builder, is_delta ? 1 : 0), error);
   FLATCC_RETURN_UNLESS_0(Message_header_DictionaryBatch_end(builder), error);
+
+  NANOARROW_RETURN_NOT_OK(ArrowIpcEncodeMessageMetadata(private, error));
+
   FLATCC_RETURN_UNLESS_0(Message_bodyLength_add(builder, buffer_encoder->body_length),
                          error);
   FLATCC_RETURN_IF_NULL(ns(Message_end_as_root(builder)), error);
@@ -1180,7 +1191,7 @@ ArrowErrorCode ArrowIpcEncoderEncodeFooter(struct ArrowIpcEncoder* encoder,
       builder, &footer->schema, &footer->dictionaries,
       private->has_compressed_body ||
           ArrowIpcEncoderCodec(private) != NANOARROW_IPC_COMPRESSION_TYPE_NONE,
-      error));
+      /*dictionary_replacement=*/0, error));
   FLATCC_RETURN_UNLESS_0(Footer_schema_end(builder), error);
 
   const struct ArrowIpcFileBlock* blocks =

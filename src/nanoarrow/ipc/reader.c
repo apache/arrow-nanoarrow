@@ -389,14 +389,6 @@ static int ArrowIpcArrayStreamReaderReadSchemaIfNeeded(
     return EINVAL;
   }
 
-  // ...or if it uses features we don't support
-  if (private_data->decoder.feature_flags &
-      NANOARROW_IPC_FEATURE_DICTIONARY_REPLACEMENT) {
-    ArrowErrorSet(&private_data->error,
-                  "This stream uses unsupported feature DICTIONARY_REPLACEMENT");
-    return EINVAL;
-  }
-
   // Notify the decoder of buffer endianness
   NANOARROW_RETURN_NOT_OK_WITH_ERROR(
       ArrowIpcDecoderSetEndianness(&private_data->decoder,
