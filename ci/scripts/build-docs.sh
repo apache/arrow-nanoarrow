@@ -82,8 +82,10 @@ main() {
    pushd docs
 
 
-   # Use the README as the docs homepage
-   pandoc ../README.md --from markdown --to rst -s -o source/README_generated.rst
+   # Use the README as the docs homepage. Badges are stripped: the CSP on
+   # arrow.apache.org only allows images from *.apache.org.
+   sed -e '/^\[!\[/d' ../README.md | \
+     pandoc --from markdown --to rst -s -o source/README_generated.rst
 
    # Use R README as the getting started guide for R
    pandoc ../r/README.md --from markdown --to rst -s -o source/getting-started/r.rst
