@@ -589,7 +589,9 @@ static inline ArrowErrorCode ArrowArrayAppendBytes(struct ArrowArray* array,
     bvt.inlined.size = (int32_t)value.size_bytes;
 
     if (value.size_bytes <= NANOARROW_BINARY_VIEW_INLINE_SIZE) {
-      memcpy(bvt.inlined.data, value.data.as_char, value.size_bytes);
+      if (value.size_bytes > 0) {
+        memcpy(bvt.inlined.data, value.data.as_char, value.size_bytes);
+      }
       memset(bvt.inlined.data + bvt.inlined.size, 0,
              NANOARROW_BINARY_VIEW_INLINE_SIZE - bvt.inlined.size);
     } else {

@@ -1193,6 +1193,30 @@ TEST(ArrayTest, ArrayTestAppendToStringViewArray) {
   });
 };
 
+TEST(ArrayTest, ArrayTestAppendNullDataToViewArray) {
+  for (enum ArrowType arrow_type :
+       {NANOARROW_TYPE_BINARY_VIEW, NANOARROW_TYPE_STRING_VIEW}) {
+    SCOPED_TRACE(ArrowTypeString(arrow_type));
+    nanoarrow::UniqueArray array;
+    ASSERT_EQ(ArrowArrayInitFromType(array.get(), arrow_type), NANOARROW_OK);
+    ASSERT_EQ(ArrowArrayStartAppending(array.get()), NANOARROW_OK);
+
+    // Empty buffer and string views may have a null data pointer.
+    // Run with UBSan to detect passing these pointers to memcpy, even with size 0.
+    ASSERT_EQ(ArrowArrayAppendBytes(array.get(), {{nullptr}, 0}), NANOARROW_OK);
+    ASSERT_EQ(ArrowArrayAppendString(array.get(), ArrowCharView(nullptr)), NANOARROW_OK);
+    ASSERT_EQ(ArrowArrayFinishBuildingDefault(array.get(), nullptr), NANOARROW_OK);
+
+    EXPECT_EQ(array->length, 2);
+    EXPECT_EQ(array->null_count, 0);
+    auto inline_buffer =
+        reinterpret_cast<const union ArrowBinaryView*>(array->buffers[1]);
+    for (int64_t i = 0; i < array->length; i++) {
+      EXPECT_EQ(inline_buffer[i].inlined.size, 0);
+    }
+  }
+}
+
 TEST(ArrayTest, ArrayTestAppendToFixedSizeBinaryArray) {
   struct ArrowArray array;
   struct ArrowSchema schema;
