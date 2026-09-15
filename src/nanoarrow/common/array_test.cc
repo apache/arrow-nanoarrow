@@ -2441,6 +2441,47 @@ TEST(ArrayTest, ArrayViewTestBasic) {
   ArrowArrayViewReset(&array_view);
 }
 
+TEST(ArrayTest, ArrayViewTestMissingValidityUnknownNullCount) {
+  struct ArrowError error;
+
+  // A missing validity buffer with null_count == -1 is valid
+  int32_t values[] = {11, 12, 13};
+  const void* buffers[] = {nullptr, values};
+
+  nanoarrow::UniqueArray array;
+  array->length = 2;
+  array->offset = 1;
+  array->null_count = -1;
+  array->n_buffers = 2;
+  array->n_children = 0;
+  array->buffers = buffers;
+  array->children = nullptr;
+  array->dictionary = nullptr;
+  array->release = [](struct ArrowArray*) {};
+
+  nanoarrow::UniqueArrayView array_view;
+  ArrowArrayViewInitFromType(array_view.get(), NANOARROW_TYPE_INT32);
+  ASSERT_EQ(ArrowArrayViewSetArray(array_view.get(), array.get(), &error), NANOARROW_OK)
+      << error.message;
+  EXPECT_EQ(
+      ArrowArrayViewValidate(array_view.get(), NANOARROW_VALIDATION_LEVEL_FULL, &error),
+      NANOARROW_OK)
+      << error.message;
+  EXPECT_EQ(ArrowArrayViewGetBufferView(array_view.get(), 0).size_bytes, 0);
+  EXPECT_EQ(ArrowArrayViewComputeNullCount(array_view.get()), 0);
+  EXPECT_EQ(ArrowArrayViewIsNull(array_view.get(), 0), 0);
+  EXPECT_EQ(ArrowArrayViewIsNull(array_view.get(), 1), 0);
+  EXPECT_EQ(ArrowArrayViewGetIntUnsafe(array_view.get(), 0), 12);
+  EXPECT_EQ(ArrowArrayViewGetIntUnsafe(array_view.get(), 1), 13);
+
+  // A missing validity buffer with null_count > 0 is still an error
+  array->null_count = 1;
+  EXPECT_EQ(ArrowArrayViewSetArray(array_view.get(), array.get(), &error), EINVAL);
+  EXPECT_STREQ(error.message,
+               "Expected int32 array buffer 0 to have size >= 1 bytes but found buffer "
+               "with 0 bytes");
+}
+
 TEST(ArrayTest, ArrayViewCompareTestStructure) {
   struct ArrowError error;
   struct ArrowArrayView actual;

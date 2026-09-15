@@ -1612,7 +1612,8 @@ static int ArrowArrayViewValidateMinimal(struct ArrowArrayView* array_view,
 
     switch (array_view->layout.buffer_type[i]) {
       case NANOARROW_BUFFER_TYPE_VALIDITY:
-        if (array_view->null_count == 0 && array_view->buffer_views[i].size_bytes == 0) {
+        // Allow a missing validity buffer unless null_count > 0
+        if (array_view->null_count <= 0 && array_view->buffer_views[i].size_bytes == 0) {
           continue;
         }
 
