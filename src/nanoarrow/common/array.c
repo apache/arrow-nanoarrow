@@ -1820,14 +1820,16 @@ static int ArrowArrayViewValidateDefault(struct ArrowArrayView* array_view,
     case NANOARROW_TYPE_STRING:
     case NANOARROW_TYPE_BINARY:
       if (array_view->buffer_views[1].size_bytes != 0) {
-        first_offset = array_view->buffer_views[1].data.as_int32[array_view->offset];
+        first_offset = ArrowBufferViewGetInt32Unsafe(&array_view->buffer_views[1],
+                                                     array_view->offset);
         if (first_offset < 0) {
           ArrowErrorSet(error, "Expected first offset >= 0 but found %" PRId64,
                         first_offset);
           return EINVAL;
         }
 
-        last_offset = array_view->buffer_views[1].data.as_int32[offset_plus_length];
+        last_offset = ArrowBufferViewGetInt32Unsafe(&array_view->buffer_views[1],
+                                                    offset_plus_length);
         if (last_offset < 0) {
           ArrowErrorSet(error, "Expected last offset >= 0 but found %" PRId64,
                         last_offset);
@@ -1856,14 +1858,16 @@ static int ArrowArrayViewValidateDefault(struct ArrowArrayView* array_view,
     case NANOARROW_TYPE_LARGE_STRING:
     case NANOARROW_TYPE_LARGE_BINARY:
       if (array_view->buffer_views[1].size_bytes != 0) {
-        first_offset = array_view->buffer_views[1].data.as_int64[array_view->offset];
+        first_offset = ArrowBufferViewGetInt64Unsafe(&array_view->buffer_views[1],
+                                                     array_view->offset);
         if (first_offset < 0) {
           ArrowErrorSet(error, "Expected first offset >= 0 but found %" PRId64,
                         first_offset);
           return EINVAL;
         }
 
-        last_offset = array_view->buffer_views[1].data.as_int64[offset_plus_length];
+        last_offset = ArrowBufferViewGetInt64Unsafe(&array_view->buffer_views[1],
+                                                    offset_plus_length);
         if (last_offset < 0) {
           ArrowErrorSet(error, "Expected last offset >= 0 but found %" PRId64,
                         last_offset);
@@ -1905,14 +1909,16 @@ static int ArrowArrayViewValidateDefault(struct ArrowArrayView* array_view,
     case NANOARROW_TYPE_LIST:
     case NANOARROW_TYPE_MAP:
       if (array_view->buffer_views[1].size_bytes != 0) {
-        first_offset = array_view->buffer_views[1].data.as_int32[array_view->offset];
+        first_offset = ArrowBufferViewGetInt32Unsafe(&array_view->buffer_views[1],
+                                                     array_view->offset);
         if (first_offset < 0) {
           ArrowErrorSet(error, "Expected first offset >= 0 but found %" PRId64,
                         first_offset);
           return EINVAL;
         }
 
-        last_offset = array_view->buffer_views[1].data.as_int32[offset_plus_length];
+        last_offset = ArrowBufferViewGetInt32Unsafe(&array_view->buffer_views[1],
+                                                    offset_plus_length);
         if (last_offset < 0) {
           ArrowErrorSet(error, "Expected last offset >= 0 but found %" PRId64,
                         last_offset);
@@ -1933,14 +1939,16 @@ static int ArrowArrayViewValidateDefault(struct ArrowArrayView* array_view,
 
     case NANOARROW_TYPE_LARGE_LIST:
       if (array_view->buffer_views[1].size_bytes != 0) {
-        first_offset = array_view->buffer_views[1].data.as_int64[array_view->offset];
+        first_offset = ArrowBufferViewGetInt64Unsafe(&array_view->buffer_views[1],
+                                                     array_view->offset);
         if (first_offset < 0) {
           ArrowErrorSet(error, "Expected first offset >= 0 but found %" PRId64,
                         first_offset);
           return EINVAL;
         }
 
-        last_offset = array_view->buffer_views[1].data.as_int64[offset_plus_length];
+        last_offset = ArrowBufferViewGetInt64Unsafe(&array_view->buffer_views[1],
+                                                    offset_plus_length);
         if (last_offset < 0) {
           ArrowErrorSet(error, "Expected last offset >= 0 but found %" PRId64,
                         last_offset);
@@ -2037,7 +2045,8 @@ static int ArrowAssertIncreasingInt32(struct ArrowBufferView view,
   }
 
   for (int64_t i = 1; i < view.size_bytes / (int64_t)sizeof(int32_t); i++) {
-    if (view.data.as_int32[i] < view.data.as_int32[i - 1]) {
+    if (ArrowBufferViewGetInt32Unsafe(&view, i) <
+        ArrowBufferViewGetInt32Unsafe(&view, i - 1)) {
       ArrowErrorSet(error, "[%" PRId64 "] Expected element size >= 0", i);
       return EINVAL;
     }
@@ -2053,7 +2062,8 @@ static int ArrowAssertIncreasingInt64(struct ArrowBufferView view,
   }
 
   for (int64_t i = 1; i < view.size_bytes / (int64_t)sizeof(int64_t); i++) {
-    if (view.data.as_int64[i] < view.data.as_int64[i - 1]) {
+    if (ArrowBufferViewGetInt64Unsafe(&view, i) <
+        ArrowBufferViewGetInt64Unsafe(&view, i - 1)) {
       ArrowErrorSet(error, "[%" PRId64 "] Expected element size >= 0", i);
       return EINVAL;
     }
@@ -2110,14 +2120,16 @@ static int ArrowArrayViewValidateFull(struct ArrowArrayView* array_view,
         }
         if (array_view->layout.element_size_bits[i] == 32) {
           struct ArrowBufferView sliced_offsets;
-          sliced_offsets.data.as_int32 =
-              array_view->buffer_views[i].data.as_int32 + array_view->offset;
+          sliced_offsets.data.as_uint8 =
+              array_view->buffer_views[i].data.as_uint8 +
+              array_view->offset * sizeof(int32_t);
           sliced_offsets.size_bytes = (array_view->length + 1) * sizeof(int32_t);
           NANOARROW_RETURN_NOT_OK(ArrowAssertIncreasingInt32(sliced_offsets, error));
         } else {
           struct ArrowBufferView sliced_offsets;
-          sliced_offsets.data.as_int64 =
-              array_view->buffer_views[i].data.as_int64 + array_view->offset;
+          sliced_offsets.data.as_uint8 =
+              array_view->buffer_views[i].data.as_uint8 +
+              array_view->offset * sizeof(int64_t);
           sliced_offsets.size_bytes = (array_view->length + 1) * sizeof(int64_t);
           NANOARROW_RETURN_NOT_OK(ArrowAssertIncreasingInt64(sliced_offsets, error));
         }

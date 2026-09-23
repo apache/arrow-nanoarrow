@@ -714,6 +714,20 @@ struct ArrowBufferView {
   int64_t size_bytes;
 };
 
+static inline int32_t ArrowBufferViewGetInt32Unsafe(const struct ArrowBufferView* view,
+                                                    int64_t i) {
+  int32_t value;
+  memcpy(&value, view->data.as_uint8 + i * sizeof(int32_t), sizeof(value));
+  return value;
+}
+
+static inline int64_t ArrowBufferViewGetInt64Unsafe(const struct ArrowBufferView* view,
+                                                    int64_t i) {
+  int64_t value;
+  memcpy(&value, view->data.as_uint8 + i * sizeof(int64_t), sizeof(value));
+  return value;
+}
+
 /// \brief Array buffer allocation and deallocation
 /// \ingroup nanoarrow-buffer
 ///

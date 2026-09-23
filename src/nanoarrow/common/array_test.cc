@@ -2907,6 +2907,46 @@ TEST(ArrayTest, ArrayViewTestString) {
   ArrowArrayViewReset(&array_view);
 }
 
+TEST(ArrayTest, ArrayViewTestValidateUnalignedOffsets) {
+  struct ArrowError error;
+
+  {
+    struct ArrowArrayView array_view;
+    uint8_t offsets[1 + 3 * sizeof(int32_t)] = {};
+    const int32_t expected[] = {0, 1, 3};
+    memcpy(offsets + 1, expected, sizeof(expected));
+
+    ArrowArrayViewInitFromType(&array_view, NANOARROW_TYPE_STRING);
+    ArrowArrayViewSetLength(&array_view, 2);
+    array_view.buffer_views[1].data.as_uint8 = offsets + 1;
+    array_view.buffer_views[1].size_bytes = sizeof(expected);
+    array_view.buffer_views[2].data.as_uint8 = offsets;
+    array_view.buffer_views[2].size_bytes = 3;
+
+    EXPECT_EQ(ArrowArrayViewValidate(&array_view, NANOARROW_VALIDATION_LEVEL_FULL, &error),
+              NANOARROW_OK);
+    ArrowArrayViewReset(&array_view);
+  }
+
+  {
+    struct ArrowArrayView array_view;
+    uint8_t offsets[1 + 3 * sizeof(int64_t)] = {};
+    const int64_t expected[] = {0, 1, 3};
+    memcpy(offsets + 1, expected, sizeof(expected));
+
+    ArrowArrayViewInitFromType(&array_view, NANOARROW_TYPE_LARGE_STRING);
+    ArrowArrayViewSetLength(&array_view, 2);
+    array_view.buffer_views[1].data.as_uint8 = offsets + 1;
+    array_view.buffer_views[1].size_bytes = sizeof(expected);
+    array_view.buffer_views[2].data.as_uint8 = offsets;
+    array_view.buffer_views[2].size_bytes = 3;
+
+    EXPECT_EQ(ArrowArrayViewValidate(&array_view, NANOARROW_VALIDATION_LEVEL_FULL, &error),
+              NANOARROW_OK);
+    ArrowArrayViewReset(&array_view);
+  }
+}
+
 TEST(ArrayTest, ArrayViewTestLargeString) {
   struct ArrowArrayView array_view;
   struct ArrowError error;
