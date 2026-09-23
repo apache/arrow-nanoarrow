@@ -2120,16 +2120,14 @@ static int ArrowArrayViewValidateFull(struct ArrowArrayView* array_view,
         }
         if (array_view->layout.element_size_bits[i] == 32) {
           struct ArrowBufferView sliced_offsets;
-          sliced_offsets.data.as_uint8 =
-              array_view->buffer_views[i].data.as_uint8 +
-              array_view->offset * sizeof(int32_t);
+          sliced_offsets.data.as_uint8 = array_view->buffer_views[i].data.as_uint8 +
+                                         array_view->offset * sizeof(int32_t);
           sliced_offsets.size_bytes = (array_view->length + 1) * sizeof(int32_t);
           NANOARROW_RETURN_NOT_OK(ArrowAssertIncreasingInt32(sliced_offsets, error));
         } else {
           struct ArrowBufferView sliced_offsets;
-          sliced_offsets.data.as_uint8 =
-              array_view->buffer_views[i].data.as_uint8 +
-              array_view->offset * sizeof(int64_t);
+          sliced_offsets.data.as_uint8 = array_view->buffer_views[i].data.as_uint8 +
+                                         array_view->offset * sizeof(int64_t);
           sliced_offsets.size_bytes = (array_view->length + 1) * sizeof(int64_t);
           NANOARROW_RETURN_NOT_OK(ArrowAssertIncreasingInt64(sliced_offsets, error));
         }

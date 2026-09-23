@@ -2923,8 +2923,9 @@ TEST(ArrayTest, ArrayViewTestValidateUnalignedOffsets) {
     array_view.buffer_views[2].data.as_uint8 = offsets;
     array_view.buffer_views[2].size_bytes = 3;
 
-    EXPECT_EQ(ArrowArrayViewValidate(&array_view, NANOARROW_VALIDATION_LEVEL_FULL, &error),
-              NANOARROW_OK);
+    EXPECT_EQ(
+        ArrowArrayViewValidate(&array_view, NANOARROW_VALIDATION_LEVEL_FULL, &error),
+        NANOARROW_OK);
     ArrowArrayViewReset(&array_view);
   }
 
@@ -2941,8 +2942,9 @@ TEST(ArrayTest, ArrayViewTestValidateUnalignedOffsets) {
     array_view.buffer_views[2].data.as_uint8 = offsets;
     array_view.buffer_views[2].size_bytes = 3;
 
-    EXPECT_EQ(ArrowArrayViewValidate(&array_view, NANOARROW_VALIDATION_LEVEL_FULL, &error),
-              NANOARROW_OK);
+    EXPECT_EQ(
+        ArrowArrayViewValidate(&array_view, NANOARROW_VALIDATION_LEVEL_FULL, &error),
+        NANOARROW_OK);
     ArrowArrayViewReset(&array_view);
   }
 }
