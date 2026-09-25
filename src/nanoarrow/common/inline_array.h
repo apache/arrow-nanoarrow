@@ -584,6 +584,10 @@ static inline ArrowErrorCode ArrowArrayAppendBytes(struct ArrowArray* array,
 
   if (private_data->storage_type == NANOARROW_TYPE_STRING_VIEW ||
       private_data->storage_type == NANOARROW_TYPE_BINARY_VIEW) {
+    if (value.size_bytes > INT32_MAX) {
+      return EOVERFLOW;
+    }
+
     struct ArrowBuffer* data_buffer = ArrowArrayBuffer(array, 1);
     union ArrowBinaryView bvt;
     bvt.inlined.size = (int32_t)value.size_bytes;
