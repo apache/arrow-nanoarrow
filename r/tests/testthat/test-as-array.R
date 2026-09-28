@@ -860,6 +860,10 @@ test_that("as_nanoarrow_array() works for AsIs", {
     expect_identical(infer_nanoarrow_schema(array$children$x)$format, "z")
     expect_identical(array$children$x$null_count, 1L)
     expect_identical(as.raw(array$children$x$buffers[[3]]), as.raw(1:3))
+
+    # Only AsIs is stripped, not the Date class ahead of it
+    x <- structure(18262, class = c("Date", "AsIs"))
+    expect_error(as_nanoarrow_array(x, schema = na_int32()), "object of type Date")
   })
 })
 

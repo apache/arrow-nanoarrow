@@ -199,7 +199,7 @@ as_nanoarrow_array.blob <- function(x, ..., schema = NULL) {
 #' @export
 as_nanoarrow_array.AsIs <- function(x, ..., schema = NULL) {
   # NextMethod() goes directly to `default`
-  class(x) <- class(x)[-1]
+  class(x) <- setdiff(class(x), "AsIs")
   as_nanoarrow_array(x, schema = schema)
 }
 

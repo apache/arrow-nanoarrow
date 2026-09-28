@@ -174,7 +174,7 @@ infer_nanoarrow_schema.vctrs_list_of <- function(x, ...) {
 #' @export
 infer_nanoarrow_schema.AsIs <- function(x, ...) {
   # NextMethod() goes directly to `default`
-  class(x) <- class(x)[-1]
+  class(x) <- setdiff(class(x), "AsIs")
   infer_nanoarrow_schema(x)
 }
 

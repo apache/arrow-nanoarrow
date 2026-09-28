@@ -109,6 +109,12 @@ test_that("infer_nanoarrow_schema() method works for AsIs", {
     infer_nanoarrow_schema(I(integer()))$format,
     infer_nanoarrow_schema(integer())$format
   )
+
+  # Only AsIs is stripped, not the class ahead of it
+  expect_error(
+    infer_nanoarrow_schema(structure(integer(), class = c("foo", "AsIs"))),
+    "class foo"
+  )
 })
 
 test_that("infer_nanoarrow_schema() returns list of null for empty or all null list", {
