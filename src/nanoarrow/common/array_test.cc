@@ -1267,6 +1267,19 @@ TEST(ArrayTest, ArrayTestAppendToBinaryArrayErrors) {
   ArrowArrayRelease(&array);
 }
 
+TEST(ArrayTest, ArrayTestAppendToBinaryViewArrayErrors) {
+  struct ArrowArray array;
+
+  ASSERT_EQ(ArrowArrayInitFromType(&array, NANOARROW_TYPE_BINARY_VIEW), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayStartAppending(&array), NANOARROW_OK);
+  struct ArrowBufferView item;
+  item.data.as_char = "";
+  item.size_bytes = static_cast<int64_t>(INT32_MAX) + 1;
+  EXPECT_EQ(ArrowArrayAppendBytes(&array, item), EOVERFLOW);
+
+  ArrowArrayRelease(&array);
+}
+
 TEST(ArrayTest, ArrayTestAppendToIntervalArrayYearMonth) {
   struct ArrowArray array;
 
