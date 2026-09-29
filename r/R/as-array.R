@@ -197,6 +197,13 @@ as_nanoarrow_array.blob <- function(x, ..., schema = NULL) {
 }
 
 #' @export
+as_nanoarrow_array.AsIs <- function(x, ..., schema = NULL) {
+  # NextMethod() goes directly to `default`
+  class(x) <- setdiff(class(x), "AsIs")
+  as_nanoarrow_array(x, schema = schema)
+}
+
+#' @export
 as_nanoarrow_array.matrix <- function(x, ..., schema = NULL) {
   if (is.null(schema)) {
     schema <- infer_nanoarrow_schema(x)

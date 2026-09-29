@@ -847,6 +847,26 @@ test_that("as_nanoarrow_array() works for list(integer64()) -> na_list(na_int64(
   )
 })
 
+test_that("as_nanoarrow_array() works for AsIs", {
+  withr::with_options(list(nanoarrow.without_arrow = TRUE), {
+    array <- as_nanoarrow_array(I(c(1.5, NA)))
+    expect_identical(infer_nanoarrow_schema(array)$format, "g")
+    expect_identical(convert_array(array), c(1.5, NA))
+
+    array <- as_nanoarrow_array(I(1:3), schema = na_double())
+    expect_identical(convert_array(array), c(1, 2, 3))
+
+    array <- as_nanoarrow_array(data.frame(x = I(list(as.raw(1:3), NULL))))
+    expect_identical(infer_nanoarrow_schema(array$children$x)$format, "z")
+    expect_identical(array$children$x$null_count, 1L)
+    expect_identical(as.raw(array$children$x$buffers[[3]]), as.raw(1:3))
+
+    # Only AsIs is stripped, not the Date class ahead of it
+    x <- structure(18262, class = c("Date", "AsIs"))
+    expect_error(as_nanoarrow_array(x, schema = na_int32()), "object of type Date")
+  })
+})
+
 test_that("as_nanoarrow_array() works for unspecified() -> na_na()", {
   skip_if_not_installed("vctrs")
 
