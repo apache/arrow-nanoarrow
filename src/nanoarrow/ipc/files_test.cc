@@ -214,7 +214,7 @@ class TestFile {
   }
 
   ArrowErrorCode WriteNanoarrowStream(const nanoarrow::UniqueSchema& schema,
-                                      const std::vector<nanoarrow::UniqueArray>& arrays,
+                                      std::vector<nanoarrow::UniqueArray>& arrays,
                                       enum ArrowIpcCompressionType codec,
                                       struct ArrowBuffer* buffer,
                                       struct ArrowError* error) {
@@ -226,19 +226,25 @@ class TestFile {
     NANOARROW_RETURN_NOT_OK(ArrowIpcWriterSetCompression(
         writer.get(), codec, NANOARROW_IPC_COMPRESSION_LEVEL_DEFAULT, error));
 
-    nanoarrow::UniqueArrayView array_view;
+    nanoarrow::UniqueSchema schema_copy;
+    NANOARROW_RETURN_NOT_OK(ArrowSchemaDeepCopy(schema.get(), schema_copy.get()));
+    nanoarrow::UniqueArrayStream array_stream;
     NANOARROW_RETURN_NOT_OK(
-        ArrowArrayViewInitFromSchema(array_view.get(), schema.get(), error));
+        ArrowBasicArrayStreamInit(array_stream.get(), schema_copy.get(), arrays.size()));
 
-    NANOARROW_RETURN_NOT_OK(ArrowIpcWriterWriteSchema(writer.get(), schema.get(), error));
-    for (const auto& array : arrays) {
-      NANOARROW_RETURN_NOT_OK(
-          ArrowArrayViewSetArray(array_view.get(), array.get(), error));
-
-      NANOARROW_RETURN_NOT_OK(
-          ArrowIpcWriterWriteArrayView(writer.get(), array_view.get(), error));
+    for (size_t i = 0; i < arrays.size(); i++) {
+      // Preserve the decoded array for the subsequent Arrow C++ comparison while
+      // giving the basic stream an independently releasable shared clone.
+      nanoarrow::UniqueArray shared;
+      nanoarrow::UniqueArray clone;
+      NANOARROW_RETURN_NOT_OK(ArrowArrayMoveShared(arrays[i].get(), shared.get()));
+      ArrowErrorCode result = ArrowArrayCloneShared(shared.get(), clone.get());
+      ArrowArrayMove(shared.get(), arrays[i].get());
+      NANOARROW_RETURN_NOT_OK(result);
+      ArrowBasicArrayStreamSetArray(array_stream.get(), i, clone.get());
     }
-    return ArrowIpcWriterWriteArrayView(writer.get(), nullptr, error);
+
+    return ArrowIpcWriterWriteArrayStream(writer.get(), array_stream.get(), error);
   }
 
   void TestEqualsArrowCpp(const std::string& dir_prefix,
@@ -529,9 +535,9 @@ INSTANTIATE_TEST_SUITE_P(
         TestFile::OK("generated_primitive.stream"),
         TestFile::OK("generated_recursive_nested.stream"),
         TestFile::OK("generated_union.stream"),
-        TestFile::ReadOnly("generated_dictionary_unsigned.stream"),
-        TestFile::ReadOnly("generated_dictionary.stream"),
-        TestFile::ReadOnly("generated_nested_dictionary.stream"),
+        TestFile::OK("generated_dictionary_unsigned.stream"),
+        TestFile::OK("generated_dictionary.stream"),
+        TestFile::OK("generated_nested_dictionary.stream"),
         TestFile::ReadOnly("generated_extension.stream")
         // Comment to keep last line from wrapping
         ));
@@ -608,10 +614,10 @@ INSTANTIATE_TEST_SUITE_P(
         TestFile::OK("cpp-21.0.0/generated_primitive_zerolength.stream"),
         TestFile::OK("cpp-21.0.0/generated_recursive_nested.stream"),
         TestFile::OK("cpp-21.0.0/generated_union.stream"),
-        TestFile::ReadOnly("cpp-21.0.0/generated_dictionary.stream"),
-        TestFile::ReadOnly("cpp-21.0.0/generated_dictionary_unsigned.stream"),
+        TestFile::OK("cpp-21.0.0/generated_dictionary.stream"),
+        TestFile::OK("cpp-21.0.0/generated_dictionary_unsigned.stream"),
         TestFile::ReadOnly("cpp-21.0.0/generated_extension.stream"),
-        TestFile::ReadOnly("cpp-21.0.0/generated_nested_dictionary.stream"),
+        TestFile::OK("cpp-21.0.0/generated_nested_dictionary.stream"),
         TestFile::NotSupported("cpp-21.0.0/generated_list_view.stream"),
         TestFile::NotSupported("cpp-21.0.0/generated_binary_view.stream"),
         TestFile::NotSupported("cpp-21.0.0/generated_run_end_encoded.stream")
