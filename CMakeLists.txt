@@ -218,25 +218,42 @@ if(NANOARROW_IPC)
             ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
 
   elseif(NOT NANOARROW_FLATCC_ROOT_DIR)
-    add_library(flatccrt STATIC IMPORTED)
+    # Prefer a static flatccrt but fall back to a shared one
+    find_library(NANOARROW_FLATCC_LIBRARY
+                 NAMES "${CMAKE_STATIC_LIBRARY_PREFIX}flatccrt${CMAKE_STATIC_LIBRARY_SUFFIX}"
+                       flatccrt
+                 PATHS "${NANOARROW_FLATCC_LIB_DIR}"
+                 NO_DEFAULT_PATH REQUIRED)
+    add_library(flatccrt UNKNOWN IMPORTED)
     set_target_properties(flatccrt
-                          PROPERTIES IMPORTED_LOCATION
-                                     "${NANOARROW_FLATCC_LIB_DIR}/${CMAKE_STATIC_LIBRARY_PREFIX}flatccrt${CMAKE_STATIC_LIBRARY_SUFFIX}"
+                          PROPERTIES IMPORTED_LOCATION "${NANOARROW_FLATCC_LIBRARY}"
                                      INTERFACE_INCLUDE_DIRECTORIES
                                      "${NANOARROW_FLATCC_INCLUDE_DIR}")
 
   elseif(NOT NANOARROW_FLATCC_INCLUDE_DIR)
     set(NANOARROW_FLATCC_INCLUDE_DIR "${NANOARROW_FLATCC_ROOT_DIR}/include")
-    add_library(flatccrt STATIC IMPORTED)
+    # Prefer a static flatccrt but fall back to a shared one
+    find_library(NANOARROW_FLATCC_LIBRARY
+                 NAMES "${CMAKE_STATIC_LIBRARY_PREFIX}flatccrt${CMAKE_STATIC_LIBRARY_SUFFIX}"
+                       flatccrt
+                 PATHS "${NANOARROW_FLATCC_ROOT_DIR}/lib"
+                 NO_DEFAULT_PATH REQUIRED)
+    find_library(NANOARROW_FLATCC_LIBRARY_DEBUG
+                 NAMES "${CMAKE_STATIC_LIBRARY_PREFIX}flatccrt_d${CMAKE_STATIC_LIBRARY_SUFFIX}"
+                       flatccrt_d
+                 PATHS "${NANOARROW_FLATCC_ROOT_DIR}/debug/lib"
+                 NO_DEFAULT_PATH)
+    add_library(flatccrt UNKNOWN IMPORTED)
     set_target_properties(flatccrt
-                          PROPERTIES IMPORTED_LOCATION
-                                     "${NANOARROW_FLATCC_ROOT_DIR}/lib/${CMAKE_STATIC_LIBRARY_PREFIX}flatccrt${CMAKE_STATIC_LIBRARY_SUFFIX}"
-                                     IMPORTED_LOCATION_DEBUG
-                                     "${NANOARROW_FLATCC_ROOT_DIR}/debug/lib/${CMAKE_STATIC_LIBRARY_PREFIX}flatccrt_d${CMAKE_STATIC_LIBRARY_SUFFIX}"
+                          PROPERTIES IMPORTED_LOCATION "${NANOARROW_FLATCC_LIBRARY}"
                                      IMPORTED_LOCATION_RELEASE
-                                     "${NANOARROW_FLATCC_ROOT_DIR}/lib/${CMAKE_STATIC_LIBRARY_PREFIX}flatccrt${CMAKE_STATIC_LIBRARY_SUFFIX}"
+                                     "${NANOARROW_FLATCC_LIBRARY}"
                                      INTERFACE_INCLUDE_DIRECTORIES
                                      "${NANOARROW_FLATCC_INCLUDE_DIR}")
+    if(NANOARROW_FLATCC_LIBRARY_DEBUG)
+      set_target_properties(flatccrt PROPERTIES IMPORTED_LOCATION_DEBUG
+                                                "${NANOARROW_FLATCC_LIBRARY_DEBUG}")
+    endif()
   endif()
 
   if(NANOARROW_IPC_WITH_ZSTD)
