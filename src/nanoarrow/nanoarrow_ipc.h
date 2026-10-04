@@ -1192,6 +1192,15 @@ NANOARROW_DLL ArrowErrorCode ArrowIpcWriterWriteDictionaryBatch(
 
 /// \brief Write an entire stream (including EOS) to the output byte stream
 ///
+/// Dictionaries are written before the first array that references them. For
+/// subsequent arrays, a dictionary is written again (as a replacement) unless it has
+/// the same length, offset, and null count and points to the same buffers as the
+/// corresponding dictionary of the previous array (e.g., because the producer shares
+/// one dictionary among all arrays of the stream). To ensure that buffer addresses
+/// are not reused for different values, the previous array is kept alive until the
+/// next array is written. Buffers must not be modified while they are referenced by
+/// an exported array. When writing a file, a changed dictionary returns EINVAL.
+///
 /// Errors are propagated from the underlying encoder, array stream, and output byte
 /// stream.
 NANOARROW_DLL ArrowErrorCode ArrowIpcWriterWriteArrayStream(struct ArrowIpcWriter* writer,
