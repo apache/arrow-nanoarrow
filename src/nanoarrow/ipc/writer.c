@@ -403,18 +403,17 @@ ArrowErrorCode ArrowIpcWriterWriteDictionaryBatch(
 // Walk the array in the same depth-first order the schema encoder uses to assign
 // dictionary ids (see ArrowIpcDictionaryEncodingsAppendSchema): a dictionary-encoded
 // node claims the next id before descending into its children and then its values.
-// Emitting a full (non-delta) DictionaryBatch for each dictionary before every
-// RecordBatch keeps each batch's indices valid against the dictionary that precedes
-// it, which is required because each array in the stream carries its own dictionary.
-// In the future we can reduce the number of dictionaries emitted by checking for
-// identical dictionary arrays.
+// A dictionary is written after any dictionaries nested in its values so that they
+// are available when a reader decodes it. Emitting a full (non-delta) DictionaryBatch
+// for each dictionary before every RecordBatch keeps each batch's indices valid
+// against the dictionary that precedes it, which is required because each array in
+// the stream carries its own dictionary.
 static ArrowErrorCode ArrowIpcWriterWriteDictionariesForArrayView(
     struct ArrowIpcWriter* writer, const struct ArrowArrayView* array_view,
     int64_t* next_id, struct ArrowError* error) {
+  int64_t dictionary_id = *next_id;
   if (array_view->dictionary != NULL) {
-    int64_t dictionary_id = (*next_id)++;
-    NANOARROW_RETURN_NOT_OK(ArrowIpcWriterWriteDictionaryBatch(
-        writer, dictionary_id, /*is_delta=*/0, array_view->dictionary, error));
+    (*next_id)++;
   }
 
   for (int64_t i = 0; i < array_view->n_children; i++) {
@@ -425,6 +424,8 @@ static ArrowErrorCode ArrowIpcWriterWriteDictionariesForArrayView(
   if (array_view->dictionary != NULL) {
     NANOARROW_RETURN_NOT_OK(ArrowIpcWriterWriteDictionariesForArrayView(
         writer, array_view->dictionary, next_id, error));
+    NANOARROW_RETURN_NOT_OK(ArrowIpcWriterWriteDictionaryBatch(
+        writer, dictionary_id, /*is_delta=*/0, array_view->dictionary, error));
   }
 
   return NANOARROW_OK;
