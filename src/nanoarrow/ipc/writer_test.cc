@@ -19,6 +19,12 @@
 
 #include <stdio.h>
 
+#if defined(NANOARROW_BUILD_TESTS_WITH_ARROW)
+#include <arrow/array.h>
+#include <arrow/io/memory.h>
+#include <arrow/ipc/api.h>
+#endif
+
 #include "nanoarrow/nanoarrow_ipc.hpp"
 
 TEST(NanoarrowIpcWriter, OutputStreamBuffer) {
@@ -277,28 +283,32 @@ TEST(NanoarrowIpcWriter, WriteDictionaryBatch) {
   // one block tracked in file mode
   EXPECT_EQ(p2->footer.dictionary_blocks.size_bytes, sizeof(struct ArrowIpcFileBlock));
 
+  // a dictionary ID can't be written to a file twice
   int64_t bytes_written = p2->bytes_written;
   EXPECT_EQ(ArrowIpcWriterWriteDictionaryBatch(writer2.get(), /*dictionary_id=*/0,
                                                /*is_delta=*/0, values_view.get(), &error),
-            ENOTSUP);
+            EINVAL);
   EXPECT_STREQ(error.message,
-               "IPC file writing supports exactly one non-delta dictionary batch");
+               "Arrow IPC files do not support replacement of dictionary ID 0");
   EXPECT_EQ(p2->bytes_written, bytes_written);
   EXPECT_EQ(p2->footer.dictionary_blocks.size_bytes, sizeof(struct ArrowIpcFileBlock));
 
-  nanoarrow::ipc::UniqueOutputStream stream3;
-  nanoarrow::UniqueBuffer output3;
-  ASSERT_EQ(ArrowIpcOutputStreamInitBuffer(stream3.get(), output3.get()), NANOARROW_OK);
-
-  nanoarrow::ipc::UniqueWriter writer3;
-  ASSERT_EQ(ArrowIpcWriterInit(writer3.get(), stream3.get()), NANOARROW_OK);
-  ASSERT_EQ(ArrowIpcWriterStartFile(writer3.get(), &error), NANOARROW_OK)
+  // ...but other dictionary IDs can
+  EXPECT_EQ(ArrowIpcWriterWriteDictionaryBatch(writer2.get(), /*dictionary_id=*/1,
+                                               /*is_delta=*/0, values_view.get(), &error),
+            NANOARROW_OK)
       << error.message;
-  EXPECT_EQ(ArrowIpcWriterWriteDictionaryBatch(writer3.get(), /*dictionary_id=*/0,
+  EXPECT_EQ(p2->footer.dictionary_blocks.size_bytes,
+            2 * sizeof(struct ArrowIpcFileBlock));
+
+  // delta dictionaries aren't supported in files
+  bytes_written = p2->bytes_written;
+  EXPECT_EQ(ArrowIpcWriterWriteDictionaryBatch(writer2.get(), /*dictionary_id=*/2,
                                                /*is_delta=*/1, values_view.get(), &error),
             ENOTSUP);
   EXPECT_STREQ(error.message,
-               "IPC file writing supports exactly one non-delta dictionary batch");
+               "IPC file writing does not support delta dictionary batches");
+  EXPECT_EQ(p2->bytes_written, bytes_written);
 }
 
 // Build a struct array with a single dictionary-encoded (int32 -> utf8) child.
@@ -414,6 +424,55 @@ TEST(NanoarrowIpcWriter, RoundtripDictionaryStream) {
             NANOARROW_OK)
       << error.message;
   EXPECT_EQ(roundtrip_array->release, nullptr);
+}
+
+// Write a dictionary-encoded file through the WriteArrayStream path, which
+// requires the footer schema to resolve its dictionary IDs.
+TEST(NanoarrowIpcWriter, RoundtripDictionaryFile) {
+  struct ArrowError error;
+
+  nanoarrow::UniqueSchema schema;
+  nanoarrow::UniqueArray array;
+  MakeDictionaryStructArray(array.get(), schema.get());
+
+  nanoarrow::UniqueArrayStream array_stream;
+  ASSERT_EQ(ArrowBasicArrayStreamInit(array_stream.get(), schema.get(), 1), NANOARROW_OK);
+  ArrowBasicArrayStreamSetArray(array_stream.get(), 0, array.get());
+
+  nanoarrow::UniqueBuffer output;
+  nanoarrow::ipc::UniqueOutputStream out_stream;
+  ASSERT_EQ(ArrowIpcOutputStreamInitBuffer(out_stream.get(), output.get()), NANOARROW_OK);
+
+  nanoarrow::ipc::UniqueWriter writer;
+  ASSERT_EQ(ArrowIpcWriterInit(writer.get(), out_stream.get()), NANOARROW_OK);
+  ASSERT_EQ(ArrowIpcWriterStartFile(writer.get(), &error), NANOARROW_OK) << error.message;
+  ASSERT_EQ(ArrowIpcWriterWriteArrayStream(writer.get(), array_stream.get(), &error),
+            NANOARROW_OK)
+      << error.message;
+  ASSERT_EQ(ArrowIpcWriterFinalizeFile(writer.get(), &error), NANOARROW_OK)
+      << error.message;
+
+  auto* p = static_cast<struct ArrowIpcWriterPrivate*>(writer->private_data);
+  EXPECT_EQ(p->footer.dictionary_blocks.size_bytes, sizeof(struct ArrowIpcFileBlock));
+  EXPECT_EQ(p->footer.record_batch_blocks.size_bytes, sizeof(struct ArrowIpcFileBlock));
+
+#if defined(NANOARROW_BUILD_TESTS_WITH_ARROW)
+  auto arrow_input = std::make_shared<arrow::io::BufferReader>(
+      arrow::Buffer::Wrap(output->data, output->size_bytes));
+  auto maybe_arrow_reader = arrow::ipc::RecordBatchFileReader::Open(arrow_input);
+  ASSERT_TRUE(maybe_arrow_reader.ok()) << maybe_arrow_reader.status();
+  auto arrow_reader = maybe_arrow_reader.ValueUnsafe();
+  ASSERT_EQ(arrow_reader->num_record_batches(), 1);
+  auto maybe_batch = arrow_reader->ReadRecordBatch(0);
+  ASSERT_TRUE(maybe_batch.ok()) << maybe_batch.status();
+  auto arrow_dictionary = std::static_pointer_cast<arrow::DictionaryArray>(
+      maybe_batch.ValueUnsafe()->column(0));
+  auto arrow_values =
+      std::static_pointer_cast<arrow::StringArray>(arrow_dictionary->dictionary());
+  ASSERT_EQ(arrow_values->length(), 2);
+  EXPECT_EQ(arrow_values->GetString(0), "foo");
+  EXPECT_EQ(arrow_values->GetString(1), "bar");
+#endif
 }
 
 // A struct array with a single int32 column of repeating values (i.e., compressible)

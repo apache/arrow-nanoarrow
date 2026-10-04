@@ -16,6 +16,7 @@
 // under the License.
 
 #include <errno.h>
+#include <inttypes.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -181,6 +182,8 @@ struct ArrowIpcWriterPrivate {
   int writing_file;
   int64_t bytes_written;
   struct ArrowIpcFooter footer;
+  // IDs of the dictionaries written to a file, each of which may only be written once
+  struct ArrowBuffer file_dictionary_ids;
 };
 
 ArrowErrorCode ArrowIpcWriterInit(struct ArrowIpcWriter* writer,
@@ -202,6 +205,7 @@ ArrowErrorCode ArrowIpcWriterInit(struct ArrowIpcWriter* writer,
   private->writing_file = 0;
   private->bytes_written = 0;
   ArrowIpcFooterInit(&private->footer);
+  ArrowBufferInit(&private->file_dictionary_ids);
 
   writer->private_data = private;
   return NANOARROW_OK;
@@ -220,6 +224,7 @@ void ArrowIpcWriterReset(struct ArrowIpcWriter* writer) {
     ArrowBufferReset(&private->body_buffer);
 
     ArrowIpcFooterReset(&private->footer);
+    ArrowBufferReset(&private->file_dictionary_ids);
 
     ArrowFree(private);
   }
@@ -279,6 +284,10 @@ ArrowErrorCode ArrowIpcWriterWriteSchema(struct ArrowIpcWriter* writer,
   if (private->writing_file) {
     NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowSchemaDeepCopy(in, &private->footer.schema),
                                        error);
+    NANOARROW_RETURN_NOT_OK_WITH_ERROR(
+        ArrowIpcDictionaryEncodingsAppendSchema(&private->footer.dictionaries,
+                                                &private->footer.schema),
+        error);
   }
   private->bytes_written += private->buffer.size_bytes;
 
@@ -338,15 +347,23 @@ ArrowErrorCode ArrowIpcWriterWriteDictionaryBatch(
   struct ArrowIpcWriterPrivate* private =
       (struct ArrowIpcWriterPrivate*)writer->private_data;
 
-  // This check is intentionally minimal: we're allowed to write one dictionary
-  // batch per ID in a file but we would need to add bookkeeping to keep track
-  // of written IDs (and usefully a fingerprint or reference to the dictionary
-  // so we can check if we need to emit it again).
-  if (private->writing_file &&
-      (is_delta || private->footer.dictionary_blocks.size_bytes != 0)) {
-    ArrowErrorSet(error,
-                  "IPC file writing supports exactly one non-delta dictionary batch");
-    return ENOTSUP;
+  if (private->writing_file) {
+    if (is_delta) {
+      ArrowErrorSet(error, "IPC file writing does not support delta dictionary batches");
+      return ENOTSUP;
+    }
+
+    const int64_t* written_ids = (const int64_t*)private->file_dictionary_ids.data;
+    int64_t n_written_ids =
+        private->file_dictionary_ids.size_bytes / (int64_t)sizeof(int64_t);
+    for (int64_t i = 0; i < n_written_ids; i++) {
+      if (written_ids[i] == dictionary_id) {
+        ArrowErrorSet(
+            error, "Arrow IPC files do not support replacement of dictionary ID %" PRId64,
+            dictionary_id);
+        return EINVAL;
+      }
+    }
   }
 
   NANOARROW_ASSERT_OK(ArrowBufferResize(&private->buffer, 0, 0));
@@ -370,6 +387,8 @@ ArrowErrorCode ArrowIpcWriterWriteDictionaryBatch(
     NANOARROW_RETURN_NOT_OK_WITH_ERROR(
         ArrowBufferAppend(&private->footer.dictionary_blocks, &block, sizeof(block)),
         error);
+    NANOARROW_RETURN_NOT_OK_WITH_ERROR(
+        ArrowBufferAppendInt64(&private->file_dictionary_ids, dictionary_id), error);
   }
   private->bytes_written += private->buffer.size_bytes;
   private->bytes_written += private->body_buffer.size_bytes;
