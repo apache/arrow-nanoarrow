@@ -468,6 +468,8 @@ TEST(NanoarrowIpcTest, NanoarrowIpcVisitMessageMetadataError) {
 TEST(NanoarrowIpcTest, NanoarrowIpcEncoderDictionaryBatch) {
   nanoarrow::ipc::UniqueEncoder encoder;
   ASSERT_EQ(ArrowIpcEncoderInit(encoder.get()), NANOARROW_OK);
+  nanoarrow::ipc::UniqueDecoder decoder;
+  ASSERT_EQ(ArrowIpcDecoderInit(decoder.get()), NANOARROW_OK);
 
   // Build a simple Utf8 values array
   nanoarrow::UniqueSchema values_schema;
@@ -495,6 +497,13 @@ TEST(NanoarrowIpcTest, NanoarrowIpcEncoderDictionaryBatch) {
             NANOARROW_OK)
       << error.message;
 
+  KeyValues message_key_values{{"dictionary_key", "dictionary_value"}};
+  auto message_metadata = PackMetadata(message_key_values);
+  ASSERT_EQ(
+      ArrowIpcEncoderSetMessageMetadata(encoder.get(), message_metadata.get(), &error),
+      NANOARROW_OK)
+      << error.message;
+
   // Encode a non-delta DictionaryBatch with dictionary_id=0
   nanoarrow::UniqueBuffer body_buffer;
   EXPECT_EQ(ArrowIpcEncoderEncodeSimpleDictionaryBatch(encoder.get(), /*dictionary_id=*/0,
@@ -511,6 +520,21 @@ TEST(NanoarrowIpcTest, NanoarrowIpcEncoderDictionaryBatch) {
   // The encapsulated message must be non-empty and 8-byte aligned
   EXPECT_GT(message_buffer->size_bytes, 8);
   EXPECT_EQ(message_buffer->size_bytes % 8, 0);
+  EXPECT_EQ(DecodeMessageMetadata(message_buffer.get(), decoder.get()),
+            message_key_values);
+
+  // The metadata applies to exactly one message: the next DictionaryBatch has none
+  message_buffer->size_bytes = 0;
+  body_buffer->size_bytes = 0;
+  ASSERT_EQ(ArrowIpcEncoderEncodeSimpleDictionaryBatch(encoder.get(), /*dictionary_id=*/0,
+                                                       /*is_delta=*/0, values_view.get(),
+                                                       body_buffer.get(), &error),
+            NANOARROW_OK)
+      << error.message;
+  ASSERT_EQ(ArrowIpcEncoderFinalizeBuffer(encoder.get(), /*encapsulate=*/1,
+                                          message_buffer.get()),
+            NANOARROW_OK);
+  EXPECT_EQ(DecodeMessageMetadata(message_buffer.get(), decoder.get()), KeyValues{});
 }
 
 // A record batch whose columns exercise each path of the compressed body builder:
