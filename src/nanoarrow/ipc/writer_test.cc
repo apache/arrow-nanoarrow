@@ -354,6 +354,16 @@ TEST(NanoarrowIpcWriter, RoundtripDictionaryStream) {
             NANOARROW_OK)
       << error.message;
 
+  // The schema declares that dictionaries may be replaced
+  nanoarrow::ipc::UniqueDecoder decoder;
+  ASSERT_EQ(ArrowIpcDecoderInit(decoder.get()), NANOARROW_OK);
+  struct ArrowBufferView data;
+  data.data.data = output->data;
+  data.size_bytes = output->size_bytes;
+  ASSERT_EQ(ArrowIpcDecoderDecodeHeader(decoder.get(), data, &error), NANOARROW_OK)
+      << error.message;
+  EXPECT_EQ(decoder->feature_flags, NANOARROW_IPC_FEATURE_DICTIONARY_REPLACEMENT);
+
   // Read the encoded bytes back
   struct ArrowIpcInputStream input;
   ASSERT_EQ(ArrowIpcInputStreamInitBuffer(&input, output.get()), NANOARROW_OK);

@@ -265,6 +265,9 @@ ArrowErrorCode ArrowIpcWriterWriteSchema(struct ArrowIpcWriter* writer,
   struct ArrowIpcWriterPrivate* private =
       (struct ArrowIpcWriterPrivate*)writer->private_data;
 
+  // A dictionary may be replaced in a stream (e.g., when the dictionaries of
+  // ArrowIpcWriterWriteArrayStream() input change between batches) but not in a file
+  ArrowIpcEncoderSetDictionaryReplacement(&private->encoder, !private->writing_file);
   NANOARROW_ASSERT_OK(ArrowBufferResize(&private->buffer, 0, 0));
 
   NANOARROW_RETURN_NOT_OK(ArrowIpcEncoderEncodeSchema(&private->encoder, in, error));
