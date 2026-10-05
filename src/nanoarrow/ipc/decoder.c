@@ -337,16 +337,74 @@ static ArrowErrorCode ArrowIpcDictionaryReplace(struct ArrowIpcDictionary* dicti
   return NANOARROW_OK;
 }
 
-static ArrowErrorCode ArrowIpcDictionaryAppend(struct ArrowIpcDictionary* dictionary,
-                                               struct ArrowArray* value,
-                                               struct ArrowError* error) {
-  if (dictionary->current_value.release != NULL &&
-      dictionary->current_value.length != 0) {
-    ArrowErrorSet(error, "Dictionary concatenation is not yet supported");
-    return ENOTSUP;
+// Point dictionaries of dst (and its children) at those of src, which reflect
+// the most recent value of any nested dictionaries.
+static ArrowErrorCode ArrowIpcArraySetDictionaries(struct ArrowArray* dst,
+                                                   const struct ArrowArray* src) {
+  if (src->dictionary != NULL) {
+    NANOARROW_DCHECK(dst->dictionary != NULL);
+    if (dst->dictionary->release != NULL) {
+      ArrowArrayRelease(dst->dictionary);
+    }
+    NANOARROW_RETURN_NOT_OK(ArrowArrayCloneShared(src->dictionary, dst->dictionary));
   }
 
-  NANOARROW_RETURN_NOT_OK(ArrowIpcDictionaryReplace(dictionary, value, error));
+  for (int64_t i = 0; i < src->n_children; i++) {
+    NANOARROW_RETURN_NOT_OK(
+        ArrowIpcArraySetDictionaries(dst->children[i], src->children[i]));
+  }
+
+  return NANOARROW_OK;
+}
+
+// Append the values of current and then value into combined, which must have been
+// initialized from array_view. array_view is used as scratch space to view current
+// and value.
+static ArrowErrorCode ArrowIpcDictionaryConcatenate(struct ArrowArray* combined,
+                                                    const struct ArrowArray* current,
+                                                    const struct ArrowArray* value,
+                                                    struct ArrowArrayView* array_view,
+                                                    struct ArrowError* error) {
+  NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowArrayStartAppending(combined), error);
+  NANOARROW_RETURN_NOT_OK_WITH_ERROR(
+      ArrowArrayReserve(combined, current->length + value->length), error);
+
+  NANOARROW_RETURN_NOT_OK(ArrowArrayViewSetArray(array_view, current, error));
+  NANOARROW_RETURN_NOT_OK(
+      ArrowArrayAppendStorageFromArrayView(combined, array_view, error));
+  NANOARROW_RETURN_NOT_OK(ArrowArrayViewSetArray(array_view, value, error));
+  NANOARROW_RETURN_NOT_OK(
+      ArrowArrayAppendStorageFromArrayView(combined, array_view, error));
+
+  NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowIpcArraySetDictionaries(combined, value),
+                                     error);
+  return ArrowArrayFinishBuildingDefault(combined, error);
+}
+
+// On success, value is released and the dictionary's current value is replaced
+// with the concatenation of its previous value and value. Previously exported
+// clones of the dictionary keep referencing the previous value.
+static ArrowErrorCode ArrowIpcDictionaryAppend(struct ArrowIpcDictionary* dictionary,
+                                               struct ArrowArray* value,
+                                               struct ArrowArrayView* array_view,
+                                               struct ArrowError* error) {
+  if (dictionary->current_value.release == NULL ||
+      dictionary->current_value.length == 0) {
+    return ArrowIpcDictionaryReplace(dictionary, value, error);
+  }
+
+  struct ArrowArray combined;
+  NANOARROW_RETURN_NOT_OK(ArrowArrayInitFromArrayView(&combined, array_view, error));
+  int result = ArrowIpcDictionaryConcatenate(&combined, &dictionary->current_value, value,
+                                             array_view, error);
+  if (result != NANOARROW_OK) {
+    ArrowArrayRelease(&combined);
+    return result;
+  }
+
+  // On failure, ArrowIpcDictionaryReplace() releases combined
+  NANOARROW_RETURN_NOT_OK(ArrowIpcDictionaryReplace(dictionary, &combined, error));
+  ArrowArrayRelease(value);
   return NANOARROW_OK;
 }
 
@@ -2794,13 +2852,15 @@ static ArrowErrorCode ArrowIpcDecoderDecodeDictionaryInternal(
   }
 
   if (decoder->dictionary->is_delta) {
-    result = ArrowIpcDictionaryAppend(dictionary, &tmp, error);
+    result = ArrowIpcDictionaryAppend(dictionary, &tmp, array_view, error);
   } else {
     result = ArrowIpcDictionaryReplace(dictionary, &tmp, error);
   }
 
   if (result != NANOARROW_OK) {
-    ArrowArrayRelease(&tmp);
+    if (tmp.release != NULL) {
+      ArrowArrayRelease(&tmp);
+    }
     return result;
   }
 
