@@ -1246,8 +1246,14 @@ static int ArrowIpcSetDictionaryEncoding(
                                      error);
   NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowSchemaSetName(schema->dictionary, ""), error);
 
-  NANOARROW_RETURN_NOT_OK(ArrowIpcDecoderSetTypeInt(
-      schema, ns(DictionaryEncoding_indexType_get(dictionary_encoding)), error));
+  // Schema.fbs: "If this field is null, the indices must be signed int32."
+  if (ns(DictionaryEncoding_indexType_is_present(dictionary_encoding))) {
+    NANOARROW_RETURN_NOT_OK(ArrowIpcDecoderSetTypeInt(
+        schema, ns(DictionaryEncoding_indexType_get(dictionary_encoding)), error));
+  } else {
+    NANOARROW_RETURN_NOT_OK(
+        ArrowIpcDecoderSetTypeSimple(schema, NANOARROW_TYPE_INT32, error));
+  }
 
   if (ns(DictionaryEncoding_isOrdered_get(dictionary_encoding))) {
     schema->flags |= ARROW_FLAG_DICTIONARY_ORDERED;
