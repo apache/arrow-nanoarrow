@@ -1139,26 +1139,30 @@ static int ArrowIpcDecoderSetTypeUnion(struct ArrowSchema* schema,
 
 static int ArrowIpcDecoderSetType(struct ArrowSchema* schema, ns(Field_table_t) field,
                                   int64_t n_children, struct ArrowError* error) {
-  int type_type = ns(Field_type_type(field));
+  ns(Type_union_type_t) type_type = ns(Field_type_type(field));
+  flatbuffers_generic_t type = ns(Field_type_get(field));
+  if (type == NULL) {
+    ArrowErrorSet(error, "Field type '%s' has no value", ns(Type_type_name(type_type)));
+    return EINVAL;
+  }
+
   switch (type_type) {
     case ns(Type_Null):
       return ArrowIpcDecoderSetTypeSimple(schema, NANOARROW_TYPE_NA, error);
     case ns(Type_Bool):
       return ArrowIpcDecoderSetTypeSimple(schema, NANOARROW_TYPE_BOOL, error);
     case ns(Type_Int):
-      return ArrowIpcDecoderSetTypeInt(schema, ns(Field_type_get(field)), error);
+      return ArrowIpcDecoderSetTypeInt(schema, type, error);
     case ns(Type_FloatingPoint):
-      return ArrowIpcDecoderSetTypeFloatingPoint(schema, ns(Field_type_get(field)),
-                                                 error);
+      return ArrowIpcDecoderSetTypeFloatingPoint(schema, type, error);
     case ns(Type_Decimal):
-      return ArrowIpcDecoderSetTypeDecimal(schema, ns(Field_type_get(field)), error);
+      return ArrowIpcDecoderSetTypeDecimal(schema, type, error);
     case ns(Type_Binary):
       return ArrowIpcDecoderSetTypeSimple(schema, NANOARROW_TYPE_BINARY, error);
     case ns(Type_LargeBinary):
       return ArrowIpcDecoderSetTypeSimple(schema, NANOARROW_TYPE_LARGE_BINARY, error);
     case ns(Type_FixedSizeBinary):
-      return ArrowIpcDecoderSetTypeFixedSizeBinary(schema, ns(Field_type_get(field)),
-                                                   error);
+      return ArrowIpcDecoderSetTypeFixedSizeBinary(schema, type, error);
     case ns(Type_BinaryView):
       ArrowErrorSet(error, "BinaryView not yet supported in IPC reader");
       return ENOTSUP;
@@ -1170,15 +1174,15 @@ static int ArrowIpcDecoderSetType(struct ArrowSchema* schema, ns(Field_table_t) 
       ArrowErrorSet(error, "Utf8View not yet supported in IPC reader");
       return ENOTSUP;
     case ns(Type_Date):
-      return ArrowIpcDecoderSetTypeDate(schema, ns(Field_type_get(field)), error);
+      return ArrowIpcDecoderSetTypeDate(schema, type, error);
     case ns(Type_Time):
-      return ArrowIpcDecoderSetTypeTime(schema, ns(Field_type_get(field)), error);
+      return ArrowIpcDecoderSetTypeTime(schema, type, error);
     case ns(Type_Timestamp):
-      return ArrowIpcDecoderSetTypeTimestamp(schema, ns(Field_type_get(field)), error);
+      return ArrowIpcDecoderSetTypeTimestamp(schema, type, error);
     case ns(Type_Duration):
-      return ArrowIpcDecoderSetTypeDuration(schema, ns(Field_type_get(field)), error);
+      return ArrowIpcDecoderSetTypeDuration(schema, type, error);
     case ns(Type_Interval):
-      return ArrowIpcDecoderSetTypeInterval(schema, ns(Field_type_get(field)), error);
+      return ArrowIpcDecoderSetTypeInterval(schema, type, error);
     case ns(Type_Struct_):
       return ArrowIpcDecoderSetTypeSimpleNested(schema, "+s", error);
     case ns(Type_List):
@@ -1186,17 +1190,15 @@ static int ArrowIpcDecoderSetType(struct ArrowSchema* schema, ns(Field_table_t) 
     case ns(Type_LargeList):
       return ArrowIpcDecoderSetTypeSimpleNested(schema, "+L", error);
     case ns(Type_FixedSizeList):
-      return ArrowIpcDecoderSetTypeFixedSizeList(schema, ns(Field_type_get(field)),
-                                                 error);
+      return ArrowIpcDecoderSetTypeFixedSizeList(schema, type, error);
     case ns(Type_ListView):
     case ns(Type_LargeListView):
       ArrowErrorSet(error, "ListView/LargeListView not yet supported in IPC reader");
       return ENOTSUP;
     case ns(Type_Map):
-      return ArrowIpcDecoderSetTypeMap(schema, ns(Field_type_get(field)), error);
+      return ArrowIpcDecoderSetTypeMap(schema, type, error);
     case ns(Type_Union):
-      return ArrowIpcDecoderSetTypeUnion(schema, ns(Field_type_get(field)), n_children,
-                                         error);
+      return ArrowIpcDecoderSetTypeUnion(schema, type, n_children, error);
     case ns(Type_RunEndEncoded):
       ArrowErrorSet(error, "RunEndEncoded not yet supported in IPC reader");
       return ENOTSUP;
@@ -1229,6 +1231,9 @@ static int ArrowIpcSetDictionaryEncoding(
       return EINVAL;
   }
 
+  int64_t field_flags = schema->flags;
+  schema->flags |= ARROW_FLAG_NULLABLE;
+
   struct ArrowSchema tmp;
   ArrowSchemaMove(schema, &tmp);
 
@@ -1257,6 +1262,10 @@ static int ArrowIpcSetDictionaryEncoding(
 
   if (ns(DictionaryEncoding_isOrdered_get(dictionary_encoding))) {
     schema->flags |= ARROW_FLAG_DICTIONARY_ORDERED;
+  }
+
+  if (!(field_flags & ARROW_FLAG_NULLABLE)) {
+    schema->flags &= ~ARROW_FLAG_NULLABLE;
   }
 
   // Sort out field metadata between the schema and the dictionary member
@@ -1424,6 +1433,11 @@ static int ArrowIpcDecoderDecodeDictionaryBatchHeader(
       (struct ArrowIpcDecoderPrivate*)decoder->private_data;
 
   ns(DictionaryBatch_table_t) dictionary = (ns(DictionaryBatch_table_t))message_header;
+  if (!ns(DictionaryBatch_data_is_present(dictionary))) {
+    ArrowErrorSet(error, "DictionaryBatch has no data");
+    return EINVAL;
+  }
+
   private_data->dictionary.id = ns(DictionaryBatch_id(dictionary));
   private_data->dictionary.is_delta = ns(DictionaryBatch_isDelta(dictionary));
 
@@ -1730,6 +1744,12 @@ ArrowErrorCode ArrowIpcDecoderDecodeHeader(struct ArrowIpcDecoder* decoder,
   }
 
   flatbuffers_generic_t message_header = ns(Message_header_get(message));
+  if (message_header == NULL) {
+    ArrowErrorSet(error, "Message header '%s' has no value",
+                  ns(MessageHeader_type_name(decoder->message_type)));
+    return EINVAL;
+  }
+
   switch (decoder->message_type) {
     case ns(MessageHeader_Schema):
       NANOARROW_RETURN_NOT_OK(
