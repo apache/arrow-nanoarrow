@@ -1724,7 +1724,8 @@ ArrowErrorCode ArrowIpcDecoderDecodeHeader(struct ArrowIpcDecoder* decoder,
 
   // Read some basic information from the message
   decoder->metadata_version = ns(Message_version(message));
-  decoder->message_type = ns(Message_header_type(message));
+  ns(MessageHeader_union_type_t) message_type = ns(Message_header_type(message));
+  decoder->message_type = message_type;
   decoder->body_size_bytes = ns(Message_bodyLength(message));
 
   switch (decoder->metadata_version) {
@@ -1746,11 +1747,11 @@ ArrowErrorCode ArrowIpcDecoderDecodeHeader(struct ArrowIpcDecoder* decoder,
   flatbuffers_generic_t message_header = ns(Message_header_get(message));
   if (message_header == NULL) {
     ArrowErrorSet(error, "Message header '%s' has no value",
-                  ns(MessageHeader_type_name(decoder->message_type)));
+                  ns(MessageHeader_type_name(message_type)));
     return EINVAL;
   }
 
-  switch (decoder->message_type) {
+  switch (message_type) {
     case ns(MessageHeader_Schema):
       NANOARROW_RETURN_NOT_OK(
           ArrowIpcDecoderDecodeSchemaHeader(decoder, message_header, error));
