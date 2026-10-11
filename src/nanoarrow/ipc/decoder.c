@@ -2797,11 +2797,14 @@ static ArrowErrorCode ArrowIpcDecoderDecodeDictionaryInternal(
   struct ArrowIpcDecoderPrivate* dictionary_decoder_private_data =
       (struct ArrowIpcDecoderPrivate*)dictionary->decoder.private_data;
   dictionary->decoder.message_type = NANOARROW_IPC_MESSAGE_TYPE_RECORD_BATCH;
-  dictionary_decoder_private_data->last_message = record_batch;
+  dictionary->decoder.metadata_version = decoder->metadata_version;
   // Transfer the endianness and compression settings so that buffers are byte-swapped
   // and decompressed if needed (the nested decoder uses a default decompressor)
   dictionary_decoder_private_data->endianness = private_data->endianness;
-  dictionary->decoder.codec = decoder->codec;
+  // Validate the nested batch's node and buffer counts before accessing its vectors.
+  NANOARROW_RETURN_NOT_OK(
+      ArrowIpcDecoderDecodeRecordBatchHeader(&dictionary->decoder, record_batch, error));
+  dictionary_decoder_private_data->last_message = record_batch;
 
   struct ArrowArrayView* array_view;
   NANOARROW_RETURN_NOT_OK(ArrowIpcDecoderDecodeArrayViewInternal(
