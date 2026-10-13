@@ -339,6 +339,7 @@ TEST(NanoarrowIpcWriter, RoundtripDictionaryStream) {
   nanoarrow::UniqueSchema schema;
   nanoarrow::UniqueArray array;
   MakeDictionaryStructArray(array.get(), schema.get());
+  schema->children[0]->flags &= ~ARROW_FLAG_NULLABLE;
 
   nanoarrow::UniqueArrayStream array_stream;
   ASSERT_EQ(ArrowBasicArrayStreamInit(array_stream.get(), schema.get(), 1), NANOARROW_OK);
@@ -366,7 +367,9 @@ TEST(NanoarrowIpcWriter, RoundtripDictionaryStream) {
             NANOARROW_OK)
       << error.message;
   ASSERT_EQ(roundtrip_schema->n_children, 1);
+  EXPECT_EQ(roundtrip_schema->children[0]->flags & ARROW_FLAG_NULLABLE, 0);
   ASSERT_NE(roundtrip_schema->children[0]->dictionary, nullptr);
+  EXPECT_NE(roundtrip_schema->children[0]->dictionary->flags & ARROW_FLAG_NULLABLE, 0);
   EXPECT_STREQ(roundtrip_schema->children[0]->dictionary->format, "u");
 
   nanoarrow::UniqueArray roundtrip_array;
