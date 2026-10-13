@@ -365,6 +365,14 @@ static ArrowErrorCode ArrowIpcDictionaryConcatenate(struct ArrowArray* combined,
                                                     const struct ArrowArray* value,
                                                     struct ArrowArrayView* array_view,
                                                     struct ArrowError* error) {
+  if (current->length > INT64_MAX - value->length) {
+    ArrowErrorSet(error,
+                  "Expected dictionary length plus delta length to fit in int64 "
+                  "but found %" PRId64 " and %" PRId64,
+                  current->length, value->length);
+    return EOVERFLOW;
+  }
+
   NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowArrayStartAppending(combined), error);
   NANOARROW_RETURN_NOT_OK_WITH_ERROR(
       ArrowArrayReserve(combined, current->length + value->length), error);

@@ -971,6 +971,107 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDecodeDictionaryBatch) {
   ArrowIpcDecoderReset(&decoder);
 }
 
+TEST(NanoarrowIpcTest, NanoarrowIpcDecodeDictionaryDeltaOverflow) {
+  struct ArrowError error;
+  nanoarrow::UniqueSchema schema;
+  ASSERT_EQ(ArrowSchemaInitFromType(schema.get(), NANOARROW_TYPE_INT8), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaAllocateDictionary(schema.get()), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaInitFromType(schema->dictionary, NANOARROW_TYPE_NA), NANOARROW_OK);
+
+  nanoarrow::ipc::UniqueDictionaryEncodings encodings;
+  struct ArrowIpcDictionaryEncoding encoding;
+  encoding.id = 0;
+  encoding.kind = NANOARROW_IPC_DICTIONARY_KIND_DENSE_ARRAY;
+  encoding.schema = schema.get();
+  ASSERT_EQ(ArrowIpcDictionaryEncodingsAppend(encodings.get(), encoding), NANOARROW_OK);
+
+  nanoarrow::ipc::UniqueEncoder encoder;
+  ASSERT_EQ(ArrowIpcEncoderInit(encoder.get()), NANOARROW_OK);
+  nanoarrow::ipc::UniqueDecoder decoder;
+  ASSERT_EQ(ArrowIpcDecoderInit(decoder.get()), NANOARROW_OK);
+
+  // Null dictionaries can have enormous lengths without allocating data buffers.
+  const int64_t lengths[][2] = {{INT64_MAX, 1}, {1, INT64_MAX}};
+  for (bool use_shared : {false, true}) {
+    for (const auto& length : lengths) {
+      SCOPED_TRACE(::testing::Message() << "shared=" << use_shared << ", current="
+                                        << length[0] << ", delta=" << length[1]);
+      nanoarrow::ipc::UniqueDictionaries dictionaries;
+      ASSERT_EQ(ArrowIpcDictionariesInit(dictionaries.get(), encodings.get(), &error),
+                NANOARROW_OK);
+
+      auto decode_nulls = [&](int64_t size, bool is_delta, ArrowErrorCode expected) {
+        nanoarrow::UniqueArray array;
+        ASSERT_EQ(ArrowArrayInitFromType(array.get(), NANOARROW_TYPE_NA), NANOARROW_OK);
+        ASSERT_EQ(ArrowArrayStartAppending(array.get()), NANOARROW_OK);
+        ASSERT_EQ(ArrowArrayAppendNull(array.get(), size), NANOARROW_OK);
+        ASSERT_EQ(ArrowArrayFinishBuildingDefault(array.get(), &error), NANOARROW_OK);
+        nanoarrow::UniqueArrayView values;
+        ArrowArrayViewInitFromType(values.get(), NANOARROW_TYPE_NA);
+        ASSERT_EQ(ArrowArrayViewSetArray(values.get(), array.get(), &error),
+                  NANOARROW_OK);
+        nanoarrow::UniqueBuffer body;
+        ASSERT_EQ(ArrowIpcEncoderEncodeSimpleDictionaryBatch(
+                      encoder.get(), 0, is_delta, values.get(), body.get(), &error),
+                  NANOARROW_OK)
+            << error.message;
+        nanoarrow::UniqueBuffer message;
+        ASSERT_EQ(ArrowIpcEncoderFinalizeBuffer(encoder.get(), true, message.get()),
+                  NANOARROW_OK);
+        struct ArrowBufferView data;
+        data.data.as_uint8 = message->data;
+        data.size_bytes = message->size_bytes;
+        ASSERT_EQ(ArrowIpcDecoderVerifyHeader(decoder.get(), data, &error), NANOARROW_OK)
+            << error.message;
+        ASSERT_EQ(ArrowIpcDecoderDecodeHeader(decoder.get(), data, &error), NANOARROW_OK)
+            << error.message;
+
+        if (use_shared) {
+          nanoarrow::UniqueBuffer shared_body;
+          ASSERT_EQ(ArrowSharedBufferInit(shared_body.get(), body.get()), NANOARROW_OK);
+          ASSERT_EQ(ArrowIpcDecoderDecodeDictionaryFromShared(
+                        decoder.get(), shared_body.get(), NANOARROW_VALIDATION_LEVEL_FULL,
+                        dictionaries.get(), &error),
+                    expected)
+              << error.message;
+        } else {
+          data.data.as_uint8 = body->data;
+          data.size_bytes = body->size_bytes;
+          ASSERT_EQ(ArrowIpcDecoderDecodeDictionary(decoder.get(), data,
+                                                    NANOARROW_VALIDATION_LEVEL_FULL,
+                                                    dictionaries.get(), &error),
+                    expected)
+              << error.message;
+        }
+      };
+
+      ASSERT_NO_FATAL_FAILURE(decode_nulls(length[0], false, NANOARROW_OK));
+      ASSERT_NO_FATAL_FAILURE(decode_nulls(length[1], true, EOVERFLOW));
+      std::string expected =
+          "Expected dictionary length plus delta length to fit in int64 but found " +
+          std::to_string(length[0]) + " and " + std::to_string(length[1]);
+      EXPECT_STREQ(error.message, expected.c_str());
+
+      // Rejecting the delta must leave the current dictionary intact.
+      const struct ArrowArray* current;
+      ASSERT_EQ(
+          ArrowIpcDictionariesFindCurrentValue(dictionaries.get(), 0, &current, &error),
+          NANOARROW_OK);
+      EXPECT_EQ(current->length, length[0]);
+      EXPECT_EQ(current->null_count, length[0]);
+
+      // The same decoder and dictionary memo can still replace and append values.
+      ASSERT_NO_FATAL_FAILURE(decode_nulls(1, false, NANOARROW_OK));
+      ASSERT_NO_FATAL_FAILURE(decode_nulls(1, true, NANOARROW_OK));
+      ASSERT_EQ(
+          ArrowIpcDictionariesFindCurrentValue(dictionaries.get(), 0, &current, &error),
+          NANOARROW_OK);
+      EXPECT_EQ(current->length, 2);
+      EXPECT_EQ(current->null_count, 2);
+    }
+  }
+}
+
 TEST(NanoarrowIpcTest, NanoarrowIpcSetSchema) {
   struct ArrowIpcDecoder decoder;
   struct ArrowSchema schema;
