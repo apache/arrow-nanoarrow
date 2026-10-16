@@ -19,6 +19,8 @@
 
 #include <stdio.h>
 
+#include <string>
+
 #include "nanoarrow/nanoarrow_ipc.h"
 
 static uint8_t kSimpleSchema[] = {
@@ -272,6 +274,7 @@ TEST(NanoarrowIpcReader, StreamReaderBasicNoSharedBuffers) {
   struct ArrowIpcArrayStreamReaderOptions options;
   options.field_index = -1;
   options.use_shared_buffers = 0;
+  options.validation_level = NANOARROW_VALIDATION_LEVEL_FULL;
   ASSERT_EQ(ArrowIpcArrayStreamReaderInit(&stream, &input, &options), NANOARROW_OK);
 
   struct ArrowSchema schema;
@@ -495,6 +498,7 @@ TEST(NanoarrowIpcReader, StreamReaderUnsupportedFieldIndex) {
   struct ArrowIpcArrayStreamReaderOptions options;
   options.field_index = 0;
   options.use_shared_buffers = 0;
+  options.validation_level = NANOARROW_VALIDATION_LEVEL_FULL;
   ASSERT_EQ(ArrowIpcArrayStreamReaderInit(&stream, &input, &options), NANOARROW_OK);
 
   struct ArrowSchema schema;
@@ -584,6 +588,70 @@ TEST(NanoarrowIpcReader, StreamReaderDictionary) {
   EXPECT_EQ(array.release, nullptr);
 
   ArrowArrayStreamRelease(&stream);
+}
+
+TEST(NanoarrowIpcReader, StreamReaderValidationLevel) {
+  // Point the last dictionary index past the end of the three-value dictionary.
+  // Only full validation inspects index values, so a lower level accepts the batch.
+  uint8_t record_batch[sizeof(kDictionaryRecordBatch)];
+  memcpy(record_batch, kDictionaryRecordBatch, sizeof(kDictionaryRecordBatch));
+  ASSERT_EQ(record_batch[sizeof(record_batch) - 6], 0x02);
+  record_batch[sizeof(record_batch) - 6] = 0x07;
+
+  for (auto validation_level :
+       {NANOARROW_VALIDATION_LEVEL_FULL, NANOARROW_VALIDATION_LEVEL_DEFAULT}) {
+    SCOPED_TRACE(validation_level);
+    struct ArrowBuffer input_buffer;
+    ArrowBufferInit(&input_buffer);
+    ASSERT_EQ(
+        ArrowBufferAppend(&input_buffer, kDictionarySchema, sizeof(kDictionarySchema)),
+        NANOARROW_OK);
+    ASSERT_EQ(
+        ArrowBufferAppend(&input_buffer, kDictionaryBatch, sizeof(kDictionaryBatch)),
+        NANOARROW_OK);
+    ASSERT_EQ(ArrowBufferAppend(&input_buffer, record_batch, sizeof(record_batch)),
+              NANOARROW_OK);
+
+    struct ArrowIpcInputStream input;
+    ASSERT_EQ(ArrowIpcInputStreamInitBuffer(&input, &input_buffer), NANOARROW_OK);
+
+    struct ArrowArrayStream stream;
+    struct ArrowIpcArrayStreamReaderOptions options;
+    options.field_index = -1;
+    options.use_shared_buffers = ArrowSharedBufferIsThreadSafe();
+    options.validation_level = validation_level;
+    ASSERT_EQ(ArrowIpcArrayStreamReaderInit(&stream, &input, &options), NANOARROW_OK);
+
+    struct ArrowArray array;
+    if (validation_level == NANOARROW_VALIDATION_LEVEL_FULL) {
+      ASSERT_EQ(ArrowArrayStreamGetNext(&stream, &array, nullptr), EINVAL);
+      EXPECT_NE(std::string(ArrowArrayStreamGetLastError(&stream))
+                    .find("Expected dictionary index >= 0 and < 3 but found value 7"),
+                std::string::npos);
+    } else {
+      ASSERT_EQ(ArrowArrayStreamGetNext(&stream, &array, nullptr), NANOARROW_OK);
+      EXPECT_EQ(array.length, 3);
+      ArrowArrayRelease(&array);
+    }
+
+    ArrowArrayStreamRelease(&stream);
+  }
+}
+
+TEST(NanoarrowIpcReader, StreamReaderInvalidValidationLevel) {
+  struct ArrowBuffer input_buffer;
+  ArrowBufferInit(&input_buffer);
+  struct ArrowIpcInputStream input;
+  ASSERT_EQ(ArrowIpcInputStreamInitBuffer(&input, &input_buffer), NANOARROW_OK);
+
+  struct ArrowArrayStream stream;
+  struct ArrowIpcArrayStreamReaderOptions options;
+  options.field_index = -1;
+  options.use_shared_buffers = 0;
+  options.validation_level = static_cast<ArrowValidationLevel>(4);
+  ASSERT_EQ(ArrowIpcArrayStreamReaderInit(&stream, &input, &options), EINVAL);
+
+  input.release(&input);
 }
 
 TEST(NanoarrowIpcReader, StreamReaderDictionaryBatchWithoutDictionarySchema) {

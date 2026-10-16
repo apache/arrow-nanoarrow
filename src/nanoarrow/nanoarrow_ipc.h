@@ -936,6 +936,14 @@ struct ArrowIpcArrayStreamReaderOptions {
   /// a single field there is probably no advantage to using shared buffers.
   /// Defaults to the value of ArrowSharedBufferIsThreadSafe().
   int use_shared_buffers;
+
+  /// \brief The level of validation to apply to each decoded array
+  ///
+  /// Defaults to NANOARROW_VALIDATION_LEVEL_FULL, which is appropriate for untrusted
+  /// input. Use a lower level (e.g., NANOARROW_VALIDATION_LEVEL_DEFAULT) to skip checks
+  /// that are O(n) in the length of the decoded buffers when the input comes from a
+  /// trusted producer.
+  enum ArrowValidationLevel validation_level;
 };
 
 /// \brief Initialize an ArrowArrayStream from an input stream of bytes
