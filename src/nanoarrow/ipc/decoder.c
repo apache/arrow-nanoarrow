@@ -337,16 +337,82 @@ static ArrowErrorCode ArrowIpcDictionaryReplace(struct ArrowIpcDictionary* dicti
   return NANOARROW_OK;
 }
 
-static ArrowErrorCode ArrowIpcDictionaryAppend(struct ArrowIpcDictionary* dictionary,
-                                               struct ArrowArray* value,
-                                               struct ArrowError* error) {
-  if (dictionary->current_value.release != NULL &&
-      dictionary->current_value.length != 0) {
-    ArrowErrorSet(error, "Dictionary concatenation is not yet supported");
-    return ENOTSUP;
+// Point dictionaries of dst (and its children) at those of src, which reflect
+// the most recent value of any nested dictionaries.
+static ArrowErrorCode ArrowIpcArraySetDictionaries(struct ArrowArray* dst,
+                                                   const struct ArrowArray* src) {
+  if (src->dictionary != NULL) {
+    NANOARROW_DCHECK(dst->dictionary != NULL);
+    if (dst->dictionary->release != NULL) {
+      ArrowArrayRelease(dst->dictionary);
+    }
+    NANOARROW_RETURN_NOT_OK(ArrowArrayCloneShared(src->dictionary, dst->dictionary));
   }
 
-  NANOARROW_RETURN_NOT_OK(ArrowIpcDictionaryReplace(dictionary, value, error));
+  for (int64_t i = 0; i < src->n_children; i++) {
+    NANOARROW_RETURN_NOT_OK(
+        ArrowIpcArraySetDictionaries(dst->children[i], src->children[i]));
+  }
+
+  return NANOARROW_OK;
+}
+
+// Append the values of current and then value into combined, which must have been
+// initialized from array_view. array_view is used as scratch space to view current
+// and value.
+static ArrowErrorCode ArrowIpcDictionaryConcatenate(struct ArrowArray* combined,
+                                                    const struct ArrowArray* current,
+                                                    const struct ArrowArray* value,
+                                                    struct ArrowArrayView* array_view,
+                                                    struct ArrowError* error) {
+  if (current->length > INT64_MAX - value->length) {
+    ArrowErrorSet(error,
+                  "Expected dictionary length plus delta length to fit in int64 "
+                  "but found %" PRId64 " and %" PRId64,
+                  current->length, value->length);
+    return EOVERFLOW;
+  }
+
+  NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowArrayStartAppending(combined), error);
+  NANOARROW_RETURN_NOT_OK_WITH_ERROR(
+      ArrowArrayReserve(combined, current->length + value->length), error);
+
+  NANOARROW_RETURN_NOT_OK(ArrowArrayViewSetArray(array_view, current, error));
+  NANOARROW_RETURN_NOT_OK(
+      ArrowArrayAppendStorageFromArrayView(combined, array_view, error));
+  NANOARROW_RETURN_NOT_OK(ArrowArrayViewSetArray(array_view, value, error));
+  NANOARROW_RETURN_NOT_OK(
+      ArrowArrayAppendStorageFromArrayView(combined, array_view, error));
+
+  NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowIpcArraySetDictionaries(combined, value),
+                                     error);
+  return ArrowArrayFinishBuildingDefault(combined, error);
+}
+
+// On success, value is released and the dictionary's current value is replaced
+// with the concatenation of its previous value and value. Previously exported
+// clones of the dictionary keep referencing the previous value.
+static ArrowErrorCode ArrowIpcDictionaryAppend(struct ArrowIpcDictionary* dictionary,
+                                               struct ArrowArray* value,
+                                               struct ArrowArrayView* array_view,
+                                               struct ArrowError* error) {
+  if (dictionary->current_value.release == NULL ||
+      dictionary->current_value.length == 0) {
+    return ArrowIpcDictionaryReplace(dictionary, value, error);
+  }
+
+  struct ArrowArray combined;
+  NANOARROW_RETURN_NOT_OK(ArrowArrayInitFromArrayView(&combined, array_view, error));
+  int result = ArrowIpcDictionaryConcatenate(&combined, &dictionary->current_value, value,
+                                             array_view, error);
+  if (result != NANOARROW_OK) {
+    ArrowArrayRelease(&combined);
+    return result;
+  }
+
+  // On failure, ArrowIpcDictionaryReplace() releases combined
+  NANOARROW_RETURN_NOT_OK(ArrowIpcDictionaryReplace(dictionary, &combined, error));
+  ArrowArrayRelease(value);
   return NANOARROW_OK;
 }
 
@@ -1139,26 +1205,30 @@ static int ArrowIpcDecoderSetTypeUnion(struct ArrowSchema* schema,
 
 static int ArrowIpcDecoderSetType(struct ArrowSchema* schema, ns(Field_table_t) field,
                                   int64_t n_children, struct ArrowError* error) {
-  int type_type = ns(Field_type_type(field));
+  ns(Type_union_type_t) type_type = ns(Field_type_type(field));
+  flatbuffers_generic_t type = ns(Field_type_get(field));
+  if (type == NULL) {
+    ArrowErrorSet(error, "Field type '%s' has no value", ns(Type_type_name(type_type)));
+    return EINVAL;
+  }
+
   switch (type_type) {
     case ns(Type_Null):
       return ArrowIpcDecoderSetTypeSimple(schema, NANOARROW_TYPE_NA, error);
     case ns(Type_Bool):
       return ArrowIpcDecoderSetTypeSimple(schema, NANOARROW_TYPE_BOOL, error);
     case ns(Type_Int):
-      return ArrowIpcDecoderSetTypeInt(schema, ns(Field_type_get(field)), error);
+      return ArrowIpcDecoderSetTypeInt(schema, type, error);
     case ns(Type_FloatingPoint):
-      return ArrowIpcDecoderSetTypeFloatingPoint(schema, ns(Field_type_get(field)),
-                                                 error);
+      return ArrowIpcDecoderSetTypeFloatingPoint(schema, type, error);
     case ns(Type_Decimal):
-      return ArrowIpcDecoderSetTypeDecimal(schema, ns(Field_type_get(field)), error);
+      return ArrowIpcDecoderSetTypeDecimal(schema, type, error);
     case ns(Type_Binary):
       return ArrowIpcDecoderSetTypeSimple(schema, NANOARROW_TYPE_BINARY, error);
     case ns(Type_LargeBinary):
       return ArrowIpcDecoderSetTypeSimple(schema, NANOARROW_TYPE_LARGE_BINARY, error);
     case ns(Type_FixedSizeBinary):
-      return ArrowIpcDecoderSetTypeFixedSizeBinary(schema, ns(Field_type_get(field)),
-                                                   error);
+      return ArrowIpcDecoderSetTypeFixedSizeBinary(schema, type, error);
     case ns(Type_BinaryView):
       ArrowErrorSet(error, "BinaryView not yet supported in IPC reader");
       return ENOTSUP;
@@ -1170,15 +1240,15 @@ static int ArrowIpcDecoderSetType(struct ArrowSchema* schema, ns(Field_table_t) 
       ArrowErrorSet(error, "Utf8View not yet supported in IPC reader");
       return ENOTSUP;
     case ns(Type_Date):
-      return ArrowIpcDecoderSetTypeDate(schema, ns(Field_type_get(field)), error);
+      return ArrowIpcDecoderSetTypeDate(schema, type, error);
     case ns(Type_Time):
-      return ArrowIpcDecoderSetTypeTime(schema, ns(Field_type_get(field)), error);
+      return ArrowIpcDecoderSetTypeTime(schema, type, error);
     case ns(Type_Timestamp):
-      return ArrowIpcDecoderSetTypeTimestamp(schema, ns(Field_type_get(field)), error);
+      return ArrowIpcDecoderSetTypeTimestamp(schema, type, error);
     case ns(Type_Duration):
-      return ArrowIpcDecoderSetTypeDuration(schema, ns(Field_type_get(field)), error);
+      return ArrowIpcDecoderSetTypeDuration(schema, type, error);
     case ns(Type_Interval):
-      return ArrowIpcDecoderSetTypeInterval(schema, ns(Field_type_get(field)), error);
+      return ArrowIpcDecoderSetTypeInterval(schema, type, error);
     case ns(Type_Struct_):
       return ArrowIpcDecoderSetTypeSimpleNested(schema, "+s", error);
     case ns(Type_List):
@@ -1186,17 +1256,15 @@ static int ArrowIpcDecoderSetType(struct ArrowSchema* schema, ns(Field_table_t) 
     case ns(Type_LargeList):
       return ArrowIpcDecoderSetTypeSimpleNested(schema, "+L", error);
     case ns(Type_FixedSizeList):
-      return ArrowIpcDecoderSetTypeFixedSizeList(schema, ns(Field_type_get(field)),
-                                                 error);
+      return ArrowIpcDecoderSetTypeFixedSizeList(schema, type, error);
     case ns(Type_ListView):
     case ns(Type_LargeListView):
       ArrowErrorSet(error, "ListView/LargeListView not yet supported in IPC reader");
       return ENOTSUP;
     case ns(Type_Map):
-      return ArrowIpcDecoderSetTypeMap(schema, ns(Field_type_get(field)), error);
+      return ArrowIpcDecoderSetTypeMap(schema, type, error);
     case ns(Type_Union):
-      return ArrowIpcDecoderSetTypeUnion(schema, ns(Field_type_get(field)), n_children,
-                                         error);
+      return ArrowIpcDecoderSetTypeUnion(schema, type, n_children, error);
     case ns(Type_RunEndEncoded):
       ArrowErrorSet(error, "RunEndEncoded not yet supported in IPC reader");
       return ENOTSUP;
@@ -1229,6 +1297,9 @@ static int ArrowIpcSetDictionaryEncoding(
       return EINVAL;
   }
 
+  int64_t field_flags = schema->flags;
+  schema->flags |= ARROW_FLAG_NULLABLE;
+
   struct ArrowSchema tmp;
   ArrowSchemaMove(schema, &tmp);
 
@@ -1246,11 +1317,21 @@ static int ArrowIpcSetDictionaryEncoding(
                                      error);
   NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowSchemaSetName(schema->dictionary, ""), error);
 
-  NANOARROW_RETURN_NOT_OK(ArrowIpcDecoderSetTypeInt(
-      schema, ns(DictionaryEncoding_indexType_get(dictionary_encoding)), error));
+  // Schema.fbs: "If this field is null, the indices must be signed int32."
+  if (ns(DictionaryEncoding_indexType_is_present(dictionary_encoding))) {
+    NANOARROW_RETURN_NOT_OK(ArrowIpcDecoderSetTypeInt(
+        schema, ns(DictionaryEncoding_indexType_get(dictionary_encoding)), error));
+  } else {
+    NANOARROW_RETURN_NOT_OK(
+        ArrowIpcDecoderSetTypeSimple(schema, NANOARROW_TYPE_INT32, error));
+  }
 
   if (ns(DictionaryEncoding_isOrdered_get(dictionary_encoding))) {
     schema->flags |= ARROW_FLAG_DICTIONARY_ORDERED;
+  }
+
+  if (!(field_flags & ARROW_FLAG_NULLABLE)) {
+    schema->flags &= ~ARROW_FLAG_NULLABLE;
   }
 
   // Sort out field metadata between the schema and the dictionary member
@@ -1418,6 +1499,11 @@ static int ArrowIpcDecoderDecodeDictionaryBatchHeader(
       (struct ArrowIpcDecoderPrivate*)decoder->private_data;
 
   ns(DictionaryBatch_table_t) dictionary = (ns(DictionaryBatch_table_t))message_header;
+  if (!ns(DictionaryBatch_data_is_present(dictionary))) {
+    ArrowErrorSet(error, "DictionaryBatch has no data");
+    return EINVAL;
+  }
+
   private_data->dictionary.id = ns(DictionaryBatch_id(dictionary));
   private_data->dictionary.is_delta = ns(DictionaryBatch_isDelta(dictionary));
 
@@ -1704,7 +1790,8 @@ ArrowErrorCode ArrowIpcDecoderDecodeHeader(struct ArrowIpcDecoder* decoder,
 
   // Read some basic information from the message
   decoder->metadata_version = ns(Message_version(message));
-  decoder->message_type = ns(Message_header_type(message));
+  ns(MessageHeader_union_type_t) message_type = ns(Message_header_type(message));
+  decoder->message_type = message_type;
   decoder->body_size_bytes = ns(Message_bodyLength(message));
 
   switch (decoder->metadata_version) {
@@ -1724,7 +1811,13 @@ ArrowErrorCode ArrowIpcDecoderDecodeHeader(struct ArrowIpcDecoder* decoder,
   }
 
   flatbuffers_generic_t message_header = ns(Message_header_get(message));
-  switch (decoder->message_type) {
+  if (message_header == NULL) {
+    ArrowErrorSet(error, "Message header '%s' has no value",
+                  ns(MessageHeader_type_name(message_type)));
+    return EINVAL;
+  }
+
+  switch (message_type) {
     case ns(MessageHeader_Schema):
       NANOARROW_RETURN_NOT_OK(
           ArrowIpcDecoderDecodeSchemaHeader(decoder, message_header, error));
@@ -2770,11 +2863,14 @@ static ArrowErrorCode ArrowIpcDecoderDecodeDictionaryInternal(
   struct ArrowIpcDecoderPrivate* dictionary_decoder_private_data =
       (struct ArrowIpcDecoderPrivate*)dictionary->decoder.private_data;
   dictionary->decoder.message_type = NANOARROW_IPC_MESSAGE_TYPE_RECORD_BATCH;
-  dictionary_decoder_private_data->last_message = record_batch;
+  dictionary->decoder.metadata_version = decoder->metadata_version;
   // Transfer the endianness and compression settings so that buffers are byte-swapped
   // and decompressed if needed (the nested decoder uses a default decompressor)
   dictionary_decoder_private_data->endianness = private_data->endianness;
-  dictionary->decoder.codec = decoder->codec;
+  // Validate the nested batch's node and buffer counts before accessing its vectors.
+  NANOARROW_RETURN_NOT_OK(
+      ArrowIpcDecoderDecodeRecordBatchHeader(&dictionary->decoder, record_batch, error));
+  dictionary_decoder_private_data->last_message = record_batch;
 
   struct ArrowArrayView* array_view;
   NANOARROW_RETURN_NOT_OK(ArrowIpcDecoderDecodeArrayViewInternal(
@@ -2794,13 +2890,15 @@ static ArrowErrorCode ArrowIpcDecoderDecodeDictionaryInternal(
   }
 
   if (decoder->dictionary->is_delta) {
-    result = ArrowIpcDictionaryAppend(dictionary, &tmp, error);
+    result = ArrowIpcDictionaryAppend(dictionary, &tmp, array_view, error);
   } else {
     result = ArrowIpcDictionaryReplace(dictionary, &tmp, error);
   }
 
   if (result != NANOARROW_OK) {
-    ArrowArrayRelease(&tmp);
+    if (tmp.release != NULL) {
+      ArrowArrayRelease(&tmp);
+    }
     return result;
   }
 

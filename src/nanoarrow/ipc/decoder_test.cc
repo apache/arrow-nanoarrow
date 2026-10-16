@@ -20,10 +20,15 @@
 
 #if defined(NANOARROW_BUILD_TESTS_WITH_ARROW)
 #include <arrow/array.h>
+#include <arrow/array/builder_binary.h>
+#include <arrow/array/builder_decimal.h>
+#include <arrow/array/builder_nested.h>
+#include <arrow/array/builder_primitive.h>
 #include <arrow/c/bridge.h>
 #include <arrow/extension/uuid.h>
 #include <arrow/io/memory.h>
 #include <arrow/ipc/api.h>
+#include <arrow/util/decimal.h>
 #include <arrow/util/key_value_metadata.h>
 #endif
 #include <gmock/gmock-matchers.h>
@@ -194,6 +199,23 @@ alignas(8) static uint8_t kDictionarySchema[] = {
     0x0c, 0x00, 0x00, 0x00, 0x08, 0x00, 0x0c, 0x00, 0x08, 0x00, 0x07, 0x00, 0x08, 0x00,
     0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x08, 0x00, 0x00, 0x00, 0x04, 0x00, 0x04, 0x00,
     0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+
+// Schema message with one field, some_col: dictionary<values=string, indices=int32>,
+// written by pyarrow 25.0.1 with DictionaryEncoding.indexType removed (null means
+// signed int32 per Schema.fbs)
+alignas(8) static uint8_t kDictionarySchemaNoIndexType[] = {
+    0xff, 0xff, 0xff, 0xff, 0xa0, 0x00, 0x00, 0x00, 0x10, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x0a, 0x00, 0x0c, 0x00, 0x06, 0x00, 0x05, 0x00, 0x08, 0x00, 0x0a, 0x00, 0x00, 0x00,
+    0x00, 0x01, 0x04, 0x00, 0x04, 0x00, 0x00, 0x00, 0xb4, 0xff, 0xff, 0xff, 0x04, 0x00,
+    0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x14, 0x00, 0x00, 0x00, 0x10, 0x00, 0x18, 0x00,
+    0x08, 0x00, 0x06, 0x00, 0x07, 0x00, 0x0c, 0x00, 0x10, 0x00, 0x14, 0x00, 0x10, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x01, 0x05, 0x14, 0x00, 0x00, 0x00, 0x48, 0x00, 0x00, 0x00,
+    0x24, 0x00, 0x00, 0x00, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x08, 0x00,
+    0x00, 0x00, 0x73, 0x6f, 0x6d, 0x65, 0x5f, 0x63, 0x6f, 0x6c, 0x00, 0x00, 0x00, 0x00,
+    0x08, 0x00, 0x08, 0x00, 0x00, 0x00, 0x04, 0x00, 0xd8, 0xff, 0xff, 0xff, 0x0c, 0x00,
+    0x00, 0x00, 0x08, 0x00, 0x0c, 0x00, 0x08, 0x00, 0x07, 0x00, 0x08, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x01, 0x20, 0x00, 0x00, 0x00, 0x04, 0x00, 0x04, 0x00, 0x04, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x08, 0x00, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00};
 
 alignas(8) static uint8_t kDictionaryBatch[] = {
     0xff, 0xff, 0xff, 0xff, 0xa8, 0x00, 0x00, 0x00, 0x14, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -664,6 +686,38 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDecodeDictionarySchema) {
   ArrowIpcDecoderReset(&decoder);
 }
 
+TEST(NanoarrowIpcTest, NanoarrowIpcDecodeDictionarySchemaWithoutIndexType) {
+  struct ArrowIpcDecoder decoder;
+  struct ArrowError error;
+  struct ArrowSchema schema;
+  struct ArrowIpcDictionaryEncodings dictionary_encodings;
+
+  struct ArrowBufferView data;
+  data.data.as_uint8 = kDictionarySchemaNoIndexType;
+  data.size_bytes = sizeof(kDictionarySchemaNoIndexType);
+
+  ASSERT_EQ(ArrowIpcDecoderInit(&decoder), NANOARROW_OK);
+
+  ASSERT_EQ(ArrowIpcDecoderDecodeHeader(&decoder, data, &error), NANOARROW_OK)
+      << error.message;
+  ASSERT_EQ(decoder.message_type, NANOARROW_IPC_MESSAGE_TYPE_SCHEMA);
+
+  ASSERT_EQ(ArrowIpcDecoderDecodeSchemaWithDictionaries(&decoder, &schema,
+                                                        &dictionary_encodings, &error),
+            NANOARROW_OK)
+      << error.message;
+  ASSERT_EQ(schema.n_children, 1);
+  EXPECT_STREQ(schema.children[0]->name, "some_col");
+  EXPECT_STREQ(schema.children[0]->format, "i");
+  ASSERT_NE(schema.children[0]->dictionary, nullptr);
+  EXPECT_STREQ(schema.children[0]->dictionary->format, "u");
+  ASSERT_NE(ArrowIpcDictionaryEncodingsFindById(&dictionary_encodings, 0), nullptr);
+
+  ArrowSchemaRelease(&schema);
+  ArrowIpcDictionaryEncodingsReset(&dictionary_encodings);
+  ArrowIpcDecoderReset(&decoder);
+}
+
 TEST(NanoarrowIpcTest, NanoarrowIpcDictionaryEncodingsUniqueIds) {
   // Create dictionary encodings there is at least one duplicated identifier
   struct ArrowIpcDictionaryEncodings dictionary_encodings;
@@ -802,12 +856,42 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDecodeDictionaryBatch) {
   ASSERT_EQ(ArrowArrayViewGetStringUnsafe(&array_view, 1), "one"_asv);
   ASSERT_EQ(ArrowArrayViewGetStringUnsafe(&array_view, 2), "two"_asv);
 
-  // If we try to decode a delta dictionary, we should fail with a reasonable message
+  // A delta dictionary appends its values to the current dictionary
   const_cast<struct ArrowIpcDictionaryBatch*>(decoder.dictionary)->is_delta = 1;
   ASSERT_EQ(ArrowIpcDecoderDecodeDictionary(
                 &decoder, body, NANOARROW_VALIDATION_LEVEL_FULL, &dictionaries, &error),
-            ENOTSUP);
-  ASSERT_STREQ(error.message, "Dictionary concatenation is not yet supported");
+            NANOARROW_OK)
+      << error.message;
+  ASSERT_EQ(
+      ArrowIpcDictionariesFindCurrentValue(&dictionaries, 0, &dictionary_value, &error),
+      NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayViewSetArray(&array_view, dictionary_value, &error), NANOARROW_OK);
+  ASSERT_EQ(array_view.length, 6);
+  EXPECT_EQ(ArrowArrayViewGetStringUnsafe(&array_view, 0), "zero"_asv);
+  EXPECT_EQ(ArrowArrayViewGetStringUnsafe(&array_view, 3), "zero"_asv);
+  EXPECT_EQ(ArrowArrayViewGetStringUnsafe(&array_view, 5), "two"_asv);
+
+  // A clone of the dictionary held across another delta keeps its previous value
+  struct ArrowArray snapshot;
+  ASSERT_EQ(
+      ArrowArrayCloneShared(const_cast<struct ArrowArray*>(dictionary_value), &snapshot),
+      NANOARROW_OK);
+  ASSERT_EQ(ArrowIpcDecoderDecodeDictionary(
+                &decoder, body, NANOARROW_VALIDATION_LEVEL_FULL, &dictionaries, &error),
+            NANOARROW_OK)
+      << error.message;
+  ASSERT_EQ(
+      ArrowIpcDictionariesFindCurrentValue(&dictionaries, 0, &dictionary_value, &error),
+      NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayViewSetArray(&array_view, dictionary_value, &error), NANOARROW_OK);
+  ASSERT_EQ(array_view.length, 9);
+  EXPECT_EQ(ArrowArrayViewGetStringUnsafe(&array_view, 6), "zero"_asv);
+  EXPECT_EQ(ArrowArrayViewGetStringUnsafe(&array_view, 8), "two"_asv);
+
+  ASSERT_EQ(ArrowArrayViewSetArray(&array_view, &snapshot, &error), NANOARROW_OK);
+  ASSERT_EQ(array_view.length, 6);
+  EXPECT_EQ(ArrowArrayViewGetStringUnsafe(&array_view, 5), "two"_asv);
+  ArrowArrayRelease(&snapshot);
 
   // After all of this, we should be able to actually decode a RecordBatch
   ASSERT_EQ(ArrowIpcDecoderSetSchemaWithDictionaries(&decoder, &schema,
@@ -819,6 +903,14 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDecodeDictionaryBatch) {
   data.data.as_uint8 += decoder.header_size_bytes;
   data.size_bytes -= decoder.header_size_bytes;
 
+  // The convenience APIs without a dictionary memo must reject dictionary-encoded
+  // fields instead of returning an array with an unresolved dictionary.
+  struct ArrowArrayView* unresolved_view;
+  ASSERT_EQ(ArrowIpcDecoderDecodeArrayView(&decoder, data, 0, &unresolved_view, &error),
+            ENOTSUP);
+  EXPECT_STREQ(error.message,
+               "Can't decode a dictionary-encoded field without ArrowIpcDictionaries");
+
   // Decode the entire batch and check the dictionary
   struct ArrowArrayView* batch_view;
   ASSERT_EQ(ArrowIpcDecoderDecodeArrayViewWithDictionaries(
@@ -827,7 +919,7 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDecodeDictionaryBatch) {
       << error.message;
 
   ASSERT_NE(batch_view->children[0]->dictionary, nullptr);
-  ASSERT_EQ(batch_view->children[0]->dictionary->length, 3);
+  ASSERT_EQ(batch_view->children[0]->dictionary->length, 9);
   ASSERT_EQ(ArrowArrayViewGetStringUnsafe(batch_view->children[0]->dictionary, 0),
             "zero"_asv);
 
@@ -839,7 +931,7 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDecodeDictionaryBatch) {
       << error.message;
 
   ASSERT_NE(column_view->dictionary, nullptr);
-  ASSERT_EQ(column_view->dictionary->length, 3);
+  ASSERT_EQ(column_view->dictionary->length, 9);
   ASSERT_EQ(ArrowArrayViewGetStringUnsafe(column_view->dictionary, 0), "zero"_asv);
 
   // Decode the array from the ArrowBufferView
@@ -850,7 +942,7 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDecodeDictionaryBatch) {
             NANOARROW_OK)
       << error.message;
   ASSERT_NE(batch.children[0]->dictionary, nullptr);
-  ASSERT_EQ(batch.children[0]->dictionary->length, 3);
+  ASSERT_EQ(batch.children[0]->dictionary->length, 9);
   ArrowArrayRelease(&batch);
 
   // Decode the array from a shared buffer
@@ -868,7 +960,7 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDecodeDictionaryBatch) {
             NANOARROW_OK)
       << error.message;
   ASSERT_NE(batch.children[0]->dictionary, nullptr);
-  ASSERT_EQ(batch.children[0]->dictionary->length, 3);
+  ASSERT_EQ(batch.children[0]->dictionary->length, 9);
   ArrowArrayRelease(&batch);
   ArrowBufferReset(&record_batch_shared);
 
@@ -877,6 +969,107 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDecodeDictionaryBatch) {
   ArrowIpcDictionaryEncodingsReset(&dictionary_encodings);
   ArrowSchemaRelease(&schema);
   ArrowIpcDecoderReset(&decoder);
+}
+
+TEST(NanoarrowIpcTest, NanoarrowIpcDecodeDictionaryDeltaOverflow) {
+  struct ArrowError error;
+  nanoarrow::UniqueSchema schema;
+  ASSERT_EQ(ArrowSchemaInitFromType(schema.get(), NANOARROW_TYPE_INT8), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaAllocateDictionary(schema.get()), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaInitFromType(schema->dictionary, NANOARROW_TYPE_NA), NANOARROW_OK);
+
+  nanoarrow::ipc::UniqueDictionaryEncodings encodings;
+  struct ArrowIpcDictionaryEncoding encoding;
+  encoding.id = 0;
+  encoding.kind = NANOARROW_IPC_DICTIONARY_KIND_DENSE_ARRAY;
+  encoding.schema = schema.get();
+  ASSERT_EQ(ArrowIpcDictionaryEncodingsAppend(encodings.get(), encoding), NANOARROW_OK);
+
+  nanoarrow::ipc::UniqueEncoder encoder;
+  ASSERT_EQ(ArrowIpcEncoderInit(encoder.get()), NANOARROW_OK);
+  nanoarrow::ipc::UniqueDecoder decoder;
+  ASSERT_EQ(ArrowIpcDecoderInit(decoder.get()), NANOARROW_OK);
+
+  // Null dictionaries can have enormous lengths without allocating data buffers.
+  const int64_t lengths[][2] = {{INT64_MAX, 1}, {1, INT64_MAX}};
+  for (bool use_shared : {false, true}) {
+    for (const auto& length : lengths) {
+      SCOPED_TRACE(::testing::Message() << "shared=" << use_shared << ", current="
+                                        << length[0] << ", delta=" << length[1]);
+      nanoarrow::ipc::UniqueDictionaries dictionaries;
+      ASSERT_EQ(ArrowIpcDictionariesInit(dictionaries.get(), encodings.get(), &error),
+                NANOARROW_OK);
+
+      auto decode_nulls = [&](int64_t size, bool is_delta, ArrowErrorCode expected) {
+        nanoarrow::UniqueArray array;
+        ASSERT_EQ(ArrowArrayInitFromType(array.get(), NANOARROW_TYPE_NA), NANOARROW_OK);
+        ASSERT_EQ(ArrowArrayStartAppending(array.get()), NANOARROW_OK);
+        ASSERT_EQ(ArrowArrayAppendNull(array.get(), size), NANOARROW_OK);
+        ASSERT_EQ(ArrowArrayFinishBuildingDefault(array.get(), &error), NANOARROW_OK);
+        nanoarrow::UniqueArrayView values;
+        ArrowArrayViewInitFromType(values.get(), NANOARROW_TYPE_NA);
+        ASSERT_EQ(ArrowArrayViewSetArray(values.get(), array.get(), &error),
+                  NANOARROW_OK);
+        nanoarrow::UniqueBuffer body;
+        ASSERT_EQ(ArrowIpcEncoderEncodeSimpleDictionaryBatch(
+                      encoder.get(), 0, is_delta, values.get(), body.get(), &error),
+                  NANOARROW_OK)
+            << error.message;
+        nanoarrow::UniqueBuffer message;
+        ASSERT_EQ(ArrowIpcEncoderFinalizeBuffer(encoder.get(), true, message.get()),
+                  NANOARROW_OK);
+        struct ArrowBufferView data;
+        data.data.as_uint8 = message->data;
+        data.size_bytes = message->size_bytes;
+        ASSERT_EQ(ArrowIpcDecoderVerifyHeader(decoder.get(), data, &error), NANOARROW_OK)
+            << error.message;
+        ASSERT_EQ(ArrowIpcDecoderDecodeHeader(decoder.get(), data, &error), NANOARROW_OK)
+            << error.message;
+
+        if (use_shared) {
+          nanoarrow::UniqueBuffer shared_body;
+          ASSERT_EQ(ArrowSharedBufferInit(shared_body.get(), body.get()), NANOARROW_OK);
+          ASSERT_EQ(ArrowIpcDecoderDecodeDictionaryFromShared(
+                        decoder.get(), shared_body.get(), NANOARROW_VALIDATION_LEVEL_FULL,
+                        dictionaries.get(), &error),
+                    expected)
+              << error.message;
+        } else {
+          data.data.as_uint8 = body->data;
+          data.size_bytes = body->size_bytes;
+          ASSERT_EQ(ArrowIpcDecoderDecodeDictionary(decoder.get(), data,
+                                                    NANOARROW_VALIDATION_LEVEL_FULL,
+                                                    dictionaries.get(), &error),
+                    expected)
+              << error.message;
+        }
+      };
+
+      ASSERT_NO_FATAL_FAILURE(decode_nulls(length[0], false, NANOARROW_OK));
+      ASSERT_NO_FATAL_FAILURE(decode_nulls(length[1], true, EOVERFLOW));
+      std::string expected =
+          "Expected dictionary length plus delta length to fit in int64 but found " +
+          std::to_string(length[0]) + " and " + std::to_string(length[1]);
+      EXPECT_STREQ(error.message, expected.c_str());
+
+      // Rejecting the delta must leave the current dictionary intact.
+      const struct ArrowArray* current;
+      ASSERT_EQ(
+          ArrowIpcDictionariesFindCurrentValue(dictionaries.get(), 0, &current, &error),
+          NANOARROW_OK);
+      EXPECT_EQ(current->length, length[0]);
+      EXPECT_EQ(current->null_count, length[0]);
+
+      // The same decoder and dictionary memo can still replace and append values.
+      ASSERT_NO_FATAL_FAILURE(decode_nulls(1, false, NANOARROW_OK));
+      ASSERT_NO_FATAL_FAILURE(decode_nulls(1, true, NANOARROW_OK));
+      ASSERT_EQ(
+          ArrowIpcDictionariesFindCurrentValue(dictionaries.get(), 0, &current, &error),
+          NANOARROW_OK);
+      EXPECT_EQ(current->length, 2);
+      EXPECT_EQ(current->null_count, 2);
+    }
+  }
 }
 
 TEST(NanoarrowIpcTest, NanoarrowIpcSetSchema) {
@@ -1386,6 +1579,30 @@ void AssertArrayViewIdentical(const struct ArrowArrayView* actual,
   }
 }
 
+static void FinishEncapsulatedMessage(flatcc_builder_t* builder,
+                                      struct ArrowBuffer* out) {
+  // Encapsulate: continuation, little endian header size, header, padding to 8 bytes
+  size_t size = flatcc_builder_get_buffer_size(builder);
+  int64_t padded_size = _ArrowRoundUpToMultipleOf8(static_cast<int64_t>(size));
+  ASSERT_EQ(
+      ArrowBufferReserve(out, 2 * static_cast<int64_t>(sizeof(int32_t)) + padded_size),
+      NANOARROW_OK);
+  ASSERT_EQ(ArrowBufferAppendInt32(out, -1), NANOARROW_OK);
+#if defined(__BIG_ENDIAN__)
+  ASSERT_EQ(ArrowBufferAppendInt32(
+                out, static_cast<int32_t>(bswap32(static_cast<uint32_t>(padded_size)))),
+            NANOARROW_OK);
+#else
+  ASSERT_EQ(ArrowBufferAppendInt32(out, static_cast<int32_t>(padded_size)), NANOARROW_OK);
+#endif
+  ASSERT_NE(flatcc_builder_copy_buffer(builder, out->data + out->size_bytes, size),
+            nullptr);
+  out->size_bytes += size;
+  while (out->size_bytes % 8 != 0) {
+    out->data[out->size_bytes++] = 0;
+  }
+}
+
 // Builds an encapsulated Schema message whose Message.custom_metadata and
 // Schema.custom_metadata each contain a KeyValue with no key. Both `key` and `value`
 // are optional fields of KeyValue in the IPC format, so this passes flatbuffer
@@ -1418,28 +1635,194 @@ static void MakeKeylessMetadataSchemaMessage(struct ArrowBuffer* out) {
   ASSERT_EQ(ns(Message_bodyLength_add(&builder, 0)), 0);
   ASSERT_NE(ns(Message_end_as_root(&builder)), 0);
 
-  // Encapsulate: continuation, little endian header size, header, padding to 8 bytes
-  size_t size = flatcc_builder_get_buffer_size(&builder);
-  int64_t padded_size = _ArrowRoundUpToMultipleOf8(static_cast<int64_t>(size));
-  ASSERT_EQ(
-      ArrowBufferReserve(out, 2 * static_cast<int64_t>(sizeof(int32_t)) + padded_size),
-      NANOARROW_OK);
-  ASSERT_EQ(ArrowBufferAppendInt32(out, -1), NANOARROW_OK);
-#if defined(__BIG_ENDIAN__)
-  ASSERT_EQ(ArrowBufferAppendInt32(
-                out, static_cast<int32_t>(bswap32(static_cast<uint32_t>(padded_size)))),
+  ASSERT_NO_FATAL_FAILURE(FinishEncapsulatedMessage(&builder, out));
+  flatcc_builder_clear(&builder);
+}
+
+static void MakeSchemaWithMissingFieldType(struct ArrowBuffer* out) {
+  flatcc_builder_t builder;
+  flatcc_builder_init(&builder);
+
+  ASSERT_EQ(ns(Message_start_as_root(&builder)), 0);
+  ASSERT_EQ(ns(Message_version_add(&builder, ns(MetadataVersion_V5))), 0);
+  ASSERT_EQ(ns(Message_header_Schema_start(&builder)), 0);
+  ASSERT_EQ(ns(Schema_endianness_add(&builder, ns(Endianness_Little))), 0);
+  ASSERT_EQ(ns(Schema_fields_start(&builder)), 0);
+  ASSERT_EQ(ns(Schema_fields_push_start(&builder)), 0);
+  ASSERT_EQ(ns(Field_type_add_type(&builder, ns(Type_Int))), 0);
+  ASSERT_NE(ns(Schema_fields_push_end(&builder)), nullptr);
+  ASSERT_EQ(ns(Schema_fields_end(&builder)), 0);
+  ASSERT_EQ(ns(Message_header_Schema_end(&builder)), 0);
+  ASSERT_NE(ns(Message_end_as_root(&builder)), 0);
+
+  ASSERT_NO_FATAL_FAILURE(FinishEncapsulatedMessage(&builder, out));
+  flatcc_builder_clear(&builder);
+}
+
+static void MakeMessageWithMissingHeader(struct ArrowBuffer* out) {
+  flatcc_builder_t builder;
+  flatcc_builder_init(&builder);
+
+  ASSERT_EQ(ns(Message_start_as_root(&builder)), 0);
+  ASSERT_EQ(ns(Message_version_add(&builder, ns(MetadataVersion_V5))), 0);
+  ASSERT_EQ(ns(Message_header_add_type(&builder, ns(MessageHeader_Schema))), 0);
+  ASSERT_NE(ns(Message_end_as_root(&builder)), 0);
+
+  ASSERT_NO_FATAL_FAILURE(FinishEncapsulatedMessage(&builder, out));
+  flatcc_builder_clear(&builder);
+}
+
+static void MakeDictionaryBatchWithoutData(struct ArrowBuffer* out) {
+  flatcc_builder_t builder;
+  flatcc_builder_init(&builder);
+
+  ASSERT_EQ(ns(Message_start_as_root(&builder)), 0);
+  ASSERT_EQ(ns(Message_version_add(&builder, ns(MetadataVersion_V5))), 0);
+  ASSERT_EQ(ns(Message_header_DictionaryBatch_start(&builder)), 0);
+  ASSERT_EQ(ns(DictionaryBatch_id_add(&builder, 0)), 0);
+  ASSERT_EQ(ns(Message_header_DictionaryBatch_end(&builder)), 0);
+  ASSERT_NE(ns(Message_end_as_root(&builder)), 0);
+
+  ASSERT_NO_FATAL_FAILURE(FinishEncapsulatedMessage(&builder, out));
+  flatcc_builder_clear(&builder);
+}
+
+TEST(NanoarrowIpcTest, NanoarrowIpcDecodeMissingOptionalTables) {
+  struct ArrowError error;
+  nanoarrow::ipc::UniqueDecoder decoder;
+  ASSERT_EQ(ArrowIpcDecoderInit(decoder.get()), NANOARROW_OK);
+
+  nanoarrow::UniqueBuffer missing_field_type;
+  ASSERT_NO_FATAL_FAILURE(MakeSchemaWithMissingFieldType(missing_field_type.get()));
+  struct ArrowBufferView data;
+  data.data.as_uint8 = missing_field_type->data;
+  data.size_bytes = missing_field_type->size_bytes;
+  ASSERT_EQ(ArrowIpcDecoderVerifyHeader(decoder.get(), data, &error), NANOARROW_OK)
+      << error.message;
+  ASSERT_EQ(ArrowIpcDecoderDecodeHeader(decoder.get(), data, &error), NANOARROW_OK)
+      << error.message;
+  nanoarrow::UniqueSchema schema;
+  EXPECT_EQ(ArrowIpcDecoderDecodeSchema(decoder.get(), schema.get(), &error), EINVAL);
+  EXPECT_STREQ(error.message, "Field type 'Int' has no value");
+
+  nanoarrow::UniqueBuffer missing_header;
+  ASSERT_NO_FATAL_FAILURE(MakeMessageWithMissingHeader(missing_header.get()));
+  data.data.as_uint8 = missing_header->data;
+  data.size_bytes = missing_header->size_bytes;
+  ASSERT_EQ(ArrowIpcDecoderVerifyHeader(decoder.get(), data, &error), NANOARROW_OK)
+      << error.message;
+  EXPECT_EQ(ArrowIpcDecoderDecodeHeader(decoder.get(), data, &error), EINVAL);
+  EXPECT_STREQ(error.message, "Message header 'Schema' has no value");
+
+  nanoarrow::UniqueBuffer missing_dictionary_data;
+  ASSERT_NO_FATAL_FAILURE(MakeDictionaryBatchWithoutData(missing_dictionary_data.get()));
+  data.data.as_uint8 = missing_dictionary_data->data;
+  data.size_bytes = missing_dictionary_data->size_bytes;
+  ASSERT_EQ(ArrowIpcDecoderVerifyHeader(decoder.get(), data, &error), NANOARROW_OK)
+      << error.message;
+  EXPECT_EQ(ArrowIpcDecoderDecodeHeader(decoder.get(), data, &error), EINVAL);
+  EXPECT_STREQ(error.message, "DictionaryBatch has no data");
+}
+
+static void MakeDictionaryBatchWithVectorCounts(int64_t n_nodes, int64_t n_buffers,
+                                                struct ArrowBuffer* out) {
+  flatcc_builder_t builder;
+  flatcc_builder_init(&builder);
+
+  ASSERT_EQ(ns(Message_start_as_root(&builder)), 0);
+  ASSERT_EQ(ns(Message_version_add(&builder, ns(MetadataVersion_V5))), 0);
+  ASSERT_EQ(ns(Message_header_DictionaryBatch_start(&builder)), 0);
+  ASSERT_EQ(ns(DictionaryBatch_data_start(&builder)), 0);
+  // Negative counts omit the optional vectors entirely.
+  if (n_nodes >= 0) {
+    std::vector<struct ns(FieldNode)> nodes(n_nodes);
+    ASSERT_EQ(ns(RecordBatch_nodes_create(&builder, nodes.data(), nodes.size())), 0);
+  }
+  if (n_buffers >= 0) {
+    std::vector<struct ns(Buffer)> buffers(n_buffers);
+    ASSERT_EQ(ns(RecordBatch_buffers_create(&builder, buffers.data(), buffers.size())),
+              0);
+  }
+  ASSERT_EQ(ns(DictionaryBatch_data_end(&builder)), 0);
+  ASSERT_EQ(ns(Message_header_DictionaryBatch_end(&builder)), 0);
+  ASSERT_NE(ns(Message_end_as_root(&builder)), 0);
+
+  ASSERT_NO_FATAL_FAILURE(FinishEncapsulatedMessage(&builder, out));
+  flatcc_builder_clear(&builder);
+}
+
+TEST(NanoarrowIpcTest, NanoarrowIpcDecodeDictionaryBatchInvalidVectorCounts) {
+  struct ArrowError error;
+  nanoarrow::ipc::UniqueDecoder decoder;
+  ASSERT_EQ(ArrowIpcDecoderInit(decoder.get()), NANOARROW_OK);
+  struct ArrowBufferView data;
+  data.data.as_uint8 = kDictionarySchema;
+  data.size_bytes = sizeof(kDictionarySchema);
+  ASSERT_EQ(ArrowIpcDecoderVerifyHeader(decoder.get(), data, &error), NANOARROW_OK);
+  ASSERT_EQ(ArrowIpcDecoderDecodeHeader(decoder.get(), data, &error), NANOARROW_OK);
+
+  nanoarrow::UniqueSchema schema;
+  nanoarrow::ipc::UniqueDictionaryEncodings encodings;
+  ASSERT_EQ(ArrowIpcDecoderDecodeSchemaWithDictionaries(decoder.get(), schema.get(),
+                                                        encodings.get(), &error),
             NANOARROW_OK);
-#else
-  ASSERT_EQ(ArrowBufferAppendInt32(out, static_cast<int32_t>(padded_size)), NANOARROW_OK);
-#endif
-  ASSERT_NE(flatcc_builder_copy_buffer(&builder, out->data + out->size_bytes, size),
-            nullptr);
-  out->size_bytes += size;
-  while (out->size_bytes % 8 != 0) {
-    out->data[out->size_bytes++] = 0;
+  nanoarrow::ipc::UniqueDictionaries dictionaries;
+  ASSERT_EQ(ArrowIpcDictionariesInit(dictionaries.get(), encodings.get(), &error),
+            NANOARROW_OK);
+  ASSERT_EQ(ArrowIpcDecoderSetEndianness(decoder.get(), NANOARROW_IPC_ENDIANNESS_LITTLE),
+            NANOARROW_OK);
+
+  const int64_t counts[][2] = {{-1, 3}, {0, 3}, {2, 3}, {1, -1},
+                               {1, 0},  {1, 1}, {1, 2}, {1, 4}};
+  for (const auto& count : counts) {
+    SCOPED_TRACE(::testing::Message()
+                 << "nodes=" << count[0] << ", buffers=" << count[1]);
+    nanoarrow::UniqueBuffer message;
+    ASSERT_NO_FATAL_FAILURE(
+        MakeDictionaryBatchWithVectorCounts(count[0], count[1], message.get()));
+    data.data.as_uint8 = message->data;
+    data.size_bytes = message->size_bytes;
+    ASSERT_EQ(ArrowIpcDecoderVerifyHeader(decoder.get(), data, &error), NANOARROW_OK)
+        << error.message;
+    ASSERT_EQ(ArrowIpcDecoderDecodeHeader(decoder.get(), data, &error), NANOARROW_OK)
+        << error.message;
+
+    struct ArrowBufferView body = {};
+    std::string expected;
+    if (count[0] != 1) {
+      expected = "Expected 1 field nodes in message but found " +
+                 std::to_string(count[0] < 0 ? 0 : count[0]);
+    } else {
+      expected = "Expected 3 buffers in message but found " +
+                 std::to_string(count[1] < 0 ? 0 : count[1]);
+    }
+    EXPECT_EQ(ArrowIpcDecoderDecodeDictionary(decoder.get(), body,
+                                              NANOARROW_VALIDATION_LEVEL_FULL,
+                                              dictionaries.get(), &error),
+              EINVAL);
+    EXPECT_STREQ(error.message, expected.c_str());
+
+    nanoarrow::UniqueBuffer shared_body;
+    EXPECT_EQ(ArrowIpcDecoderDecodeDictionaryFromShared(decoder.get(), shared_body.get(),
+                                                        NANOARROW_VALIDATION_LEVEL_FULL,
+                                                        dictionaries.get(), &error),
+              EINVAL);
+    EXPECT_STREQ(error.message, expected.c_str());
   }
 
-  flatcc_builder_clear(&builder);
+  // A rejected dictionary batch must not prevent decoding the next valid batch.
+  data.data.as_uint8 = kDictionaryBatch;
+  data.size_bytes = sizeof(kDictionaryBatch);
+  ASSERT_EQ(ArrowIpcDecoderVerifyHeader(decoder.get(), data, &error), NANOARROW_OK);
+  ASSERT_EQ(ArrowIpcDecoderDecodeHeader(decoder.get(), data, &error), NANOARROW_OK);
+  struct ArrowBufferView body;
+  body.data.as_uint8 = data.data.as_uint8 + decoder->header_size_bytes;
+  body.size_bytes = decoder->body_size_bytes;
+  ASSERT_EQ(ArrowIpcDecoderDecodeDictionary(decoder.get(), body,
+                                            NANOARROW_VALIDATION_LEVEL_FULL,
+                                            dictionaries.get(), &error),
+            NANOARROW_OK)
+      << error.message;
 }
 
 TEST(NanoarrowIpcTest, NanoarrowIpcDecodeMetadataWithoutKey) {
@@ -2099,4 +2482,212 @@ INSTANTIATE_TEST_SUITE_P(NanoarrowIpcTest, ArrowTypeIdParameterizedTestFixture,
                                            NANOARROW_TYPE_DECIMAL128,
                                            NANOARROW_TYPE_DECIMAL256,
                                            NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO));
+
+class DeltaDictionaryTypeTest : public ::testing::TestWithParam<enum ArrowType> {};
+
+static std::shared_ptr<arrow::Array> FinishDeltaBuilder(arrow::ArrayBuilder* builder) {
+  std::shared_ptr<arrow::Array> out;
+  EXPECT_TRUE(builder->Finish(&out).ok());
+  return out;
+}
+
+static std::shared_ptr<arrow::Array> MakeDeltaDictionaryValues(enum ArrowType type) {
+  switch (type) {
+    case NANOARROW_TYPE_BOOL: {
+      arrow::BooleanBuilder builder;
+      EXPECT_TRUE(builder.Append(true).ok());
+      EXPECT_TRUE(builder.Append(false).ok());
+      EXPECT_TRUE(builder.Append(true).ok());
+      EXPECT_TRUE(builder.Append(false).ok());
+      return FinishDeltaBuilder(&builder);
+    }
+    case NANOARROW_TYPE_INT64: {
+      arrow::Int64Builder builder;
+      EXPECT_TRUE(builder.Append(1).ok());
+      EXPECT_TRUE(builder.AppendNull().ok());
+      EXPECT_TRUE(builder.Append(3).ok());
+      EXPECT_TRUE(builder.Append(4).ok());
+      return FinishDeltaBuilder(&builder);
+    }
+    case NANOARROW_TYPE_UINT64: {
+      arrow::UInt64Builder builder;
+      EXPECT_TRUE(builder.Append(1).ok());
+      EXPECT_TRUE(builder.Append(2).ok());
+      EXPECT_TRUE(builder.Append(3).ok());
+      EXPECT_TRUE(builder.Append(4).ok());
+      return FinishDeltaBuilder(&builder);
+    }
+    case NANOARROW_TYPE_DOUBLE: {
+      arrow::DoubleBuilder builder;
+      EXPECT_TRUE(builder.Append(1.5).ok());
+      EXPECT_TRUE(builder.Append(-2.25).ok());
+      EXPECT_TRUE(builder.Append(3.5).ok());
+      EXPECT_TRUE(builder.Append(4.75).ok());
+      return FinishDeltaBuilder(&builder);
+    }
+    case NANOARROW_TYPE_STRING: {
+      arrow::StringBuilder builder;
+      EXPECT_TRUE(builder.Append("one", 3).ok());
+      EXPECT_TRUE(builder.Append("two", 3).ok());
+      EXPECT_TRUE(builder.Append("three", 5).ok());
+      EXPECT_TRUE(builder.Append("four", 4).ok());
+      return FinishDeltaBuilder(&builder);
+    }
+    case NANOARROW_TYPE_BINARY: {
+      arrow::BinaryBuilder builder;
+      EXPECT_TRUE(builder.Append("one", 3).ok());
+      EXPECT_TRUE(builder.Append("two", 3).ok());
+      EXPECT_TRUE(builder.Append("three", 5).ok());
+      EXPECT_TRUE(builder.Append("four", 4).ok());
+      return FinishDeltaBuilder(&builder);
+    }
+    case NANOARROW_TYPE_DECIMAL128: {
+      arrow::Decimal128Builder builder(arrow::decimal128(10, 2));
+      EXPECT_TRUE(builder.Append(arrow::Decimal128(125)).ok());
+      EXPECT_TRUE(builder.Append(arrow::Decimal128(-250)).ok());
+      EXPECT_TRUE(builder.Append(arrow::Decimal128(375)).ok());
+      EXPECT_TRUE(builder.Append(arrow::Decimal128(400)).ok());
+      return FinishDeltaBuilder(&builder);
+    }
+    case NANOARROW_TYPE_LIST: {
+      auto value_builder = std::make_shared<arrow::Int32Builder>();
+      arrow::ListBuilder builder(arrow::default_memory_pool(), value_builder);
+      EXPECT_TRUE(builder.Append().ok());
+      EXPECT_TRUE(value_builder->Append(1).ok());
+      EXPECT_TRUE(value_builder->Append(2).ok());
+      EXPECT_TRUE(builder.Append().ok());
+      EXPECT_TRUE(builder.Append().ok());
+      EXPECT_TRUE(value_builder->Append(3).ok());
+      EXPECT_TRUE(value_builder->AppendNull().ok());
+      EXPECT_TRUE(builder.Append().ok());
+      EXPECT_TRUE(value_builder->Append(4).ok());
+      EXPECT_TRUE(value_builder->Append(5).ok());
+      return FinishDeltaBuilder(&builder);
+    }
+    case NANOARROW_TYPE_STRUCT: {
+      auto int_builder = std::make_shared<arrow::Int32Builder>();
+      auto string_builder = std::make_shared<arrow::StringBuilder>();
+      auto type = arrow::struct_(
+          {arrow::field("i", arrow::int32()), arrow::field("s", arrow::utf8())});
+      arrow::StructBuilder builder(type, arrow::default_memory_pool(),
+                                   {int_builder, string_builder});
+      for (int32_t i = 1; i <= 4; i++) {
+        EXPECT_TRUE(builder.Append().ok());
+        EXPECT_TRUE(int_builder->Append(i).ok());
+        if (i == 3) {
+          EXPECT_TRUE(string_builder->AppendNull().ok());
+        } else {
+          EXPECT_TRUE(string_builder->Append(std::to_string(i)).ok());
+        }
+      }
+      return FinishDeltaBuilder(&builder);
+    }
+    case NANOARROW_TYPE_FIXED_SIZE_LIST: {
+      auto value_builder = std::make_shared<arrow::Int16Builder>();
+      arrow::FixedSizeListBuilder builder(arrow::default_memory_pool(), value_builder, 2);
+      for (int16_t value = 1; value <= 7; value += 2) {
+        EXPECT_TRUE(builder.Append().ok());
+        EXPECT_TRUE(value_builder->Append(value).ok());
+        EXPECT_TRUE(value_builder->Append(value + 1).ok());
+      }
+      return FinishDeltaBuilder(&builder);
+    }
+    default:
+      break;
+  }
+
+  ADD_FAILURE() << "Unexpected type " << ArrowTypeString(type);
+  return nullptr;
+}
+
+static std::shared_ptr<arrow::Array> MakeDeltaDictionaryIndices(bool extended) {
+  arrow::Int32Builder builder;
+  if (extended) {
+    EXPECT_TRUE(builder.Append(2).ok());
+    EXPECT_TRUE(builder.Append(3).ok());
+    EXPECT_TRUE(builder.Append(1).ok());
+    EXPECT_TRUE(builder.AppendNull().ok());
+  } else {
+    EXPECT_TRUE(builder.Append(0).ok());
+    EXPECT_TRUE(builder.Append(1).ok());
+    EXPECT_TRUE(builder.AppendNull().ok());
+    EXPECT_TRUE(builder.Append(0).ok());
+  }
+  return FinishDeltaBuilder(&builder);
+}
+
+static void AssertReadsArrowCppDeltaStream(
+    const std::shared_ptr<arrow::Array>& dictionary_array1,
+    const std::shared_ptr<arrow::Array>& dictionary_array2) {
+  auto schema = arrow::schema({arrow::field("dictionary", dictionary_array1->type())});
+  auto expected1 = arrow::RecordBatch::Make(schema, 4, {dictionary_array1});
+  auto expected2 = arrow::RecordBatch::Make(schema, 4, {dictionary_array2});
+
+  auto maybe_sink = arrow::io::BufferOutputStream::Create();
+  ASSERT_TRUE(maybe_sink.ok()) << maybe_sink.status();
+  auto sink = maybe_sink.ValueUnsafe();
+  auto options = arrow::ipc::IpcWriteOptions::Defaults();
+  options.emit_dictionary_deltas = true;
+  auto maybe_writer = arrow::ipc::MakeStreamWriter(sink, schema, options);
+  ASSERT_TRUE(maybe_writer.ok()) << maybe_writer.status();
+  auto writer = maybe_writer.ValueUnsafe();
+  ASSERT_TRUE(writer->WriteRecordBatch(*expected1).ok());
+  ASSERT_TRUE(writer->WriteRecordBatch(*expected2).ok());
+  ASSERT_TRUE(writer->Close().ok());
+  auto maybe_buffer = sink->Finish();
+  ASSERT_TRUE(maybe_buffer.ok()) << maybe_buffer.status();
+  auto buffer = maybe_buffer.ValueUnsafe();
+
+  nanoarrow::UniqueBuffer ipc_buffer;
+  ASSERT_EQ(ArrowBufferAppend(ipc_buffer.get(), buffer->data(), buffer->size()),
+            NANOARROW_OK);
+  struct ArrowIpcInputStream input;
+  ASSERT_EQ(ArrowIpcInputStreamInitBuffer(&input, ipc_buffer.get()), NANOARROW_OK);
+  nanoarrow::UniqueArrayStream reader;
+  ASSERT_EQ(ArrowIpcArrayStreamReaderInit(reader.get(), &input, nullptr), NANOARROW_OK);
+
+  struct ArrowError error;
+  nanoarrow::UniqueSchema roundtrip_schema;
+  ASSERT_EQ(ArrowArrayStreamGetSchema(reader.get(), roundtrip_schema.get(), &error),
+            NANOARROW_OK)
+      << error.message;
+  auto maybe_arrow_schema = arrow::ImportSchema(roundtrip_schema.get());
+  ASSERT_TRUE(maybe_arrow_schema.ok()) << maybe_arrow_schema.status();
+  auto arrow_schema = maybe_arrow_schema.ValueUnsafe();
+
+  nanoarrow::UniqueArray roundtrip1;
+  nanoarrow::UniqueArray roundtrip2;
+  ASSERT_EQ(ArrowArrayStreamGetNext(reader.get(), roundtrip1.get(), &error), NANOARROW_OK)
+      << error.message;
+  ASSERT_EQ(ArrowArrayStreamGetNext(reader.get(), roundtrip2.get(), &error), NANOARROW_OK)
+      << error.message;
+  auto maybe_roundtrip1 = arrow::ImportRecordBatch(roundtrip1.get(), arrow_schema);
+  auto maybe_roundtrip2 = arrow::ImportRecordBatch(roundtrip2.get(), arrow_schema);
+  ASSERT_TRUE(maybe_roundtrip1.ok()) << maybe_roundtrip1.status();
+  ASSERT_TRUE(maybe_roundtrip2.ok()) << maybe_roundtrip2.status();
+  EXPECT_TRUE(maybe_roundtrip1.ValueUnsafe()->Equals(*expected1));
+  EXPECT_TRUE(maybe_roundtrip2.ValueUnsafe()->Equals(*expected2));
+}
+
+TEST_P(DeltaDictionaryTypeTest, ReadsArrowCppDeltaStream) {
+  auto values2 = MakeDeltaDictionaryValues(GetParam());
+  ASSERT_NE(values2, nullptr);
+  auto values1 = values2->Slice(0, 2);
+  auto dictionary_type = arrow::dictionary(arrow::int32(), values2->type());
+  auto maybe_array1 = arrow::DictionaryArray::FromArrays(
+      dictionary_type, MakeDeltaDictionaryIndices(false), values1);
+  auto maybe_array2 = arrow::DictionaryArray::FromArrays(
+      dictionary_type, MakeDeltaDictionaryIndices(true), values2);
+  ASSERT_TRUE(maybe_array1.ok()) << maybe_array1.status();
+  ASSERT_TRUE(maybe_array2.ok()) << maybe_array2.status();
+  AssertReadsArrowCppDeltaStream(maybe_array1.ValueUnsafe(), maybe_array2.ValueUnsafe());
+}
+
+INSTANTIATE_TEST_SUITE_P(NanoarrowIpcDecoder, DeltaDictionaryTypeTest,
+                         ::testing::Values(NANOARROW_TYPE_BOOL, NANOARROW_TYPE_INT64,
+                                           NANOARROW_TYPE_UINT64, NANOARROW_TYPE_DOUBLE,
+                                           NANOARROW_TYPE_STRING, NANOARROW_TYPE_BINARY,
+                                           NANOARROW_TYPE_DECIMAL128, NANOARROW_TYPE_LIST,
+                                           NANOARROW_TYPE_STRUCT,
+                                           NANOARROW_TYPE_FIXED_SIZE_LIST));
 #endif

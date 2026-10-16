@@ -15,6 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
+#include <cmath>
 #include <cstring>
 #include <string>
 
@@ -756,6 +757,28 @@ TEST(HalfFloatTest, FloatAndHalfFloatRoundTrip) {
     EXPECT_EQ(bits, cases_bits[i]);
     float floats = ArrowHalfFloatToFloat(bits);
     EXPECT_FLOAT_EQ(floats, cases_float[i]);
+  }
+}
+
+TEST(HalfFloatTest, FloatAndHalfFloatSubnormals) {
+  // Include signed zeros and the smallest normals at the subnormal boundaries.
+  for (uint16_t bits = 0; bits <= 0x400; bits++) {
+    SCOPED_TRACE(bits);
+    float expected = std::ldexp(static_cast<float>(bits), -24);
+    EXPECT_EQ(ArrowHalfFloatToFloat(bits), expected);
+    EXPECT_EQ(ArrowHalfFloatToFloat(bits | 0x8000), -expected);
+    EXPECT_EQ(ArrowFloatToHalfFloat(expected), bits);
+    EXPECT_EQ(ArrowFloatToHalfFloat(-expected), bits | 0x8000);
+  }
+
+  EXPECT_FALSE(std::signbit(ArrowHalfFloatToFloat(0x0000)));
+  EXPECT_TRUE(std::signbit(ArrowHalfFloatToFloat(0x8000)));
+
+  float underflow[] = {std::ldexp(1.0f, -25), std::ldexp(1.0f, -126),
+                       std::ldexp(1.5f, -127)};
+  for (float value : underflow) {
+    EXPECT_EQ(ArrowFloatToHalfFloat(value), 0x0000);
+    EXPECT_EQ(ArrowFloatToHalfFloat(-value), 0x8000);
   }
 }
 
