@@ -1275,9 +1275,11 @@ static int ArrowIpcDecoderSetType(struct ArrowSchema* schema, ns(Field_table_t) 
 }
 
 // When decoding dictionaries, we move the value type to the schema->dictionary
-// member, but we need to move the field metadata back because in IPC there
-// is no such thing as dictionary metadata (even extension metadata)
-// https://github.com/apache/arrow/issues/49704
+// member, but we need to move the field metadata back because Field.custom_metadata
+// is the metadata of the field (i.e., the dictionary-encoded ArrowSchema). The
+// metadata of the dictionary value type is DictionaryEncoding.custom_metadata
+// (format version 1.6, https://github.com/apache/arrow/issues/49704), which is
+// set on schema->dictionary separately.
 static int ArrowIpcMoveDictionaryMetadataBackToField(struct ArrowSchema* schema) {
   NANOARROW_DCHECK(schema->dictionary != NULL);
   NANOARROW_RETURN_NOT_OK(ArrowSchemaSetMetadata(schema, schema->dictionary->metadata));
@@ -1337,6 +1339,13 @@ static int ArrowIpcSetDictionaryEncoding(
   // Sort out field metadata between the schema and the dictionary member
   NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowIpcMoveDictionaryMetadataBackToField(schema),
                                      error);
+
+  // The metadata of the dictionary value type (e.g., the extension type of the values),
+  // which is absent if the writer predates format version 1.6 or the value type has no
+  // metadata.
+  NANOARROW_RETURN_NOT_OK(ArrowIpcDecoderSetMetadata(
+      schema->dictionary, ns(DictionaryEncoding_custom_metadata(dictionary_encoding)),
+      error));
 
   // Track the identifier if we have a dictionaries object in which to track it
   if (dictionaries != NULL) {

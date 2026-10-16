@@ -2688,6 +2688,8 @@ __flatbuffers_define_table_field(1, org_apache_arrow_flatbuf_DictionaryEncoding,
  *  preserve that metadata here */
 __flatbuffers_define_scalar_field(2, org_apache_arrow_flatbuf_DictionaryEncoding, isOrdered, flatbuffers_bool, flatbuffers_bool_t, UINT8_C(0))
 __flatbuffers_define_scalar_field(3, org_apache_arrow_flatbuf_DictionaryEncoding, dictionaryKind, org_apache_arrow_flatbuf_DictionaryKind, org_apache_arrow_flatbuf_DictionaryKind_enum_t, INT16_C(0))
+/**  Metadata for the dictionary value type, e.g. the extension type of the values */
+__flatbuffers_define_vector_field(4, org_apache_arrow_flatbuf_DictionaryEncoding, custom_metadata, org_apache_arrow_flatbuf_KeyValue_vec_t, 0)
 
 /**  ----------------------------------------------------------------------
  *  A field represents a named column in a record / row batch or child of a
@@ -2949,7 +2951,7 @@ __flatbuffers_build_table(flatbuffers_, org_apache_arrow_flatbuf_KeyValue, 2)
 static const flatbuffers_voffset_t __org_apache_arrow_flatbuf_DictionaryEncoding_required[] = { 0 };
 typedef flatbuffers_ref_t org_apache_arrow_flatbuf_DictionaryEncoding_ref_t;
 static org_apache_arrow_flatbuf_DictionaryEncoding_ref_t org_apache_arrow_flatbuf_DictionaryEncoding_clone(flatbuffers_builder_t *B, org_apache_arrow_flatbuf_DictionaryEncoding_table_t t);
-__flatbuffers_build_table(flatbuffers_, org_apache_arrow_flatbuf_DictionaryEncoding, 4)
+__flatbuffers_build_table(flatbuffers_, org_apache_arrow_flatbuf_DictionaryEncoding, 5)
 
 static const flatbuffers_voffset_t __org_apache_arrow_flatbuf_Field_required[] = { 0 };
 typedef flatbuffers_ref_t org_apache_arrow_flatbuf_Field_ref_t;
@@ -3096,8 +3098,10 @@ __flatbuffers_build_table_prolog(flatbuffers_, org_apache_arrow_flatbuf_Duration
 static inline org_apache_arrow_flatbuf_KeyValue_ref_t org_apache_arrow_flatbuf_KeyValue_create(flatbuffers_builder_t *B __org_apache_arrow_flatbuf_KeyValue_formal_args);
 __flatbuffers_build_table_prolog(flatbuffers_, org_apache_arrow_flatbuf_KeyValue, org_apache_arrow_flatbuf_KeyValue_file_identifier, org_apache_arrow_flatbuf_KeyValue_type_identifier)
 
-#define __org_apache_arrow_flatbuf_DictionaryEncoding_formal_args , int64_t v0, org_apache_arrow_flatbuf_Int_ref_t v1, flatbuffers_bool_t v2, org_apache_arrow_flatbuf_DictionaryKind_enum_t v3
-#define __org_apache_arrow_flatbuf_DictionaryEncoding_call_args , v0, v1, v2, v3
+#define __org_apache_arrow_flatbuf_DictionaryEncoding_formal_args ,\
+  int64_t v0, org_apache_arrow_flatbuf_Int_ref_t v1, flatbuffers_bool_t v2, org_apache_arrow_flatbuf_DictionaryKind_enum_t v3, org_apache_arrow_flatbuf_KeyValue_vec_ref_t v4
+#define __org_apache_arrow_flatbuf_DictionaryEncoding_call_args ,\
+  v0, v1, v2, v3, v4
 static inline org_apache_arrow_flatbuf_DictionaryEncoding_ref_t org_apache_arrow_flatbuf_DictionaryEncoding_create(flatbuffers_builder_t *B __org_apache_arrow_flatbuf_DictionaryEncoding_formal_args);
 __flatbuffers_build_table_prolog(flatbuffers_, org_apache_arrow_flatbuf_DictionaryEncoding, org_apache_arrow_flatbuf_DictionaryEncoding_file_identifier, org_apache_arrow_flatbuf_DictionaryEncoding_type_identifier)
 
@@ -3752,12 +3756,14 @@ __flatbuffers_build_scalar_field(0, flatbuffers_, org_apache_arrow_flatbuf_Dicti
 __flatbuffers_build_table_field(1, flatbuffers_, org_apache_arrow_flatbuf_DictionaryEncoding_indexType, org_apache_arrow_flatbuf_Int, org_apache_arrow_flatbuf_DictionaryEncoding)
 __flatbuffers_build_scalar_field(2, flatbuffers_, org_apache_arrow_flatbuf_DictionaryEncoding_isOrdered, flatbuffers_bool, flatbuffers_bool_t, 1, 1, UINT8_C(0), org_apache_arrow_flatbuf_DictionaryEncoding)
 __flatbuffers_build_scalar_field(3, flatbuffers_, org_apache_arrow_flatbuf_DictionaryEncoding_dictionaryKind, org_apache_arrow_flatbuf_DictionaryKind, org_apache_arrow_flatbuf_DictionaryKind_enum_t, 2, 2, INT16_C(0), org_apache_arrow_flatbuf_DictionaryEncoding)
+__flatbuffers_build_table_vector_field(4, flatbuffers_, org_apache_arrow_flatbuf_DictionaryEncoding_custom_metadata, org_apache_arrow_flatbuf_KeyValue, org_apache_arrow_flatbuf_DictionaryEncoding)
 
 static inline org_apache_arrow_flatbuf_DictionaryEncoding_ref_t org_apache_arrow_flatbuf_DictionaryEncoding_create(flatbuffers_builder_t *B __org_apache_arrow_flatbuf_DictionaryEncoding_formal_args)
 {
     if (org_apache_arrow_flatbuf_DictionaryEncoding_start(B)
         || org_apache_arrow_flatbuf_DictionaryEncoding_id_add(B, v0)
         || org_apache_arrow_flatbuf_DictionaryEncoding_indexType_add(B, v1)
+        || org_apache_arrow_flatbuf_DictionaryEncoding_custom_metadata_add(B, v4)
         || org_apache_arrow_flatbuf_DictionaryEncoding_dictionaryKind_add(B, v3)
         || org_apache_arrow_flatbuf_DictionaryEncoding_isOrdered_add(B, v2)) {
         return 0;
@@ -3771,6 +3777,7 @@ static org_apache_arrow_flatbuf_DictionaryEncoding_ref_t org_apache_arrow_flatbu
     if (org_apache_arrow_flatbuf_DictionaryEncoding_start(B)
         || org_apache_arrow_flatbuf_DictionaryEncoding_id_pick(B, t)
         || org_apache_arrow_flatbuf_DictionaryEncoding_indexType_pick(B, t)
+        || org_apache_arrow_flatbuf_DictionaryEncoding_custom_metadata_pick(B, t)
         || org_apache_arrow_flatbuf_DictionaryEncoding_dictionaryKind_pick(B, t)
         || org_apache_arrow_flatbuf_DictionaryEncoding_isOrdered_pick(B, t)) {
         return 0;
@@ -5243,6 +5250,7 @@ static int org_apache_arrow_flatbuf_DictionaryEncoding_verify_table(flatcc_table
     if ((ret = flatcc_verify_table_field(td, 1, 0, &org_apache_arrow_flatbuf_Int_verify_table) /* indexType */)) return ret;
     if ((ret = flatcc_verify_field(td, 2, 1, 1) /* isOrdered */)) return ret;
     if ((ret = flatcc_verify_field(td, 3, 2, 2) /* dictionaryKind */)) return ret;
+    if ((ret = flatcc_verify_table_vector_field(td, 4, 0, &org_apache_arrow_flatbuf_KeyValue_verify_table) /* custom_metadata */)) return ret;
     return flatcc_verify_ok;
 }
 
@@ -7123,6 +7131,8 @@ __flatbuffers_define_table_field(1, org_apache_arrow_flatbuf_DictionaryEncoding,
  *  preserve that metadata here */
 __flatbuffers_define_scalar_field(2, org_apache_arrow_flatbuf_DictionaryEncoding, isOrdered, flatbuffers_bool, flatbuffers_bool_t, UINT8_C(0))
 __flatbuffers_define_scalar_field(3, org_apache_arrow_flatbuf_DictionaryEncoding, dictionaryKind, org_apache_arrow_flatbuf_DictionaryKind, org_apache_arrow_flatbuf_DictionaryKind_enum_t, INT16_C(0))
+/**  Metadata for the dictionary value type, e.g. the extension type of the values */
+__flatbuffers_define_vector_field(4, org_apache_arrow_flatbuf_DictionaryEncoding, custom_metadata, org_apache_arrow_flatbuf_KeyValue_vec_t, 0)
 
 /**  ----------------------------------------------------------------------
  *  A field represents a named column in a record / row batch or child of a
@@ -7384,7 +7394,7 @@ __flatbuffers_build_table(flatbuffers_, org_apache_arrow_flatbuf_KeyValue, 2)
 static const flatbuffers_voffset_t __org_apache_arrow_flatbuf_DictionaryEncoding_required[] = { 0 };
 typedef flatbuffers_ref_t org_apache_arrow_flatbuf_DictionaryEncoding_ref_t;
 static org_apache_arrow_flatbuf_DictionaryEncoding_ref_t org_apache_arrow_flatbuf_DictionaryEncoding_clone(flatbuffers_builder_t *B, org_apache_arrow_flatbuf_DictionaryEncoding_table_t t);
-__flatbuffers_build_table(flatbuffers_, org_apache_arrow_flatbuf_DictionaryEncoding, 4)
+__flatbuffers_build_table(flatbuffers_, org_apache_arrow_flatbuf_DictionaryEncoding, 5)
 
 static const flatbuffers_voffset_t __org_apache_arrow_flatbuf_Field_required[] = { 0 };
 typedef flatbuffers_ref_t org_apache_arrow_flatbuf_Field_ref_t;
@@ -7531,8 +7541,10 @@ __flatbuffers_build_table_prolog(flatbuffers_, org_apache_arrow_flatbuf_Duration
 static inline org_apache_arrow_flatbuf_KeyValue_ref_t org_apache_arrow_flatbuf_KeyValue_create(flatbuffers_builder_t *B __org_apache_arrow_flatbuf_KeyValue_formal_args);
 __flatbuffers_build_table_prolog(flatbuffers_, org_apache_arrow_flatbuf_KeyValue, org_apache_arrow_flatbuf_KeyValue_file_identifier, org_apache_arrow_flatbuf_KeyValue_type_identifier)
 
-#define __org_apache_arrow_flatbuf_DictionaryEncoding_formal_args , int64_t v0, org_apache_arrow_flatbuf_Int_ref_t v1, flatbuffers_bool_t v2, org_apache_arrow_flatbuf_DictionaryKind_enum_t v3
-#define __org_apache_arrow_flatbuf_DictionaryEncoding_call_args , v0, v1, v2, v3
+#define __org_apache_arrow_flatbuf_DictionaryEncoding_formal_args ,\
+  int64_t v0, org_apache_arrow_flatbuf_Int_ref_t v1, flatbuffers_bool_t v2, org_apache_arrow_flatbuf_DictionaryKind_enum_t v3, org_apache_arrow_flatbuf_KeyValue_vec_ref_t v4
+#define __org_apache_arrow_flatbuf_DictionaryEncoding_call_args ,\
+  v0, v1, v2, v3, v4
 static inline org_apache_arrow_flatbuf_DictionaryEncoding_ref_t org_apache_arrow_flatbuf_DictionaryEncoding_create(flatbuffers_builder_t *B __org_apache_arrow_flatbuf_DictionaryEncoding_formal_args);
 __flatbuffers_build_table_prolog(flatbuffers_, org_apache_arrow_flatbuf_DictionaryEncoding, org_apache_arrow_flatbuf_DictionaryEncoding_file_identifier, org_apache_arrow_flatbuf_DictionaryEncoding_type_identifier)
 
@@ -8187,12 +8199,14 @@ __flatbuffers_build_scalar_field(0, flatbuffers_, org_apache_arrow_flatbuf_Dicti
 __flatbuffers_build_table_field(1, flatbuffers_, org_apache_arrow_flatbuf_DictionaryEncoding_indexType, org_apache_arrow_flatbuf_Int, org_apache_arrow_flatbuf_DictionaryEncoding)
 __flatbuffers_build_scalar_field(2, flatbuffers_, org_apache_arrow_flatbuf_DictionaryEncoding_isOrdered, flatbuffers_bool, flatbuffers_bool_t, 1, 1, UINT8_C(0), org_apache_arrow_flatbuf_DictionaryEncoding)
 __flatbuffers_build_scalar_field(3, flatbuffers_, org_apache_arrow_flatbuf_DictionaryEncoding_dictionaryKind, org_apache_arrow_flatbuf_DictionaryKind, org_apache_arrow_flatbuf_DictionaryKind_enum_t, 2, 2, INT16_C(0), org_apache_arrow_flatbuf_DictionaryEncoding)
+__flatbuffers_build_table_vector_field(4, flatbuffers_, org_apache_arrow_flatbuf_DictionaryEncoding_custom_metadata, org_apache_arrow_flatbuf_KeyValue, org_apache_arrow_flatbuf_DictionaryEncoding)
 
 static inline org_apache_arrow_flatbuf_DictionaryEncoding_ref_t org_apache_arrow_flatbuf_DictionaryEncoding_create(flatbuffers_builder_t *B __org_apache_arrow_flatbuf_DictionaryEncoding_formal_args)
 {
     if (org_apache_arrow_flatbuf_DictionaryEncoding_start(B)
         || org_apache_arrow_flatbuf_DictionaryEncoding_id_add(B, v0)
         || org_apache_arrow_flatbuf_DictionaryEncoding_indexType_add(B, v1)
+        || org_apache_arrow_flatbuf_DictionaryEncoding_custom_metadata_add(B, v4)
         || org_apache_arrow_flatbuf_DictionaryEncoding_dictionaryKind_add(B, v3)
         || org_apache_arrow_flatbuf_DictionaryEncoding_isOrdered_add(B, v2)) {
         return 0;
@@ -8206,6 +8220,7 @@ static org_apache_arrow_flatbuf_DictionaryEncoding_ref_t org_apache_arrow_flatbu
     if (org_apache_arrow_flatbuf_DictionaryEncoding_start(B)
         || org_apache_arrow_flatbuf_DictionaryEncoding_id_pick(B, t)
         || org_apache_arrow_flatbuf_DictionaryEncoding_indexType_pick(B, t)
+        || org_apache_arrow_flatbuf_DictionaryEncoding_custom_metadata_pick(B, t)
         || org_apache_arrow_flatbuf_DictionaryEncoding_dictionaryKind_pick(B, t)
         || org_apache_arrow_flatbuf_DictionaryEncoding_isOrdered_pick(B, t)) {
         return 0;
@@ -9678,6 +9693,7 @@ static int org_apache_arrow_flatbuf_DictionaryEncoding_verify_table(flatcc_table
     if ((ret = flatcc_verify_table_field(td, 1, 0, &org_apache_arrow_flatbuf_Int_verify_table) /* indexType */)) return ret;
     if ((ret = flatcc_verify_field(td, 2, 1, 1) /* isOrdered */)) return ret;
     if ((ret = flatcc_verify_field(td, 3, 2, 2) /* dictionaryKind */)) return ret;
+    if ((ret = flatcc_verify_table_vector_field(td, 4, 0, &org_apache_arrow_flatbuf_KeyValue_verify_table) /* custom_metadata */)) return ret;
     return flatcc_verify_ok;
 }
 
@@ -13316,6 +13332,8 @@ __flatbuffers_define_table_field(1, org_apache_arrow_flatbuf_DictionaryEncoding,
  *  preserve that metadata here */
 __flatbuffers_define_scalar_field(2, org_apache_arrow_flatbuf_DictionaryEncoding, isOrdered, flatbuffers_bool, flatbuffers_bool_t, UINT8_C(0))
 __flatbuffers_define_scalar_field(3, org_apache_arrow_flatbuf_DictionaryEncoding, dictionaryKind, org_apache_arrow_flatbuf_DictionaryKind, org_apache_arrow_flatbuf_DictionaryKind_enum_t, INT16_C(0))
+/**  Metadata for the dictionary value type, e.g. the extension type of the values */
+__flatbuffers_define_vector_field(4, org_apache_arrow_flatbuf_DictionaryEncoding, custom_metadata, org_apache_arrow_flatbuf_KeyValue_vec_t, 0)
 
 /**  ----------------------------------------------------------------------
  *  A field represents a named column in a record / row batch or child of a
@@ -13577,7 +13595,7 @@ __flatbuffers_build_table(flatbuffers_, org_apache_arrow_flatbuf_KeyValue, 2)
 static const flatbuffers_voffset_t __org_apache_arrow_flatbuf_DictionaryEncoding_required[] = { 0 };
 typedef flatbuffers_ref_t org_apache_arrow_flatbuf_DictionaryEncoding_ref_t;
 static org_apache_arrow_flatbuf_DictionaryEncoding_ref_t org_apache_arrow_flatbuf_DictionaryEncoding_clone(flatbuffers_builder_t *B, org_apache_arrow_flatbuf_DictionaryEncoding_table_t t);
-__flatbuffers_build_table(flatbuffers_, org_apache_arrow_flatbuf_DictionaryEncoding, 4)
+__flatbuffers_build_table(flatbuffers_, org_apache_arrow_flatbuf_DictionaryEncoding, 5)
 
 static const flatbuffers_voffset_t __org_apache_arrow_flatbuf_Field_required[] = { 0 };
 typedef flatbuffers_ref_t org_apache_arrow_flatbuf_Field_ref_t;
@@ -13724,8 +13742,10 @@ __flatbuffers_build_table_prolog(flatbuffers_, org_apache_arrow_flatbuf_Duration
 static inline org_apache_arrow_flatbuf_KeyValue_ref_t org_apache_arrow_flatbuf_KeyValue_create(flatbuffers_builder_t *B __org_apache_arrow_flatbuf_KeyValue_formal_args);
 __flatbuffers_build_table_prolog(flatbuffers_, org_apache_arrow_flatbuf_KeyValue, org_apache_arrow_flatbuf_KeyValue_file_identifier, org_apache_arrow_flatbuf_KeyValue_type_identifier)
 
-#define __org_apache_arrow_flatbuf_DictionaryEncoding_formal_args , int64_t v0, org_apache_arrow_flatbuf_Int_ref_t v1, flatbuffers_bool_t v2, org_apache_arrow_flatbuf_DictionaryKind_enum_t v3
-#define __org_apache_arrow_flatbuf_DictionaryEncoding_call_args , v0, v1, v2, v3
+#define __org_apache_arrow_flatbuf_DictionaryEncoding_formal_args ,\
+  int64_t v0, org_apache_arrow_flatbuf_Int_ref_t v1, flatbuffers_bool_t v2, org_apache_arrow_flatbuf_DictionaryKind_enum_t v3, org_apache_arrow_flatbuf_KeyValue_vec_ref_t v4
+#define __org_apache_arrow_flatbuf_DictionaryEncoding_call_args ,\
+  v0, v1, v2, v3, v4
 static inline org_apache_arrow_flatbuf_DictionaryEncoding_ref_t org_apache_arrow_flatbuf_DictionaryEncoding_create(flatbuffers_builder_t *B __org_apache_arrow_flatbuf_DictionaryEncoding_formal_args);
 __flatbuffers_build_table_prolog(flatbuffers_, org_apache_arrow_flatbuf_DictionaryEncoding, org_apache_arrow_flatbuf_DictionaryEncoding_file_identifier, org_apache_arrow_flatbuf_DictionaryEncoding_type_identifier)
 
@@ -14380,12 +14400,14 @@ __flatbuffers_build_scalar_field(0, flatbuffers_, org_apache_arrow_flatbuf_Dicti
 __flatbuffers_build_table_field(1, flatbuffers_, org_apache_arrow_flatbuf_DictionaryEncoding_indexType, org_apache_arrow_flatbuf_Int, org_apache_arrow_flatbuf_DictionaryEncoding)
 __flatbuffers_build_scalar_field(2, flatbuffers_, org_apache_arrow_flatbuf_DictionaryEncoding_isOrdered, flatbuffers_bool, flatbuffers_bool_t, 1, 1, UINT8_C(0), org_apache_arrow_flatbuf_DictionaryEncoding)
 __flatbuffers_build_scalar_field(3, flatbuffers_, org_apache_arrow_flatbuf_DictionaryEncoding_dictionaryKind, org_apache_arrow_flatbuf_DictionaryKind, org_apache_arrow_flatbuf_DictionaryKind_enum_t, 2, 2, INT16_C(0), org_apache_arrow_flatbuf_DictionaryEncoding)
+__flatbuffers_build_table_vector_field(4, flatbuffers_, org_apache_arrow_flatbuf_DictionaryEncoding_custom_metadata, org_apache_arrow_flatbuf_KeyValue, org_apache_arrow_flatbuf_DictionaryEncoding)
 
 static inline org_apache_arrow_flatbuf_DictionaryEncoding_ref_t org_apache_arrow_flatbuf_DictionaryEncoding_create(flatbuffers_builder_t *B __org_apache_arrow_flatbuf_DictionaryEncoding_formal_args)
 {
     if (org_apache_arrow_flatbuf_DictionaryEncoding_start(B)
         || org_apache_arrow_flatbuf_DictionaryEncoding_id_add(B, v0)
         || org_apache_arrow_flatbuf_DictionaryEncoding_indexType_add(B, v1)
+        || org_apache_arrow_flatbuf_DictionaryEncoding_custom_metadata_add(B, v4)
         || org_apache_arrow_flatbuf_DictionaryEncoding_dictionaryKind_add(B, v3)
         || org_apache_arrow_flatbuf_DictionaryEncoding_isOrdered_add(B, v2)) {
         return 0;
@@ -14399,6 +14421,7 @@ static org_apache_arrow_flatbuf_DictionaryEncoding_ref_t org_apache_arrow_flatbu
     if (org_apache_arrow_flatbuf_DictionaryEncoding_start(B)
         || org_apache_arrow_flatbuf_DictionaryEncoding_id_pick(B, t)
         || org_apache_arrow_flatbuf_DictionaryEncoding_indexType_pick(B, t)
+        || org_apache_arrow_flatbuf_DictionaryEncoding_custom_metadata_pick(B, t)
         || org_apache_arrow_flatbuf_DictionaryEncoding_dictionaryKind_pick(B, t)
         || org_apache_arrow_flatbuf_DictionaryEncoding_isOrdered_pick(B, t)) {
         return 0;
@@ -15871,6 +15894,7 @@ static int org_apache_arrow_flatbuf_DictionaryEncoding_verify_table(flatcc_table
     if ((ret = flatcc_verify_table_field(td, 1, 0, &org_apache_arrow_flatbuf_Int_verify_table) /* indexType */)) return ret;
     if ((ret = flatcc_verify_field(td, 2, 1, 1) /* isOrdered */)) return ret;
     if ((ret = flatcc_verify_field(td, 3, 2, 2) /* dictionaryKind */)) return ret;
+    if ((ret = flatcc_verify_table_vector_field(td, 4, 0, &org_apache_arrow_flatbuf_KeyValue_verify_table) /* custom_metadata */)) return ret;
     return flatcc_verify_ok;
 }
 
@@ -17445,6 +17469,8 @@ __flatbuffers_define_table_field(1, org_apache_arrow_flatbuf_DictionaryEncoding,
  *  preserve that metadata here */
 __flatbuffers_define_scalar_field(2, org_apache_arrow_flatbuf_DictionaryEncoding, isOrdered, flatbuffers_bool, flatbuffers_bool_t, UINT8_C(0))
 __flatbuffers_define_scalar_field(3, org_apache_arrow_flatbuf_DictionaryEncoding, dictionaryKind, org_apache_arrow_flatbuf_DictionaryKind, org_apache_arrow_flatbuf_DictionaryKind_enum_t, INT16_C(0))
+/**  Metadata for the dictionary value type, e.g. the extension type of the values */
+__flatbuffers_define_vector_field(4, org_apache_arrow_flatbuf_DictionaryEncoding, custom_metadata, org_apache_arrow_flatbuf_KeyValue_vec_t, 0)
 
 /**  ----------------------------------------------------------------------
  *  A field represents a named column in a record / row batch or child of a
@@ -17706,7 +17732,7 @@ __flatbuffers_build_table(flatbuffers_, org_apache_arrow_flatbuf_KeyValue, 2)
 static const flatbuffers_voffset_t __org_apache_arrow_flatbuf_DictionaryEncoding_required[] = { 0 };
 typedef flatbuffers_ref_t org_apache_arrow_flatbuf_DictionaryEncoding_ref_t;
 static org_apache_arrow_flatbuf_DictionaryEncoding_ref_t org_apache_arrow_flatbuf_DictionaryEncoding_clone(flatbuffers_builder_t *B, org_apache_arrow_flatbuf_DictionaryEncoding_table_t t);
-__flatbuffers_build_table(flatbuffers_, org_apache_arrow_flatbuf_DictionaryEncoding, 4)
+__flatbuffers_build_table(flatbuffers_, org_apache_arrow_flatbuf_DictionaryEncoding, 5)
 
 static const flatbuffers_voffset_t __org_apache_arrow_flatbuf_Field_required[] = { 0 };
 typedef flatbuffers_ref_t org_apache_arrow_flatbuf_Field_ref_t;
@@ -17853,8 +17879,10 @@ __flatbuffers_build_table_prolog(flatbuffers_, org_apache_arrow_flatbuf_Duration
 static inline org_apache_arrow_flatbuf_KeyValue_ref_t org_apache_arrow_flatbuf_KeyValue_create(flatbuffers_builder_t *B __org_apache_arrow_flatbuf_KeyValue_formal_args);
 __flatbuffers_build_table_prolog(flatbuffers_, org_apache_arrow_flatbuf_KeyValue, org_apache_arrow_flatbuf_KeyValue_file_identifier, org_apache_arrow_flatbuf_KeyValue_type_identifier)
 
-#define __org_apache_arrow_flatbuf_DictionaryEncoding_formal_args , int64_t v0, org_apache_arrow_flatbuf_Int_ref_t v1, flatbuffers_bool_t v2, org_apache_arrow_flatbuf_DictionaryKind_enum_t v3
-#define __org_apache_arrow_flatbuf_DictionaryEncoding_call_args , v0, v1, v2, v3
+#define __org_apache_arrow_flatbuf_DictionaryEncoding_formal_args ,\
+  int64_t v0, org_apache_arrow_flatbuf_Int_ref_t v1, flatbuffers_bool_t v2, org_apache_arrow_flatbuf_DictionaryKind_enum_t v3, org_apache_arrow_flatbuf_KeyValue_vec_ref_t v4
+#define __org_apache_arrow_flatbuf_DictionaryEncoding_call_args ,\
+  v0, v1, v2, v3, v4
 static inline org_apache_arrow_flatbuf_DictionaryEncoding_ref_t org_apache_arrow_flatbuf_DictionaryEncoding_create(flatbuffers_builder_t *B __org_apache_arrow_flatbuf_DictionaryEncoding_formal_args);
 __flatbuffers_build_table_prolog(flatbuffers_, org_apache_arrow_flatbuf_DictionaryEncoding, org_apache_arrow_flatbuf_DictionaryEncoding_file_identifier, org_apache_arrow_flatbuf_DictionaryEncoding_type_identifier)
 
@@ -18509,12 +18537,14 @@ __flatbuffers_build_scalar_field(0, flatbuffers_, org_apache_arrow_flatbuf_Dicti
 __flatbuffers_build_table_field(1, flatbuffers_, org_apache_arrow_flatbuf_DictionaryEncoding_indexType, org_apache_arrow_flatbuf_Int, org_apache_arrow_flatbuf_DictionaryEncoding)
 __flatbuffers_build_scalar_field(2, flatbuffers_, org_apache_arrow_flatbuf_DictionaryEncoding_isOrdered, flatbuffers_bool, flatbuffers_bool_t, 1, 1, UINT8_C(0), org_apache_arrow_flatbuf_DictionaryEncoding)
 __flatbuffers_build_scalar_field(3, flatbuffers_, org_apache_arrow_flatbuf_DictionaryEncoding_dictionaryKind, org_apache_arrow_flatbuf_DictionaryKind, org_apache_arrow_flatbuf_DictionaryKind_enum_t, 2, 2, INT16_C(0), org_apache_arrow_flatbuf_DictionaryEncoding)
+__flatbuffers_build_table_vector_field(4, flatbuffers_, org_apache_arrow_flatbuf_DictionaryEncoding_custom_metadata, org_apache_arrow_flatbuf_KeyValue, org_apache_arrow_flatbuf_DictionaryEncoding)
 
 static inline org_apache_arrow_flatbuf_DictionaryEncoding_ref_t org_apache_arrow_flatbuf_DictionaryEncoding_create(flatbuffers_builder_t *B __org_apache_arrow_flatbuf_DictionaryEncoding_formal_args)
 {
     if (org_apache_arrow_flatbuf_DictionaryEncoding_start(B)
         || org_apache_arrow_flatbuf_DictionaryEncoding_id_add(B, v0)
         || org_apache_arrow_flatbuf_DictionaryEncoding_indexType_add(B, v1)
+        || org_apache_arrow_flatbuf_DictionaryEncoding_custom_metadata_add(B, v4)
         || org_apache_arrow_flatbuf_DictionaryEncoding_dictionaryKind_add(B, v3)
         || org_apache_arrow_flatbuf_DictionaryEncoding_isOrdered_add(B, v2)) {
         return 0;
@@ -18528,6 +18558,7 @@ static org_apache_arrow_flatbuf_DictionaryEncoding_ref_t org_apache_arrow_flatbu
     if (org_apache_arrow_flatbuf_DictionaryEncoding_start(B)
         || org_apache_arrow_flatbuf_DictionaryEncoding_id_pick(B, t)
         || org_apache_arrow_flatbuf_DictionaryEncoding_indexType_pick(B, t)
+        || org_apache_arrow_flatbuf_DictionaryEncoding_custom_metadata_pick(B, t)
         || org_apache_arrow_flatbuf_DictionaryEncoding_dictionaryKind_pick(B, t)
         || org_apache_arrow_flatbuf_DictionaryEncoding_isOrdered_pick(B, t)) {
         return 0;
@@ -20000,6 +20031,7 @@ static int org_apache_arrow_flatbuf_DictionaryEncoding_verify_table(flatcc_table
     if ((ret = flatcc_verify_table_field(td, 1, 0, &org_apache_arrow_flatbuf_Int_verify_table) /* indexType */)) return ret;
     if ((ret = flatcc_verify_field(td, 2, 1, 1) /* isOrdered */)) return ret;
     if ((ret = flatcc_verify_field(td, 3, 2, 2) /* dictionaryKind */)) return ret;
+    if ((ret = flatcc_verify_table_vector_field(td, 4, 0, &org_apache_arrow_flatbuf_KeyValue_verify_table) /* custom_metadata */)) return ret;
     return flatcc_verify_ok;
 }
 
@@ -22762,6 +22794,8 @@ __flatbuffers_define_table_field(1, org_apache_arrow_flatbuf_DictionaryEncoding,
  *  preserve that metadata here */
 __flatbuffers_define_scalar_field(2, org_apache_arrow_flatbuf_DictionaryEncoding, isOrdered, flatbuffers_bool, flatbuffers_bool_t, UINT8_C(0))
 __flatbuffers_define_scalar_field(3, org_apache_arrow_flatbuf_DictionaryEncoding, dictionaryKind, org_apache_arrow_flatbuf_DictionaryKind, org_apache_arrow_flatbuf_DictionaryKind_enum_t, INT16_C(0))
+/**  Metadata for the dictionary value type, e.g. the extension type of the values */
+__flatbuffers_define_vector_field(4, org_apache_arrow_flatbuf_DictionaryEncoding, custom_metadata, org_apache_arrow_flatbuf_KeyValue_vec_t, 0)
 
 /**  ----------------------------------------------------------------------
  *  A field represents a named column in a record / row batch or child of a
@@ -23023,7 +23057,7 @@ __flatbuffers_build_table(flatbuffers_, org_apache_arrow_flatbuf_KeyValue, 2)
 static const flatbuffers_voffset_t __org_apache_arrow_flatbuf_DictionaryEncoding_required[] = { 0 };
 typedef flatbuffers_ref_t org_apache_arrow_flatbuf_DictionaryEncoding_ref_t;
 static org_apache_arrow_flatbuf_DictionaryEncoding_ref_t org_apache_arrow_flatbuf_DictionaryEncoding_clone(flatbuffers_builder_t *B, org_apache_arrow_flatbuf_DictionaryEncoding_table_t t);
-__flatbuffers_build_table(flatbuffers_, org_apache_arrow_flatbuf_DictionaryEncoding, 4)
+__flatbuffers_build_table(flatbuffers_, org_apache_arrow_flatbuf_DictionaryEncoding, 5)
 
 static const flatbuffers_voffset_t __org_apache_arrow_flatbuf_Field_required[] = { 0 };
 typedef flatbuffers_ref_t org_apache_arrow_flatbuf_Field_ref_t;
@@ -23170,8 +23204,10 @@ __flatbuffers_build_table_prolog(flatbuffers_, org_apache_arrow_flatbuf_Duration
 static inline org_apache_arrow_flatbuf_KeyValue_ref_t org_apache_arrow_flatbuf_KeyValue_create(flatbuffers_builder_t *B __org_apache_arrow_flatbuf_KeyValue_formal_args);
 __flatbuffers_build_table_prolog(flatbuffers_, org_apache_arrow_flatbuf_KeyValue, org_apache_arrow_flatbuf_KeyValue_file_identifier, org_apache_arrow_flatbuf_KeyValue_type_identifier)
 
-#define __org_apache_arrow_flatbuf_DictionaryEncoding_formal_args , int64_t v0, org_apache_arrow_flatbuf_Int_ref_t v1, flatbuffers_bool_t v2, org_apache_arrow_flatbuf_DictionaryKind_enum_t v3
-#define __org_apache_arrow_flatbuf_DictionaryEncoding_call_args , v0, v1, v2, v3
+#define __org_apache_arrow_flatbuf_DictionaryEncoding_formal_args ,\
+  int64_t v0, org_apache_arrow_flatbuf_Int_ref_t v1, flatbuffers_bool_t v2, org_apache_arrow_flatbuf_DictionaryKind_enum_t v3, org_apache_arrow_flatbuf_KeyValue_vec_ref_t v4
+#define __org_apache_arrow_flatbuf_DictionaryEncoding_call_args ,\
+  v0, v1, v2, v3, v4
 static inline org_apache_arrow_flatbuf_DictionaryEncoding_ref_t org_apache_arrow_flatbuf_DictionaryEncoding_create(flatbuffers_builder_t *B __org_apache_arrow_flatbuf_DictionaryEncoding_formal_args);
 __flatbuffers_build_table_prolog(flatbuffers_, org_apache_arrow_flatbuf_DictionaryEncoding, org_apache_arrow_flatbuf_DictionaryEncoding_file_identifier, org_apache_arrow_flatbuf_DictionaryEncoding_type_identifier)
 
@@ -23826,12 +23862,14 @@ __flatbuffers_build_scalar_field(0, flatbuffers_, org_apache_arrow_flatbuf_Dicti
 __flatbuffers_build_table_field(1, flatbuffers_, org_apache_arrow_flatbuf_DictionaryEncoding_indexType, org_apache_arrow_flatbuf_Int, org_apache_arrow_flatbuf_DictionaryEncoding)
 __flatbuffers_build_scalar_field(2, flatbuffers_, org_apache_arrow_flatbuf_DictionaryEncoding_isOrdered, flatbuffers_bool, flatbuffers_bool_t, 1, 1, UINT8_C(0), org_apache_arrow_flatbuf_DictionaryEncoding)
 __flatbuffers_build_scalar_field(3, flatbuffers_, org_apache_arrow_flatbuf_DictionaryEncoding_dictionaryKind, org_apache_arrow_flatbuf_DictionaryKind, org_apache_arrow_flatbuf_DictionaryKind_enum_t, 2, 2, INT16_C(0), org_apache_arrow_flatbuf_DictionaryEncoding)
+__flatbuffers_build_table_vector_field(4, flatbuffers_, org_apache_arrow_flatbuf_DictionaryEncoding_custom_metadata, org_apache_arrow_flatbuf_KeyValue, org_apache_arrow_flatbuf_DictionaryEncoding)
 
 static inline org_apache_arrow_flatbuf_DictionaryEncoding_ref_t org_apache_arrow_flatbuf_DictionaryEncoding_create(flatbuffers_builder_t *B __org_apache_arrow_flatbuf_DictionaryEncoding_formal_args)
 {
     if (org_apache_arrow_flatbuf_DictionaryEncoding_start(B)
         || org_apache_arrow_flatbuf_DictionaryEncoding_id_add(B, v0)
         || org_apache_arrow_flatbuf_DictionaryEncoding_indexType_add(B, v1)
+        || org_apache_arrow_flatbuf_DictionaryEncoding_custom_metadata_add(B, v4)
         || org_apache_arrow_flatbuf_DictionaryEncoding_dictionaryKind_add(B, v3)
         || org_apache_arrow_flatbuf_DictionaryEncoding_isOrdered_add(B, v2)) {
         return 0;
@@ -23845,6 +23883,7 @@ static org_apache_arrow_flatbuf_DictionaryEncoding_ref_t org_apache_arrow_flatbu
     if (org_apache_arrow_flatbuf_DictionaryEncoding_start(B)
         || org_apache_arrow_flatbuf_DictionaryEncoding_id_pick(B, t)
         || org_apache_arrow_flatbuf_DictionaryEncoding_indexType_pick(B, t)
+        || org_apache_arrow_flatbuf_DictionaryEncoding_custom_metadata_pick(B, t)
         || org_apache_arrow_flatbuf_DictionaryEncoding_dictionaryKind_pick(B, t)
         || org_apache_arrow_flatbuf_DictionaryEncoding_isOrdered_pick(B, t)) {
         return 0;
@@ -25317,6 +25356,7 @@ static int org_apache_arrow_flatbuf_DictionaryEncoding_verify_table(flatcc_table
     if ((ret = flatcc_verify_table_field(td, 1, 0, &org_apache_arrow_flatbuf_Int_verify_table) /* indexType */)) return ret;
     if ((ret = flatcc_verify_field(td, 2, 1, 1) /* isOrdered */)) return ret;
     if ((ret = flatcc_verify_field(td, 3, 2, 2) /* dictionaryKind */)) return ret;
+    if ((ret = flatcc_verify_table_vector_field(td, 4, 0, &org_apache_arrow_flatbuf_KeyValue_verify_table) /* custom_metadata */)) return ret;
     return flatcc_verify_ok;
 }
 

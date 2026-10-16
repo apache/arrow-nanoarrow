@@ -749,7 +749,8 @@ ArrowErrorCode TestingJSONWriter::WriteField(std::ostream& out,
     out << R"(, "dictionary": )";
     view.type = view.storage_type;
     NANOARROW_RETURN_NOT_OK(WriteFieldDictionary(
-        out, dictionary_id, field->flags & ARROW_FLAG_DICTIONARY_ORDERED, &view));
+        out, dictionary_id, field->flags & ARROW_FLAG_DICTIONARY_ORDERED, &view,
+        field->dictionary->metadata));
 
     // Write dictionary children
     out << R"(, "children": )";
@@ -980,7 +981,7 @@ ArrowErrorCode TestingJSONWriter::WriteFieldChildren(std::ostream& out,
 }
 ArrowErrorCode TestingJSONWriter::WriteFieldDictionary(
     std::ostream& out, int32_t dictionary_id, bool is_ordered,
-    const ArrowSchemaView* indices_field) {
+    const ArrowSchemaView* indices_field, const char* value_metadata) {
   out << "{";
 
   out << R"("id": )" << dictionary_id;
@@ -992,6 +993,17 @@ ArrowErrorCode TestingJSONWriter::WriteFieldDictionary(
     out << R"(, "isOrdered": true)";
   } else {
     out << R"(, "isOrdered": false)";
+  }
+
+  // The metadata of the dictionary value type (e.g., the extension type of the
+  // values), which is omitted if empty
+  if (ShouldWriteMetadata(value_metadata)) {
+    ArrowMetadataReader reader;
+    NANOARROW_RETURN_NOT_OK(ArrowMetadataReaderInit(&reader, value_metadata));
+    if (reader.remaining_keys > 0) {
+      out << R"(, "metadata": )";
+      NANOARROW_RETURN_NOT_OK(WriteMetadata(out, value_metadata));
+    }
   }
 
   out << "}";
@@ -1635,10 +1647,15 @@ ArrowErrorCode SetField(ArrowSchema* schema, const json& value,
     NANOARROW_RETURN_NOT_OK(
         SetDictionary(schema, value["dictionary"], &dictionary_id, error));
 
-    // Allocate a dictionary and put this value (minus dictionary, metadata, and name)
+    // Allocate a dictionary and put this value (minus dictionary, metadata, and name).
+    // The metadata of the dictionary value type (e.g., the extension type of the
+    // values) is the "metadata" of the "dictionary" object, if present.
     json value_copy = value;
     value_copy.erase("dictionary");
     value_copy.erase("metadata");
+    if (value["dictionary"].contains("metadata")) {
+      value_copy["metadata"] = value["dictionary"]["metadata"];
+    }
     value_copy["name"] = nullptr;
     NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowSchemaAllocateDictionary(schema), error);
     NANOARROW_RETURN_NOT_OK(
@@ -2824,6 +2841,14 @@ ArrowErrorCode TestingJSONComparison::CompareChildrenMetadata(const ArrowSchema*
 
   // The children of a dictionary-encoded field are those of the dictionary value type
   if (actual->dictionary != nullptr && expected->dictionary != nullptr) {
+    const char* actual_metadata;
+    const char* expected_metadata;
+    NANOARROW_RETURN_NOT_OK_WITH_ERROR(
+        MetadataOrNullIfEmpty(actual->dictionary->metadata, &actual_metadata), error);
+    NANOARROW_RETURN_NOT_OK_WITH_ERROR(
+        MetadataOrNullIfEmpty(expected->dictionary->metadata, &expected_metadata), error);
+    NANOARROW_RETURN_NOT_OK(CompareMetadata(actual_metadata, expected_metadata, error,
+                                            path + ".dictionary.metadata"));
     NANOARROW_RETURN_NOT_OK(CompareChildrenMetadata(
         actual->dictionary, expected->dictionary, error, path + ".dictionary"));
   }
