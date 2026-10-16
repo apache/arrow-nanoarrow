@@ -574,10 +574,16 @@ static const char* ArrowIpcArrayStreamReaderGetLastError(
 ArrowErrorCode ArrowIpcArrayStreamReaderInit(
     struct ArrowArrayStream* out, struct ArrowIpcInputStream* input_stream,
     struct ArrowIpcArrayStreamReaderOptions* options) {
-  if (options != NULL &&
-      ((int)options->validation_level < (int)NANOARROW_VALIDATION_LEVEL_NONE ||
-       (int)options->validation_level > (int)NANOARROW_VALIDATION_LEVEL_FULL)) {
-    return EINVAL;
+  if (options != NULL) {
+    switch (options->validation_level) {
+      case NANOARROW_VALIDATION_LEVEL_NONE:
+      case NANOARROW_VALIDATION_LEVEL_MINIMAL:
+      case NANOARROW_VALIDATION_LEVEL_DEFAULT:
+      case NANOARROW_VALIDATION_LEVEL_FULL:
+        break;
+      default:
+        return EINVAL;
+    }
   }
 
   struct ArrowIpcArrayStreamReaderPrivate* private_data =

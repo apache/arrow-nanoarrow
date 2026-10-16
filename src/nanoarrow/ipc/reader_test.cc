@@ -648,6 +648,7 @@ TEST(NanoarrowIpcReader, StreamReaderInvalidValidationLevel) {
   struct ArrowIpcArrayStreamReaderOptions options;
   options.field_index = -1;
   options.use_shared_buffers = 0;
+  // NOLINTNEXTLINE(clang-analyzer-optin.core.EnumCastOutOfRange): deliberately invalid
   options.validation_level = static_cast<ArrowValidationLevel>(4);
   ASSERT_EQ(ArrowIpcArrayStreamReaderInit(&stream, &input, &options), EINVAL);
 
