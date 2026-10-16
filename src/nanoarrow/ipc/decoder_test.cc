@@ -1314,6 +1314,48 @@ TEST(NanoarrowIpcTest, NanoarrowIpcFooterDecodingErrors) {
 }
 
 #if defined(NANOARROW_BUILD_TESTS_WITH_ARROW)
+static bool IsDictionaryOfExtension(const std::shared_ptr<arrow::DataType>& data_type) {
+  return data_type->id() == arrow::Type::DICTIONARY &&
+         std::static_pointer_cast<arrow::DictionaryType>(data_type)->value_type()->id() ==
+             arrow::Type::EXTENSION;
+}
+
+static bool HasDictionaryOfExtension(const arrow::FieldVector& fields) {
+  for (const auto& field : fields) {
+    if (IsDictionaryOfExtension(field->type()) ||
+        HasDictionaryOfExtension(field->type()->fields())) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+static bool HasDictionaryOfExtension(const arrow::Schema& schema) {
+  return HasDictionaryOfExtension(schema.fields());
+}
+
+// Arrow C++ writes the metadata of a dictionary value type (e.g., the extension type
+// of the values) to DictionaryEncoding.custom_metadata from format version 1.6
+// (https://github.com/apache/arrow/issues/49704). Earlier versions write it to
+// Field.custom_metadata, where it can't be distinguished from the metadata of the
+// field itself and Arrow C++ can't read it back.
+static bool ArrowCppWritesDictionaryValueMetadata() {
+  auto dummy_schema = arrow::schema(
+      {arrow::field("", arrow::dictionary(arrow::int32(), arrow::extension::uuid()))});
+  auto maybe_serialized = arrow::ipc::SerializeSchema(*dummy_schema);
+  if (!maybe_serialized.ok()) {
+    return false;
+  }
+
+  // Skip the continuation token and the message size
+  const uint8_t* data = maybe_serialized.ValueUnsafe()->data() + 2 * sizeof(int32_t);
+  ns(Message_table_t) message = ns(Message_as_root(data));
+  ns(Field_table_t) field = ns(Field_vec_at(
+      ns(Schema_fields((ns(Schema_table_t))ns(Message_header(message)))), 0));
+  return ns(DictionaryEncoding_custom_metadata_is_present(ns(Field_dictionary(field))));
+}
+
 class ArrowTypeParameterizedTestFixture
     : public ::testing::TestWithParam<std::shared_ptr<arrow::DataType>> {
  protected:
@@ -1322,6 +1364,10 @@ class ArrowTypeParameterizedTestFixture
 
 TEST_P(ArrowTypeParameterizedTestFixture, NanoarrowIpcArrowTypeRoundtrip) {
   const std::shared_ptr<arrow::DataType>& data_type = GetParam();
+  if (IsDictionaryOfExtension(data_type) && !ArrowCppWritesDictionaryValueMetadata()) {
+    GTEST_SKIP() << "Arrow C++ does not write DictionaryEncoding.custom_metadata";
+  }
+
   std::shared_ptr<arrow::Schema> dummy_schema =
       arrow::schema({arrow::field("dummy_name", data_type)});
   auto maybe_serialized = arrow::ipc::SerializeSchema(*dummy_schema);
@@ -1383,6 +1429,11 @@ std::string ArrowSchemaToString(const struct ArrowSchema* schema) {
   std::string metadata = ArrowSchemaMetadataToString(schema->metadata);
   if (!metadata.empty()) {
     out += "{" + metadata + "}";
+  }
+
+  // Include the dictionary (value) schema, whose metadata is distinct from the field's
+  if (schema->dictionary != nullptr) {
+    out += "[dictionary: " + ArrowSchemaToString(schema->dictionary) + "]";
   }
 
   bool comma = false;
@@ -1450,9 +1501,7 @@ TEST_P(ArrowTypeParameterizedTestFixture, NanoarrowIpcNanoarrowTypeRoundtrip) {
 TEST_P(ArrowTypeParameterizedTestFixture, NanoarrowIpcArrowArrayRoundtrip) {
   const std::shared_ptr<arrow::DataType>& data_type = GetParam();
 
-  if (data_type->id() == arrow::Type::DICTIONARY &&
-      std::static_pointer_cast<arrow::DictionaryType>(data_type)->value_type()->id() ==
-          Type::EXTENSION) {
+  if (IsDictionaryOfExtension(data_type)) {
     GTEST_SKIP()
         << "Arrow C++ MakeEmpty() doesn't support dictionary with extension value types";
   }
@@ -1862,6 +1911,430 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDecodeMetadataWithoutKey) {
   EXPECT_EQ(ArrowSchemaMetadataToString(schema->metadata), "=schema_value");
 }
 
+// Sets the metadata of schema from key/value pairs whose keys and values may contain
+// embedded nulls or bytes that are not valid UTF-8
+static void SetMetadataPairs(struct ArrowSchema* schema,
+                             const std::vector<std::pair<std::string, std::string>>& kv) {
+  nanoarrow::UniqueBuffer metadata;
+  ASSERT_EQ(ArrowMetadataBuilderInit(metadata.get(), nullptr), NANOARROW_OK);
+  for (const auto& item : kv) {
+    struct ArrowStringView key = {item.first.data(),
+                                  static_cast<int64_t>(item.first.size())};
+    struct ArrowStringView value = {item.second.data(),
+                                    static_cast<int64_t>(item.second.size())};
+    ASSERT_EQ(ArrowMetadataBuilderAppend(metadata.get(), key, value), NANOARROW_OK);
+  }
+
+  if (kv.empty()) {
+    // Empty (but not NULL) metadata
+    ASSERT_EQ(ArrowBufferAppendInt32(metadata.get(), 0), NANOARROW_OK);
+  }
+
+  ASSERT_EQ(ArrowSchemaSetMetadata(schema, reinterpret_cast<char*>(metadata->data)),
+            NANOARROW_OK);
+}
+
+static void InitDictionaryField(struct ArrowSchema* schema, const char* name,
+                                enum ArrowType index_type, enum ArrowType value_type) {
+  ASSERT_EQ(ArrowSchemaInitFromType(schema, index_type), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaSetName(schema, name), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaAllocateDictionary(schema), NANOARROW_OK);
+  if (value_type == NANOARROW_TYPE_FIXED_SIZE_BINARY) {
+    ArrowSchemaInit(schema->dictionary);
+    ASSERT_EQ(ArrowSchemaSetTypeFixedSize(schema->dictionary,
+                                          NANOARROW_TYPE_FIXED_SIZE_BINARY, 16),
+              NANOARROW_OK);
+  } else {
+    ASSERT_EQ(ArrowSchemaInitFromType(schema->dictionary, value_type), NANOARROW_OK);
+  }
+}
+
+static const char kOpaqueMetadata[] =
+    R"({"type_name":"geometry","vendor_name":"nanoarrow"})";
+
+// The metadata of a dictionary value type (i.e., schema->dictionary->metadata)
+// alongside field metadata (i.e., schema->metadata), nested in a struct and a list.
+static void MakeDictionaryValueMetadataSchema(struct ArrowSchema* schema) {
+  ASSERT_EQ(ArrowSchemaInitFromType(schema, NANOARROW_TYPE_STRUCT), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaAllocateChildren(schema, 5), NANOARROW_OK);
+
+  // A dictionary of arrow.uuid values with field metadata
+  struct ArrowSchema* uuid_dict = schema->children[0];
+  ASSERT_NO_FATAL_FAILURE(InitDictionaryField(uuid_dict, "uuid_dict", NANOARROW_TYPE_INT8,
+                                              NANOARROW_TYPE_FIXED_SIZE_BINARY));
+  ASSERT_NO_FATAL_FAILURE(SetMetadataPairs(
+      uuid_dict->dictionary,
+      {{"ARROW:extension:name", "arrow.uuid"}, {"ARROW:extension:metadata", ""}}));
+  ASSERT_NO_FATAL_FAILURE(SetMetadataPairs(uuid_dict, {{"field_key", "field_value"}}));
+
+  // A dictionary of arrow.opaque values plus a key whose value is not valid UTF-8,
+  // nested in a struct
+  struct ArrowSchema* struct_col = schema->children[1];
+  ASSERT_EQ(ArrowSchemaInitFromType(struct_col, NANOARROW_TYPE_STRUCT), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaSetName(struct_col, "struct_col"), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaAllocateChildren(struct_col, 1), NANOARROW_OK);
+  struct ArrowSchema* opaque_dict = struct_col->children[0];
+  ASSERT_NO_FATAL_FAILURE(InitDictionaryField(
+      opaque_dict, "opaque_dict", NANOARROW_TYPE_INT32, NANOARROW_TYPE_STRING));
+  ASSERT_NO_FATAL_FAILURE(SetMetadataPairs(
+      opaque_dict->dictionary, {{"ARROW:extension:name", "arrow.opaque"},
+                                {"ARROW:extension:metadata", kOpaqueMetadata},
+                                {"some key", std::string("\xff\xfe\xc3\x28")}}));
+
+  // A dictionary of values with arbitrary metadata, alongside field metadata, nested
+  // in a list
+  struct ArrowSchema* list_col = schema->children[2];
+  ASSERT_EQ(ArrowSchemaInitFromType(list_col, NANOARROW_TYPE_LIST), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaSetName(list_col, "list_col"), NANOARROW_OK);
+  struct ArrowSchema* item = list_col->children[0];
+  ArrowSchemaRelease(item);
+  ASSERT_NO_FATAL_FAILURE(
+      InitDictionaryField(item, "item", NANOARROW_TYPE_INT16, NANOARROW_TYPE_STRING));
+  ASSERT_NO_FATAL_FAILURE(SetMetadataPairs(item->dictionary, {{"value_key", "a"}}));
+  ASSERT_NO_FATAL_FAILURE(SetMetadataPairs(item, {{"item_key", "b"}}));
+
+  // A dictionary without value metadata
+  ASSERT_NO_FATAL_FAILURE(InitDictionaryField(
+      schema->children[3], "plain_dict", NANOARROW_TYPE_INT32, NANOARROW_TYPE_STRING));
+
+  // A dictionary with empty (but not NULL) value metadata
+  ASSERT_NO_FATAL_FAILURE(InitDictionaryField(
+      schema->children[4], "empty_dict", NANOARROW_TYPE_INT32, NANOARROW_TYPE_STRING));
+  ASSERT_NO_FATAL_FAILURE(SetMetadataPairs(schema->children[4]->dictionary, {}));
+}
+
+static std::string KeyValueToString(ns(KeyValue_vec_t) kv_vec) {
+  std::string out;
+  for (size_t i = 0; i < ns(KeyValue_vec_len(kv_vec)); i++) {
+    ns(KeyValue_table_t) kv = ns(KeyValue_vec_at(kv_vec, i));
+    flatbuffers_string_t key = ns(KeyValue_key(kv));
+    flatbuffers_string_t value = ns(KeyValue_value(kv));
+    if (i > 0) {
+      out += ", ";
+    }
+    out.append(key, flatbuffers_string_len(key));
+    out += "=";
+    out.append(value, flatbuffers_string_len(value));
+  }
+  return out;
+}
+
+// Checks the schema decoded from MakeDictionaryValueMetadataSchema()
+static void CheckDictionaryValueMetadataSchema(const struct ArrowSchema* actual,
+                                               const struct ArrowSchema* expected) {
+  EXPECT_EQ(ArrowSchemaToString(actual), ArrowSchemaToString(expected));
+  ASSERT_EQ(actual->n_children, 5);
+
+  const struct ArrowSchema* uuid_dict = actual->children[0];
+  ASSERT_NE(uuid_dict->dictionary, nullptr);
+  EXPECT_EQ(ArrowSchemaMetadataToString(uuid_dict->metadata), "field_key=field_value");
+  EXPECT_EQ(ArrowSchemaMetadataToString(uuid_dict->dictionary->metadata),
+            "ARROW:extension:name=arrow.uuid, ARROW:extension:metadata=");
+  EXPECT_STREQ(uuid_dict->dictionary->format, "w:16");
+
+  const struct ArrowSchema* opaque_dict = actual->children[1]->children[0];
+  ASSERT_NE(opaque_dict->dictionary, nullptr);
+  EXPECT_EQ(opaque_dict->metadata, nullptr);
+  EXPECT_EQ(ArrowSchemaMetadataToString(opaque_dict->dictionary->metadata),
+            std::string("ARROW:extension:name=arrow.opaque, ARROW:extension:metadata=") +
+                kOpaqueMetadata + ", some key=" + std::string("\xff\xfe\xc3\x28"));
+
+  const struct ArrowSchema* item = actual->children[2]->children[0];
+  ASSERT_NE(item->dictionary, nullptr);
+  EXPECT_EQ(ArrowSchemaMetadataToString(item->metadata), "item_key=b");
+  EXPECT_EQ(ArrowSchemaMetadataToString(item->dictionary->metadata), "value_key=a");
+
+  ASSERT_NE(actual->children[3]->dictionary, nullptr);
+  EXPECT_EQ(actual->children[3]->metadata, nullptr);
+  EXPECT_EQ(actual->children[3]->dictionary->metadata, nullptr);
+
+  // Empty value metadata is not written and so is decoded as NULL
+  ASSERT_NE(actual->children[4]->dictionary, nullptr);
+  EXPECT_EQ(actual->children[4]->dictionary->metadata, nullptr);
+}
+
+TEST(NanoarrowIpcTest, NanoarrowIpcDictionaryValueMetadataRoundtrip) {
+  nanoarrow::UniqueSchema schema;
+  ASSERT_NO_FATAL_FAILURE(MakeDictionaryValueMetadataSchema(schema.get()));
+
+  struct ArrowError error;
+  nanoarrow::ipc::UniqueEncoder encoder;
+  ASSERT_EQ(ArrowIpcEncoderInit(encoder.get()), NANOARROW_OK);
+  ASSERT_EQ(ArrowIpcEncoderEncodeSchema(encoder.get(), schema.get(), &error),
+            NANOARROW_OK)
+      << error.message;
+
+  nanoarrow::UniqueBuffer buffer;
+  ASSERT_EQ(
+      ArrowIpcEncoderFinalizeBuffer(encoder.get(), /*encapsulate=*/true, buffer.get()),
+      NANOARROW_OK);
+
+  // Check the flatbuffer: the value metadata is in DictionaryEncoding.custom_metadata
+  // and the field metadata is in Field.custom_metadata
+  ns(Message_table_t) message = ns(Message_as_root(buffer->data + 2 * sizeof(int32_t)));
+  ASSERT_NE(message, nullptr);
+  ASSERT_EQ(ns(Message_header_type(message)), ns(MessageHeader_Schema));
+  ns(Field_vec_t) fields =
+      ns(Schema_fields((ns(Schema_table_t))ns(Message_header(message))));
+  ASSERT_EQ(ns(Field_vec_len(fields)), 5);
+
+  ns(Field_table_t) uuid_dict = ns(Field_vec_at(fields, 0));
+  ASSERT_EQ(ns(Field_type_type(uuid_dict)), ns(Type_FixedSizeBinary));
+  ns(DictionaryEncoding_table_t) encoding = ns(Field_dictionary(uuid_dict));
+  ASSERT_NE(encoding, nullptr);
+  EXPECT_EQ(KeyValueToString(ns(DictionaryEncoding_custom_metadata(encoding))),
+            "ARROW:extension:name=arrow.uuid, ARROW:extension:metadata=");
+  EXPECT_EQ(KeyValueToString(ns(Field_custom_metadata(uuid_dict))),
+            "field_key=field_value");
+
+  ns(Field_table_t) opaque_dict =
+      ns(Field_vec_at(ns(Field_children(ns(Field_vec_at(fields, 1)))), 0));
+  encoding = ns(Field_dictionary(opaque_dict));
+  ASSERT_NE(encoding, nullptr);
+  EXPECT_EQ(KeyValueToString(ns(DictionaryEncoding_custom_metadata(encoding))),
+            std::string("ARROW:extension:name=arrow.opaque, ARROW:extension:metadata=") +
+                kOpaqueMetadata + ", some key=" + std::string("\xff\xfe\xc3\x28"));
+  EXPECT_FALSE(ns(Field_custom_metadata_is_present(opaque_dict)));
+
+  ns(Field_table_t) item =
+      ns(Field_vec_at(ns(Field_children(ns(Field_vec_at(fields, 2)))), 0));
+  encoding = ns(Field_dictionary(item));
+  ASSERT_NE(encoding, nullptr);
+  EXPECT_EQ(KeyValueToString(ns(DictionaryEncoding_custom_metadata(encoding))),
+            "value_key=a");
+  EXPECT_EQ(KeyValueToString(ns(Field_custom_metadata(item))), "item_key=b");
+
+  // Absent and empty value metadata are both omitted
+  for (size_t i : {3, 4}) {
+    ns(Field_table_t) field = ns(Field_vec_at(fields, i));
+    encoding = ns(Field_dictionary(field));
+    ASSERT_NE(encoding, nullptr);
+    EXPECT_FALSE(ns(DictionaryEncoding_custom_metadata_is_present(encoding)));
+    EXPECT_FALSE(ns(Field_custom_metadata_is_present(field)));
+  }
+
+  // Decode and check that the schema roundtripped
+  struct ArrowBufferView buffer_view;
+  buffer_view.data.data = buffer->data;
+  buffer_view.size_bytes = buffer->size_bytes;
+
+  nanoarrow::ipc::UniqueDecoder decoder;
+  ASSERT_EQ(ArrowIpcDecoderInit(decoder.get()), NANOARROW_OK);
+  ASSERT_EQ(ArrowIpcDecoderVerifyHeader(decoder.get(), buffer_view, &error), NANOARROW_OK)
+      << error.message;
+  ASSERT_EQ(ArrowIpcDecoderDecodeHeader(decoder.get(), buffer_view, &error), NANOARROW_OK)
+      << error.message;
+
+  nanoarrow::UniqueSchema roundtripped;
+  nanoarrow::ipc::UniqueDictionaryEncodings encodings;
+  ASSERT_EQ(ArrowIpcDecoderDecodeSchemaWithDictionaries(decoder.get(), roundtripped.get(),
+                                                        encodings.get(), &error),
+            NANOARROW_OK)
+      << error.message;
+  ASSERT_NO_FATAL_FAILURE(
+      CheckDictionaryValueMetadataSchema(roundtripped.get(), schema.get()));
+
+  // The dictionary encodings resolve to the dictionary-encoded fields
+  for (const struct ArrowSchema* field :
+       {roundtripped->children[0], roundtripped->children[1]->children[0],
+        roundtripped->children[2]->children[0], roundtripped->children[3],
+        roundtripped->children[4]}) {
+    const struct ArrowIpcDictionaryEncoding* found =
+        ArrowIpcDictionaryEncodingsFind(encodings.get(), field);
+    ASSERT_NE(found, nullptr);
+    EXPECT_EQ(found->schema, field);
+  }
+}
+
+TEST(NanoarrowIpcTest, NanoarrowIpcDictionaryValueMetadataFooterRoundtrip) {
+  using namespace nanoarrow::literals;
+
+  nanoarrow::ipc::UniqueFooter footer;
+  ASSERT_NO_FATAL_FAILURE(MakeDictionaryValueMetadataSchema(&footer->schema));
+  ArrowIpcDictionaryEncodingsInit(&footer->dictionaries);
+  ASSERT_EQ(
+      ArrowIpcDictionaryEncodingsAppendSchema(&footer->dictionaries, &footer->schema),
+      NANOARROW_OK);
+
+  nanoarrow::ipc::UniqueEncoder encoder;
+  ASSERT_EQ(ArrowIpcEncoderInit(encoder.get()), NANOARROW_OK);
+
+  struct ArrowError error;
+  ASSERT_EQ(ArrowIpcEncoderEncodeFooter(encoder.get(), footer.get(), &error),
+            NANOARROW_OK)
+      << error.message;
+
+  nanoarrow::UniqueBuffer buffer;
+  ASSERT_EQ(
+      ArrowIpcEncoderFinalizeBuffer(encoder.get(), /*encapsulate=*/false, buffer.get()),
+      NANOARROW_OK);
+
+#ifdef __BIG_ENDIAN__
+  uint32_t footer_size_le = bswap32(static_cast<uint32_t>(buffer->size_bytes));
+  ASSERT_EQ(ArrowBufferAppendInt32(buffer.get(), footer_size_le), NANOARROW_OK);
+#else
+  ASSERT_EQ(
+      ArrowBufferAppendInt32(buffer.get(), static_cast<int32_t>(buffer->size_bytes)),
+      NANOARROW_OK);
+#endif
+  ASSERT_EQ(ArrowBufferAppendStringView(buffer.get(), "ARROW1"_asv), NANOARROW_OK);
+
+  struct ArrowBufferView buffer_view;
+  buffer_view.data.data = buffer->data;
+  buffer_view.size_bytes = buffer->size_bytes;
+
+  nanoarrow::ipc::UniqueDecoder decoder;
+  ASSERT_EQ(ArrowIpcDecoderInit(decoder.get()), NANOARROW_OK);
+  ASSERT_EQ(ArrowIpcDecoderVerifyFooter(decoder.get(), buffer_view, &error), NANOARROW_OK)
+      << error.message;
+  ASSERT_EQ(ArrowIpcDecoderDecodeFooter(decoder.get(), buffer_view, &error), NANOARROW_OK)
+      << error.message;
+
+  ASSERT_NO_FATAL_FAILURE(
+      CheckDictionaryValueMetadataSchema(&decoder->footer->schema, &footer->schema));
+  EXPECT_EQ(decoder->footer->dictionaries.encodings.size_bytes,
+            5 * static_cast<int64_t>(sizeof(struct ArrowIpcDictionaryEncoding)));
+}
+
+// Builds a Schema message with a single dictionary-encoded utf8 field "col" with
+// int32 indices, whose Field.custom_metadata is field_metadata and whose
+// DictionaryEncoding.custom_metadata is value_metadata (omitted if nullptr).
+static void MakeDictionarySchemaMessage(
+    const std::vector<std::pair<std::string, std::string>>* field_metadata,
+    const std::vector<std::pair<std::string, std::string>>* value_metadata,
+    struct ArrowBuffer* out) {
+  flatcc_builder_t builder;
+  flatcc_builder_init(&builder);
+
+  ASSERT_EQ(ns(Message_start_as_root(&builder)), 0);
+  ASSERT_EQ(ns(Message_version_add(&builder, ns(MetadataVersion_V5))), 0);
+  ASSERT_EQ(ns(Message_header_Schema_start(&builder)), 0);
+  ASSERT_EQ(ns(Schema_endianness_add(&builder, ns(Endianness_Little))), 0);
+  ASSERT_EQ(ns(Schema_fields_start(&builder)), 0);
+  ASSERT_EQ(ns(Schema_fields_push_start(&builder)), 0);
+  ASSERT_EQ(ns(Field_name_create_str(&builder, "col")), 0);
+  ASSERT_EQ(ns(Field_nullable_add(&builder, 1)), 0);
+  ASSERT_EQ(ns(Field_type_Utf8_create(&builder)), 0);
+
+  ASSERT_EQ(ns(Field_dictionary_start(&builder)), 0);
+  ASSERT_EQ(ns(DictionaryEncoding_id_add(&builder, 0)), 0);
+  ASSERT_EQ(ns(DictionaryEncoding_indexType_create(&builder, 32, 1)), 0);
+  if (value_metadata != nullptr) {
+    ASSERT_EQ(ns(DictionaryEncoding_custom_metadata_start(&builder)), 0);
+    for (const auto& item : *value_metadata) {
+      ASSERT_EQ(ns(DictionaryEncoding_custom_metadata_push_start(&builder)), 0);
+      ASSERT_EQ(ns(KeyValue_key_create(&builder, item.first.data(), item.first.size())),
+                0);
+      ASSERT_EQ(
+          ns(KeyValue_value_create(&builder, item.second.data(), item.second.size())), 0);
+      ASSERT_NE(ns(DictionaryEncoding_custom_metadata_push_end(&builder)), nullptr);
+    }
+    ASSERT_EQ(ns(DictionaryEncoding_custom_metadata_end(&builder)), 0);
+  }
+  ASSERT_EQ(ns(Field_dictionary_end(&builder)), 0);
+
+  if (field_metadata != nullptr) {
+    ASSERT_EQ(ns(Field_custom_metadata_start(&builder)), 0);
+    for (const auto& item : *field_metadata) {
+      ASSERT_EQ(ns(Field_custom_metadata_push_start(&builder)), 0);
+      ASSERT_EQ(ns(KeyValue_key_create(&builder, item.first.data(), item.first.size())),
+                0);
+      ASSERT_EQ(
+          ns(KeyValue_value_create(&builder, item.second.data(), item.second.size())), 0);
+      ASSERT_NE(ns(Field_custom_metadata_push_end(&builder)), nullptr);
+    }
+    ASSERT_EQ(ns(Field_custom_metadata_end(&builder)), 0);
+  }
+
+  ASSERT_NE(ns(Schema_fields_push_end(&builder)), nullptr);
+  ASSERT_EQ(ns(Schema_fields_end(&builder)), 0);
+  ASSERT_EQ(ns(Message_header_Schema_end(&builder)), 0);
+  ASSERT_EQ(ns(Message_bodyLength_add(&builder, 0)), 0);
+  ASSERT_NE(ns(Message_end_as_root(&builder)), 0);
+
+  ASSERT_NO_FATAL_FAILURE(FinishEncapsulatedMessage(&builder, out));
+  flatcc_builder_clear(&builder);
+}
+
+static void DecodeSchemaMessage(struct ArrowBuffer* message, struct ArrowSchema* out) {
+  struct ArrowBufferView data;
+  data.data.as_uint8 = message->data;
+  data.size_bytes = message->size_bytes;
+
+  struct ArrowError error;
+  nanoarrow::ipc::UniqueDecoder decoder;
+  ASSERT_EQ(ArrowIpcDecoderInit(decoder.get()), NANOARROW_OK);
+  ASSERT_EQ(ArrowIpcDecoderVerifyHeader(decoder.get(), data, &error), NANOARROW_OK)
+      << error.message;
+  ASSERT_EQ(ArrowIpcDecoderDecodeHeader(decoder.get(), data, &error), NANOARROW_OK)
+      << error.message;
+  ASSERT_EQ(ArrowIpcDecoderDecodeSchema(decoder.get(), out, &error), NANOARROW_OK)
+      << error.message;
+}
+
+TEST(NanoarrowIpcTest, NanoarrowIpcDecodeDictionaryValueMetadata) {
+  std::vector<std::pair<std::string, std::string>> field_metadata = {
+      {"ARROW:extension:name", "some_ext_with_dictionary_storage"},
+      {"field_key", "field_value"}};
+  std::vector<std::pair<std::string, std::string>> value_metadata = {
+      {"ARROW:extension:name", "arrow.opaque"},
+      {"ARROW:extension:metadata", kOpaqueMetadata},
+      {std::string("key\x00\xff", 5), std::string("\x00\xc3\x28", 3)}};
+
+  // Both Field.custom_metadata and DictionaryEncoding.custom_metadata
+  nanoarrow::UniqueBuffer message;
+  ASSERT_NO_FATAL_FAILURE(
+      MakeDictionarySchemaMessage(&field_metadata, &value_metadata, message.get()));
+  nanoarrow::UniqueSchema schema;
+  ASSERT_NO_FATAL_FAILURE(DecodeSchemaMessage(message.get(), schema.get()));
+  ASSERT_EQ(schema->n_children, 1);
+  ASSERT_NE(schema->children[0]->dictionary, nullptr);
+  EXPECT_STREQ(schema->children[0]->format, "i");
+  EXPECT_STREQ(schema->children[0]->dictionary->format, "u");
+  EXPECT_EQ(ArrowSchemaMetadataToString(schema->children[0]->metadata),
+            "ARROW:extension:name=some_ext_with_dictionary_storage, "
+            "field_key=field_value");
+  EXPECT_EQ(ArrowSchemaMetadataToString(schema->children[0]->dictionary->metadata),
+            std::string("ARROW:extension:name=arrow.opaque, ARROW:extension:metadata=") +
+                kOpaqueMetadata + ", " + std::string("key\x00\xff", 5) + "=" +
+                std::string("\x00\xc3\x28", 3));
+
+  // Only DictionaryEncoding.custom_metadata
+  message.reset();
+  ASSERT_NO_FATAL_FAILURE(
+      MakeDictionarySchemaMessage(nullptr, &value_metadata, message.get()));
+  schema.reset();
+  ASSERT_NO_FATAL_FAILURE(DecodeSchemaMessage(message.get(), schema.get()));
+  EXPECT_EQ(schema->children[0]->metadata, nullptr);
+  EXPECT_EQ(ArrowSchemaMetadataToString(schema->children[0]->dictionary->metadata),
+            std::string("ARROW:extension:name=arrow.opaque, ARROW:extension:metadata=") +
+                kOpaqueMetadata + ", " + std::string("key\x00\xff", 5) + "=" +
+                std::string("\x00\xc3\x28", 3));
+
+  // Without DictionaryEncoding.custom_metadata (e.g., written before format version
+  // 1.6), Field.custom_metadata remains the metadata of the field
+  std::vector<std::pair<std::string, std::string>> legacy_field_metadata = {
+      {"ARROW:extension:name", "arrow.uuid"}, {"ARROW:extension:metadata", ""}};
+  message.reset();
+  ASSERT_NO_FATAL_FAILURE(
+      MakeDictionarySchemaMessage(&legacy_field_metadata, nullptr, message.get()));
+  schema.reset();
+  ASSERT_NO_FATAL_FAILURE(DecodeSchemaMessage(message.get(), schema.get()));
+  EXPECT_EQ(ArrowSchemaMetadataToString(schema->children[0]->metadata),
+            "ARROW:extension:name=arrow.uuid, ARROW:extension:metadata=");
+  EXPECT_EQ(schema->children[0]->dictionary->metadata, nullptr);
+
+  // An empty DictionaryEncoding.custom_metadata is equivalent to none
+  std::vector<std::pair<std::string, std::string>> empty_metadata;
+  message.reset();
+  ASSERT_NO_FATAL_FAILURE(
+      MakeDictionarySchemaMessage(nullptr, &empty_metadata, message.get()));
+  schema.reset();
+  ASSERT_NO_FATAL_FAILURE(DecodeSchemaMessage(message.get(), schema.get()));
+  EXPECT_EQ(schema->children[0]->metadata, nullptr);
+  EXPECT_EQ(schema->children[0]->dictionary->metadata, nullptr);
+}
+
 #if defined(NANOARROW_BUILD_TESTS_WITH_ARROW)
 TEST_P(ArrowTypeParameterizedTestFixture, NanoarrowIpcNanoarrowArrayRoundtrip) {
   if (GetParam()->id() == arrow::Type::DICTIONARY) {
@@ -2023,11 +2496,10 @@ INSTANTIATE_TEST_SUITE_P(
         // Extension type
         arrow::extension::uuid(),
         // Extension type with dictionary as the storage type
-        dict_extension()
-        // Dictionary-encoded extension is not supported in IPC
+        dict_extension(),
+        // Dictionary with extension value type
         // https://github.com/apache/arrow/issues/49704
-        // arrow::dictionary(arrow::int32(), arrow::extension::uuid()))
-        ));
+        arrow::dictionary(arrow::int32(), arrow::extension::uuid())));
 
 class ArrowSchemaParameterizedTestFixture
     : public ::testing::TestWithParam<std::shared_ptr<arrow::Schema>> {
@@ -2037,6 +2509,11 @@ class ArrowSchemaParameterizedTestFixture
 
 TEST_P(ArrowSchemaParameterizedTestFixture, NanoarrowIpcArrowSchemaRoundtrip) {
   const std::shared_ptr<arrow::Schema>& arrow_schema = GetParam();
+  if (HasDictionaryOfExtension(*arrow_schema) &&
+      !ArrowCppWritesDictionaryValueMetadata()) {
+    GTEST_SKIP() << "Arrow C++ does not write DictionaryEncoding.custom_metadata";
+  }
+
   auto maybe_serialized = arrow::ipc::SerializeSchema(*arrow_schema);
   ASSERT_TRUE(maybe_serialized.ok());
 
@@ -2099,6 +2576,41 @@ TEST_P(ArrowSchemaParameterizedTestFixture, NanoarrowIpcNanoarrowSchemaRoundtrip
             NANOARROW_OK);
 
   EXPECT_EQ(ArrowSchemaToString(roundtripped.get()), ArrowSchemaToString(schema.get()));
+}
+
+TEST_P(ArrowSchemaParameterizedTestFixture, NanoarrowIpcArrowReadsNanoarrowSchema) {
+  const std::shared_ptr<arrow::Schema>& arrow_schema = GetParam();
+  if (HasDictionaryOfExtension(*arrow_schema) &&
+      !ArrowCppWritesDictionaryValueMetadata()) {
+    GTEST_SKIP() << "Arrow C++ does not read DictionaryEncoding.custom_metadata";
+  }
+
+  nanoarrow::UniqueSchema schema;
+  ASSERT_TRUE(arrow::ExportSchema(*arrow_schema, schema.get()).ok());
+
+  nanoarrow::ipc::UniqueEncoder encoder;
+  ASSERT_EQ(ArrowIpcEncoderInit(encoder.get()), NANOARROW_OK);
+
+  struct ArrowError error;
+  ASSERT_EQ(ArrowIpcEncoderEncodeSchema(encoder.get(), schema.get(), &error),
+            NANOARROW_OK)
+      << error.message;
+
+  nanoarrow::UniqueBuffer buffer;
+  ASSERT_EQ(
+      ArrowIpcEncoderFinalizeBuffer(encoder.get(), /*encapsulate=*/true, buffer.get()),
+      NANOARROW_OK);
+
+  arrow::io::BufferReader reader(
+      std::make_shared<arrow::Buffer>(buffer->data, buffer->size_bytes));
+  arrow::ipc::DictionaryMemo memo;
+  auto maybe_schema = arrow::ipc::ReadSchema(&reader, &memo);
+  ASSERT_TRUE(maybe_schema.ok()) << maybe_schema.status().ToString();
+
+  // Better failure message if we first check for string equality
+  EXPECT_EQ(maybe_schema.ValueUnsafe()->ToString(/*show_metadata=*/true),
+            arrow_schema->ToString(/*show_metadata=*/true));
+  EXPECT_TRUE(maybe_schema.ValueUnsafe()->Equals(arrow_schema, true));
 }
 
 TEST_P(ArrowSchemaParameterizedTestFixture, NanoarrowIpcNanoarrowFooterRoundtrip) {
@@ -2180,12 +2692,18 @@ INSTANTIATE_TEST_SUITE_P(
         // Dictionary with field metadata
         arrow::schema({arrow::field(
             "some_name", arrow::dictionary(arrow::int32(), arrow::utf8()),
-            arrow::KeyValueMetadata::Make({"key1", "key2"}, {"value1", "value2"}))})
-        // Dictionary with extension storage and field metadata is not supported in IPC
-        // arrow::schema({arrow::field(
-        //     "some_name", arrow::dictionary(arrow::int32(), arrow::extension::uuid()),
-        //     arrow::KeyValueMetadata::Make({"key1", "key2"}, {"value1", "value2"}))})
-        ));
+            arrow::KeyValueMetadata::Make({"key1", "key2"}, {"value1", "value2"}))}),
+        // Dictionary with extension value type and field metadata
+        // https://github.com/apache/arrow/issues/49704
+        arrow::schema({arrow::field(
+            "some_name", arrow::dictionary(arrow::int32(), arrow::extension::uuid()),
+            arrow::KeyValueMetadata::Make({"key1", "key2"}, {"value1", "value2"}))}),
+        // Nested dictionary with extension value type and field metadata
+        arrow::schema({arrow::field(
+            "some_name",
+            arrow::list(arrow::field(
+                "item", arrow::dictionary(arrow::int16(), arrow::extension::uuid()),
+                arrow::KeyValueMetadata::Make({"key1"}, {"value1"}))))})));
 
 // Advance data past the message whose header was just decoded
 static void AdvancePastMessage(struct ArrowIpcDecoder* decoder,
