@@ -74,6 +74,51 @@ static ArrowErrorCode ArrowIpcInputStreamBufferRead(struct ArrowIpcInputStream* 
   return NANOARROW_OK;
 }
 
+// Check whether the next bytes of a buffer input stream can be referenced in place.
+// Arrays decoded from a message body are only aligned if the body is, so a body
+// that starts at a misaligned address (e.g., because the input buffer does) is
+// copied instead.
+static int ArrowIpcInputStreamBufferCanReadShared(struct ArrowIpcInputStream* stream) {
+  if (stream->read != &ArrowIpcInputStreamBufferRead) {
+    return 0;
+  }
+
+  struct ArrowIpcInputStreamBufferPrivate* private_data =
+      (struct ArrowIpcInputStreamBufferPrivate*)stream->private_data;
+  uintptr_t next_address =
+      (uintptr_t)(private_data->input.data + private_data->cursor_bytes);
+  return next_address % 8 == 0;
+}
+
+// Like ArrowIpcInputStreamBufferRead(), but sets out to a reference to the input
+// buffer instead of copying the bytes out of it. The input buffer remains valid
+// until out (and the input stream) have been released.
+static ArrowErrorCode ArrowIpcInputStreamBufferReadShared(
+    struct ArrowIpcInputStream* stream, int64_t buf_size_bytes, struct ArrowBuffer* out,
+    int64_t* size_read_out) {
+  struct ArrowIpcInputStreamBufferPrivate* private_data =
+      (struct ArrowIpcInputStreamBufferPrivate*)stream->private_data;
+  int64_t bytes_remaining = private_data->input.size_bytes - private_data->cursor_bytes;
+  int64_t bytes_to_read;
+  if (bytes_remaining > buf_size_bytes) {
+    bytes_to_read = buf_size_bytes;
+  } else {
+    bytes_to_read = bytes_remaining;
+  }
+
+  ArrowBufferReset(out);
+  if (bytes_to_read > 0) {
+    NANOARROW_RETURN_NOT_OK(ArrowSharedBufferClone(&private_data->input, out));
+    out->data += private_data->cursor_bytes;
+    out->size_bytes = bytes_to_read;
+    out->capacity_bytes = bytes_to_read;
+  }
+
+  *size_read_out = bytes_to_read;
+  private_data->cursor_bytes += bytes_to_read;
+  return NANOARROW_OK;
+}
+
 static void ArrowIpcInputStreamBufferRelease(struct ArrowIpcInputStream* stream) {
   struct ArrowIpcInputStreamBufferPrivate* private_data =
       (struct ArrowIpcInputStreamBufferPrivate*)stream->private_data;
@@ -93,7 +138,18 @@ ArrowErrorCode ArrowIpcInputStreamInitBuffer(struct ArrowIpcInputStream* stream,
     return ENOMEM;
   }
 
-  ArrowBufferMove(input, &private_data->input);
+  // Hold the input as a shared buffer so that the array stream reader can
+  // reference message bodies in place instead of copying them
+  if (ArrowIsSharedBuffer(input)) {
+    ArrowBufferMove(input, &private_data->input);
+  } else {
+    ArrowErrorCode result = ArrowSharedBufferInit(&private_data->input, input);
+    if (result != NANOARROW_OK) {
+      ArrowFree(private_data);
+      return result;
+    }
+  }
+
   private_data->cursor_bytes = 0;
   stream->read = &ArrowIpcInputStreamBufferRead;
   stream->release = &ArrowIpcInputStreamBufferRelease;
@@ -354,14 +410,23 @@ static int ArrowIpcArrayStreamReaderNextBody(
   int64_t bytes_read;
   int64_t bytes_to_read = private_data->decoder.body_size_bytes;
 
-  // Read the body bytes
-  private_data->body.size_bytes = 0;
-  NANOARROW_RETURN_NOT_OK_WITH_ERROR(
-      ArrowBufferReserve(&private_data->body, bytes_to_read), &private_data->error);
-  NANOARROW_RETURN_NOT_OK(private_data->input.read(&private_data->input,
-                                                   private_data->body.data, bytes_to_read,
-                                                   &bytes_read, &private_data->error));
-  private_data->body.size_bytes += bytes_read;
+  if (private_data->use_shared_buffers &&
+      ArrowIpcInputStreamBufferCanReadShared(&private_data->input)) {
+    // The input is already in memory: reference the body instead of copying it
+    NANOARROW_RETURN_NOT_OK_WITH_ERROR(
+        ArrowIpcInputStreamBufferReadShared(&private_data->input, bytes_to_read,
+                                            &private_data->body, &bytes_read),
+        &private_data->error);
+  } else {
+    // Read the body bytes
+    private_data->body.size_bytes = 0;
+    NANOARROW_RETURN_NOT_OK_WITH_ERROR(
+        ArrowBufferReserve(&private_data->body, bytes_to_read), &private_data->error);
+    NANOARROW_RETURN_NOT_OK(
+        private_data->input.read(&private_data->input, private_data->body.data,
+                                 bytes_to_read, &bytes_read, &private_data->error));
+    private_data->body.size_bytes += bytes_read;
+  }
 
   if (bytes_read != bytes_to_read) {
     ArrowErrorSet(&private_data->error,
@@ -372,6 +437,17 @@ static int ArrowIpcArrayStreamReaderNextBody(
   } else {
     return NANOARROW_OK;
   }
+}
+
+// Transfer the body of the current message to a shared buffer
+static ArrowErrorCode ArrowIpcArrayStreamReaderTakeSharedBody(
+    struct ArrowIpcArrayStreamReaderPrivate* private_data, struct ArrowBuffer* out) {
+  if (ArrowIsSharedBuffer(&private_data->body)) {
+    ArrowBufferMove(&private_data->body, out);
+    return NANOARROW_OK;
+  }
+
+  return ArrowSharedBufferInit(out, &private_data->body);
 }
 
 static int ArrowIpcArrayStreamReaderReadSchemaIfNeeded(
@@ -456,7 +532,8 @@ static int ArrowIpcArrayStreamReaderProcessRecordBatch(
   if (private_data->use_shared_buffers) {
     struct ArrowBuffer shared;
     NANOARROW_RETURN_NOT_OK_WITH_ERROR(
-        ArrowSharedBufferInit(&shared, &private_data->body), &private_data->error);
+        ArrowIpcArrayStreamReaderTakeSharedBody(private_data, &shared),
+        &private_data->error);
     ArrowErrorCode result = ArrowIpcDecoderDecodeArrayFromSharedWithDictionaries(
         &private_data->decoder, &shared, private_data->field_index,
         &private_data->dictionaries, out, NANOARROW_VALIDATION_LEVEL_FULL,
@@ -486,7 +563,8 @@ static int ArrowIpcArrayStreamReaderProcessDictionary(
     // Decode the dictionary
     struct ArrowBuffer shared;
     NANOARROW_RETURN_NOT_OK_WITH_ERROR(
-        ArrowSharedBufferInit(&shared, &private_data->body), &private_data->error);
+        ArrowIpcArrayStreamReaderTakeSharedBody(private_data, &shared),
+        &private_data->error);
     int result = ArrowIpcDecoderDecodeDictionaryFromShared(
         &private_data->decoder, &shared, NANOARROW_VALIDATION_LEVEL_FULL,
         &private_data->dictionaries, &private_data->error);
