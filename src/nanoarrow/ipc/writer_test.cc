@@ -726,3 +726,91 @@ TEST(NanoarrowIpcWriter, CompressedDictionaryStream) {
   EXPECT_EQ(std::string(v0.data, v0.size_bytes), "foo");
   EXPECT_EQ(std::string(v1.data, v1.size_bytes), "bar");
 }
+
+TEST(NanoarrowIpcWriter, RoundtripEmptyArraysHaveZeroOffset) {
+  // nanoarrow's encoder writes a zero-length offsets buffer for an empty array (as IPC
+  // permits). Decoded arrays must still export offsets[0] == 0 through the C data
+  // interface, which carries no buffer sizes, whether or not the body is shared.
+  struct ArrowError error;
+
+  nanoarrow::UniqueSchema schema;
+  ASSERT_EQ(ArrowSchemaInitFromType(schema.get(), NANOARROW_TYPE_STRUCT), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaAllocateChildren(schema.get(), 3), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaInitFromType(schema->children[0], NANOARROW_TYPE_STRING),
+            NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaSetName(schema->children[0], "s"), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaInitFromType(schema->children[1], NANOARROW_TYPE_LARGE_BINARY),
+            NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaSetName(schema->children[1], "b"), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaInitFromType(schema->children[2], NANOARROW_TYPE_LIST),
+            NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaSetName(schema->children[2], "l"), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaSetType(schema->children[2]->children[0], NANOARROW_TYPE_INT32),
+            NANOARROW_OK);
+
+  nanoarrow::UniqueArray array;
+  ASSERT_EQ(ArrowArrayInitFromSchema(array.get(), schema.get(), &error), NANOARROW_OK)
+      << error.message;
+  ASSERT_EQ(ArrowArrayStartAppending(array.get()), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayFinishBuildingDefault(array.get(), &error), NANOARROW_OK)
+      << error.message;
+
+  nanoarrow::UniqueArrayView array_view;
+  ASSERT_EQ(ArrowArrayViewInitFromSchema(array_view.get(), schema.get(), &error),
+            NANOARROW_OK)
+      << error.message;
+  ASSERT_EQ(ArrowArrayViewSetArray(array_view.get(), array.get(), &error), NANOARROW_OK)
+      << error.message;
+
+  for (int use_shared_buffers : {0, 1}) {
+    SCOPED_TRACE("use_shared_buffers: " + std::to_string(use_shared_buffers));
+
+    nanoarrow::UniqueBuffer output;
+    nanoarrow::ipc::UniqueOutputStream output_stream;
+    ASSERT_EQ(ArrowIpcOutputStreamInitBuffer(output_stream.get(), output.get()),
+              NANOARROW_OK);
+    nanoarrow::ipc::UniqueWriter writer;
+    ASSERT_EQ(ArrowIpcWriterInit(writer.get(), output_stream.get()), NANOARROW_OK);
+    ASSERT_EQ(ArrowIpcWriterWriteSchema(writer.get(), schema.get(), &error), NANOARROW_OK)
+        << error.message;
+    ASSERT_EQ(ArrowIpcWriterWriteArrayView(writer.get(), array_view.get(), &error),
+              NANOARROW_OK)
+        << error.message;
+    ASSERT_EQ(ArrowIpcWriterWriteArrayView(writer.get(), nullptr, &error), NANOARROW_OK);
+
+    nanoarrow::ipc::UniqueInputStream input;
+    ASSERT_EQ(ArrowIpcInputStreamInitBuffer(input.get(), output.get()), NANOARROW_OK);
+    nanoarrow::UniqueArrayStream stream;
+    struct ArrowIpcArrayStreamReaderOptions options;
+    options.field_index = -1;
+    options.use_shared_buffers = use_shared_buffers;
+    ASSERT_EQ(ArrowIpcArrayStreamReaderInit(stream.get(), input.get(), &options),
+              NANOARROW_OK);
+
+    nanoarrow::UniqueArray decoded;
+    ASSERT_EQ(ArrowArrayStreamGetNext(stream.get(), decoded.get(), &error), NANOARROW_OK)
+        << error.message;
+    ASSERT_EQ(decoded->length, 0);
+    ASSERT_EQ(decoded->n_children, 3);
+
+    // The offsets buffer must really hold one zero offset (not merely point at bytes
+    // that happen to be zero), so check the exported buffer's size as well as its value
+    struct ExpectedOffsets {
+      int64_t child;
+      int64_t offset_size;
+    };
+    for (const auto& expected :
+         {ExpectedOffsets{0, 4}, ExpectedOffsets{1, 8}, ExpectedOffsets{2, 4}}) {
+      SCOPED_TRACE("child " + std::to_string(expected.child));
+      struct ArrowArray* child = decoded->children[expected.child];
+      ASSERT_NE(child->buffers[1], nullptr);
+      EXPECT_EQ(ArrowArrayBuffer(child, 1)->size_bytes, expected.offset_size);
+      int64_t first_offset = -1;
+      memcpy(&first_offset, child->buffers[1], expected.offset_size);
+      if (expected.offset_size == 4) {
+        first_offset = static_cast<int32_t>(first_offset);
+      }
+      EXPECT_EQ(first_offset, 0);
+    }
+  }
+}
