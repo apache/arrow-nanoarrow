@@ -1182,8 +1182,8 @@ NANOARROW_DLL ArrowErrorCode ArrowIpcWriterWriteArrayView(struct ArrowIpcWriter*
 /// dictionary-encoded. The writer does not check that a schema was already written.
 /// values_view is always written: the writer only sees a borrowed view and cannot
 /// check whether it is identical to a dictionary that was already written. When
-/// writing a file, returns ENOTSUP for a delta and EINVAL for a dictionary_id that was
-/// already written (IPC files do not support dictionary replacement).
+/// writing a file, returns ENOTSUP for a delta or for a dictionary_id that was already
+/// written (IPC files do not support dictionary replacement).
 ///
 /// Errors are propagated from the underlying encoder and output byte stream.
 NANOARROW_DLL ArrowErrorCode ArrowIpcWriterWriteDictionaryBatch(
@@ -1196,10 +1196,12 @@ NANOARROW_DLL ArrowErrorCode ArrowIpcWriterWriteDictionaryBatch(
 /// subsequent arrays, a dictionary is written again (as a replacement) unless it has
 /// the same length, offset, and null count and points to the same buffers as the
 /// corresponding dictionary of the previous array (e.g., because the producer shares
-/// one dictionary among all arrays of the stream). To ensure that buffer addresses
+/// one dictionary among all arrays of the stream). The variadic buffer sizes of a
+/// BinaryView or StringView array are not compared, since producers may generate them
+/// on each export. To ensure that buffer addresses
 /// are not reused for different values, the previous array is kept alive until the
 /// next array is written. Buffers must not be modified while they are referenced by
-/// an exported array. When writing a file, a changed dictionary returns EINVAL.
+/// an exported array. When writing a file, a changed dictionary returns ENOTSUP.
 ///
 /// Errors are propagated from the underlying encoder, array stream, and output byte
 /// stream.

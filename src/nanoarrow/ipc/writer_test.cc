@@ -291,7 +291,7 @@ TEST(NanoarrowIpcWriter, WriteDictionaryBatch) {
   int64_t bytes_written = p2->bytes_written;
   EXPECT_EQ(ArrowIpcWriterWriteDictionaryBatch(writer2.get(), /*dictionary_id=*/0,
                                                /*is_delta=*/0, values_view.get(), &error),
-            EINVAL);
+            ENOTSUP);
   EXPECT_STREQ(error.message,
                "Arrow IPC files do not support replacement of dictionary ID 0");
   EXPECT_EQ(p2->bytes_written, bytes_written);
@@ -685,7 +685,7 @@ TEST(NanoarrowIpcWriter, RejectsChangedDictionaryInFile) {
 
   nanoarrow::UniqueBuffer output;
   EXPECT_EQ(WriteArrays(schema.get(), &arrays, output.get(), /*as_file=*/true, &error),
-            EINVAL);
+            ENOTSUP);
   EXPECT_STREQ(error.message,
                "Arrow IPC files do not support replacement of dictionary ID 0");
 }

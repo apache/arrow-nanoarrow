@@ -361,7 +361,7 @@ ArrowErrorCode ArrowIpcWriterWriteDictionaryBatch(
         ArrowErrorSet(
             error, "Arrow IPC files do not support replacement of dictionary ID %" PRId64,
             dictionary_id);
-        return EINVAL;
+        return ENOTSUP;
       }
     }
   }
@@ -404,8 +404,9 @@ ArrowErrorCode ArrowIpcWriterWriteDictionaryBatch(
 // have the same shape and point to the same buffers (e.g., a dictionary shared by
 // several arrays in a stream). This is only meaningful while both arrays are alive:
 // once an array is released, the addresses of its buffers may be reused for
-// different values.
-static int ArrowIpcWriterArraysShareBuffers(const struct ArrowArray* lhs,
+// different values. array_view is a view of lhs, used for its storage types.
+static int ArrowIpcWriterArraysShareBuffers(const struct ArrowArrayView* array_view,
+                                            const struct ArrowArray* lhs,
                                             const struct ArrowArray* rhs) {
   if (lhs->length != rhs->length || lhs->offset != rhs->offset ||
       lhs->null_count != rhs->null_count || lhs->n_buffers != rhs->n_buffers ||
@@ -414,20 +415,31 @@ static int ArrowIpcWriterArraysShareBuffers(const struct ArrowArray* lhs,
     return 0;
   }
 
-  for (int64_t i = 0; i < lhs->n_buffers; i++) {
+  // The last buffer of a BinaryView or StringView array holds the sizes of its variadic
+  // buffers, which producers typically generate on each export, so its address says
+  // nothing about the values. The buffers that hold the values are compared.
+  int64_t n_buffers = lhs->n_buffers;
+  if (array_view->storage_type == NANOARROW_TYPE_BINARY_VIEW ||
+      array_view->storage_type == NANOARROW_TYPE_STRING_VIEW) {
+    n_buffers--;
+  }
+
+  for (int64_t i = 0; i < n_buffers; i++) {
     if (lhs->buffers[i] != rhs->buffers[i]) {
       return 0;
     }
   }
 
   for (int64_t i = 0; i < lhs->n_children; i++) {
-    if (!ArrowIpcWriterArraysShareBuffers(lhs->children[i], rhs->children[i])) {
+    if (!ArrowIpcWriterArraysShareBuffers(array_view->children[i], lhs->children[i],
+                                          rhs->children[i])) {
       return 0;
     }
   }
 
   return lhs->dictionary == NULL ||
-         ArrowIpcWriterArraysShareBuffers(lhs->dictionary, rhs->dictionary);
+         ArrowIpcWriterArraysShareBuffers(array_view->dictionary, lhs->dictionary,
+                                          rhs->dictionary);
 }
 
 // Walk the array in the same depth-first order the schema encoder uses to assign
@@ -461,7 +473,8 @@ static ArrowErrorCode ArrowIpcWriterWriteDictionariesForArray(
         error));
 
     if (previous_dictionary == NULL ||
-        !ArrowIpcWriterArraysShareBuffers(array->dictionary, previous_dictionary)) {
+        !ArrowIpcWriterArraysShareBuffers(array_view->dictionary, array->dictionary,
+                                          previous_dictionary)) {
       NANOARROW_RETURN_NOT_OK(ArrowIpcWriterWriteDictionaryBatch(
           writer, dictionary_id, /*is_delta=*/0, array_view->dictionary, error));
     }
