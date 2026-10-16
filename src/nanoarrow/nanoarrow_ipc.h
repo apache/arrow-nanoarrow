@@ -130,6 +130,8 @@
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcWriterWriteSchema)
 #define ArrowIpcWriterWriteArrayView \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcWriterWriteArrayView)
+#define ArrowIpcWriterWriteArrayViewWithDictionaries \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcWriterWriteArrayViewWithDictionaries)
 #define ArrowIpcWriterWriteDictionaryBatch \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcWriterWriteDictionaryBatch)
 #define ArrowIpcWriterWriteArrayStream \
@@ -1162,6 +1164,22 @@ NANOARROW_DLL ArrowErrorCode ArrowIpcWriterWriteSchema(struct ArrowIpcWriter* wr
 NANOARROW_DLL ArrowErrorCode ArrowIpcWriterWriteArrayView(struct ArrowIpcWriter* writer,
                                                           const struct ArrowArrayView* in,
                                                           struct ArrowError* error);
+
+/// \brief Write an array view and the dictionaries it references
+///
+/// Writes a DictionaryBatch message for each dictionary-encoded field of in, followed
+/// by the RecordBatch itself, exactly as ArrowIpcWriterWriteArrayStream() does for each
+/// array of a stream. This lets a caller that produces batches one at a time (rather
+/// than from an ArrowArrayStream) write dictionary-encoded data. Dictionary IDs are
+/// assigned in the same order as when the schema was written. Each dictionary is
+/// written in full (not as a delta) before every RecordBatch, and file mode has the
+/// same limitations as ArrowIpcWriterWriteArrayStream(). in must not be NULL; use
+/// ArrowIpcWriterWriteArrayView() to write EOS.
+///
+/// Errors are propagated from the underlying encoder and output byte stream.
+NANOARROW_DLL ArrowErrorCode ArrowIpcWriterWriteArrayViewWithDictionaries(
+    struct ArrowIpcWriter* writer, const struct ArrowArrayView* in,
+    struct ArrowError* error);
 
 /// \brief Write a DictionaryBatch message to the output byte stream
 ///
