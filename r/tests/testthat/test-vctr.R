@@ -80,6 +80,24 @@ test_that("nanoarrow_vctr works in a data.frame()", {
   expect_error(as.data.frame(vctr), "cannot coerce object")
 })
 
+test_that("single-chunk nanoarrow_vctr converts to an array without copying", {
+  vctr <- as_nanoarrow_vctr(as_nanoarrow_array(c("one", "two")))
+  chunk <- attr(vctr, "chunks", exact = TRUE)[[1]]
+
+  expect_identical(as_nanoarrow_array(vctr), chunk)
+  expect_identical(as_nanoarrow_array(vctr, schema = na_string()), chunk)
+
+  named_schema <- na_string()
+  named_schema$name <- "x"
+  named_array <- as_nanoarrow_array(vctr, schema = named_schema)
+  expect_false(identical(named_array, chunk))
+  expect_identical(infer_nanoarrow_schema(named_array)$name, "x")
+
+  array <- as_nanoarrow_array(data.frame(x = vctr))
+  expect_identical(as.data.frame(array), data.frame(x = c("one", "two")))
+  expect_identical(infer_nanoarrow_schema(chunk)$name, "")
+})
+
 test_that("format() works for nanoarrow_vctr", {
   empty_vctr <- nanoarrow_vctr(na_string())
   expect_identical(format(empty_vctr), character())

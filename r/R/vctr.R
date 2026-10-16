@@ -155,6 +155,54 @@ as_nanoarrow_schema.nanoarrow_vctr <- function(x, ...) {
 }
 
 #' @export
+as_nanoarrow_array.nanoarrow_vctr <- function(x, ..., schema = NULL) {
+  x_schema <- attr(x, "schema", exact = TRUE)
+  update_schema <- FALSE
+  if (!is.null(schema)) {
+    # A field name is not part of an array's physical type. In particular,
+    # data.frame conversion supplies the column name on its child schema even
+    # though the schema stored by the vctr usually has an empty name.
+    if (!nanoarrow_schema_identical(schema, x_schema)) {
+      schema_proxy <- nanoarrow_schema_proxy(schema, recursive = TRUE)
+      x_schema_proxy <- nanoarrow_schema_proxy(x_schema, recursive = TRUE)
+      schema_proxy$name <- NULL
+      x_schema_proxy$name <- NULL
+      if (!identical(schema_proxy, x_schema_proxy)) {
+        return(NextMethod())
+      }
+
+      update_schema <- TRUE
+    }
+  }
+
+  # A full-slice, single-chunk vctr is already represented by exactly the
+  # ArrowArray requested by the caller. Reuse it instead of dispatching to a
+  # potentially expensive extension conversion.
+  slice <- vctr_as_slice(x)
+  chunks <- attr(x, "chunks", exact = TRUE)
+  offsets <- attr(x, "offsets", exact = TRUE)
+  if (
+    length(chunks) == 1 &&
+      !is.null(slice) &&
+      slice[1] == 1 &&
+      slice[2] == max(offsets)
+  ) {
+    if (!update_schema) {
+      return(chunks[[1]])
+    }
+
+    # Export a shallow copy so that attaching the requested field name does
+    # not modify the schema associated with the vctr's source chunk.
+    out <- nanoarrow_allocate_array()
+    nanoarrow_pointer_export(chunks[[1]], out)
+    nanoarrow_array_set_schema(out, schema, validate = FALSE)
+    return(out)
+  }
+
+  NextMethod()
+}
+
+#' @export
 as_nanoarrow_array_stream.nanoarrow_vctr <- function(x, ..., schema = NULL) {
   as_nanoarrow_array_stream.nanoarrow_vctr(x, ..., schema = schema)
 }
