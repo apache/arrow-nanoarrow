@@ -970,7 +970,16 @@ static ArrowErrorCode ArrowIpcEncoderEncodeBodyCompression(
 static ArrowErrorCode ArrowIpcEncoderCollectArray(struct ArrowIpcEncoderPrivate* private,
                                                   const struct ArrowArrayView* array_view,
                                                   struct ArrowError* error) {
-  struct ns(FieldNode) node = {array_view->length, array_view->null_count};
+  // FieldNode.null_count is the number of nulls. The C data interface's "unknown"
+  // null count (-1) can't be written, and every element of a null array is null.
+  int64_t null_count = array_view->null_count;
+  if (array_view->storage_type == NANOARROW_TYPE_NA) {
+    null_count = array_view->length;
+  } else if (null_count < 0) {
+    null_count = ArrowArrayViewComputeNullCount(array_view);
+  }
+
+  struct ns(FieldNode) node = {array_view->length, null_count};
   NANOARROW_RETURN_NOT_OK_WITH_ERROR(
       ArrowBufferAppend(&private->nodes, &node, sizeof(node)), error);
   for (int64_t b = 0; b < array_view->array->n_buffers; ++b) {
