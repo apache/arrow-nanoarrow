@@ -705,6 +705,74 @@ static void TestCompressedRecordBatchRoundtrip(enum ArrowIpcCompressionType code
   EXPECT_EQ(decoder->codec, NANOARROW_IPC_COMPRESSION_TYPE_NONE);
 }
 
+TEST(NanoarrowIpcTest, NanoarrowIpcEncoderWritesActualNullCounts) {
+  // A record batch of struct<i: int32, n: null> with three rows: i = [1, null, 3]
+  struct ArrowError error;
+  nanoarrow::UniqueSchema schema;
+  ASSERT_EQ(ArrowSchemaInitFromType(schema.get(), NANOARROW_TYPE_STRUCT), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaAllocateChildren(schema.get(), 2), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaInitFromType(schema->children[0], NANOARROW_TYPE_INT32),
+            NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaSetName(schema->children[0], "i"), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaInitFromType(schema->children[1], NANOARROW_TYPE_NA),
+            NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaSetName(schema->children[1], "n"), NANOARROW_OK);
+
+  nanoarrow::UniqueArray array;
+  ASSERT_EQ(ArrowArrayInitFromSchema(array.get(), schema.get(), &error), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayStartAppending(array.get()), NANOARROW_OK);
+  for (int32_t i = 1; i <= 3; ++i) {
+    if (i == 2) {
+      ASSERT_EQ(ArrowArrayAppendNull(array->children[0], 1), NANOARROW_OK);
+    } else {
+      ASSERT_EQ(ArrowArrayAppendInt(array->children[0], i), NANOARROW_OK);
+    }
+    ASSERT_EQ(ArrowArrayAppendNull(array->children[1], 1), NANOARROW_OK);
+    ASSERT_EQ(ArrowArrayFinishElement(array.get()), NANOARROW_OK);
+  }
+  ASSERT_EQ(ArrowArrayFinishBuildingDefault(array.get(), &error), NANOARROW_OK);
+
+  // A producer may leave the null count unknown (-1), and may not count the
+  // elements of a null array as nulls
+  array->children[0]->null_count = -1;
+  array->children[1]->null_count = 0;
+
+  nanoarrow::UniqueArrayView array_view;
+  ASSERT_EQ(ArrowArrayViewInitFromSchema(array_view.get(), schema.get(), &error),
+            NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayViewSetArray(array_view.get(), array.get(), &error), NANOARROW_OK)
+      << error.message;
+
+  nanoarrow::ipc::UniqueEncoder encoder;
+  ASSERT_EQ(ArrowIpcEncoderInit(encoder.get()), NANOARROW_OK);
+  nanoarrow::UniqueBuffer message, body;
+  ASSERT_EQ(ArrowIpcEncoderEncodeSimpleRecordBatch(encoder.get(), array_view.get(),
+                                                   body.get(), &error),
+            NANOARROW_OK)
+      << error.message;
+  ASSERT_EQ(
+      ArrowIpcEncoderFinalizeBuffer(encoder.get(), /*encapsulate=*/true, message.get()),
+      NANOARROW_OK);
+
+  // The decoded array view carries the null counts from the message's field nodes
+  nanoarrow::ipc::UniqueDecoder decoder;
+  ASSERT_EQ(ArrowIpcDecoderInit(decoder.get()), NANOARROW_OK);
+  ASSERT_EQ(ArrowIpcDecoderSetSchema(decoder.get(), schema.get(), &error), NANOARROW_OK)
+      << error.message;
+  struct ArrowBufferView message_view = {{message->data}, message->size_bytes};
+  ASSERT_EQ(ArrowIpcDecoderDecodeHeader(decoder.get(), message_view, &error),
+            NANOARROW_OK)
+      << error.message;
+  struct ArrowArrayView* decoded;
+  struct ArrowBufferView body_view = {{body->data}, body->size_bytes};
+  ASSERT_EQ(
+      ArrowIpcDecoderDecodeArrayView(decoder.get(), body_view, -1, &decoded, &error),
+      NANOARROW_OK)
+      << error.message;
+  EXPECT_EQ(decoded->children[0]->null_count, 1);
+  EXPECT_EQ(decoded->children[1]->null_count, 3);
+}
+
 TEST(NanoarrowIpcTest, NanoarrowIpcEncoderUncompressedRecordBatchAllocation) {
   nanoarrow::ipc::UniqueEncoder encoder;
   ASSERT_EQ(ArrowIpcEncoderInit(encoder.get()), NANOARROW_OK);
