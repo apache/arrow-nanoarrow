@@ -1385,6 +1385,13 @@
 <p>Sharing buffers is a good choice when (1) using memory-mapped IO (since unreferenced portions of the file are often not loaded into memory) or (2) if all data from all columns are about to be referenced anyway. When loading a single field there is probably no advantage to using shared buffers. Defaults to the value of ArrowSharedBufferIsThreadSafe(). </p>
 </dd></dl>
 
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4N32ArrowIpcArrayStreamReaderOptions16validation_levelE">
+<span id="_CPPv3N32ArrowIpcArrayStreamReaderOptions16validation_levelE"></span><span id="_CPPv2N32ArrowIpcArrayStreamReaderOptions16validation_levelE"></span><span id="ArrowIpcArrayStreamReaderOptions::validation_level__ArrowValidationLevel"></span><span class="target" id="struct_arrow_ipc_array_stream_reader_options_1a958ef28b9e7e4b6e28228be24748fbfe"></span><span class="k"><span class="pre">enum</span></span><span class="w"> </span><a class="reference internal" href="c.html#_CPPv420ArrowValidationLevel" title="ArrowValidationLevel"><span class="n"><span class="pre">ArrowValidationLevel</span></span></a><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">validation_level</span></span></span><a class="headerlink" href="#_CPPv4N32ArrowIpcArrayStreamReaderOptions16validation_levelE" title="Link to this definition">#</a><br /></dt>
+<dd><p>The level of validation to apply to each decoded array. </p>
+<p>Defaults to NANOARROW_VALIDATION_LEVEL_FULL, which is appropriate for untrusted input. Use a lower level (e.g., NANOARROW_VALIDATION_LEVEL_DEFAULT) to skip checks that are O(n) in the length of the decoded buffers when the input comes from a trusted producer. </p>
+</dd></dl>
+
 </div>
 </dd></dl>
 
@@ -1672,6 +1679,7 @@
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv432ArrowIpcArrayStreamReaderOptions"><code class="docutils literal notranslate"><span class="pre">ArrowIpcArrayStreamReaderOptions</span></code></a><ul class="nav section-nav flex-column">
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N32ArrowIpcArrayStreamReaderOptions11field_indexE"><code class="docutils literal notranslate"><span class="pre">field_index</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N32ArrowIpcArrayStreamReaderOptions18use_shared_buffersE"><code class="docutils literal notranslate"><span class="pre">use_shared_buffers</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv4N32ArrowIpcArrayStreamReaderOptions16validation_levelE"><code class="docutils literal notranslate"><span class="pre">validation_level</span></code></a></li>
 </ul>
 </li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv415ArrowIpcEncoder"><code class="docutils literal notranslate"><span class="pre">ArrowIpcEncoder</span></code></a><ul class="nav section-nav flex-column">
