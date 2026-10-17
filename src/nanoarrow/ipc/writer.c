@@ -408,6 +408,16 @@ static ArrowErrorCode ArrowIpcWriterWriteDictionariesForArrayView(
   return NANOARROW_OK;
 }
 
+ArrowErrorCode ArrowIpcWriterWriteArrayViewWithDictionaries(
+    struct ArrowIpcWriter* writer, const struct ArrowArrayView* in,
+    struct ArrowError* error) {
+  NANOARROW_DCHECK(writer != NULL && writer->private_data != NULL && in != NULL);
+  int64_t next_dictionary_id = 0;
+  NANOARROW_RETURN_NOT_OK(ArrowIpcWriterWriteDictionariesForArrayView(
+      writer, in, &next_dictionary_id, error));
+  return ArrowIpcWriterWriteArrayView(writer, in, error);
+}
+
 static ArrowErrorCode ArrowIpcWriterWriteArrayStreamImpl(
     struct ArrowIpcWriter* writer, struct ArrowArrayStream* in,
     struct ArrowSchema* schema, struct ArrowArray* array,
@@ -424,11 +434,8 @@ static ArrowErrorCode ArrowIpcWriterWriteArrayStreamImpl(
 
     NANOARROW_RETURN_NOT_OK(ArrowArrayViewSetArray(array_view, array, error));
 
-    int64_t next_dictionary_id = 0;
-    NANOARROW_RETURN_NOT_OK(ArrowIpcWriterWriteDictionariesForArrayView(
-        writer, array_view, &next_dictionary_id, error));
-
-    NANOARROW_RETURN_NOT_OK(ArrowIpcWriterWriteArrayView(writer, array_view, error));
+    NANOARROW_RETURN_NOT_OK(
+        ArrowIpcWriterWriteArrayViewWithDictionaries(writer, array_view, error));
     ArrowArrayRelease(array);
   }
 
