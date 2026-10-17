@@ -216,10 +216,11 @@ if(NANOARROW_IPC)
             RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
             LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
             ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
+    add_library(nanoarrow::flatccrt ALIAS flatccrt)
 
   elseif(NOT NANOARROW_FLATCC_ROOT_DIR)
-    add_library(flatccrt STATIC IMPORTED)
-    set_target_properties(flatccrt
+    add_library(nanoarrow::flatccrt STATIC IMPORTED)
+    set_target_properties(nanoarrow::flatccrt
                           PROPERTIES IMPORTED_LOCATION
                                      "${NANOARROW_FLATCC_LIB_DIR}/${CMAKE_STATIC_LIBRARY_PREFIX}flatccrt${CMAKE_STATIC_LIBRARY_SUFFIX}"
                                      INTERFACE_INCLUDE_DIRECTORIES
@@ -227,8 +228,8 @@ if(NANOARROW_IPC)
 
   elseif(NOT NANOARROW_FLATCC_INCLUDE_DIR)
     set(NANOARROW_FLATCC_INCLUDE_DIR "${NANOARROW_FLATCC_ROOT_DIR}/include")
-    add_library(flatccrt STATIC IMPORTED)
-    set_target_properties(flatccrt
+    add_library(nanoarrow::flatccrt STATIC IMPORTED)
+    set_target_properties(nanoarrow::flatccrt
                           PROPERTIES IMPORTED_LOCATION
                                      "${NANOARROW_FLATCC_ROOT_DIR}/lib/${CMAKE_STATIC_LIBRARY_PREFIX}flatccrt${CMAKE_STATIC_LIBRARY_SUFFIX}"
                                      IMPORTED_LOCATION_DEBUG
@@ -238,6 +239,8 @@ if(NANOARROW_IPC)
                                      INTERFACE_INCLUDE_DIRECTORIES
                                      "${NANOARROW_FLATCC_INCLUDE_DIR}")
   endif()
+
+  get_target_property(NANOARROW_FLATCC_EXTERNAL nanoarrow::flatccrt IMPORTED)
 
   if(NANOARROW_IPC_WITH_ZSTD)
     find_package(zstd REQUIRED)
@@ -303,12 +306,12 @@ if(NANOARROW_IPC)
 
   add_library(nanoarrow_ipc_static STATIC ${NANOARROW_IPC_BUILD_SOURCES})
   target_link_libraries(nanoarrow_ipc_static
-                        PRIVATE flatccrt ${NANOARROW_IPC_EXTRA_LIBS}
+                        PRIVATE nanoarrow::flatccrt ${NANOARROW_IPC_EXTRA_LIBS}
                         PUBLIC nanoarrow_static nanoarrow_coverage_config)
 
   add_library(nanoarrow_ipc_shared SHARED ${NANOARROW_IPC_BUILD_SOURCES})
   target_link_libraries(nanoarrow_ipc_shared
-                        PRIVATE flatccrt ${NANOARROW_IPC_EXTRA_LIBS_SHARED}
+                        PRIVATE nanoarrow::flatccrt ${NANOARROW_IPC_EXTRA_LIBS_SHARED}
                         PUBLIC nanoarrow_shared nanoarrow_coverage_config)
 
   install(FILES src/nanoarrow/nanoarrow_ipc.h src/nanoarrow/nanoarrow_ipc.hpp
@@ -343,7 +346,7 @@ if(NANOARROW_IPC AND (NANOARROW_BUILD_INTEGRATION_TESTS OR NANOARROW_BUILD_TESTS
   target_link_libraries(nanoarrow_ipc_integration
                         PRIVATE nanoarrow_testing_static
                                 nanoarrow_ipc_static
-                                flatccrt
+                                nanoarrow::flatccrt
                                 nanoarrow_coverage_config
                                 ${NANOARROW_IPC_EXTRA_LIBS})
 endif()
@@ -760,7 +763,7 @@ if(NANOARROW_BUILD_TESTS)
                             nanoarrow_coverage_config)
 
       if(NOT (name MATCHES "_hpp_"))
-        target_link_libraries(nanoarrow_ipc_${name}_test flatccrt)
+        target_link_libraries(nanoarrow_ipc_${name}_test nanoarrow::flatccrt)
       endif()
 
       if(Arrow_FOUND)
