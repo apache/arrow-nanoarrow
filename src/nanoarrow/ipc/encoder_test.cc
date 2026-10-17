@@ -152,9 +152,10 @@ static nanoarrow::UniqueBuffer PackMetadata(const KeyValues& key_values) {
   nanoarrow::UniqueBuffer metadata;
   NANOARROW_THROW_NOT_OK(ArrowMetadataBuilderInit(metadata.get(), nullptr));
   for (const auto& kv : key_values) {
-    NANOARROW_THROW_NOT_OK(ArrowMetadataBuilderAppend(metadata.get(),
-                                                      ArrowCharView(kv.first.c_str()),
-                                                      ArrowCharView(kv.second.c_str())));
+    struct ArrowStringView key = {kv.first.data(), static_cast<int64_t>(kv.first.size())};
+    struct ArrowStringView value = {kv.second.data(),
+                                    static_cast<int64_t>(kv.second.size())};
+    NANOARROW_THROW_NOT_OK(ArrowMetadataBuilderAppend(metadata.get(), key, value));
   }
   return metadata;
 }
@@ -284,6 +285,85 @@ TEST(NanoarrowIpcTest, NanoarrowIpcEncoderMessageMetadataRoundtrip) {
       ArrowIpcEncoderFinalizeBuffer(encoder.get(), /*encapsulate=*/true, message.get()),
       NANOARROW_OK);
   EXPECT_EQ(DecodeMessageMetadata(message.get(), decoder.get()), KeyValues{});
+}
+
+// Metadata keys and values are length-prefixed both in ArrowSchema and in the
+// flatbuffer, so they may contain NUL bytes (which are valid UTF-8) and must be
+// written exactly rather than truncated at the first NUL.
+TEST(NanoarrowIpcTest, NanoarrowIpcEncoderMetadataWithNulBytes) {
+  using namespace std::string_literals;
+  KeyValues schema_key_values{{"schema\0key"s, "schema\0value\0"s}, {"\0"s, ""s}};
+  KeyValues field_key_values{{"field\0key"s, "\0field\0value"s}};
+  KeyValues message_key_values{{"message\0key"s, "message\0value"s}};
+
+  nanoarrow::UniqueSchema schema;
+  ASSERT_EQ(ArrowSchemaInitFromType(schema.get(), NANOARROW_TYPE_STRUCT), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaAllocateChildren(schema.get(), 1), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaInitFromType(schema->children[0], NANOARROW_TYPE_INT32),
+            NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaSetName(schema->children[0], "col"), NANOARROW_OK);
+  auto schema_metadata = PackMetadata(schema_key_values);
+  ASSERT_EQ(ArrowSchemaSetMetadata(schema.get(),
+                                   reinterpret_cast<const char*>(schema_metadata->data)),
+            NANOARROW_OK);
+  auto field_metadata = PackMetadata(field_key_values);
+  ASSERT_EQ(ArrowSchemaSetMetadata(schema->children[0],
+                                   reinterpret_cast<const char*>(field_metadata->data)),
+            NANOARROW_OK);
+
+  // Encode and decode a Schema message
+  nanoarrow::ipc::UniqueEncoder encoder;
+  ASSERT_EQ(ArrowIpcEncoderInit(encoder.get()), NANOARROW_OK);
+  struct ArrowError error;
+  auto message_metadata = PackMetadata(message_key_values);
+  ASSERT_EQ(
+      ArrowIpcEncoderSetMessageMetadata(encoder.get(), message_metadata.get(), &error),
+      NANOARROW_OK)
+      << error.message;
+  ASSERT_EQ(ArrowIpcEncoderEncodeSchema(encoder.get(), schema.get(), &error),
+            NANOARROW_OK)
+      << error.message;
+  nanoarrow::UniqueBuffer message;
+  ASSERT_EQ(
+      ArrowIpcEncoderFinalizeBuffer(encoder.get(), /*encapsulate=*/true, message.get()),
+      NANOARROW_OK);
+
+  nanoarrow::ipc::UniqueDecoder decoder;
+  ASSERT_EQ(ArrowIpcDecoderInit(decoder.get()), NANOARROW_OK);
+  EXPECT_EQ(DecodeMessageMetadata(message.get(), decoder.get()), message_key_values);
+
+  nanoarrow::UniqueSchema decoded;
+  ASSERT_EQ(ArrowIpcDecoderDecodeSchema(decoder.get(), decoded.get(), &error),
+            NANOARROW_OK)
+      << error.message;
+  EXPECT_EQ(UnpackMetadata(decoded->metadata), schema_key_values);
+  ASSERT_EQ(decoded->n_children, 1);
+  EXPECT_EQ(UnpackMetadata(decoded->children[0]->metadata), field_key_values);
+
+  // ...and through the writer and the stream reader
+  nanoarrow::UniqueBuffer output;
+  nanoarrow::ipc::UniqueOutputStream output_stream;
+  ASSERT_EQ(ArrowIpcOutputStreamInitBuffer(output_stream.get(), output.get()),
+            NANOARROW_OK);
+  nanoarrow::ipc::UniqueWriter writer;
+  ASSERT_EQ(ArrowIpcWriterInit(writer.get(), output_stream.get()), NANOARROW_OK);
+  ASSERT_EQ(ArrowIpcWriterWriteSchema(writer.get(), schema.get(), &error), NANOARROW_OK)
+      << error.message;
+  ASSERT_EQ(ArrowIpcWriterWriteArrayView(writer.get(), nullptr, &error), NANOARROW_OK)
+      << error.message;
+
+  struct ArrowIpcInputStream input_stream;
+  ASSERT_EQ(ArrowIpcInputStreamInitBuffer(&input_stream, output.get()), NANOARROW_OK);
+  nanoarrow::UniqueArrayStream reader;
+  ASSERT_EQ(ArrowIpcArrayStreamReaderInit(reader.get(), &input_stream, nullptr),
+            NANOARROW_OK);
+  nanoarrow::UniqueSchema read_schema;
+  ASSERT_EQ(ArrowArrayStreamGetSchema(reader.get(), read_schema.get(), &error),
+            NANOARROW_OK)
+      << error.message;
+  EXPECT_EQ(UnpackMetadata(read_schema->metadata), schema_key_values);
+  ASSERT_EQ(read_schema->n_children, 1);
+  EXPECT_EQ(UnpackMetadata(read_schema->children[0]->metadata), field_key_values);
 }
 
 TEST(NanoarrowIpcTest, NanoarrowIpcEncoderSchemaMessageMetadata) {
