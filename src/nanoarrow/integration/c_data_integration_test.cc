@@ -17,6 +17,7 @@
 
 #include <cstdio>
 #include <fstream>
+#include <string>
 
 #include <gtest/gtest.h>
 
@@ -25,19 +26,26 @@
 #include "c_data_integration.h"
 
 // Not a true tempfile (writes to working directory), but is possibly more
-// portable than mkstemp()
+// portable than mkstemp(). The name includes the current test's name because ctest
+// runs each test as a separate process, in parallel with the others: with a shared
+// name, one test can overwrite or remove another test's file.
 class TempFile {
  public:
-  const char* name() { return name_; }
+  TempFile()
+      : name_(std::string("c_data_integration.") +
+              ::testing::UnitTest::GetInstance()->current_test_info()->name() +
+              ".tmp.json") {}
+
+  const char* name() { return name_.c_str(); }
 
   ~TempFile() {
-    if (std::remove(name_) != 0) {
+    if (std::remove(name_.c_str()) != 0) {
       std::cerr << "Failed to remove '" << name_ << "'\n";
     }
   }
 
  private:
-  const char* name_ = "c_data_integration.tmp.json";
+  std::string name_;
 };
 
 ArrowErrorCode WriteFileString(const std::string& content, const std::string& path) {
