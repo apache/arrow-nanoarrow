@@ -181,6 +181,11 @@ struct ArrowIpcWriterPrivate {
   int writing_file;
   int64_t bytes_written;
   struct ArrowIpcFooter footer;
+
+  // Message custom_metadata held for the next RecordBatch message (not for any
+  // DictionaryBatch messages written ahead of it)
+  struct ArrowBuffer pending_message_metadata;
+  int has_pending_message_metadata;
 };
 
 ArrowErrorCode ArrowIpcWriterInit(struct ArrowIpcWriter* writer,
@@ -202,6 +207,8 @@ ArrowErrorCode ArrowIpcWriterInit(struct ArrowIpcWriter* writer,
   private->writing_file = 0;
   private->bytes_written = 0;
   ArrowIpcFooterInit(&private->footer);
+  ArrowBufferInit(&private->pending_message_metadata);
+  private->has_pending_message_metadata = 0;
 
   writer->private_data = private;
   return NANOARROW_OK;
@@ -220,6 +227,7 @@ void ArrowIpcWriterReset(struct ArrowIpcWriter* writer) {
     ArrowBufferReset(&private->body_buffer);
 
     ArrowIpcFooterReset(&private->footer);
+    ArrowBufferReset(&private->pending_message_metadata);
 
     ArrowFree(private);
   }
@@ -235,6 +243,24 @@ ArrowErrorCode ArrowIpcWriterSetCompression(struct ArrowIpcWriter* writer,
       (struct ArrowIpcWriterPrivate*)writer->private_data;
   return ArrowIpcEncoderSetCompression(&private->encoder, compression_type,
                                        compression_level, error);
+}
+
+ArrowErrorCode ArrowIpcWriterSetMessageMetadata(struct ArrowIpcWriter* writer,
+                                                struct ArrowBuffer* metadata,
+                                                struct ArrowError* error) {
+  NANOARROW_DCHECK(writer != NULL && writer->private_data != NULL);
+  NANOARROW_UNUSED(error);
+  struct ArrowIpcWriterPrivate* private =
+      (struct ArrowIpcWriterPrivate*)writer->private_data;
+
+  ArrowBufferReset(&private->pending_message_metadata);
+  private->has_pending_message_metadata = 0;
+  if (metadata != NULL) {
+    ArrowBufferMove(metadata, &private->pending_message_metadata);
+    private->has_pending_message_metadata = 1;
+  }
+
+  return NANOARROW_OK;
 }
 
 static struct ArrowBufferView ArrowBufferToBufferView(const struct ArrowBuffer* buffer) {
@@ -299,6 +325,12 @@ ArrowErrorCode ArrowIpcWriterWriteArrayView(struct ArrowIpcWriter* writer,
 
   NANOARROW_ASSERT_OK(ArrowBufferResize(&private->buffer, 0, 0));
   NANOARROW_ASSERT_OK(ArrowBufferResize(&private->body_buffer, 0, 0));
+
+  if (private->has_pending_message_metadata) {
+    private->has_pending_message_metadata = 0;
+    NANOARROW_RETURN_NOT_OK(ArrowIpcEncoderSetMessageMetadata(
+        &private->encoder, &private->pending_message_metadata, error));
+  }
 
   NANOARROW_RETURN_NOT_OK(ArrowIpcEncoderEncodeSimpleRecordBatch(
       &private->encoder, in, &private->body_buffer, error));
