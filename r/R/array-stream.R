@@ -50,6 +50,73 @@ basic_array_stream <- function(batches, schema = NULL, validate = TRUE) {
   .Call(nanoarrow_c_basic_array_stream, batches, schema, validate)
 }
 
+#' Create an array stream from an R function
+#'
+#' The function is called once for each requested array. It should return an
+#' object coercible by [as_nanoarrow_array()], or `NULL` to indicate end of
+#' stream. The schema is required because it is available before the first
+#' array is requested. Neither construction nor schema access calls `fun`.
+#' After `NULL` or an error is returned, the callback is not called again.
+#'
+#' Evaluation is isolated in a top-level R context so non-local exits (for
+#' example, invoking an `abort` restart) cannot escape through the C stream
+#' interface. Calling handlers in the caller are therefore not applied to
+#' callback evaluation. The callback is evaluated only on R's main thread.
+#' Warnings are handled in this isolated context, unless handled within `fun`.
+#' The stream retains `fun` until it is released; explicitly release streams
+#' when `fun` or its environment refers to the stream itself.
+#'
+#' @param fun A function called with no arguments to produce each array.
+#' @param schema A schema coercible by [as_nanoarrow_schema()], used to coerce
+#'   and validate each result.
+#' @param validate Use `FALSE` to skip validation within the callback. The
+#'   stream's `get_next()` method can validate the returned array independently.
+#'
+#' @return An [nanoarrow_array_stream][as_nanoarrow_array_stream]
+#' @export
+#'
+#' @examples
+#' i <- 0L
+#' stream <- function_array_stream(
+#'   function() {
+#'     i <<- i + 1L
+#'     if (i > 2L) NULL else mtcars[i, , drop = FALSE]
+#'   },
+#'   infer_nanoarrow_schema(mtcars)
+#' )
+#' as.data.frame(stream$get_next())
+#' as.data.frame(stream$get_next())
+#' stream$get_next()
+#' stream$release()
+#'
+function_array_stream <- function(fun, schema, validate = TRUE) {
+  stopifnot(is.function(fun))
+  schema <- as_nanoarrow_schema(schema)
+  validate <- as.logical(validate)[1]
+  if (is.na(validate)) {
+    stop("`validate` must not be NA")
+  }
+
+  .Call(nanoarrow_c_function_array_stream, fun, schema, validate)
+}
+
+.nanoarrow_function_array_stream_get_next <- function(fun, schema, validate) {
+  result <- fun()
+  if (is.null(result)) {
+    NULL
+  } else {
+    array <- as_nanoarrow_array(result, schema = schema)
+    if (validate) {
+      nanoarrow_array_set_schema(array, schema, validate = TRUE)
+    }
+    array
+  }
+}
+
+.nanoarrow_function_array_stream_get_next_on_other_thread <- function(x) {
+  .Call(nanoarrow_c_function_array_stream_get_next_on_other_thread, x)
+}
+
 #' Register an array stream finalizer
 #'
 #' In some cases, R functions that return a [nanoarrow_array_stream][as_nanoarrow_array_stream]

@@ -18,12 +18,235 @@
 #define R_NO_REMAP
 #include <R.h>
 #include <Rinternals.h>
+#include <errno.h>
+#include <string.h>
 
 #include "array.h"
 #include "array_stream.h"
 #include "nanoarrow.h"
 #include "schema.h"
 #include "util.h"
+
+struct FunctionArrayStreamData {
+  struct ArrowSchema schema;
+  SEXP fun;
+  SEXP schema_xptr;
+  SEXP validate;
+  struct ArrowError error;
+  int error_code;
+  int finished;
+  int errored;
+  int evaluating;
+  int release_pending;
+};
+
+struct FunctionArrayStreamCall {
+  struct FunctionArrayStreamData* data;
+  struct ArrowArray* out;
+  int code;
+  int caught;
+};
+
+static void release_function_array_stream_data(struct FunctionArrayStreamData* data) {
+  if (data == NULL) {
+    return;
+  }
+  if (data->schema.release != NULL) {
+    data->schema.release(&data->schema);
+  }
+  nanoarrow_release_sexp(data->fun);
+  nanoarrow_release_sexp(data->schema_xptr);
+  nanoarrow_release_sexp(data->validate);
+  ArrowFree(data);
+}
+
+static void function_array_stream_set_error(struct FunctionArrayStreamData* data,
+                                            int code, const char* message) {
+  if (!data->errored) {
+    ArrowErrorSet(&data->error, "%s", message);
+    data->error_code = code;
+    data->errored = 1;
+  }
+}
+
+static void release_function_array_stream(struct ArrowArrayStream* stream) {
+  struct FunctionArrayStreamData* data =
+      (struct FunctionArrayStreamData*)stream->private_data;
+  stream->release = NULL;
+  stream->private_data = NULL;
+  if (data == NULL) {
+    return;
+  }
+  if (data->evaluating) {
+    // The callback may release its own stream. Keep its state alive until it returns.
+    data->release_pending = 1;
+    return;
+  }
+  release_function_array_stream_data(data);
+}
+
+static const char* function_array_stream_get_last_error(struct ArrowArrayStream* stream) {
+  struct FunctionArrayStreamData* data =
+      (struct FunctionArrayStreamData*)stream->private_data;
+  return data == NULL ? "Array stream has been released"
+                      : ArrowErrorMessage(&data->error);
+}
+
+static int function_array_stream_get_schema(struct ArrowArrayStream* stream,
+                                            struct ArrowSchema* out) {
+  struct FunctionArrayStreamData* data =
+      (struct FunctionArrayStreamData*)stream->private_data;
+  if (data == NULL) {
+    return EINVAL;
+  }
+  int result = ArrowSchemaDeepCopy(&data->schema, out);
+  if (result != NANOARROW_OK) {
+    if (!data->errored) {
+      ArrowErrorSet(&data->error, "ArrowSchemaDeepCopy() failed");
+    }
+    return result;
+  }
+  return NANOARROW_OK;
+}
+
+static SEXP function_array_stream_condition_handler(SEXP condition, void* opaque) {
+  struct FunctionArrayStreamCall* call = (struct FunctionArrayStreamCall*)opaque;
+  call->caught = 1;
+  if (Rf_inherits(condition, "interrupt")) {
+    call->caught = 2;
+  }
+  SEXP message_call = PROTECT(Rf_lang2(Rf_install("conditionMessage"), condition));
+  SEXP message = Rf_eval(message_call, R_BaseEnv);
+  UNPROTECT(1);
+  return message;
+}
+
+static SEXP function_array_stream_eval_call(void* opaque) {
+  return Rf_eval((SEXP)opaque, nanoarrow_ns_pkg);
+}
+
+static void function_array_stream_eval(void* opaque) {
+  struct FunctionArrayStreamCall* call = (struct FunctionArrayStreamCall*)opaque;
+  struct FunctionArrayStreamData* data = call->data;
+  SEXP classes = PROTECT(Rf_allocVector(STRSXP, 2));
+  SET_STRING_ELT(classes, 0, Rf_mkChar("error"));
+  SET_STRING_ELT(classes, 1, Rf_mkChar("interrupt"));
+  SEXP callback =
+      PROTECT(Rf_lang4(Rf_install(".nanoarrow_function_array_stream_get_next"), data->fun,
+                       data->schema_xptr, data->validate));
+  SEXP result =
+      PROTECT(R_tryCatch(&function_array_stream_eval_call, callback, classes,
+                         &function_array_stream_condition_handler, call, NULL, NULL));
+  if (data->errored) {
+    call->code = data->error_code;
+  } else if (call->caught) {
+    const char* message = Rf_translateCharUTF8(STRING_ELT(result, 0));
+    if (call->caught == 2) {
+      struct ArrowError error;
+      ArrowErrorSet(&error, "R callback interrupted: %s", message);
+      function_array_stream_set_error(data, EIO, ArrowErrorMessage(&error));
+    } else {
+      function_array_stream_set_error(data, EIO, message);
+    }
+    call->code = data->error_code;
+  } else if (result == R_NilValue) {
+    data->finished = 1;
+    call->code = NANOARROW_OK;
+  } else {
+    // Let the external pointer clean up a partial export if R jumps during allocation.
+    SEXP array_xptr = PROTECT(nanoarrow_array_owning_xptr());
+    struct ArrowArray* array = nanoarrow_output_array_from_xptr(array_xptr);
+    array_export(result, array);
+    ArrowArrayMove(array, call->out);
+    UNPROTECT(1);
+    call->code = NANOARROW_OK;
+  }
+  UNPROTECT(3);
+}
+
+static int function_array_stream_get_next(struct ArrowArrayStream* stream,
+                                          struct ArrowArray* out) {
+  struct FunctionArrayStreamData* data =
+      (struct FunctionArrayStreamData*)stream->private_data;
+  out->release = NULL;
+  if (data == NULL || data->finished) {
+    return NANOARROW_OK;
+  }
+  if (data->errored) {
+    return data->error_code;
+  }
+  if (!nanoarrow_is_main_thread()) {
+    function_array_stream_set_error(data, EIO,
+                                    "Can't evaluate R callback on a non-R thread");
+    return data->error_code;
+  }
+  if (data->evaluating) {
+    function_array_stream_set_error(data, EINVAL,
+                                    "Re-entrant call to function array stream");
+    return data->error_code;
+  }
+
+  data->evaluating = 1;
+  struct FunctionArrayStreamCall call = {data, out, NANOARROW_OK, 0};
+  // R_tryCatch() does not catch restart jumps or failures in conditionMessage().
+  // All R API calls must stay inside this outer boundary.
+  if (!R_ToplevelExec(&function_array_stream_eval, &call)) {
+    function_array_stream_set_error(
+        data, EIO, "R callback exited non-locally (e.g., via an abort restart)");
+    call.code = data->error_code;
+  }
+  data->evaluating = 0;
+
+  if (call.code != NANOARROW_OK) {
+    if (out->release != NULL) {
+      out->release(out);
+    }
+    out->release = NULL;
+  }
+  if (data->release_pending) {
+    if (out->release != NULL) {
+      out->release(out);
+    }
+    out->release = NULL;
+    // The stream itself may already have been freed by a finalizer during evaluation.
+    release_function_array_stream_data(data);
+    return NANOARROW_OK;
+  }
+  return call.code;
+}
+
+SEXP nanoarrow_c_function_array_stream(SEXP fun, SEXP schema_xptr, SEXP validate) {
+  SEXP stream_xptr = PROTECT(nanoarrow_array_stream_owning_xptr());
+  struct ArrowArrayStream* stream = nanoarrow_output_array_stream_from_xptr(stream_xptr);
+  SEXP schema_copy_xptr = PROTECT(nanoarrow_schema_owning_xptr());
+  struct ArrowSchema* schema_copy = nanoarrow_output_schema_from_xptr(schema_copy_xptr);
+  schema_export(schema_xptr, schema_copy);
+  struct FunctionArrayStreamData* data =
+      (struct FunctionArrayStreamData*)ArrowMalloc(sizeof(*data));
+  check_trivial_alloc(data, "struct FunctionArrayStreamData");
+  memset(data, 0, sizeof(*data));
+  ArrowErrorInit(&data->error);
+  data->fun = R_NilValue;
+  data->schema_xptr = R_NilValue;
+  data->validate = R_NilValue;
+  stream->private_data = data;
+  stream->get_last_error = &function_array_stream_get_last_error;
+  stream->get_schema = &function_array_stream_get_schema;
+  stream->get_next = &function_array_stream_get_next;
+  stream->release = &release_function_array_stream;
+  // Attach the finalizer before any operation that can allocate or fail.
+  nanoarrow_preserve_sexp(fun);
+  data->fun = fun;
+  nanoarrow_preserve_sexp(schema_copy_xptr);
+  data->schema_xptr = schema_copy_xptr;
+  nanoarrow_preserve_sexp(validate);
+  data->validate = validate;
+  if (ArrowSchemaDeepCopy(schema_copy, &data->schema) != NANOARROW_OK) {
+    Rf_error("ArrowSchemaDeepCopy() failed");
+  }
+  UNPROTECT(2);
+  return stream_xptr;
+}
 
 // Ideally user-supplied finalizers are written in such a way that they don't jump;
 // however if they do it is likely that memory will leak. Here, we use

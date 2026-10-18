@@ -26,6 +26,347 @@ test_that("basic_array_stream() can create empty streams", {
   )
 })
 
+test_that("function_array_stream() lazily creates arrays and reaches EOF", {
+  calls <- 0L
+  stream <- function_array_stream(
+    function() {
+      calls <<- calls + 1L
+      if (calls > 2L) NULL else data.frame(x = calls)
+    },
+    na_struct(list(x = na_int32()))
+  )
+
+  expect_identical(calls, 0L)
+  expect_identical(stream$get_schema()$format, "+s")
+  expect_identical(calls, 0L)
+  expect_identical(as.data.frame(stream$get_next()), data.frame(x = 1L))
+  expect_identical(as.data.frame(stream$get_next()), data.frame(x = 2L))
+  expect_null(stream$get_next())
+  expect_null(stream$get_next())
+  expect_identical(calls, 3L)
+  stream$release()
+})
+
+test_that("function_array_stream() owns a schema copy", {
+  schema <- na_int32()
+  stream <- function_array_stream(function() 42L, schema)
+  nanoarrow_pointer_release(schema)
+
+  expect_identical(stream$get_schema()$format, "i")
+  expect_identical(stream$get_next()$length, 1L)
+  stream$release()
+})
+
+test_that("function_array_stream() accepts NULL immediately and zero-row arrays", {
+  calls <- 0L
+  empty <- function_array_stream(
+    function() {
+      calls <<- calls + 1L
+      NULL
+    }, na_int32()
+  )
+  expect_null(empty$get_next())
+  expect_null(empty$get_next())
+  expect_identical(calls, 1L)
+  empty$release()
+
+  stream <- function_array_stream(
+    function() data.frame(x = integer()), na_struct(list(x = na_int32()))
+  )
+  expect_identical(stream$get_next()$length, 0L)
+  stream$release()
+})
+
+test_that("function_array_stream() coerces common array inputs", {
+  for (value in list(1:3, as_nanoarrow_array(1:3))) {
+    stream <- function_array_stream(function() value, na_int32())
+    expect_identical(stream$get_next()$length, 3L)
+    stream$release()
+  }
+})
+
+test_that("function_array_stream() validates schemas and preserves unchecked behavior", {
+  malformed <- as_nanoarrow_array(data.frame(x = 1L))
+  nanoarrow_array_set_schema(malformed, na_int32(), validate = FALSE)
+
+  stream <- function_array_stream(function() malformed, na_int32())
+  expect_error(stream$get_next(), "Expected array with 2 buffer")
+  expect_error(stream$get_next(), "Expected array with 2 buffer")
+  stream$release()
+
+  stream <- function_array_stream(
+    function() malformed, na_int32(), validate = FALSE
+  )
+  expect_s3_class(stream$get_next(validate = FALSE), "nanoarrow_array")
+  stream$release()
+})
+
+test_that("function_array_stream() errors become stable stream errors", {
+  stream <- function_array_stream(function() stop("callback failed"), na_int32())
+  expect_error(stream$get_next(), "callback failed")
+  expect_error(stream$get_next(), "callback failed")
+  stream$release()
+})
+
+test_that("function_array_stream() contains interrupts and re-entrant calls", {
+  interrupted <- function() {
+    condition <- structure(
+      list(message = "test interrupt"),
+      class = c("interrupt", "condition")
+    )
+    signalCondition(condition)
+    1L
+  }
+  stream <- function_array_stream(interrupted, na_int32())
+  expect_error(stream$get_next(), "R callback interrupted")
+  expect_error(stream$get_next(), "R callback interrupted")
+  stream$release()
+
+  stream <- NULL
+  stream <- function_array_stream(function() stream$get_next(), na_int32())
+  expect_error(stream$get_next(), "Re-entrant call to function array stream")
+  expect_error(stream$get_next(), "Re-entrant call to function array stream")
+  expect_identical(
+    .nanoarrow_function_array_stream_get_next_on_other_thread(stream), 22L
+  )
+  stream$release()
+
+  stream <- NULL
+  stream <- function_array_stream(
+    function() {
+      tryCatch(stream$get_next(), error = function(e) NULL)
+      1L
+    },
+    na_int32()
+  )
+  expect_error(stream$get_next(), "Re-entrant call to function array stream")
+  expect_identical(
+    .nanoarrow_function_array_stream_get_next_on_other_thread(stream), 22L
+  )
+  stream$release()
+})
+
+test_that("function_array_stream() contains abort restarts and allows warnings", {
+  stream <- function_array_stream(
+    function() invokeRestart("abort"), na_int32()
+  )
+  expect_error(
+    stream$get_next(),
+    "R callback exited non-locally .*abort restart"
+  )
+  expect_error(stream$get_next(), "R callback exited non-locally")
+  stream$release()
+
+  stream <- function_array_stream(function() {
+    warning("callback warning")
+    1L
+  }, na_int32())
+  withr::local_options(warn = 1)
+  caller_handled_warning <- FALSE
+  warning_output <- capture.output(
+    result <- withCallingHandlers(
+      stream$get_next(),
+      warning = function(w) {
+        caller_handled_warning <<- TRUE
+        invokeRestart("muffleWarning")
+      }
+    ),
+    type = "message"
+  )
+  expect_match(paste(warning_output, collapse = "\n"), "callback warning")
+  expect_false(caller_handled_warning)
+  expect_identical(result$length, 1L)
+  stream$release()
+})
+
+test_that("function_array_stream() reports conditionMessage failures safely", {
+  method <- "conditionMessage.nanoarrow_test_broken"
+  had_method <- exists(method, envir = globalenv(), inherits = FALSE)
+  if (had_method) {
+    old_method <- get(method, envir = globalenv(), inherits = FALSE)
+  }
+  on.exit(
+    if (had_method) {
+      assign(method, old_method, envir = globalenv())
+    } else {
+      rm(list = method, envir = globalenv())
+    },
+    add = TRUE
+  )
+  assign(method, function(condition) stop("conditionMessage failed"), globalenv())
+
+  stream <- function_array_stream(
+    function() stop(structure(
+      list(message = "original error"),
+      class = c("nanoarrow_test_broken", "error", "condition")
+    )),
+    na_int32()
+  )
+  expect_error(
+    stream$get_next(),
+    "\\[5\\].*conditionMessage failed"
+  )
+  expect_error(stream$get_next(), "\\[5\\].*conditionMessage failed")
+  stream$release()
+})
+
+test_that("function_array_stream() protects callback state across export and GC", {
+  value <- 1:3
+  stream <- function_array_stream(function() value, na_int32())
+  stream_copy <- nanoarrow_allocate_array_stream()
+  nanoarrow_pointer_export(stream, stream_copy)
+  rm(stream)
+  gc()
+  expect_identical(stream_copy$get_next()$length, 3L)
+  stream_copy$release()
+})
+
+test_that("function_array_stream() keeps callbacks alive through finalizer export", {
+  calls <- 0L
+  finalized <- 0L
+  stream <- function_array_stream(function() {
+    calls <<- calls + 1L
+    calls
+  }, na_int32())
+  stream <- array_stream_set_finalizer(stream, function() {
+    finalized <<- finalized + 1L
+  })
+  stream_copy <- nanoarrow_allocate_array_stream()
+  nanoarrow_pointer_export(stream, stream_copy)
+  rm(stream)
+  gc()
+
+  expect_identical(stream_copy$get_next()$length, 1L)
+  stream_copy$release()
+  stream_copy$release()
+  expect_identical(finalized, 1L)
+})
+
+test_that("function_array_stream() rejects evaluation on a non-R thread", {
+  calls <- 0L
+  stream <- function_array_stream(function() {
+    calls <<- calls + 1L
+    1L
+  }, na_int32())
+  expect_identical(
+    .nanoarrow_function_array_stream_get_next_on_other_thread(stream),
+    5L
+  )
+  expect_error(stream$get_next(), "Can't evaluate R callback on a non-R thread")
+  expect_identical(calls, 0L)
+  stream$release()
+
+  stream <- function_array_stream(function() NULL, na_int32())
+  expect_null(stream$get_next())
+  expect_identical(
+    .nanoarrow_function_array_stream_get_next_on_other_thread(stream), 0L
+  )
+  stream$release()
+})
+
+test_that("function_array_stream() releases preserved state exactly once", {
+  gc()
+  preserved_empty()
+  baseline <- preserved_count()
+  stream <- function_array_stream(function() 1L, na_int32())
+  after_create <- preserved_count()
+  expect_gt(after_create, baseline)
+  stream$release()
+  expect_lte(preserved_count(), baseline)
+  stream$release()
+  expect_lte(preserved_count(), baseline)
+
+  stream <- function_array_stream(function() 1L, na_int32())
+  rm(stream)
+  gc()
+  preserved_empty()
+  expect_lte(preserved_count(), baseline)
+})
+
+test_that("function_array_stream() integrates with stream conversion", {
+  stream <- function_array_stream(
+    local({
+      i <- 0L
+      function() {
+        i <<- i + 1L
+        if (i > 2L) NULL else data.frame(x = i)
+      }
+    }),
+    na_struct(list(x = na_int32()))
+  )
+  expect_identical(as.data.frame(stream), data.frame(x = 1:2))
+
+  stream <- function_array_stream(
+    local({
+      i <- 0L
+      function() {
+        i <<- i + 1L
+        if (i > 2L) NULL else data.frame(x = i)
+      }
+    }),
+    na_struct(list(x = na_int32()))
+  )
+  expect_identical(
+    lapply(collect_array_stream(stream), as.data.frame),
+    list(data.frame(x = 1L), data.frame(x = 2L))
+  )
+  stream$release()
+
+  stream <- function_array_stream(
+    local({
+      i <- 0L
+      function() {
+        i <<- i + 1L
+        if (i > 2L) NULL else data.frame(x = i)
+      }
+    }),
+    na_struct(list(x = na_int32()))
+  )
+  expect_identical(convert_array_stream(stream), data.frame(x = 1:2))
+  stream$release()
+})
+
+test_that("function_array_stream() methods are safe after release", {
+  stream <- function_array_stream(function() NULL, na_int32())
+  stream$release()
+  expect_error(stream$get_next())
+  expect_error(stream$get_schema())
+})
+
+test_that("function_array_stream() safely defers release from its callback", {
+  stream <- NULL
+  stream <- function_array_stream(
+    function() {
+      stream$release()
+      1L
+    }, na_int32()
+  )
+  expect_null(stream$get_next())
+  expect_false(nanoarrow_pointer_is_valid(stream))
+  expect_silent(stream$release())
+})
+
+test_that("function_array_stream() defers wrapped release across callback GC", {
+  released <- FALSE
+  holder <- new.env(parent = emptyenv())
+  holder$stream <- NULL
+  parent <- function_array_stream(
+    function() {
+      holder$stream$release()
+      gc()
+      1L
+    },
+    na_int32()
+  )
+  holder$stream <- array_stream_set_finalizer(parent, function() {
+    released <<- TRUE
+  })
+
+  expect_null(holder$stream$get_next())
+  expect_true(released)
+  expect_false(nanoarrow_pointer_is_valid(holder$stream))
+})
+
 test_that("basic_array_stream() can create streams from batches", {
   stream <- basic_array_stream(
     list(
