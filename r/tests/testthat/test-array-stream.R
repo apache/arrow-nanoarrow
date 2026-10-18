@@ -77,6 +77,15 @@ test_that("function_array_stream() accepts NULL immediately and zero-row arrays"
   stream$release()
 })
 
+test_that("function_array_stream() validates its validate argument", {
+  for (validate in list(NA, logical(), c(TRUE, FALSE), 1L, "TRUE")) {
+    expect_error(
+      function_array_stream(function() NULL, na_int32(), validate = validate),
+      "`validate` must be a single non-NA logical value"
+    )
+  }
+})
+
 test_that("function_array_stream() coerces common array inputs", {
   for (value in list(1:3, as_nanoarrow_array(1:3))) {
     stream <- function_array_stream(function() value, na_int32())
@@ -127,7 +136,7 @@ test_that("function_array_stream() contains interrupts and re-entrant calls", {
   expect_error(stream$get_next(), "Re-entrant call to function array stream")
   expect_error(stream$get_next(), "Re-entrant call to function array stream")
   expect_identical(
-    .nanoarrow_function_array_stream_get_next_on_other_thread(stream), 22L
+    function_array_stream_get_next_on_other_thread(stream), 22L
   )
   stream$release()
 
@@ -141,7 +150,7 @@ test_that("function_array_stream() contains interrupts and re-entrant calls", {
   )
   expect_error(stream$get_next(), "Re-entrant call to function array stream")
   expect_identical(
-    .nanoarrow_function_array_stream_get_next_on_other_thread(stream), 22L
+    function_array_stream_get_next_on_other_thread(stream), 22L
   )
   stream$release()
 })
@@ -249,7 +258,7 @@ test_that("function_array_stream() rejects evaluation on a non-R thread", {
     1L
   }, na_int32())
   expect_identical(
-    .nanoarrow_function_array_stream_get_next_on_other_thread(stream),
+    function_array_stream_get_next_on_other_thread(stream),
     5L
   )
   expect_error(stream$get_next(), "Can't evaluate R callback on a non-R thread")
@@ -259,7 +268,7 @@ test_that("function_array_stream() rejects evaluation on a non-R thread", {
   stream <- function_array_stream(function() NULL, na_int32())
   expect_null(stream$get_next())
   expect_identical(
-    .nanoarrow_function_array_stream_get_next_on_other_thread(stream), 0L
+    function_array_stream_get_next_on_other_thread(stream), 0L
   )
   stream$release()
 })
@@ -333,7 +342,7 @@ test_that("function_array_stream() methods are safe after release", {
   expect_error(stream$get_schema())
 })
 
-test_that("function_array_stream() safely defers release from its callback", {
+test_that("function_array_stream() reports release from its callback", {
   stream <- NULL
   stream <- function_array_stream(
     function() {
@@ -341,7 +350,7 @@ test_that("function_array_stream() safely defers release from its callback", {
       1L
     }, na_int32()
   )
-  expect_null(stream$get_next())
+  expect_error(stream$get_next(), "\\[22\\].*Array stream has been released")
   expect_false(nanoarrow_pointer_is_valid(stream))
   expect_silent(stream$release())
 })
@@ -362,9 +371,43 @@ test_that("function_array_stream() defers wrapped release across callback GC", {
     released <<- TRUE
   })
 
-  expect_null(holder$stream$get_next())
+  expect_error(
+    holder$stream$get_next(),
+    "\\[22\\].*Array stream has been released"
+  )
   expect_true(released)
   expect_false(nanoarrow_pointer_is_valid(holder$stream))
+})
+
+test_that("function_array_stream() releases preserved state on another thread", {
+  gc()
+  preserved_empty()
+  baseline <- preserved_count()
+  stream <- function_array_stream(function() NULL, na_int32())
+  expect_gt(preserved_count(), baseline)
+
+  release_array_stream_on_other_thread(stream)
+  expect_false(nanoarrow_pointer_is_valid(stream))
+  # Both R references must remain queued until the main thread drains them.
+  expect_identical(preserved_empty(), 2)
+  expect_lte(preserved_count(), baseline)
+})
+
+test_that("wrapped stream release is safe during its finalizer", {
+  stream <- NULL
+  finalizer_results <- new.env(parent = emptyenv())
+  stream <- function_array_stream(function() NULL, na_int32())
+  stream <- array_stream_set_finalizer(stream, function() {
+    finalizer_results$schema <- tryCatch(stream$get_schema(), error = conditionMessage)
+    finalizer_results$next_result <- tryCatch(stream$get_next(), error = conditionMessage)
+    finalizer_results$release <- tryCatch(stream$release(), error = conditionMessage)
+  })
+
+  expect_silent(stream$release())
+  expect_match(finalizer_results$schema, "already been released")
+  expect_match(finalizer_results$next_result, "already been released")
+  expect_null(finalizer_results$release)
+  expect_false(nanoarrow_pointer_is_valid(stream))
 })
 
 test_that("basic_array_stream() can create streams from batches", {

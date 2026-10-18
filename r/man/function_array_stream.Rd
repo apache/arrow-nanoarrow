@@ -12,8 +12,9 @@ function_array_stream(fun, schema, validate = TRUE)
 \item{schema}{A schema coercible by \code{\link[=as_nanoarrow_schema]{as_nanoarrow_schema()}}, used to coerce
 and validate each result.}
 
-\item{validate}{Use \code{FALSE} to skip validation within the callback. The
-stream's \code{get_next()} method can validate the returned array independently.}
+\item{validate}{A single \code{TRUE} or \code{FALSE}. Use \code{FALSE} to skip validation
+within the callback. The stream's \code{get_next()} method can validate the
+returned array independently.}
 }
 \value{
 An \link[=as_nanoarrow_array_stream]{nanoarrow_array_stream}

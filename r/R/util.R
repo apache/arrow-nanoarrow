@@ -74,6 +74,10 @@ preserve_and_release_on_other_thread <- function(obj) {
   invisible(.Call(nanoarrow_c_preserve_and_release_on_other_thread, obj))
 }
 
+release_array_stream_on_other_thread <- function(array_stream) {
+  invisible(.Call(nanoarrow_c_release_array_stream_on_other_thread, array_stream))
+}
+
 # This is used by bookkeeping infrastructure when debugging an imbalance in
 # preserved/released SEXPs.
 current_stack_trace_chr <- function() {

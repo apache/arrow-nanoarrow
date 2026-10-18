@@ -69,8 +69,9 @@ basic_array_stream <- function(batches, schema = NULL, validate = TRUE) {
 #' @param fun A function called with no arguments to produce each array.
 #' @param schema A schema coercible by [as_nanoarrow_schema()], used to coerce
 #'   and validate each result.
-#' @param validate Use `FALSE` to skip validation within the callback. The
-#'   stream's `get_next()` method can validate the returned array independently.
+#' @param validate A single `TRUE` or `FALSE`. Use `FALSE` to skip validation
+#'   within the callback. The stream's `get_next()` method can validate the
+#'   returned array independently.
 #'
 #' @return An [nanoarrow_array_stream][as_nanoarrow_array_stream]
 #' @export
@@ -92,15 +93,14 @@ basic_array_stream <- function(batches, schema = NULL, validate = TRUE) {
 function_array_stream <- function(fun, schema, validate = TRUE) {
   stopifnot(is.function(fun))
   schema <- as_nanoarrow_schema(schema)
-  validate <- as.logical(validate)[1]
-  if (is.na(validate)) {
-    stop("`validate` must not be NA")
+  if (!is.logical(validate) || length(validate) != 1L || is.na(validate)) {
+    stop("`validate` must be a single non-NA logical value")
   }
 
   .Call(nanoarrow_c_function_array_stream, fun, schema, validate)
 }
 
-.nanoarrow_function_array_stream_get_next <- function(fun, schema, validate) {
+function_array_stream_get_next_wrapper <- function(fun, schema, validate) {
   result <- fun()
   if (is.null(result)) {
     NULL
@@ -113,7 +113,7 @@ function_array_stream <- function(fun, schema, validate = TRUE) {
   }
 }
 
-.nanoarrow_function_array_stream_get_next_on_other_thread <- function(x) {
+function_array_stream_get_next_on_other_thread <- function(x) {
   .Call(nanoarrow_c_function_array_stream_get_next_on_other_thread, x)
 }
 

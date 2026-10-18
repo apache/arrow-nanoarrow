@@ -31,7 +31,7 @@ struct FunctionArrayStreamData {
   struct ArrowSchema schema;
   SEXP fun;
   SEXP schema_xptr;
-  SEXP validate;
+  int validate;
   struct ArrowError error;
   int error_code;
   int finished;
@@ -48,15 +48,11 @@ struct FunctionArrayStreamCall {
 };
 
 static void release_function_array_stream_data(struct FunctionArrayStreamData* data) {
-  if (data == NULL) {
-    return;
-  }
   if (data->schema.release != NULL) {
     data->schema.release(&data->schema);
   }
   nanoarrow_release_sexp(data->fun);
   nanoarrow_release_sexp(data->schema_xptr);
-  nanoarrow_release_sexp(data->validate);
   ArrowFree(data);
 }
 
@@ -74,9 +70,6 @@ static void release_function_array_stream(struct ArrowArrayStream* stream) {
       (struct FunctionArrayStreamData*)stream->private_data;
   stream->release = NULL;
   stream->private_data = NULL;
-  if (data == NULL) {
-    return;
-  }
   if (data->evaluating) {
     // The callback may release its own stream. Keep its state alive until it returns.
     data->release_pending = 1;
@@ -96,17 +89,7 @@ static int function_array_stream_get_schema(struct ArrowArrayStream* stream,
                                             struct ArrowSchema* out) {
   struct FunctionArrayStreamData* data =
       (struct FunctionArrayStreamData*)stream->private_data;
-  if (data == NULL) {
-    return EINVAL;
-  }
-  int result = ArrowSchemaDeepCopy(&data->schema, out);
-  if (result != NANOARROW_OK) {
-    if (!data->errored) {
-      ArrowErrorSet(&data->error, "ArrowSchemaDeepCopy() failed");
-    }
-    return result;
-  }
-  return NANOARROW_OK;
+  return ArrowSchemaDeepCopy(&data->schema, out);
 }
 
 static SEXP function_array_stream_condition_handler(SEXP condition, void* opaque) {
@@ -131,9 +114,9 @@ static void function_array_stream_eval(void* opaque) {
   SEXP classes = PROTECT(Rf_allocVector(STRSXP, 2));
   SET_STRING_ELT(classes, 0, Rf_mkChar("error"));
   SET_STRING_ELT(classes, 1, Rf_mkChar("interrupt"));
-  SEXP callback =
-      PROTECT(Rf_lang4(Rf_install(".nanoarrow_function_array_stream_get_next"), data->fun,
-                       data->schema_xptr, data->validate));
+  SEXP validate = PROTECT(Rf_ScalarLogical(data->validate));
+  SEXP callback = PROTECT(Rf_lang4(Rf_install("function_array_stream_get_next_wrapper"),
+                                   data->fun, data->schema_xptr, validate));
   SEXP result =
       PROTECT(R_tryCatch(&function_array_stream_eval_call, callback, classes,
                          &function_array_stream_condition_handler, call, NULL, NULL));
@@ -161,7 +144,7 @@ static void function_array_stream_eval(void* opaque) {
     UNPROTECT(1);
     call->code = NANOARROW_OK;
   }
-  UNPROTECT(3);
+  UNPROTECT(4);
 }
 
 static int function_array_stream_get_next(struct ArrowArrayStream* stream,
@@ -197,12 +180,6 @@ static int function_array_stream_get_next(struct ArrowArrayStream* stream,
   }
   data->evaluating = 0;
 
-  if (call.code != NANOARROW_OK) {
-    if (out->release != NULL) {
-      out->release(out);
-    }
-    out->release = NULL;
-  }
   if (data->release_pending) {
     if (out->release != NULL) {
       out->release(out);
@@ -210,7 +187,7 @@ static int function_array_stream_get_next(struct ArrowArrayStream* stream,
     out->release = NULL;
     // The stream itself may already have been freed by a finalizer during evaluation.
     release_function_array_stream_data(data);
-    return NANOARROW_OK;
+    return EINVAL;
   }
   return call.code;
 }
@@ -228,7 +205,7 @@ SEXP nanoarrow_c_function_array_stream(SEXP fun, SEXP schema_xptr, SEXP validate
   ArrowErrorInit(&data->error);
   data->fun = R_NilValue;
   data->schema_xptr = R_NilValue;
-  data->validate = R_NilValue;
+  data->validate = LOGICAL(validate)[0];
   stream->private_data = data;
   stream->get_last_error = &function_array_stream_get_last_error;
   stream->get_schema = &function_array_stream_get_schema;
@@ -239,11 +216,7 @@ SEXP nanoarrow_c_function_array_stream(SEXP fun, SEXP schema_xptr, SEXP validate
   data->fun = fun;
   nanoarrow_preserve_sexp(schema_copy_xptr);
   data->schema_xptr = schema_copy_xptr;
-  nanoarrow_preserve_sexp(validate);
-  data->validate = validate;
-  if (ArrowSchemaDeepCopy(schema_copy, &data->schema) != NANOARROW_OK) {
-    Rf_error("ArrowSchemaDeepCopy() failed");
-  }
+  schema_export(schema_copy_xptr, &data->schema);
   UNPROTECT(2);
   return stream_xptr;
 }
@@ -364,30 +337,36 @@ struct WrapperArrayStreamData {
 };
 
 static void finalize_wrapper_array_stream(struct ArrowArrayStream* array_stream) {
-  if (array_stream->private_data != NULL) {
-    struct WrapperArrayStreamData* data =
-        (struct WrapperArrayStreamData*)array_stream->private_data;
+  struct WrapperArrayStreamData* data =
+      (struct WrapperArrayStreamData*)array_stream->private_data;
+  array_stream->release = NULL;
+  array_stream->private_data = NULL;
 
-    // Run the parent array stream release callback
-    data->parent_array_stream->release(data->parent_array_stream);
-
-    // If safe to do so, attempt to do an eager evaluation of a release
-    // callback that may have been registered. If it is not safe to do so,
-    // garbage collection will run any finalizers that have been set
-    // on the chain of environments leading up to the finalizer.
-    if (nanoarrow_is_main_thread()) {
-      run_user_array_stream_finalizer(data->parent_array_stream_xptr);
-    }
-
-    nanoarrow_release_sexp(data->parent_array_stream_xptr);
-    ArrowFree(array_stream->private_data);
+  // Export may fail before allocating the wrapper's private data.
+  if (data == NULL) {
+    return;
   }
 
-  array_stream->release = NULL;
+  // Run the parent array stream release callback
+  data->parent_array_stream->release(data->parent_array_stream);
+
+  // If safe to do so, attempt to do an eager evaluation of a release
+  // callback that may have been registered. If it is not safe to do so,
+  // garbage collection will run any finalizers that have been set
+  // on the chain of environments leading up to the finalizer.
+  if (nanoarrow_is_main_thread()) {
+    run_user_array_stream_finalizer(data->parent_array_stream_xptr);
+  }
+
+  nanoarrow_release_sexp(data->parent_array_stream_xptr);
+  ArrowFree(data);
 }
 
 static const char* wrapper_array_stream_get_last_error(
     struct ArrowArrayStream* array_stream) {
+  if (array_stream->release == NULL) {
+    return "Array stream has been released";
+  }
   struct WrapperArrayStreamData* data =
       (struct WrapperArrayStreamData*)array_stream->private_data;
   return data->parent_array_stream->get_last_error(data->parent_array_stream);
