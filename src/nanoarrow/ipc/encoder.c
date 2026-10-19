@@ -493,10 +493,9 @@ static ArrowErrorCode ArrowIpcEncodeMetadata(flatcc_builder_t* builder,
     NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowMetadataReaderRead(&metadata, &key, &value),
                                        error);
     FLATCC_RETURN_UNLESS_0_NO_NS(push_start(builder), error);
-    FLATCC_RETURN_UNLESS_0(KeyValue_key_create_strn(builder, key.data, key.size_bytes),
+    FLATCC_RETURN_UNLESS_0(KeyValue_key_create(builder, key.data, key.size_bytes), error);
+    FLATCC_RETURN_UNLESS_0(KeyValue_value_create(builder, value.data, value.size_bytes),
                            error);
-    FLATCC_RETURN_UNLESS_0(
-        KeyValue_value_create_strn(builder, value.data, value.size_bytes), error);
     FLATCC_RETURN_IF_NULL(push_end(builder), error);
   }
   return NANOARROW_OK;
