@@ -31,7 +31,7 @@ extern SEXP nanoarrow_c_array_stream_get_schema(SEXP array_stream_xptr);
 extern SEXP nanoarrow_c_array_stream_get_next(SEXP array_stream_xptr);
 extern SEXP nanoarrow_c_basic_array_stream(SEXP batches_sexp, SEXP schema_xptr,
                                            SEXP validate_sexp);
-extern SEXP nanoarrow_c_function_array_stream(SEXP fun, SEXP schema_xptr, SEXP validate);
+extern SEXP nanoarrow_c_function_array_stream(SEXP expr, SEXP env, SEXP schema_xptr);
 extern SEXP nanoarrow_c_function_array_stream_get_next_on_other_thread(
     SEXP array_stream_xptr);
 extern SEXP nanoarrow_c_array_list_total_length(SEXP list_of_array_xptr);

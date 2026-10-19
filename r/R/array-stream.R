@@ -58,13 +58,15 @@ basic_array_stream <- function(batches, schema = NULL, validate = TRUE) {
 #' array is requested. Neither construction nor schema access calls `fun`.
 #' After `NULL` or an error is returned, the callback is not called again.
 #'
-#' Evaluation is isolated in a top-level R context so non-local exits (for
-#' example, invoking an `abort` restart) cannot escape through the C stream
+#' Errors and interrupts raised by `fun` are converted to stream errors.
+#' Evaluation is also isolated in a top-level R context so other non-local exits
+#' (for example, invoking an `abort` restart) cannot escape through the C stream
 #' interface. Calling handlers in the caller are therefore not applied to
 #' callback evaluation. The callback is evaluated only on R's main thread.
 #' Warnings are handled in this isolated context, unless handled within `fun`.
-#' The stream retains `fun` until it is released; explicitly release streams
-#' when `fun` or its environment refers to the stream itself.
+#' `fun` must not release the stream (or call its methods) while it is being
+#' evaluated. The stream retains `fun` until it is released; explicitly release
+#' streams when `fun` or its environment refers to the stream itself.
 #'
 #' @param fun A function called with no arguments to produce each array.
 #' @param schema A schema coercible by [as_nanoarrow_schema()], used to coerce
@@ -92,25 +94,50 @@ basic_array_stream <- function(batches, schema = NULL, validate = TRUE) {
 #'
 function_array_stream <- function(fun, schema, validate = TRUE) {
   stopifnot(is.function(fun))
-  schema <- as_nanoarrow_schema(schema)
+  # Copy the schema so the callback does not depend on the caller's object.
+  schema_copy <- nanoarrow_allocate_schema()
+  nanoarrow_pointer_export(as_nanoarrow_schema(schema), schema_copy)
+  schema <- schema_copy
   if (!is.logical(validate) || length(validate) != 1L || is.na(validate)) {
     stop("`validate` must be a single non-NA logical value")
   }
 
-  .Call(nanoarrow_c_function_array_stream, fun, schema, validate)
-}
-
-function_array_stream_get_next_wrapper <- function(fun, schema, validate) {
-  result <- fun()
-  if (is.null(result)) {
-    NULL
-  } else {
-    array <- as_nanoarrow_array(result, schema = schema)
-    if (validate) {
-      nanoarrow_array_set_schema(array, schema, validate = TRUE)
-    }
-    array
+  # The callback is evaluated from C as `next_array()` in this environment.
+  # It returns NULL (end of stream), an array, or a character(1) error message.
+  # Only `next_array` needs to be visible there, so the environment is empty.
+  env <- new.env(parent = emptyenv())
+  env$next_array <- function() {
+    tryCatch(
+      {
+        result <- fun()
+        if (is.null(result)) {
+          NULL
+        } else {
+          array <- as_nanoarrow_array(result, schema = schema)
+          if (validate) {
+            nanoarrow_array_set_schema(array, schema, validate = TRUE)
+          }
+          array
+        }
+      },
+      error = function(e) {
+        tryCatch(
+          as.character(conditionMessage(e))[1],
+          error = function(e2) {
+            "R callback failed and its error message could not be retrieved"
+          }
+        )
+      },
+      interrupt = function(e) {
+        tryCatch(
+          paste0("R callback interrupted: ", conditionMessage(e)),
+          error = function(e2) "R callback interrupted"
+        )
+      }
+    )
   }
+
+  .Call(nanoarrow_c_function_array_stream, quote(next_array()), env, schema)
 }
 
 function_array_stream_get_next_on_other_thread <- function(x) {

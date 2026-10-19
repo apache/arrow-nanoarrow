@@ -202,7 +202,14 @@ test_that("function_array_stream() reports conditionMessage failures safely", {
     },
     add = TRUE
   )
-  assign(method, function(condition) stop("conditionMessage failed"), globalenv())
+  # stop() calls conditionMessage() once itself, so only fail on later calls to
+  # exercise the handler in the R-level tryCatch().
+  n_calls <- 0L
+  assign(method, function(condition) {
+    n_calls <<- n_calls + 1L
+    if (n_calls > 1L) stop("conditionMessage failed")
+    "original error"
+  }, globalenv())
 
   stream <- function_array_stream(
     function() stop(structure(
@@ -213,9 +220,9 @@ test_that("function_array_stream() reports conditionMessage failures safely", {
   )
   expect_error(
     stream$get_next(),
-    "\\[5\\].*conditionMessage failed"
+    "\\[5\\].*error message could not be retrieved"
   )
-  expect_error(stream$get_next(), "\\[5\\].*conditionMessage failed")
+  expect_error(stream$get_next(), "\\[5\\].*error message could not be retrieved")
   stream$release()
 })
 
@@ -342,43 +349,6 @@ test_that("function_array_stream() methods are safe after release", {
   expect_error(stream$get_schema())
 })
 
-test_that("function_array_stream() reports release from its callback", {
-  stream <- NULL
-  stream <- function_array_stream(
-    function() {
-      stream$release()
-      1L
-    }, na_int32()
-  )
-  expect_error(stream$get_next(), "\\[22\\].*Array stream has been released")
-  expect_false(nanoarrow_pointer_is_valid(stream))
-  expect_silent(stream$release())
-})
-
-test_that("function_array_stream() defers wrapped release across callback GC", {
-  released <- FALSE
-  holder <- new.env(parent = emptyenv())
-  holder$stream <- NULL
-  parent <- function_array_stream(
-    function() {
-      holder$stream$release()
-      gc()
-      1L
-    },
-    na_int32()
-  )
-  holder$stream <- array_stream_set_finalizer(parent, function() {
-    released <<- TRUE
-  })
-
-  expect_error(
-    holder$stream$get_next(),
-    "\\[22\\].*Array stream has been released"
-  )
-  expect_true(released)
-  expect_false(nanoarrow_pointer_is_valid(holder$stream))
-})
-
 test_that("function_array_stream() releases preserved state on another thread", {
   gc()
   preserved_empty()
@@ -391,23 +361,6 @@ test_that("function_array_stream() releases preserved state on another thread", 
   # Both R references must remain queued until the main thread drains them.
   expect_identical(preserved_empty(), 2)
   expect_lte(preserved_count(), baseline)
-})
-
-test_that("wrapped stream release is safe during its finalizer", {
-  stream <- NULL
-  finalizer_results <- new.env(parent = emptyenv())
-  stream <- function_array_stream(function() NULL, na_int32())
-  stream <- array_stream_set_finalizer(stream, function() {
-    finalizer_results$schema <- tryCatch(stream$get_schema(), error = conditionMessage)
-    finalizer_results$next_result <- tryCatch(stream$get_next(), error = conditionMessage)
-    finalizer_results$release <- tryCatch(stream$release(), error = conditionMessage)
-  })
-
-  expect_silent(stream$release())
-  expect_match(finalizer_results$schema, "already been released")
-  expect_match(finalizer_results$next_result, "already been released")
-  expect_null(finalizer_results$release)
-  expect_false(nanoarrow_pointer_is_valid(stream))
 })
 
 test_that("basic_array_stream() can create streams from batches", {

@@ -27,13 +27,15 @@ array is requested. Neither construction nor schema access calls \code{fun}.
 After \code{NULL} or an error is returned, the callback is not called again.
 }
 \details{
-Evaluation is isolated in a top-level R context so non-local exits (for
-example, invoking an \code{abort} restart) cannot escape through the C stream
+Errors and interrupts raised by \code{fun} are converted to stream errors.
+Evaluation is also isolated in a top-level R context so other non-local exits
+(for example, invoking an \code{abort} restart) cannot escape through the C stream
 interface. Calling handlers in the caller are therefore not applied to
 callback evaluation. The callback is evaluated only on R's main thread.
 Warnings are handled in this isolated context, unless handled within \code{fun}.
-The stream retains \code{fun} until it is released; explicitly release streams
-when \code{fun} or its environment refers to the stream itself.
+\code{fun} must not release the stream (or call its methods) while it is being
+evaluated. The stream retains \code{fun} until it is released; explicitly release
+streams when \code{fun} or its environment refers to the stream itself.
 }
 \examples{
 i <- 0L
