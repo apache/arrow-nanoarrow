@@ -601,8 +601,9 @@ enum ArrowValidationLevel {
 
   /// \brief Validate all buffer sizes and all buffer content. This is useful in the
   /// context of untrusted input or input that may have been corrupted in transit.
-  /// This includes checking that every non-null string and large string value is
-  /// valid UTF-8.
+  /// This includes checking that every non-null string, large string and string view
+  /// value is valid UTF-8 and that every non-null binary view or string view refers
+  /// to bytes within its variadic buffer.
   NANOARROW_VALIDATION_LEVEL_FULL = 3
 };
 
