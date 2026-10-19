@@ -620,19 +620,25 @@ static void ArrowIpcWriterClearBitmapPadding(struct ArrowArray* array,
   }
 }
 
-// Copy the values of a dictionary into out, in a form that only depends on the values:
-// zero offset, buffers sized to the values, and cleared bitmap padding. A dictionary
-// nested in the values is not copied: it is written (and compared) separately.
+// Copy length values of a dictionary, starting at offset, into out, in a form that
+// only depends on the values: zero offset, buffers sized to the values, and cleared
+// bitmap padding. A dictionary nested in the values is not copied: it is written (and
+// compared) separately.
 static ArrowErrorCode ArrowIpcWriterCopyDictionaryValues(
-    const struct ArrowArrayView* values_view, struct ArrowArray* out,
-    struct ArrowError* error) {
+    const struct ArrowArrayView* values_view, int64_t offset, int64_t length,
+    struct ArrowArray* out, struct ArrowError* error) {
+  struct ArrowArrayView slice = *values_view;
+  slice.offset += offset;
+  slice.length = length;
+  slice.null_count = -1;
+
   NANOARROW_RETURN_NOT_OK(ArrowArrayInitFromArrayView(out, values_view, error));
   ArrowErrorCode result = ArrowArrayStartAppending(out);
   if (result == NANOARROW_OK) {
-    result = ArrowArrayReserve(out, values_view->length);
+    result = ArrowArrayReserve(out, length);
   }
   if (result == NANOARROW_OK) {
-    result = ArrowArrayAppendStorageFromArrayView(out, values_view, error);
+    result = ArrowArrayAppendStorageFromArrayView(out, &slice, error);
   }
   if (result == NANOARROW_OK) {
     result = ArrowArrayFinishBuildingDefault(out, error);
@@ -710,9 +716,84 @@ static ArrowErrorCode ArrowIpcWriterViewMatchesCopy(
   return result;
 }
 
+// If values_view starts with the values last written for entry, write the values
+// appended to them as a delta and add them to entry's copy. Sets *written to whether a
+// delta was written.
+static ArrowErrorCode ArrowIpcWriterWriteViewDictionaryDelta(
+    struct ArrowIpcWriter* writer, struct ArrowIpcWriterViewDictionary* entry,
+    int64_t dictionary_id, const struct ArrowArrayView* values_view, int* written,
+    struct ArrowError* error) {
+  struct ArrowIpcWriterPrivate* private =
+      (struct ArrowIpcWriterPrivate*)writer->private_data;
+  *written = 0;
+
+  int64_t n_written = entry->values.length;
+  struct ArrowArray prefix;
+  if (ArrowIpcWriterCopyDictionaryValues(values_view, 0, n_written, &prefix, error) !=
+      NANOARROW_OK) {
+    // Leave it to the caller, which writes values it can't copy in full
+    return NANOARROW_OK;
+  }
+
+  int prefix_equal = 0;
+  ArrowErrorCode result = ArrowIpcWriterDictionaryValuesEqual(
+      values_view, &entry->values, &prefix, &prefix_equal, error);
+  if (result != NANOARROW_OK || !prefix_equal) {
+    ArrowArrayRelease(&prefix);
+    return result;
+  }
+
+  struct ArrowArray delta;
+  result = ArrowIpcWriterCopyDictionaryValues(
+      values_view, n_written, values_view->length - n_written, &delta, error);
+  if (result != NANOARROW_OK) {
+    ArrowArrayRelease(&prefix);
+    return result;
+  }
+
+  struct ArrowArrayView delta_view;
+  ArrowArrayViewInitFromType(&delta_view, NANOARROW_TYPE_UNINITIALIZED);
+  result = ArrowIpcWriterArrayViewInitLike(&delta_view, values_view);
+  if (result == NANOARROW_OK) {
+    result = ArrowArrayViewSetArray(&delta_view, &delta, error);
+  }
+  if (result == NANOARROW_OK) {
+    result = ArrowIpcWriterWriteDictionaryBatchImpl(writer, dictionary_id,
+                                                    /*is_delta=*/1, &delta_view, error);
+  }
+
+  if (result == NANOARROW_OK) {
+    *written = 1;
+
+    // The values that were already written followed by the delta are a copy of
+    // values_view. If it can't be completed, forget the dictionary: the next batch's
+    // is then written in full.
+    ArrowErrorCode copy_result =
+        ArrowArrayAppendStorageFromArrayView(&prefix, &delta_view, error);
+    if (copy_result == NANOARROW_OK) {
+      copy_result = ArrowArrayFinishBuildingDefault(&prefix, error);
+    }
+    if (copy_result == NANOARROW_OK) {
+      ArrowIpcWriterClearBitmapPadding(&prefix, values_view);
+      ArrowArrayRelease(&entry->values);
+      ArrowArrayMove(&prefix, &entry->values);
+    } else {
+      ArrowIpcWriterForgetViewDictionary(private, dictionary_id);
+    }
+  }
+
+  ArrowArrayViewReset(&delta_view);
+  ArrowArrayRelease(&delta);
+  if (prefix.release != NULL) {
+    ArrowArrayRelease(&prefix);
+  }
+  return result;
+}
+
 // Write the dictionary values_view for dictionary_id unless its values are identical
-// to the ones this function last wrote for that ID (and force is not set). Sets
-// *written to whether a DictionaryBatch was written.
+// to the ones this function last wrote for that ID (and force is not set). In a stream,
+// values that start with the ones last written are written as a delta of the values
+// that were appended. Sets *written to whether a DictionaryBatch was written.
 static ArrowErrorCode ArrowIpcWriterWriteViewDictionary(
     struct ArrowIpcWriter* writer, int64_t dictionary_id,
     const struct ArrowArrayView* values_view, int force, int* written,
@@ -735,10 +816,22 @@ static ArrowErrorCode ArrowIpcWriterWriteViewDictionary(
     }
   }
 
+  // In a stream, values that start with the ones last written only need the appended
+  // values to be written, as a delta (a file does not support deltas)
+  if (entry != NULL && !force && !private->writing_file &&
+      values_view->length > entry->values.length) {
+    NANOARROW_RETURN_NOT_OK(ArrowIpcWriterWriteViewDictionaryDelta(
+        writer, entry, dictionary_id, values_view, written, error));
+    if (*written) {
+      return NANOARROW_OK;
+    }
+  }
+
   // Otherwise, compare a copy of the values made the same way (zero offset, cleared
   // padding bits, and computed null count)
   struct ArrowArray values;
-  if (ArrowIpcWriterCopyDictionaryValues(values_view, &values, error) != NANOARROW_OK) {
+  if (ArrowIpcWriterCopyDictionaryValues(values_view, 0, values_view->length, &values,
+                                         error) != NANOARROW_OK) {
     // These values can't be copied (e.g., a dense union), so they can't be compared
     // with the next batch's either: write them every time
     ArrowIpcWriterForgetViewDictionary(private, dictionary_id);

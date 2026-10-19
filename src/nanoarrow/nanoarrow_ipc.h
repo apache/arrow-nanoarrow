@@ -1215,9 +1215,11 @@ NANOARROW_DLL ArrowErrorCode ArrowIpcWriterWriteArrayView(struct ArrowIpcWriter*
 /// its ID is not written again. Because in is borrowed, the writer keeps a copy of
 /// each dictionary it writes to compare with the next batch's (so the comparison costs
 /// a copy of each dictionary per batch); values that can't be copied (e.g., a dense
-/// union) are written every time. A changed dictionary is written in full, replacing
-/// the previous one, which a file does not support (ENOTSUP). A dictionary whose
-/// values contain a dictionary that was written is written again too.
+/// union) are written every time. In a stream, a dictionary that only grew (its values
+/// start with the ones last written) is written as a delta of the appended values.
+/// Otherwise, a changed dictionary is written in full, replacing the previous one,
+/// which a file does not support (ENOTSUP). A dictionary whose
+/// values contain a dictionary that was written is written again too, in full.
 /// ArrowIpcWriterWriteDictionaryBatch() and ArrowIpcWriterWriteSchema() clear the
 /// copies they affect. in must not be NULL; use ArrowIpcWriterWriteArrayView() to
 /// write EOS.
