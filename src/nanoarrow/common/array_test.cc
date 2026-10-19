@@ -3073,7 +3073,8 @@ TEST(ArrayTest, ArrayViewTestValidateUtf8) {
   std::string message;
   const std::string long_ascii(40, 'a');
 
-  for (const auto type : {NANOARROW_TYPE_STRING, NANOARROW_TYPE_LARGE_STRING}) {
+  for (const auto type :
+       {NANOARROW_TYPE_STRING, NANOARROW_TYPE_LARGE_STRING, NANOARROW_TYPE_STRING_VIEW}) {
     SCOPED_TRACE(ArrowTypeString(type));
     const std::string type_name = ArrowTypeString(type);
     auto invalid_message = [&](int64_t i, int64_t byte) {
@@ -3081,7 +3082,8 @@ TEST(ArrayTest, ArrayViewTestValidateUtf8) {
              " value but found invalid sequence at byte " + std::to_string(byte);
     };
 
-    // Valid ASCII and two-, three- and four-byte sequences
+    // Valid ASCII and two-, three- and four-byte sequences, both short (inlined in a
+    // view) and long (out-of-line)
     EXPECT_EQ(
         ValidateStringValues(type,
                              {"", "abc", "\xc3\xa9t\xc3\xa9", "\xe2\x82\xac",
@@ -3109,7 +3111,7 @@ TEST(ArrayTest, ArrayViewTestValidateUtf8) {
         {"\xff", 0},                         // Never valid
         {"abcdefg\xffhijklmno", 7},          // Within an eight-byte word
         {long_ascii + "\xff", 40},           // After the ASCII fast path
-        {long_ascii + "\xc3\xa9\xa9", 42}};  // After a valid multi-byte sequence
+        {long_ascii + "\xc3\xa9\xa9", 42}};  // Out-of-line in a view
     for (const auto& item : invalid) {
       SCOPED_TRACE(item.second);
       EXPECT_EQ(ValidateStringValues(type, {"abc", item.first},
@@ -3155,7 +3157,13 @@ TEST(ArrayTest, ArrayViewTestValidateUtf8) {
     ArrowBitmapAppendUnsafe(ArrowArrayValidityBitmap(with_nulls.get()), 1, 1);
     ArrowBitmapAppendUnsafe(ArrowArrayValidityBitmap(with_nulls.get()), 0, 2);
     with_nulls->null_count = 2;
-    ArrowArrayBuffer(with_nulls.get(), 2)->data[4] = 0xff;
+    if (type == NANOARROW_TYPE_STRING_VIEW) {
+      uint8_t* out_of_line = ArrowArrayBuffer(with_nulls.get(), 2)->data;
+      out_of_line[0] = 0xff;
+    } else {
+      uint8_t* data = ArrowArrayBuffer(with_nulls.get(), 2)->data;
+      data[4] = 0xff;
+    }
     struct ArrowError error;
     EXPECT_EQ(ArrowArrayFinishBuilding(with_nulls.get(), NANOARROW_VALIDATION_LEVEL_FULL,
                                        &error),
@@ -3174,11 +3182,112 @@ TEST(ArrayTest, ArrayViewTestValidateUtf8) {
   }
 
   // Binary values are not checked
-  for (const auto type : {NANOARROW_TYPE_BINARY, NANOARROW_TYPE_LARGE_BINARY}) {
+  for (const auto type :
+       {NANOARROW_TYPE_BINARY, NANOARROW_TYPE_LARGE_BINARY, NANOARROW_TYPE_BINARY_VIEW}) {
     EXPECT_EQ(ValidateStringValues(type, {"\xff", long_ascii + "\xff"},
                                    NANOARROW_VALIDATION_LEVEL_FULL, &message),
               NANOARROW_OK)
         << message;
+  }
+}
+
+TEST(ArrayTest, ArrayTestFinishBuildingFullViewArray) {
+  // ArrowArrayFinishBuilding() validates through an internal ArrowArrayView, which must
+  // see the variadic buffers to validate out-of-line values at
+  // NANOARROW_VALIDATION_LEVEL_FULL. Append enough out-of-line values to need more than
+  // one variadic buffer.
+  const std::string value = "longer than 12 bytes";
+  for (const auto type : {NANOARROW_TYPE_BINARY_VIEW, NANOARROW_TYPE_STRING_VIEW}) {
+    SCOPED_TRACE(ArrowTypeString(type));
+    nanoarrow::UniqueArray array;
+    struct ArrowError error;
+    ASSERT_EQ(ArrowArrayInitFromType(array.get(), type), NANOARROW_OK);
+    ASSERT_EQ(ArrowArrayStartAppending(array.get()), NANOARROW_OK);
+    ASSERT_EQ(ArrowArrayAppendString(array.get(), "short"_asv), NANOARROW_OK);
+    for (int i = 0; i < 4000; i++) {
+      ASSERT_EQ(
+          ArrowArrayAppendString(array.get(), {value.data(), (int64_t)value.size()}),
+          NANOARROW_OK);
+    }
+    ASSERT_GT(ArrowArrayVariadicBufferCount(array.get()), 1);
+    EXPECT_EQ(
+        ArrowArrayFinishBuilding(array.get(), NANOARROW_VALIDATION_LEVEL_FULL, &error),
+        NANOARROW_OK)
+        << error.message;
+  }
+}
+
+TEST(ArrayTest, ArrayViewTestValidateBinaryViewBounds) {
+  for (const auto type : {NANOARROW_TYPE_BINARY_VIEW, NANOARROW_TYPE_STRING_VIEW}) {
+    SCOPED_TRACE(ArrowTypeString(type));
+    nanoarrow::UniqueArray array;
+    struct ArrowError error;
+    ASSERT_EQ(ArrowArrayInitFromType(array.get(), type), NANOARROW_OK);
+    ASSERT_EQ(ArrowArrayStartAppending(array.get()), NANOARROW_OK);
+    ASSERT_EQ(ArrowArrayAppendString(array.get(), "short"_asv), NANOARROW_OK);
+    ASSERT_EQ(ArrowArrayAppendString(array.get(), "longer than 12 bytes"_asv),
+              NANOARROW_OK);
+    ASSERT_EQ(
+        ArrowArrayFinishBuilding(array.get(), NANOARROW_VALIDATION_LEVEL_FULL, &error),
+        NANOARROW_OK)
+        << error.message;
+
+    auto* views =
+        reinterpret_cast<union ArrowBinaryView*>(ArrowArrayBuffer(array.get(), 1)->data);
+    const union ArrowBinaryView good = views[1];
+
+    views[1].ref.buffer_index = 1;
+    EXPECT_EQ(
+        ArrowArrayFinishBuilding(array.get(), NANOARROW_VALIDATION_LEVEL_DEFAULT, &error),
+        NANOARROW_OK);
+    EXPECT_EQ(
+        ArrowArrayFinishBuilding(array.get(), NANOARROW_VALIDATION_LEVEL_FULL, &error),
+        EINVAL);
+    EXPECT_STREQ(error.message,
+                 "[1] Expected view buffer index >= 0 and < 1 but found 1");
+
+    views[1].ref.buffer_index = -1;
+    EXPECT_EQ(
+        ArrowArrayFinishBuilding(array.get(), NANOARROW_VALIDATION_LEVEL_FULL, &error),
+        EINVAL);
+    EXPECT_STREQ(error.message,
+                 "[1] Expected view buffer index >= 0 and < 1 but found -1");
+    views[1] = good;
+
+    views[1].ref.offset = 1;
+    EXPECT_EQ(
+        ArrowArrayFinishBuilding(array.get(), NANOARROW_VALIDATION_LEVEL_FULL, &error),
+        EINVAL);
+    EXPECT_STREQ(
+        error.message,
+        "[1] Expected view range 1-21 to be within variadic buffer 0 of size 20");
+
+    views[1].ref.offset = -1;
+    EXPECT_EQ(
+        ArrowArrayFinishBuilding(array.get(), NANOARROW_VALIDATION_LEVEL_FULL, &error),
+        EINVAL);
+    EXPECT_STREQ(
+        error.message,
+        "[1] Expected view range -1-19 to be within variadic buffer 0 of size 20");
+    views[1] = good;
+
+    views[0].inlined.size = -1;
+    EXPECT_EQ(
+        ArrowArrayFinishBuilding(array.get(), NANOARROW_VALIDATION_LEVEL_FULL, &error),
+        EINVAL);
+    EXPECT_STREQ(error.message, "[0] Expected view size >= 0 but found -1");
+    views[0].inlined.size = 5;
+
+    // A null view is not checked
+    views[1].ref.buffer_index = 7;
+    ASSERT_EQ(ArrowBitmapReserve(ArrowArrayValidityBitmap(array.get()), 2), NANOARROW_OK);
+    ArrowBitmapAppendUnsafe(ArrowArrayValidityBitmap(array.get()), 1, 1);
+    ArrowBitmapAppendUnsafe(ArrowArrayValidityBitmap(array.get()), 0, 1);
+    array->null_count = 1;
+    EXPECT_EQ(
+        ArrowArrayFinishBuilding(array.get(), NANOARROW_VALIDATION_LEVEL_FULL, &error),
+        NANOARROW_OK)
+        << error.message;
   }
 }
 
