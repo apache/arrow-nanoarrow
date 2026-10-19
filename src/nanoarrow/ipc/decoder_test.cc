@@ -1592,6 +1592,15 @@ void AssertArrayViewIdentical(const struct ArrowArrayView* actual,
   for (int i = 0; i < 3; i++) {
     auto a_buf = actual->buffer_views[i];
     auto e_buf = expected->buffer_views[i];
+    // The encoder writes one zero offset for an empty array, whose view has a
+    // zero-length offsets buffer
+    if (expected->layout.buffer_type[i] == NANOARROW_BUFFER_TYPE_DATA_OFFSET &&
+        expected->length == 0 && e_buf.size_bytes == 0) {
+      ASSERT_EQ(a_buf.size_bytes, expected->layout.element_size_bits[i] / 8);
+      const uint8_t zeros[8] = {0};
+      ASSERT_EQ(memcmp(a_buf.data.data, zeros, a_buf.size_bytes), 0);
+      continue;
+    }
     ASSERT_EQ(a_buf.size_bytes, e_buf.size_bytes);
     if (a_buf.size_bytes != 0) {
       ASSERT_EQ(memcmp(a_buf.data.data, e_buf.data.data, a_buf.size_bytes), 0);
