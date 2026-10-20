@@ -853,6 +853,84 @@ TEST(NanoarrowIpcTest, NanoarrowIpcEncoderWritesActualNullCounts) {
   EXPECT_EQ(decoded->children[1]->null_count, 3);
 }
 
+TEST(NanoarrowIpcTest, NanoarrowIpcEncoderWritesOffsetForEmptyArrays) {
+  // An empty record batch of struct<s: string, b: binary, ls: large_string,
+  // l: list<int32>>. The array view of an empty array has a zero-length offsets
+  // buffer, whatever the array itself holds.
+  struct ArrowError error;
+  nanoarrow::UniqueSchema schema;
+  ASSERT_EQ(ArrowSchemaInitFromType(schema.get(), NANOARROW_TYPE_STRUCT), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaAllocateChildren(schema.get(), 4), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaInitFromType(schema->children[0], NANOARROW_TYPE_STRING),
+            NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaSetName(schema->children[0], "s"), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaInitFromType(schema->children[1], NANOARROW_TYPE_BINARY),
+            NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaSetName(schema->children[1], "b"), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaInitFromType(schema->children[2], NANOARROW_TYPE_LARGE_STRING),
+            NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaSetName(schema->children[2], "ls"), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaInitFromType(schema->children[3], NANOARROW_TYPE_LIST),
+            NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaSetName(schema->children[3], "l"), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaSetType(schema->children[3]->children[0], NANOARROW_TYPE_INT32),
+            NANOARROW_OK);
+
+  nanoarrow::UniqueArray array;
+  ASSERT_EQ(ArrowArrayInitFromSchema(array.get(), schema.get(), &error), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayStartAppending(array.get()), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayFinishBuildingDefault(array.get(), &error), NANOARROW_OK)
+      << error.message;
+
+  nanoarrow::UniqueArrayView array_view;
+  ASSERT_EQ(ArrowArrayViewInitFromSchema(array_view.get(), schema.get(), &error),
+            NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayViewSetArray(array_view.get(), array.get(), &error), NANOARROW_OK)
+      << error.message;
+  for (int64_t i = 0; i < array_view->n_children; i++) {
+    ASSERT_EQ(array_view->children[i]->buffer_views[1].size_bytes, 0);
+  }
+
+  nanoarrow::ipc::UniqueEncoder encoder;
+  ASSERT_EQ(ArrowIpcEncoderInit(encoder.get()), NANOARROW_OK);
+  nanoarrow::UniqueBuffer message, body;
+  ASSERT_EQ(ArrowIpcEncoderEncodeSimpleRecordBatch(encoder.get(), array_view.get(),
+                                                   body.get(), &error),
+            NANOARROW_OK)
+      << error.message;
+  ASSERT_EQ(
+      ArrowIpcEncoderFinalizeBuffer(encoder.get(), /*encapsulate=*/true, message.get()),
+      NANOARROW_OK);
+
+  // The message carries one zero offset for each empty array
+  nanoarrow::ipc::UniqueDecoder decoder;
+  ASSERT_EQ(ArrowIpcDecoderInit(decoder.get()), NANOARROW_OK);
+  ASSERT_EQ(ArrowIpcDecoderSetSchema(decoder.get(), schema.get(), &error), NANOARROW_OK)
+      << error.message;
+  struct ArrowBufferView message_view = {{message->data}, message->size_bytes};
+  ASSERT_EQ(ArrowIpcDecoderDecodeHeader(decoder.get(), message_view, &error),
+            NANOARROW_OK)
+      << error.message;
+  struct ArrowArrayView* decoded;
+  struct ArrowBufferView body_view = {{body->data}, body->size_bytes};
+  ASSERT_EQ(
+      ArrowIpcDecoderDecodeArrayView(decoder.get(), body_view, -1, &decoded, &error),
+      NANOARROW_OK)
+      << error.message;
+
+  const int64_t offset_sizes[] = {4, 4, 8, 4};
+  for (int64_t i = 0; i < decoded->n_children; i++) {
+    SCOPED_TRACE(schema->children[i]->name);
+    const struct ArrowBufferView& offsets = decoded->children[i]->buffer_views[1];
+    ASSERT_EQ(offsets.size_bytes, offset_sizes[i]);
+    if (offset_sizes[i] == 8) {
+      EXPECT_EQ(offsets.data.as_int64[0], 0);
+    } else {
+      EXPECT_EQ(offsets.data.as_int32[0], 0);
+    }
+  }
+}
+
 TEST(NanoarrowIpcTest, NanoarrowIpcEncoderUncompressedRecordBatchAllocation) {
   nanoarrow::ipc::UniqueEncoder encoder;
   ASSERT_EQ(ArrowIpcEncoderInit(encoder.get()), NANOARROW_OK);
