@@ -943,6 +943,15 @@ static ArrowErrorCode ArrowArrayViewInitFromArray(struct ArrowArrayView* array_v
   array_view->buffer_views[2].data.as_uint8 = private_data->buffers[1].data;
   array_view->buffer_views[2].size_bytes = private_data->buffers[1].size_bytes;
 
+  // As in ArrowArrayViewSetArray(), point at the variadic buffers and their sizes so
+  // that the values of a binary view or string view array can be validated
+  if (private_data->storage_type == NANOARROW_TYPE_STRING_VIEW ||
+      private_data->storage_type == NANOARROW_TYPE_BINARY_VIEW) {
+    array_view->n_variadic_buffers = private_data->n_variadic_buffers;
+    array_view->variadic_buffers = array->buffers + NANOARROW_BINARY_VIEW_FIXED_BUFFERS;
+    array_view->variadic_buffer_sizes = (int64_t*)array->buffers[array->n_buffers - 1];
+  }
+
   int result = ArrowArrayViewAllocateChildren(array_view, array->n_children);
   if (result != NANOARROW_OK) {
     ArrowArrayViewReset(array_view);
@@ -2123,6 +2132,228 @@ static int ArrowAssertInt8In(struct ArrowBufferView view, const int8_t* values,
   return NANOARROW_OK;
 }
 
+// Returns the length of the longest prefix of data that is valid UTF-8 (RFC 3629), so
+// data is valid UTF-8 if and only if the result is size_bytes. Overlong encodings,
+// surrogates (U+D800 to U+DFFF), code points above U+10FFFF, stray continuation bytes
+// and truncated sequences are all invalid.
+static int64_t ArrowUtf8ValidPrefix(const uint8_t* data, int64_t size_bytes) {
+  int64_t i = 0;
+  while (i < size_bytes) {
+    const uint8_t lead = data[i];
+
+    if (lead < 0x80) {
+      // After an ASCII byte, skip any further ASCII eight bytes at a time
+      i++;
+      while (size_bytes - i >= 8) {
+        uint64_t word;
+        memcpy(&word, data + i, sizeof(word));
+        if ((word & 0x8080808080808080ULL) != 0) {
+          break;
+        }
+        i += 8;
+      }
+      continue;
+    }
+
+    if (lead < 0xE0) {
+      // Two bytes (U+0080 to U+07FF); 0xC0 and 0xC1 would be overlong
+      if (lead < 0xC2 || size_bytes - i < 2 || (data[i + 1] & 0xC0) != 0x80) {
+        return i;
+      }
+      i += 2;
+      continue;
+    }
+
+    if (lead < 0xF0) {
+      // Three bytes (U+0800 to U+FFFF), excluding overlong encodings (0xE0 followed
+      // by less than 0xA0) and surrogates (0xED followed by 0xA0 or more)
+      if (size_bytes - i < 3) {
+        return i;
+      }
+      const uint8_t second = data[i + 1];
+      const uint8_t second_min = lead == 0xE0 ? 0xA0 : 0x80;
+      const uint8_t second_max = lead == 0xED ? 0x9F : 0xBF;
+      if (second < second_min || second > second_max || (data[i + 2] & 0xC0) != 0x80) {
+        return i;
+      }
+      i += 3;
+      continue;
+    }
+
+    // Four bytes (U+10000 to U+10FFFF), excluding overlong encodings (0xF0 followed by
+    // less than 0x90) and code points above U+10FFFF (0xF4 followed by 0x90 or more, or
+    // a lead byte above 0xF4)
+    if (lead > 0xF4 || size_bytes - i < 4) {
+      return i;
+    }
+    const uint8_t second = data[i + 1];
+    const uint8_t second_min = lead == 0xF0 ? 0x90 : 0x80;
+    const uint8_t second_max = lead == 0xF4 ? 0x8F : 0xBF;
+    if (second < second_min || second > second_max || (data[i + 2] & 0xC0) != 0x80 ||
+        (data[i + 3] & 0xC0) != 0x80) {
+      return i;
+    }
+    i += 4;
+  }
+
+  return size_bytes;
+}
+
+static int64_t ArrowArrayViewGetOffsetUnsafe(const struct ArrowArrayView* array_view,
+                                             int64_t i) {
+  if (array_view->layout.element_size_bits[1] == 32) {
+    return ArrowBufferViewGetInt32Unsafe(&array_view->buffer_views[1], i);
+  } else {
+    return ArrowBufferViewGetInt64Unsafe(&array_view->buffer_views[1], i);
+  }
+}
+
+static int ArrowArrayViewValidateUtf8Element(const struct ArrowArrayView* array_view,
+                                             int64_t i, const uint8_t* value,
+                                             int64_t size_bytes,
+                                             struct ArrowError* error) {
+  if (size_bytes == 0) {
+    return NANOARROW_OK;
+  }
+
+  int64_t valid_bytes = ArrowUtf8ValidPrefix(value, size_bytes);
+  if (valid_bytes != size_bytes) {
+    ArrowErrorSet(error,
+                  "[%" PRId64
+                  "] Expected valid UTF-8 %s value but found invalid "
+                  "sequence at byte %" PRId64,
+                  i, ArrowTypeString(array_view->storage_type), valid_bytes);
+    return EINVAL;
+  }
+
+  return NANOARROW_OK;
+}
+
+// Check that every non-null value of a string or large string array is valid UTF-8.
+// Like Arrow C++, values are checked one at a time (a code point split across two
+// values is invalid) and the bytes of null values are not checked.
+static int ArrowArrayViewValidateUtf8(const struct ArrowArrayView* array_view,
+                                      struct ArrowError* error) {
+  // The offsets buffer of a zero-length array may be empty
+  if (array_view->length == 0) {
+    return NANOARROW_OK;
+  }
+
+  const uint8_t* data = array_view->buffer_views[2].data.as_uint8;
+
+  // The values (including those of null slots) are the contiguous range of bytes
+  // between the first and last offsets. If that whole range is valid and every value
+  // begins on a code point boundary (i.e., not with a continuation byte), every value is
+  // valid, which avoids validating short values one at a time. Otherwise, check the
+  // non-null values one at a time to find (and report) the first invalid one.
+  {
+    int64_t first = ArrowArrayViewGetOffsetUnsafe(array_view, array_view->offset);
+    int64_t last = ArrowArrayViewGetOffsetUnsafe(array_view,
+                                                 array_view->offset + array_view->length);
+    if (first == last) {
+      return NANOARROW_OK;
+    }
+
+    int ok = ArrowUtf8ValidPrefix(data + first, last - first) == last - first;
+    for (int64_t i = 1; ok && i < array_view->length; i++) {
+      int64_t start = ArrowArrayViewGetOffsetUnsafe(array_view, array_view->offset + i);
+      ok = start == last || (data[start] & 0xC0) != 0x80;
+    }
+
+    if (ok) {
+      return NANOARROW_OK;
+    }
+  }
+
+  for (int64_t i = 0; i < array_view->length; i++) {
+    if (ArrowArrayViewIsNull(array_view, i)) {
+      continue;
+    }
+
+    int64_t start = ArrowArrayViewGetOffsetUnsafe(array_view, array_view->offset + i);
+    int64_t end = ArrowArrayViewGetOffsetUnsafe(array_view, array_view->offset + i + 1);
+    if (end > start) {
+      NANOARROW_RETURN_NOT_OK(ArrowArrayViewValidateUtf8Element(
+          array_view, i, data + start, end - start, error));
+    }
+  }
+
+  return NANOARROW_OK;
+}
+
+// Check that every non-null view of a binary view or string view array refers to bytes
+// that exist (and, for a string view, that they are valid UTF-8). The bytes of an
+// out-of-line value can't be checked without this, and Arrow C++ performs the same
+// checks. Null views are not checked.
+static int ArrowArrayViewValidateBinaryViews(const struct ArrowArrayView* array_view,
+                                             struct ArrowError* error) {
+  const int is_string = array_view->storage_type == NANOARROW_TYPE_STRING_VIEW;
+  const int64_t n_variadic_buffers = array_view->n_variadic_buffers;
+
+  for (int64_t i = 0; i < array_view->length; i++) {
+    if (ArrowArrayViewIsNull(array_view, i)) {
+      continue;
+    }
+
+    union ArrowBinaryView view;
+    memcpy(&view,
+           array_view->buffer_views[1].data.as_uint8 +
+               (array_view->offset + i) * (int64_t)sizeof(union ArrowBinaryView),
+           sizeof(view));
+
+    const int64_t size_bytes = view.inlined.size;
+    if (size_bytes < 0) {
+      ArrowErrorSet(error, "[%" PRId64 "] Expected view size >= 0 but found %" PRId64, i,
+                    size_bytes);
+      return EINVAL;
+    }
+
+    if (size_bytes <= NANOARROW_BINARY_VIEW_INLINE_SIZE) {
+      if (is_string) {
+        NANOARROW_RETURN_NOT_OK(ArrowArrayViewValidateUtf8Element(
+            array_view, i, view.inlined.data, size_bytes, error));
+      }
+      continue;
+    }
+
+    const int64_t buffer_index = view.ref.buffer_index;
+    if (buffer_index < 0 || buffer_index >= n_variadic_buffers) {
+      ArrowErrorSet(error,
+                    "[%" PRId64 "] Expected view buffer index >= 0 and < %" PRId64
+                    " but found %" PRId64,
+                    i, n_variadic_buffers, buffer_index);
+      return EINVAL;
+    }
+
+    if (array_view->variadic_buffer_sizes == NULL) {
+      ArrowErrorSet(error, "Expected variadic buffer sizes for %" PRId64 " buffer(s)",
+                    n_variadic_buffers);
+      return EINVAL;
+    }
+
+    int64_t buffer_size;
+    memcpy(&buffer_size, array_view->variadic_buffer_sizes + buffer_index,
+           sizeof(buffer_size));
+
+    const int64_t offset = view.ref.offset;
+    if (offset < 0 || offset + size_bytes > buffer_size) {
+      ArrowErrorSet(error,
+                    "[%" PRId64 "] Expected view range %" PRId64 "-%" PRId64
+                    " to be within variadic buffer %" PRId64 " of size %" PRId64,
+                    i, offset, offset + size_bytes, buffer_index, buffer_size);
+      return EINVAL;
+    }
+
+    if (is_string) {
+      const uint8_t* buffer = (const uint8_t*)array_view->variadic_buffers[buffer_index];
+      NANOARROW_RETURN_NOT_OK(ArrowArrayViewValidateUtf8Element(
+          array_view, i, buffer + offset, size_bytes, error));
+    }
+  }
+
+  return NANOARROW_OK;
+}
+
 static int ArrowArrayViewValidateFull(struct ArrowArrayView* array_view,
                                       struct ArrowError* error) {
   for (int i = 0; i < NANOARROW_MAX_FIXED_BUFFERS; i++) {
@@ -2150,6 +2381,19 @@ static int ArrowArrayViewValidateFull(struct ArrowArrayView* array_view,
       default:
         break;
     }
+  }
+
+  switch (array_view->storage_type) {
+    case NANOARROW_TYPE_STRING:
+    case NANOARROW_TYPE_LARGE_STRING:
+      NANOARROW_RETURN_NOT_OK(ArrowArrayViewValidateUtf8(array_view, error));
+      break;
+    case NANOARROW_TYPE_BINARY_VIEW:
+    case NANOARROW_TYPE_STRING_VIEW:
+      NANOARROW_RETURN_NOT_OK(ArrowArrayViewValidateBinaryViews(array_view, error));
+      break;
+    default:
+      break;
   }
 
   if (array_view->storage_type == NANOARROW_TYPE_DENSE_UNION ||
