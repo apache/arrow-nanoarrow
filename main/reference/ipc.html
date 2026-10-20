@@ -1054,6 +1054,13 @@
 
 <dl class="cpp function">
 <dt class="sig sig-object cpp">
+<span class="target" id="group__nanoarrow__ipc_1ga8c632315be92085c25fa172c906b3b0c"></span><span class="sig-name descname"><span class="pre">NANOARROW_DLL</span> <span class="pre">ArrowErrorCode</span> <span class="pre">ArrowIpcWriterSetMessageMetadata</span> <span class="pre">(struct</span> <span class="pre">ArrowIpcWriter</span> <span class="pre">*writer,</span> <span class="pre">struct</span> <span class="pre">ArrowBuffer</span> <span class="pre">*metadata,</span> <span class="pre">struct</span> <span class="pre">ArrowError</span> <span class="pre">*error)</span></span></dt>
+<dd><p>Set the custom metadata of the next RecordBatch message. </p>
+<p>The metadata (Message::custom_metadata, in the representation built by <a class="reference internal" href="c.html#group__nanoarrow-metadata_1gaa5ec9643870d9fc0e55ef78c3a374ec3"><span class="std std-ref">ArrowMetadataBuilderInit()</span></a>/ArrowMetadataBuilderAppend()) is held by the writer and attached to the next RecordBatch message written by <a class="reference internal" href="#group__nanoarrow__ipc_1gaaa9f34e65fbf081a13f9d4cac0eadeae"><span class="std std-ref">ArrowIpcWriterWriteArrayView()</span></a> or <a class="reference internal" href="#group__nanoarrow__ipc_1ga64d014567e9db57a7ccdb6f423082087"><span class="std std-ref">ArrowIpcWriterWriteArrayStream()</span></a>. It is not attached to any DictionaryBatch message written before that RecordBatch, so it can be set ahead of a call that writes dictionaries and a batch together. The writer takes ownership of metadata (it is moved and left empty); pass NULL to clear metadata that has been set but not yet written. If a write returns an error, metadata that was set may still be held for a later RecordBatch; pass NULL to clear it if that matters. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp">
 <span class="target" id="group__nanoarrow__ipc_1gae1471a4c8ec68569bffb14cd6216c971"></span><span class="sig-name descname"><span class="pre">NANOARROW_DLL</span> <span class="pre">ArrowErrorCode</span> <span class="pre">ArrowIpcWriterWriteSchema</span> <span class="pre">(struct</span> <span class="pre">ArrowIpcWriter</span> <span class="pre">*writer,</span> <span class="pre">const</span> <span class="pre">struct</span> <span class="pre">ArrowSchema</span> <span class="pre">*in,</span> <span class="pre">struct</span> <span class="pre">ArrowError</span> <span class="pre">*error)</span></span></dt>
 <dd><p>Write a schema to the output byte stream. </p>
 <p>Errors are propagated from the underlying encoder and output byte stream. </p>
