@@ -3081,7 +3081,7 @@ TEST(ArrayTest, ArrayViewTestValidateUtf8) {
     // Valid ASCII and two-, three- and four-byte sequences
     EXPECT_EQ(
         ValidateStringValues(type,
-                             {"", "abc", "caf\xc3\xa9", "\xe2\x82\xac",
+                             {"", "abc", "\xc3\xa9t\xc3\xa9", "\xe2\x82\xac",
                               "\xf0\x9f\x98\x80", "\xf4\x8f\xbf\xbf", "\xef\xbf\xbf",
                               long_ascii + "\xc3\xa9" + long_ascii, kNullValue},
                              NANOARROW_VALIDATION_LEVEL_FULL, &message),
