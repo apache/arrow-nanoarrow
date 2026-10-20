@@ -162,12 +162,9 @@ as_nanoarrow_array.nanoarrow_vctr <- function(x, ..., schema = NULL) {
     # A field name is not part of an array's physical type. In particular,
     # data.frame conversion supplies the column name on its child schema even
     # though the schema stored by the vctr usually has an empty name.
-    if (!nanoarrow_schema_identical(schema, x_schema)) {
-      schema_proxy <- nanoarrow_schema_proxy(schema, recursive = TRUE)
-      x_schema_proxy <- nanoarrow_schema_proxy(x_schema, recursive = TRUE)
-      schema_proxy$name <- NULL
-      x_schema_proxy$name <- NULL
-      if (!identical(schema_proxy, x_schema_proxy)) {
+    schemas_identical <- nanoarrow_schema_identical(schema, x_schema)
+    if (!schemas_identical) {
+      if (!nanoarrow_schema_identical(schema, x_schema, ignore_name = TRUE)) {
         return(NextMethod())
       }
 

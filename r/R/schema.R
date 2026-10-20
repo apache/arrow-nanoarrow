@@ -287,12 +287,20 @@ nanoarrow_schema_modify <- function(x, new_values, validate = TRUE) {
   schema_deep_copy
 }
 
-nanoarrow_schema_identical <- function(x, y) {
-  identical(x, y) ||
-    identical(
-      nanoarrow_schema_proxy(x, recursive = TRUE),
-      nanoarrow_schema_proxy(y, recursive = TRUE)
-    )
+nanoarrow_schema_identical <- function(x, y, ignore_name = FALSE) {
+  if (identical(x, y)) {
+    return(TRUE)
+  }
+
+  x_proxy <- nanoarrow_schema_proxy(x, recursive = TRUE)
+  y_proxy <- nanoarrow_schema_proxy(y, recursive = TRUE)
+
+  if (ignore_name) {
+    x_proxy$name <- NULL
+    y_proxy$name <- NULL
+  }
+
+  identical(x_proxy, y_proxy)
 }
 
 #' @importFrom utils str
