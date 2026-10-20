@@ -1167,7 +1167,8 @@ NANOARROW_DLL ArrowErrorCode ArrowIpcWriterSetCompression(
 /// message written before that RecordBatch, so it can be set ahead of a call that
 /// writes dictionaries and a batch together. The writer takes ownership of metadata
 /// (it is moved and left empty); pass NULL to clear metadata that has been set but not
-/// yet written.
+/// yet written. If a write returns an error, metadata that was set may still be held
+/// for a later RecordBatch; pass NULL to clear it if that matters.
 NANOARROW_DLL ArrowErrorCode
 ArrowIpcWriterSetMessageMetadata(struct ArrowIpcWriter* writer,
                                  struct ArrowBuffer* metadata, struct ArrowError* error);
