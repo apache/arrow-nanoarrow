@@ -32,6 +32,8 @@
   Stream into an R vector
 - [`example_ipc_stream()`](example_ipc_stream.md) : Example Arrow IPC
   Data
+- [`function_array_stream()`](function_array_stream.md) : Create an
+  array stream from an R function
 - [`infer_nanoarrow_ptype()`](infer_nanoarrow_ptype.md) : Infer an R
   vector prototype
 - [`infer_nanoarrow_ptype_extension()`](infer_nanoarrow_ptype_extension.md)
