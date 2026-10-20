@@ -1033,6 +1033,21 @@ static ArrowErrorCode ArrowArrayFinalizeBuffers(struct ArrowArray* array) {
     }
 
     struct ArrowBuffer* buffer = ArrowArrayBuffer(array, i);
+
+    // An offsets buffer holds length + 1 offsets even for an empty array, and the C
+    // data interface carries no buffer sizes, so consumers read offsets[0]
+    // unconditionally. IPC permits a zero-length offsets buffer for an empty array
+    // (nanoarrow's encoder writes one), which would otherwise be exported as a pointer
+    // to no valid bytes (or into a neighbouring part of a shared message body).
+    if (private_data->layout.buffer_type[i] == NANOARROW_BUFFER_TYPE_DATA_OFFSET &&
+        array->length == 0 && buffer->size_bytes == 0) {
+      ArrowBufferReset(buffer);
+      int64_t zero = 0;
+      NANOARROW_RETURN_NOT_OK(ArrowBufferAppend(
+          buffer, &zero, private_data->layout.element_size_bits[i] / 8));
+      continue;
+    }
+
     if (buffer->data == NULL) {
       NANOARROW_RETURN_NOT_OK((ArrowBufferReserve(buffer, 1)));
     }

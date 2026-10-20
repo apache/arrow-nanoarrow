@@ -18,12 +18,163 @@
 #define R_NO_REMAP
 #include <R.h>
 #include <Rinternals.h>
+#include <errno.h>
+#include <string.h>
 
 #include "array.h"
 #include "array_stream.h"
 #include "nanoarrow.h"
 #include "schema.h"
 #include "util.h"
+
+struct FunctionArrayStreamData {
+  struct ArrowSchema schema;
+  SEXP expr;
+  SEXP env;
+  struct ArrowError error;
+  int error_code;
+  int finished;
+  int errored;
+  int evaluating;
+};
+
+struct FunctionArrayStreamCall {
+  struct FunctionArrayStreamData* data;
+  struct ArrowArray* out;
+  int code;
+};
+
+static void function_array_stream_set_error(struct FunctionArrayStreamData* data,
+                                            int code, const char* message) {
+  if (!data->errored) {
+    ArrowErrorSet(&data->error, "%s", message);
+    data->error_code = code;
+    data->errored = 1;
+  }
+}
+
+static void release_function_array_stream(struct ArrowArrayStream* stream) {
+  struct FunctionArrayStreamData* data =
+      (struct FunctionArrayStreamData*)stream->private_data;
+  stream->release = NULL;
+  stream->private_data = NULL;
+  if (data->schema.release != NULL) {
+    data->schema.release(&data->schema);
+  }
+  nanoarrow_release_sexp(data->expr);
+  nanoarrow_release_sexp(data->env);
+  ArrowFree(data);
+}
+
+static const char* function_array_stream_get_last_error(struct ArrowArrayStream* stream) {
+  struct FunctionArrayStreamData* data =
+      (struct FunctionArrayStreamData*)stream->private_data;
+  return data == NULL ? "Array stream has been released"
+                      : ArrowErrorMessage(&data->error);
+}
+
+static int function_array_stream_get_schema(struct ArrowArrayStream* stream,
+                                            struct ArrowSchema* out) {
+  struct FunctionArrayStreamData* data =
+      (struct FunctionArrayStreamData*)stream->private_data;
+  return ArrowSchemaDeepCopy(&data->schema, out);
+}
+
+// Runs inside R_ToplevelExec(). The R-level expression returns NULL (end of
+// stream), a nanoarrow_array, or a character(1) error message.
+static void function_array_stream_eval(void* opaque) {
+  struct FunctionArrayStreamCall* call = (struct FunctionArrayStreamCall*)opaque;
+  struct FunctionArrayStreamData* data = call->data;
+  SEXP result = PROTECT(Rf_eval(data->expr, data->env));
+  if (data->errored) {
+    // A re-entrant call was rejected while the expression was being evaluated.
+    call->code = data->error_code;
+  } else if (result == R_NilValue) {
+    data->finished = 1;
+    call->code = NANOARROW_OK;
+  } else if (TYPEOF(result) == STRSXP && Rf_length(result) == 1) {
+    function_array_stream_set_error(data, EIO,
+                                    Rf_translateCharUTF8(STRING_ELT(result, 0)));
+    call->code = data->error_code;
+  } else if (Rf_inherits(result, "nanoarrow_array")) {
+    // Let the external pointer clean up a partial export if R jumps during allocation.
+    SEXP array_xptr = PROTECT(nanoarrow_array_owning_xptr());
+    struct ArrowArray* array = nanoarrow_output_array_from_xptr(array_xptr);
+    array_export(result, array);
+    ArrowArrayMove(array, call->out);
+    UNPROTECT(1);
+    call->code = NANOARROW_OK;
+  } else {
+    function_array_stream_set_error(data, EIO,
+                                    "R callback returned an unexpected result");
+    call->code = data->error_code;
+  }
+  UNPROTECT(1);
+}
+
+static int function_array_stream_get_next(struct ArrowArrayStream* stream,
+                                          struct ArrowArray* out) {
+  struct FunctionArrayStreamData* data =
+      (struct FunctionArrayStreamData*)stream->private_data;
+  out->release = NULL;
+  if (data == NULL || data->finished) {
+    return NANOARROW_OK;
+  }
+  if (data->errored) {
+    return data->error_code;
+  }
+  if (!nanoarrow_is_main_thread()) {
+    function_array_stream_set_error(data, EIO,
+                                    "Can't evaluate R callback on a non-R thread");
+    return data->error_code;
+  }
+  if (data->evaluating) {
+    function_array_stream_set_error(data, EINVAL,
+                                    "Re-entrant call to function array stream");
+    return data->error_code;
+  }
+
+  data->evaluating = 1;
+  struct FunctionArrayStreamCall call = {data, out, NANOARROW_OK};
+  // Rf_eval() alone would let R non-local exits (errors that escape, an abort
+  // restart, etc.) longjmp through this Arrow C stream callback and its caller,
+  // skipping the caller's cleanup. R_UnwindProtect() only runs cleanup before
+  // continuing the jump, so it cannot stop it. R_ToplevelExec() contains the
+  // jump and lets us report it as an error code. Errors and interrupts are
+  // normally handled by the R-level tryCatch(); this is the last line of defense.
+  if (!R_ToplevelExec(&function_array_stream_eval, &call)) {
+    function_array_stream_set_error(
+        data, EIO, "R callback exited non-locally (e.g., via an abort restart)");
+    call.code = data->error_code;
+  }
+  data->evaluating = 0;
+  return call.code;
+}
+
+SEXP nanoarrow_c_function_array_stream(SEXP expr, SEXP env, SEXP schema_xptr) {
+  SEXP stream_xptr = PROTECT(nanoarrow_array_stream_owning_xptr());
+  struct ArrowArrayStream* stream = nanoarrow_output_array_stream_from_xptr(stream_xptr);
+  struct FunctionArrayStreamData* data =
+      (struct FunctionArrayStreamData*)ArrowMalloc(sizeof(*data));
+  check_trivial_alloc(data, "struct FunctionArrayStreamData");
+  memset(data, 0, sizeof(*data));
+  ArrowErrorInit(&data->error);
+  data->expr = R_NilValue;
+  data->env = R_NilValue;
+  stream->private_data = data;
+  stream->get_last_error = &function_array_stream_get_last_error;
+  stream->get_schema = &function_array_stream_get_schema;
+  stream->get_next = &function_array_stream_get_next;
+  stream->release = &release_function_array_stream;
+  // Attach the finalizer before any operation that can allocate or fail.
+  nanoarrow_preserve_sexp(expr);
+  data->expr = expr;
+  nanoarrow_preserve_sexp(env);
+  data->env = env;
+  schema_export(schema_xptr, &data->schema);
+  UNPROTECT(1);
+  return stream_xptr;
+}
 
 // Ideally user-supplied finalizers are written in such a way that they don't jump;
 // however if they do it is likely that memory will leak. Here, we use

@@ -187,6 +187,7 @@ struct ArrowIpcArrayStreamReaderPrivate {
   struct ArrowIpcInputStream input;
   struct ArrowIpcDecoder decoder;
   int use_shared_buffers;
+  enum ArrowValidationLevel validation_level;
   struct ArrowSchema out_schema;
   int64_t field_index;
   struct ArrowBuffer header;
@@ -459,7 +460,7 @@ static int ArrowIpcArrayStreamReaderProcessRecordBatch(
         ArrowSharedBufferInit(&shared, &private_data->body), &private_data->error);
     ArrowErrorCode result = ArrowIpcDecoderDecodeArrayFromSharedWithDictionaries(
         &private_data->decoder, &shared, private_data->field_index,
-        &private_data->dictionaries, out, NANOARROW_VALIDATION_LEVEL_FULL,
+        &private_data->dictionaries, out, private_data->validation_level,
         &private_data->error);
     ArrowBufferReset(&shared);
     NANOARROW_RETURN_NOT_OK(result);
@@ -470,7 +471,7 @@ static int ArrowIpcArrayStreamReaderProcessRecordBatch(
 
     NANOARROW_RETURN_NOT_OK(ArrowIpcDecoderDecodeArrayWithDictionaries(
         &private_data->decoder, body_view, private_data->field_index,
-        &private_data->dictionaries, out, NANOARROW_VALIDATION_LEVEL_FULL,
+        &private_data->dictionaries, out, private_data->validation_level,
         &private_data->error));
   }
 
@@ -488,7 +489,7 @@ static int ArrowIpcArrayStreamReaderProcessDictionary(
     NANOARROW_RETURN_NOT_OK_WITH_ERROR(
         ArrowSharedBufferInit(&shared, &private_data->body), &private_data->error);
     int result = ArrowIpcDecoderDecodeDictionaryFromShared(
-        &private_data->decoder, &shared, NANOARROW_VALIDATION_LEVEL_FULL,
+        &private_data->decoder, &shared, private_data->validation_level,
         &private_data->dictionaries, &private_data->error);
     ArrowBufferReset(&shared);
     NANOARROW_RETURN_NOT_OK(result);
@@ -497,7 +498,7 @@ static int ArrowIpcArrayStreamReaderProcessDictionary(
     body_view.data.data = private_data->body.data;
     body_view.size_bytes = private_data->body.size_bytes;
     NANOARROW_RETURN_NOT_OK(ArrowIpcDecoderDecodeDictionary(
-        &private_data->decoder, body_view, NANOARROW_VALIDATION_LEVEL_FULL,
+        &private_data->decoder, body_view, private_data->validation_level,
         &private_data->dictionaries, &private_data->error));
   }
 
@@ -573,6 +574,18 @@ static const char* ArrowIpcArrayStreamReaderGetLastError(
 ArrowErrorCode ArrowIpcArrayStreamReaderInit(
     struct ArrowArrayStream* out, struct ArrowIpcInputStream* input_stream,
     struct ArrowIpcArrayStreamReaderOptions* options) {
+  if (options != NULL) {
+    switch (options->validation_level) {
+      case NANOARROW_VALIDATION_LEVEL_NONE:
+      case NANOARROW_VALIDATION_LEVEL_MINIMAL:
+      case NANOARROW_VALIDATION_LEVEL_DEFAULT:
+      case NANOARROW_VALIDATION_LEVEL_FULL:
+        break;
+      default:
+        return EINVAL;
+    }
+  }
+
   struct ArrowIpcArrayStreamReaderPrivate* private_data =
       (struct ArrowIpcArrayStreamReaderPrivate*)ArrowMalloc(
           sizeof(struct ArrowIpcArrayStreamReaderPrivate));
@@ -596,9 +609,11 @@ ArrowErrorCode ArrowIpcArrayStreamReaderInit(
   if (options != NULL) {
     private_data->field_index = options->field_index;
     private_data->use_shared_buffers = options->use_shared_buffers;
+    private_data->validation_level = options->validation_level;
   } else {
     private_data->field_index = -1;
     private_data->use_shared_buffers = ArrowSharedBufferIsThreadSafe();
+    private_data->validation_level = NANOARROW_VALIDATION_LEVEL_FULL;
   }
 
   out->private_data = private_data;

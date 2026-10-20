@@ -383,6 +383,59 @@ TEST(ArrayTest, ArrayTestBuildByBuffer) {
   ArrowArrayRelease(&array);
 }
 
+TEST(ArrayTest, ArrayTestFinishBuildingEmptyArrayOffsets) {
+  // An empty variable-size array still has one offset, and the C data interface carries
+  // no buffer sizes, so consumers read offsets[0] unconditionally. Finishing an empty
+  // array whose offsets buffer holds no bytes must leave exactly one zero offset there,
+  // whether that buffer was never allocated or points at bytes that aren't offsets.
+  struct ArrowError error;
+  struct TestCase {
+    enum ArrowType type;
+    int64_t offset_size;
+    bool garbage_storage;
+  };
+
+  for (const auto& test_case : {TestCase{NANOARROW_TYPE_STRING, 4, false},
+                                TestCase{NANOARROW_TYPE_STRING, 4, true},
+                                TestCase{NANOARROW_TYPE_LARGE_BINARY, 8, false},
+                                TestCase{NANOARROW_TYPE_LARGE_BINARY, 8, true},
+                                TestCase{NANOARROW_TYPE_LIST, 4, false},
+                                TestCase{NANOARROW_TYPE_LIST, 4, true}}) {
+    SCOPED_TRACE(std::string(ArrowTypeString(test_case.type)) +
+                 (test_case.garbage_storage ? " with garbage storage" : ""));
+
+    nanoarrow::UniqueSchema schema;
+    ASSERT_EQ(ArrowSchemaInitFromType(schema.get(), test_case.type), NANOARROW_OK);
+    if (test_case.type == NANOARROW_TYPE_LIST) {
+      ASSERT_EQ(ArrowSchemaSetType(schema->children[0], NANOARROW_TYPE_INT32),
+                NANOARROW_OK);
+    }
+
+    nanoarrow::UniqueArray array;
+    ASSERT_EQ(ArrowArrayInitFromSchema(array.get(), schema.get(), &error), NANOARROW_OK)
+        << error.message;
+    struct ArrowBuffer* offsets = ArrowArrayBuffer(array.get(), 1);
+    ASSERT_EQ(offsets->size_bytes, 0);
+    if (test_case.garbage_storage) {
+      // Storage behind a zero-length buffer, as when an empty array's offsets buffer
+      // points into some other part of a larger allocation
+      ASSERT_EQ(ArrowBufferReserve(offsets, 16), NANOARROW_OK);
+      memset(offsets->data, 0xff, 16);
+    }
+
+    ASSERT_EQ(ArrowArrayFinishBuildingDefault(array.get(), &error), NANOARROW_OK)
+        << error.message;
+    ASSERT_NE(array->buffers[1], nullptr);
+    EXPECT_EQ(ArrowArrayBuffer(array.get(), 1)->size_bytes, test_case.offset_size);
+    int64_t first_offset = -1;
+    memcpy(&first_offset, array->buffers[1], test_case.offset_size);
+    if (test_case.offset_size == 4) {
+      first_offset = static_cast<int32_t>(first_offset);
+    }
+    EXPECT_EQ(first_offset, 0);
+  }
+}
+
 TEST(ArrayTest, ArrayTestExplicitValidationLevel) {
   struct ArrowArray array;
   struct ArrowError error;
