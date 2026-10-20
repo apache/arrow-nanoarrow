@@ -205,6 +205,31 @@ extern "C" void nanoarrow_preserve_and_release_on_other_thread(SEXP obj) {
   worker.join();
 }
 
+extern "C" void nanoarrow_release_array_stream_on_other_thread(
+    struct ArrowArrayStream* stream) {
+  std::thread worker([stream] { stream->release(stream); });
+  worker.join();
+}
+
+extern "C" SEXP nanoarrow_c_release_array_stream_on_other_thread(SEXP array_stream_xptr) {
+  struct ArrowArrayStream* stream = nanoarrow_array_stream_from_xptr(array_stream_xptr);
+  nanoarrow_release_array_stream_on_other_thread(stream);
+  return R_NilValue;
+}
+
+extern "C" SEXP nanoarrow_c_function_array_stream_get_next_on_other_thread(
+    SEXP array_stream_xptr) {
+  struct ArrowArrayStream* stream = nanoarrow_array_stream_from_xptr(array_stream_xptr);
+  int result = 0;
+  std::thread worker([&] {
+    struct ArrowArray out {};
+    result = stream->get_next(stream, &out);
+    if (out.release != nullptr) out.release(&out);
+  });
+  worker.join();
+  return Rf_ScalarInteger(result);
+}
+
 // Collector utility for iterating over and collecting batches
 // Keeping this all in a single object reduces the amount of C++ deletion
 // we need to keep track of.

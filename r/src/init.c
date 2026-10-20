@@ -31,6 +31,9 @@ extern SEXP nanoarrow_c_array_stream_get_schema(SEXP array_stream_xptr);
 extern SEXP nanoarrow_c_array_stream_get_next(SEXP array_stream_xptr);
 extern SEXP nanoarrow_c_basic_array_stream(SEXP batches_sexp, SEXP schema_xptr,
                                            SEXP validate_sexp);
+extern SEXP nanoarrow_c_function_array_stream(SEXP expr, SEXP env, SEXP schema_xptr);
+extern SEXP nanoarrow_c_function_array_stream_get_next_on_other_thread(
+    SEXP array_stream_xptr);
 extern SEXP nanoarrow_c_array_list_total_length(SEXP list_of_array_xptr);
 extern SEXP nanoarrow_c_array_view(SEXP array_xptr, SEXP schema_xptr);
 extern SEXP nanoarrow_c_array_init(SEXP schema_xptr);
@@ -95,6 +98,7 @@ extern SEXP nanoarrow_c_schema_set_dictionary(SEXP schema_mut_xptr, SEXP diction
 extern SEXP nanoarrow_c_preserved_count(void);
 extern SEXP nanoarrow_c_preserved_empty(void);
 extern SEXP nanoarrow_c_preserve_and_release_on_other_thread(SEXP obj);
+extern SEXP nanoarrow_c_release_array_stream_on_other_thread(SEXP array_stream_xptr);
 extern SEXP nanoarrow_c_vctr_chunk_offsets(SEXP array_list);
 extern SEXP nanoarrow_c_vctr_chunk_resolve(SEXP indices_sexp, SEXP offsets_sexp);
 extern SEXP nanoarrow_c_vctr_as_slice(SEXP indices_sexp);
@@ -114,6 +118,9 @@ static const R_CallMethodDef CallEntries[] = {
      1},
     {"nanoarrow_c_array_stream_get_next", (DL_FUNC)&nanoarrow_c_array_stream_get_next, 1},
     {"nanoarrow_c_basic_array_stream", (DL_FUNC)&nanoarrow_c_basic_array_stream, 3},
+    {"nanoarrow_c_function_array_stream", (DL_FUNC)&nanoarrow_c_function_array_stream, 3},
+    {"nanoarrow_c_function_array_stream_get_next_on_other_thread",
+     (DL_FUNC)&nanoarrow_c_function_array_stream_get_next_on_other_thread, 1},
     {"nanoarrow_c_array_list_total_length", (DL_FUNC)&nanoarrow_c_array_list_total_length,
      1},
     {"nanoarrow_c_array_view", (DL_FUNC)&nanoarrow_c_array_view, 2},
@@ -179,6 +186,8 @@ static const R_CallMethodDef CallEntries[] = {
     {"nanoarrow_c_preserved_empty", (DL_FUNC)&nanoarrow_c_preserved_empty, 0},
     {"nanoarrow_c_preserve_and_release_on_other_thread",
      (DL_FUNC)&nanoarrow_c_preserve_and_release_on_other_thread, 1},
+    {"nanoarrow_c_release_array_stream_on_other_thread",
+     (DL_FUNC)&nanoarrow_c_release_array_stream_on_other_thread, 1},
     {"nanoarrow_c_vctr_chunk_offsets", (DL_FUNC)&nanoarrow_c_vctr_chunk_offsets, 1},
     {"nanoarrow_c_vctr_chunk_resolve", (DL_FUNC)&nanoarrow_c_vctr_chunk_resolve, 2},
     {"nanoarrow_c_vctr_as_slice", (DL_FUNC)&nanoarrow_c_vctr_as_slice, 1},

@@ -1317,3 +1317,196 @@ TEST(NanoarrowIpcWriter, CompressedDictionaryStream) {
   EXPECT_EQ(std::string(v0.data, v0.size_bytes), "foo");
   EXPECT_EQ(std::string(v1.data, v1.size_bytes), "bar");
 }
+
+// The type of each message in an encapsulated IPC stream, up to the end of the stream
+static std::vector<enum ArrowIpcMessageType> ReadMessageTypes(
+    const struct ArrowBuffer* stream_bytes) {
+  std::vector<enum ArrowIpcMessageType> types;
+  nanoarrow::ipc::UniqueDecoder decoder;
+  EXPECT_EQ(ArrowIpcDecoderInit(decoder.get()), NANOARROW_OK);
+
+  struct ArrowError error;
+  struct ArrowBufferView view;
+  view.data.as_uint8 = stream_bytes->data;
+  view.size_bytes = stream_bytes->size_bytes;
+  while (view.size_bytes > 0) {
+    ArrowErrorCode result = ArrowIpcDecoderVerifyHeader(decoder.get(), view, &error);
+    if (result == ENODATA) {
+      break;
+    }
+    EXPECT_EQ(result, NANOARROW_OK) << error.message;
+    if (result != NANOARROW_OK) {
+      break;
+    }
+    types.push_back(decoder->message_type);
+    int64_t advance = decoder->header_size_bytes + decoder->body_size_bytes;
+    view.data.as_uint8 += advance;
+    view.size_bytes -= advance;
+  }
+  return types;
+}
+
+TEST(NanoarrowIpcWriter, WriteArrayViewWithDictionariesMatchesArrayStream) {
+  // Writing a batch with ArrowIpcWriterWriteArrayViewWithDictionaries() produces the
+  // same bytes as writing it through ArrowIpcWriterWriteArrayStream()
+  struct ArrowError error;
+
+  nanoarrow::UniqueSchema schema;
+  nanoarrow::UniqueArray array;
+  ASSERT_NO_FATAL_FAILURE(MakeDictionaryStructArray(array.get(), schema.get()));
+
+  nanoarrow::UniqueArrayView array_view;
+  ASSERT_EQ(ArrowArrayViewInitFromSchema(array_view.get(), schema.get(), &error),
+            NANOARROW_OK)
+      << error.message;
+  ASSERT_EQ(ArrowArrayViewSetArray(array_view.get(), array.get(), &error), NANOARROW_OK)
+      << error.message;
+
+  nanoarrow::UniqueBuffer by_view;
+  {
+    nanoarrow::ipc::UniqueOutputStream stream;
+    ASSERT_EQ(ArrowIpcOutputStreamInitBuffer(stream.get(), by_view.get()), NANOARROW_OK);
+    nanoarrow::ipc::UniqueWriter writer;
+    ASSERT_EQ(ArrowIpcWriterInit(writer.get(), stream.get()), NANOARROW_OK);
+    ASSERT_EQ(ArrowIpcWriterWriteSchema(writer.get(), schema.get(), &error), NANOARROW_OK)
+        << error.message;
+    ASSERT_EQ(ArrowIpcWriterWriteArrayViewWithDictionaries(writer.get(), array_view.get(),
+                                                           &error),
+              NANOARROW_OK)
+        << error.message;
+    ASSERT_EQ(ArrowIpcWriterWriteArrayView(writer.get(), nullptr, &error), NANOARROW_OK);
+  }
+
+  nanoarrow::UniqueBuffer by_stream;
+  {
+    nanoarrow::UniqueSchema stream_schema;
+    ASSERT_EQ(ArrowSchemaDeepCopy(schema.get(), stream_schema.get()), NANOARROW_OK);
+    nanoarrow::UniqueArrayStream array_stream;
+    ASSERT_EQ(ArrowBasicArrayStreamInit(array_stream.get(), stream_schema.get(), 1),
+              NANOARROW_OK);
+    ArrowBasicArrayStreamSetArray(array_stream.get(), 0, array.get());
+
+    nanoarrow::ipc::UniqueOutputStream stream;
+    ASSERT_EQ(ArrowIpcOutputStreamInitBuffer(stream.get(), by_stream.get()),
+              NANOARROW_OK);
+    nanoarrow::ipc::UniqueWriter writer;
+    ASSERT_EQ(ArrowIpcWriterInit(writer.get(), stream.get()), NANOARROW_OK);
+    ASSERT_EQ(ArrowIpcWriterWriteArrayStream(writer.get(), array_stream.get(), &error),
+              NANOARROW_OK)
+        << error.message;
+  }
+
+  EXPECT_EQ(
+      ReadMessageTypes(by_view.get()),
+      (std::vector<enum ArrowIpcMessageType>{NANOARROW_IPC_MESSAGE_TYPE_SCHEMA,
+                                             NANOARROW_IPC_MESSAGE_TYPE_DICTIONARY_BATCH,
+                                             NANOARROW_IPC_MESSAGE_TYPE_RECORD_BATCH}));
+  ASSERT_EQ(by_view->size_bytes, by_stream->size_bytes);
+  EXPECT_EQ(memcmp(by_view->data, by_stream->data, by_view->size_bytes), 0);
+}
+
+TEST(NanoarrowIpcWriter, WriteArrayViewWithDictionariesPerBatch) {
+  // Batches written one at a time each carry their own dictionary, which the reader
+  // resolves against the DictionaryBatch written just before it
+  struct ArrowError error;
+
+  nanoarrow::UniqueSchema schema;
+  nanoarrow::UniqueArray first;
+  ASSERT_NO_FATAL_FAILURE(MakeDictionaryStructArray(first.get(), schema.get(), "bar"));
+  nanoarrow::UniqueSchema second_schema;
+  nanoarrow::UniqueArray second;
+  ASSERT_NO_FATAL_FAILURE(
+      MakeDictionaryStructArray(second.get(), second_schema.get(), "baz"));
+
+  nanoarrow::UniqueArrayView array_view;
+  ASSERT_EQ(ArrowArrayViewInitFromSchema(array_view.get(), schema.get(), &error),
+            NANOARROW_OK)
+      << error.message;
+
+  nanoarrow::UniqueBuffer output;
+  nanoarrow::ipc::UniqueOutputStream stream;
+  ASSERT_EQ(ArrowIpcOutputStreamInitBuffer(stream.get(), output.get()), NANOARROW_OK);
+  nanoarrow::ipc::UniqueWriter writer;
+  ASSERT_EQ(ArrowIpcWriterInit(writer.get(), stream.get()), NANOARROW_OK);
+  ASSERT_EQ(ArrowIpcWriterWriteSchema(writer.get(), schema.get(), &error), NANOARROW_OK)
+      << error.message;
+  for (struct ArrowArray* array : {first.get(), second.get()}) {
+    ASSERT_EQ(ArrowArrayViewSetArray(array_view.get(), array, &error), NANOARROW_OK)
+        << error.message;
+    ASSERT_EQ(ArrowIpcWriterWriteArrayViewWithDictionaries(writer.get(), array_view.get(),
+                                                           &error),
+              NANOARROW_OK)
+        << error.message;
+  }
+  ASSERT_EQ(ArrowIpcWriterWriteArrayView(writer.get(), nullptr, &error), NANOARROW_OK);
+
+  EXPECT_EQ(
+      ReadMessageTypes(output.get()),
+      (std::vector<enum ArrowIpcMessageType>{NANOARROW_IPC_MESSAGE_TYPE_SCHEMA,
+                                             NANOARROW_IPC_MESSAGE_TYPE_DICTIONARY_BATCH,
+                                             NANOARROW_IPC_MESSAGE_TYPE_RECORD_BATCH,
+                                             NANOARROW_IPC_MESSAGE_TYPE_DICTIONARY_BATCH,
+                                             NANOARROW_IPC_MESSAGE_TYPE_RECORD_BATCH}));
+
+  struct ArrowIpcInputStream input;
+  ASSERT_EQ(ArrowIpcInputStreamInitBuffer(&input, output.get()), NANOARROW_OK);
+  nanoarrow::UniqueArrayStream reader;
+  ASSERT_EQ(ArrowIpcArrayStreamReaderInit(reader.get(), &input, nullptr), NANOARROW_OK);
+  nanoarrow::UniqueSchema roundtrip_schema;
+  ASSERT_EQ(ArrowArrayStreamGetSchema(reader.get(), roundtrip_schema.get(), &error),
+            NANOARROW_OK)
+      << error.message;
+
+  for (const char* expected : {"bar", "baz"}) {
+    SCOPED_TRACE(expected);
+    nanoarrow::UniqueArray roundtrip;
+    ASSERT_EQ(ArrowArrayStreamGetNext(reader.get(), roundtrip.get(), &error),
+              NANOARROW_OK)
+        << error.message;
+    ASSERT_NE(roundtrip->release, nullptr);
+
+    nanoarrow::UniqueArrayView view;
+    ASSERT_EQ(ArrowArrayViewInitFromSchema(view.get(), roundtrip_schema.get(), &error),
+              NANOARROW_OK)
+        << error.message;
+    ASSERT_EQ(ArrowArrayViewSetArray(view.get(), roundtrip.get(), &error), NANOARROW_OK)
+        << error.message;
+    struct ArrowArrayView* values = view->children[0]->dictionary;
+    ASSERT_NE(values, nullptr);
+    struct ArrowStringView value1 = ArrowArrayViewGetStringUnsafe(values, 1);
+    EXPECT_EQ(std::string(value1.data, value1.size_bytes), expected);
+  }
+}
+
+TEST(NanoarrowIpcWriter, WriteArrayViewWithDictionariesInFile) {
+  // A dictionary ID may only be written once in a file: writing one batch with its
+  // dictionaries succeeds, and a second is rejected rather than writing an invalid
+  // file
+  struct ArrowError error;
+
+  nanoarrow::UniqueSchema schema;
+  nanoarrow::UniqueArray array;
+  ASSERT_NO_FATAL_FAILURE(MakeDictionaryStructArray(array.get(), schema.get()));
+  nanoarrow::UniqueArrayView array_view;
+  ASSERT_EQ(ArrowArrayViewInitFromSchema(array_view.get(), schema.get(), &error),
+            NANOARROW_OK)
+      << error.message;
+  ASSERT_EQ(ArrowArrayViewSetArray(array_view.get(), array.get(), &error), NANOARROW_OK)
+      << error.message;
+
+  nanoarrow::UniqueBuffer output;
+  nanoarrow::ipc::UniqueOutputStream stream;
+  ASSERT_EQ(ArrowIpcOutputStreamInitBuffer(stream.get(), output.get()), NANOARROW_OK);
+  nanoarrow::ipc::UniqueWriter writer;
+  ASSERT_EQ(ArrowIpcWriterInit(writer.get(), stream.get()), NANOARROW_OK);
+  ASSERT_EQ(ArrowIpcWriterStartFile(writer.get(), &error), NANOARROW_OK) << error.message;
+  ASSERT_EQ(ArrowIpcWriterWriteSchema(writer.get(), schema.get(), &error), NANOARROW_OK)
+      << error.message;
+  ASSERT_EQ(ArrowIpcWriterWriteArrayViewWithDictionaries(writer.get(), array_view.get(),
+                                                         &error),
+            NANOARROW_OK)
+      << error.message;
+  EXPECT_EQ(ArrowIpcWriterWriteArrayViewWithDictionaries(writer.get(), array_view.get(),
+                                                         &error),
+            ENOTSUP);
+}

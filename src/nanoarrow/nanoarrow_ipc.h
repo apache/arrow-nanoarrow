@@ -132,6 +132,8 @@
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcWriterWriteSchema)
 #define ArrowIpcWriterWriteArrayView \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcWriterWriteArrayView)
+#define ArrowIpcWriterWriteArrayViewWithDictionaries \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcWriterWriteArrayViewWithDictionaries)
 #define ArrowIpcWriterWriteDictionaryBatch \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcWriterWriteDictionaryBatch)
 #define ArrowIpcWriterWriteArrayStream \
@@ -938,6 +940,14 @@ struct ArrowIpcArrayStreamReaderOptions {
   /// a single field there is probably no advantage to using shared buffers.
   /// Defaults to the value of ArrowSharedBufferIsThreadSafe().
   int use_shared_buffers;
+
+  /// \brief The level of validation to apply to each decoded array
+  ///
+  /// Defaults to NANOARROW_VALIDATION_LEVEL_FULL, which is appropriate for untrusted
+  /// input. Use a lower level (e.g., NANOARROW_VALIDATION_LEVEL_DEFAULT) to skip checks
+  /// that are O(n) in the length of the decoded buffers when the input comes from a
+  /// trusted producer.
+  enum ArrowValidationLevel validation_level;
 };
 
 /// \brief Initialize an ArrowArrayStream from an input stream of bytes
@@ -1174,6 +1184,27 @@ NANOARROW_DLL ArrowErrorCode ArrowIpcWriterWriteSchema(struct ArrowIpcWriter* wr
 NANOARROW_DLL ArrowErrorCode ArrowIpcWriterWriteArrayView(struct ArrowIpcWriter* writer,
                                                           const struct ArrowArrayView* in,
                                                           struct ArrowError* error);
+
+/// \brief Write an array view and the dictionaries it references
+///
+/// Writes a DictionaryBatch message for each dictionary-encoded field of in, followed
+/// by the RecordBatch itself, as ArrowIpcWriterWriteArrayStream() does for each array
+/// of a stream. This lets a caller that produces batches one at a time (rather than
+/// from an ArrowArrayStream) write dictionary-encoded data. Dictionary IDs are
+/// assigned in the same order as when the schema was written, and nested dictionaries
+/// are written before the dictionaries that refer to them.
+///
+/// Because in is borrowed, its dictionaries are not compared with those of earlier
+/// batches (as ArrowIpcWriterWriteArrayStream() does to skip unchanged ones): each
+/// dictionary is written in full before every RecordBatch, replacing the previous
+/// one. In file mode, where a dictionary ID may only be written once, this means only
+/// one batch with dictionaries can be written this way. in must not be NULL; use
+/// ArrowIpcWriterWriteArrayView() to write EOS.
+///
+/// Errors are propagated from the underlying encoder and output byte stream.
+NANOARROW_DLL ArrowErrorCode ArrowIpcWriterWriteArrayViewWithDictionaries(
+    struct ArrowIpcWriter* writer, const struct ArrowArrayView* in,
+    struct ArrowError* error);
 
 /// \brief Write a DictionaryBatch message to the output byte stream
 ///

@@ -449,7 +449,8 @@ static int ArrowIpcWriterArraysShareBuffers(const struct ArrowArrayView* array_v
 // are available when a reader decodes it. A dictionary that shares its buffers with
 // the corresponding dictionary of the previous array (if any) was already written;
 // otherwise, it is written as a full (non-delta) DictionaryBatch that replaces the
-// previous one.
+// previous one. array and previous may both be NULL, in which case every dictionary
+// is written.
 static ArrowErrorCode ArrowIpcWriterWriteDictionariesForArray(
     struct ArrowIpcWriter* writer, const struct ArrowArrayView* array_view,
     const struct ArrowArray* array, const struct ArrowArray* previous, int64_t* next_id,
@@ -461,7 +462,7 @@ static ArrowErrorCode ArrowIpcWriterWriteDictionariesForArray(
 
   for (int64_t i = 0; i < array_view->n_children; i++) {
     NANOARROW_RETURN_NOT_OK(ArrowIpcWriterWriteDictionariesForArray(
-        writer, array_view->children[i], array->children[i],
+        writer, array_view->children[i], array == NULL ? NULL : array->children[i],
         previous == NULL ? NULL : previous->children[i], next_id, error));
   }
 
@@ -469,8 +470,8 @@ static ArrowErrorCode ArrowIpcWriterWriteDictionariesForArray(
     const struct ArrowArray* previous_dictionary =
         previous == NULL ? NULL : previous->dictionary;
     NANOARROW_RETURN_NOT_OK(ArrowIpcWriterWriteDictionariesForArray(
-        writer, array_view->dictionary, array->dictionary, previous_dictionary, next_id,
-        error));
+        writer, array_view->dictionary, array == NULL ? NULL : array->dictionary,
+        previous_dictionary, next_id, error));
 
     if (previous_dictionary == NULL ||
         !ArrowIpcWriterArraysShareBuffers(array_view->dictionary, array->dictionary,
@@ -481,6 +482,18 @@ static ArrowErrorCode ArrowIpcWriterWriteDictionariesForArray(
   }
 
   return NANOARROW_OK;
+}
+
+ArrowErrorCode ArrowIpcWriterWriteArrayViewWithDictionaries(
+    struct ArrowIpcWriter* writer, const struct ArrowArrayView* in,
+    struct ArrowError* error) {
+  NANOARROW_DCHECK(writer != NULL && writer->private_data != NULL && in != NULL);
+  int64_t next_dictionary_id = 0;
+  // in is borrowed, so its dictionaries can't be kept alive to compare against the
+  // next batch's: write every one of them
+  NANOARROW_RETURN_NOT_OK(ArrowIpcWriterWriteDictionariesForArray(
+      writer, in, /*array=*/NULL, /*previous=*/NULL, &next_dictionary_id, error));
+  return ArrowIpcWriterWriteArrayView(writer, in, error);
 }
 
 static ArrowErrorCode ArrowIpcWriterWriteArrayStreamImpl(

@@ -503,10 +503,9 @@ static ArrowErrorCode ArrowIpcEncodeMetadata(flatcc_builder_t* builder,
     NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowMetadataReaderRead(&metadata, &key, &value),
                                        error);
     FLATCC_RETURN_UNLESS_0_NO_NS(push_start(builder), error);
-    FLATCC_RETURN_UNLESS_0(KeyValue_key_create_strn(builder, key.data, key.size_bytes),
+    FLATCC_RETURN_UNLESS_0(KeyValue_key_create(builder, key.data, key.size_bytes), error);
+    FLATCC_RETURN_UNLESS_0(KeyValue_value_create(builder, value.data, value.size_bytes),
                            error);
-    FLATCC_RETURN_UNLESS_0(
-        KeyValue_value_create_strn(builder, value.data, value.size_bytes), error);
     FLATCC_RETURN_IF_NULL(push_end(builder), error);
   }
   return NANOARROW_OK;
@@ -974,16 +973,40 @@ static ArrowErrorCode ArrowIpcEncoderEncodeBodyCompression(
   return NANOARROW_OK;
 }
 
+// One zero offset, large enough for either 32- or 64-bit offsets
+static const int64_t kZeroOffsets[1] = {0};
+
 // Collect the node and buffer views of an array to be encoded
 static ArrowErrorCode ArrowIpcEncoderCollectArray(struct ArrowIpcEncoderPrivate* private,
                                                   const struct ArrowArrayView* array_view,
                                                   struct ArrowError* error) {
-  struct ns(FieldNode) node = {array_view->length, array_view->null_count};
+  // FieldNode.null_count is the number of nulls. The C data interface's "unknown"
+  // null count (-1) can't be written, and every element of a null array is null.
+  int64_t null_count = array_view->null_count;
+  if (array_view->storage_type == NANOARROW_TYPE_NA) {
+    null_count = array_view->length;
+  } else if (null_count < 0) {
+    null_count = ArrowArrayViewComputeNullCount(array_view);
+  }
+
+  struct ns(FieldNode) node = {array_view->length, null_count};
   NANOARROW_RETURN_NOT_OK_WITH_ERROR(
       ArrowBufferAppend(&private->nodes, &node, sizeof(node)), error);
   for (int64_t b = 0; b < array_view->array->n_buffers; ++b) {
+    struct ArrowBufferView buffer_view = array_view->buffer_views[b];
+
+    // An offsets buffer holds length + 1 offsets, so even an empty array has one.
+    // The array view of an empty array has a zero-length offsets buffer (IPC permits
+    // one), but some readers (arrow-go, Apache.Arrow for .NET) read the first offset
+    // unconditionally. Write a single zero offset instead, as Arrow C++ does.
+    if (array_view->layout.buffer_type[b] == NANOARROW_BUFFER_TYPE_DATA_OFFSET &&
+        array_view->length == 0 && buffer_view.size_bytes == 0) {
+      buffer_view.data.data = kZeroOffsets;
+      buffer_view.size_bytes = array_view->layout.element_size_bits[b] / 8;
+    }
+
     NANOARROW_RETURN_NOT_OK_WITH_ERROR(
-        ArrowBufferAppend(&private->buffer_views, &array_view->buffer_views[b],
+        ArrowBufferAppend(&private->buffer_views, &buffer_view,
                           sizeof(struct ArrowBufferView)),
         error);
   }
