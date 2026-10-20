@@ -178,22 +178,33 @@ as_nanoarrow_array.nanoarrow_vctr <- function(x, ..., schema = NULL) {
   slice <- vctr_as_slice(x)
   chunks <- attr(x, "chunks", exact = TRUE)
   offsets <- attr(x, "offsets", exact = TRUE)
-  if (
-    length(chunks) == 1 &&
-      !is.null(slice) &&
-      slice[1] == 1 &&
-      slice[2] == max(offsets)
-  ) {
-    if (!update_schema) {
-      return(chunks[[1]])
+  if (length(chunks) == 1 && !is.null(slice)) {
+    is_full_slice <- isTRUE(slice[1] == 1L) && slice[2] == max(offsets)
+    if (is_full_slice) {
+      if (!update_schema) {
+        return(chunks[[1]])
+      }
+
+      # Export a shallow copy so that attaching the requested field name does
+      # not modify the schema associated with the vctr's source chunk.
+      out <- nanoarrow_allocate_array()
+      nanoarrow_pointer_export(chunks[[1]], out)
+      nanoarrow_array_set_schema(out, schema, validate = FALSE)
+      return(out)
     }
 
-    # Export a shallow copy so that attaching the requested field name does
-    # not modify the schema associated with the vctr's source chunk.
-    out <- nanoarrow_allocate_array()
-    nanoarrow_pointer_export(chunks[[1]], out)
-    nanoarrow_array_set_schema(out, schema, validate = FALSE)
-    return(out)
+    # An empty slice has no meaningful start index; any zero-length slice of
+    # the source array represents it. Otherwise, convert the 1-based vector
+    # index to an offset relative to the source array.
+    slice_offset <- if (slice[2] == 0L) 0L else slice[1] - 1L
+    if (!is.na(slice_offset)) {
+      out <- vctr_array_slice(chunks[[1]], slice_offset, slice[2])
+      if (update_schema) {
+        nanoarrow_array_set_schema(out, schema, validate = FALSE)
+      }
+
+      return(out)
+    }
   }
 
   NextMethod()
@@ -311,7 +322,10 @@ c.nanoarrow_vctr <- function(...) {
 #' @export
 as.data.frame.nanoarrow_vctr <- function(x, ..., optional = FALSE) {
   if (!optional) {
-    stop(sprintf("cannot coerce object of tyoe '%s' to data.frame", class(x)[1]))
+    stop(sprintf(
+      "cannot coerce object of tyoe '%s' to data.frame",
+      class(x)[1]
+    ))
   } else {
     new_data_frame(list(x), nrow = length(x))
   }
@@ -380,9 +394,14 @@ vctr_as_slice <- function(x) {
 vctr_array_slice <- function(x, offset, length) {
   new_offset <- x$offset + offset
   new_length <- length
+  new_null_count <- if (length == 0 || x$null_count == 0) 0 else -1
   nanoarrow_array_modify(
     x,
-    list(offset = new_offset, length = new_length),
+    list(
+      offset = new_offset,
+      length = new_length,
+      null_count = new_null_count
+    ),
     validate = FALSE
   )
 }
