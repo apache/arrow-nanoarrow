@@ -126,6 +126,8 @@
 #define ArrowIpcWriterReset NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcWriterReset)
 #define ArrowIpcWriterSetCompression \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcWriterSetCompression)
+#define ArrowIpcWriterSetMessageMetadata \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcWriterSetMessageMetadata)
 #define ArrowIpcWriterWriteSchema \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcWriterWriteSchema)
 #define ArrowIpcWriterWriteArrayView \
@@ -1155,6 +1157,21 @@ NANOARROW_DLL void ArrowIpcWriterReset(struct ArrowIpcWriter* writer);
 NANOARROW_DLL ArrowErrorCode ArrowIpcWriterSetCompression(
     struct ArrowIpcWriter* writer, enum ArrowIpcCompressionType compression_type,
     int compression_level, struct ArrowError* error);
+
+/// \brief Set the custom metadata of the next RecordBatch message
+///
+/// The metadata (Message::custom_metadata, in the representation built by
+/// ArrowMetadataBuilderInit()/ArrowMetadataBuilderAppend()) is held by the writer and
+/// attached to the next RecordBatch message written by ArrowIpcWriterWriteArrayView()
+/// or ArrowIpcWriterWriteArrayStream(). It is not attached to any DictionaryBatch
+/// message written before that RecordBatch, so it can be set ahead of a call that
+/// writes dictionaries and a batch together. The writer takes ownership of metadata
+/// (it is moved and left empty); pass NULL to clear metadata that has been set but not
+/// yet written. If a write returns an error, metadata that was set may still be held
+/// for a later RecordBatch; pass NULL to clear it if that matters.
+NANOARROW_DLL ArrowErrorCode
+ArrowIpcWriterSetMessageMetadata(struct ArrowIpcWriter* writer,
+                                 struct ArrowBuffer* metadata, struct ArrowError* error);
 
 /// \brief Write a schema to the output byte stream
 ///
