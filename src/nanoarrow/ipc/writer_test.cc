@@ -414,6 +414,95 @@ TEST(NanoarrowIpcWriter, RoundtripDictionaryStream) {
   EXPECT_EQ(roundtrip_array->release, nullptr);
 }
 
+// The metadata of the dictionary value schema (e.g., the extension type of the values)
+// is written to DictionaryEncoding.custom_metadata and read back separately from the
+// field metadata (https://github.com/apache/arrow/issues/49704)
+TEST(NanoarrowIpcWriter, RoundtripDictionaryValueMetadataStream) {
+  struct ArrowError error;
+
+  nanoarrow::UniqueSchema schema;
+  nanoarrow::UniqueArray array;
+  MakeDictionaryStructArray(array.get(), schema.get());
+
+  nanoarrow::UniqueBuffer value_metadata;
+  ASSERT_EQ(ArrowMetadataBuilderInit(value_metadata.get(), nullptr), NANOARROW_OK);
+  ASSERT_EQ(ArrowMetadataBuilderAppend(value_metadata.get(),
+                                       ArrowCharView("ARROW:extension:name"),
+                                       ArrowCharView("arrow.opaque")),
+            NANOARROW_OK);
+  ASSERT_EQ(ArrowMetadataBuilderAppend(
+                value_metadata.get(), ArrowCharView("ARROW:extension:metadata"),
+                ArrowCharView(R"({"type_name":"geometry","vendor_name":"nanoarrow"})")),
+            NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaSetMetadata(schema->children[0]->dictionary,
+                                   reinterpret_cast<char*>(value_metadata->data)),
+            NANOARROW_OK);
+
+  nanoarrow::UniqueBuffer field_metadata;
+  ASSERT_EQ(ArrowMetadataBuilderInit(field_metadata.get(), nullptr), NANOARROW_OK);
+  ASSERT_EQ(ArrowMetadataBuilderAppend(field_metadata.get(), ArrowCharView("field_key"),
+                                       ArrowCharView("field_value")),
+            NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaSetMetadata(schema->children[0],
+                                   reinterpret_cast<char*>(field_metadata->data)),
+            NANOARROW_OK);
+
+  nanoarrow::UniqueArrayStream array_stream;
+  ASSERT_EQ(ArrowBasicArrayStreamInit(array_stream.get(), schema.get(), 1), NANOARROW_OK);
+  ArrowBasicArrayStreamSetArray(array_stream.get(), 0, array.get());
+
+  nanoarrow::UniqueBuffer output;
+  nanoarrow::ipc::UniqueOutputStream out_stream;
+  ASSERT_EQ(ArrowIpcOutputStreamInitBuffer(out_stream.get(), output.get()), NANOARROW_OK);
+
+  nanoarrow::ipc::UniqueWriter writer;
+  ASSERT_EQ(ArrowIpcWriterInit(writer.get(), out_stream.get()), NANOARROW_OK);
+  ASSERT_EQ(ArrowIpcWriterWriteArrayStream(writer.get(), array_stream.get(), &error),
+            NANOARROW_OK)
+      << error.message;
+
+  struct ArrowIpcInputStream input;
+  ASSERT_EQ(ArrowIpcInputStreamInitBuffer(&input, output.get()), NANOARROW_OK);
+
+  nanoarrow::UniqueArrayStream reader;
+  ASSERT_EQ(ArrowIpcArrayStreamReaderInit(reader.get(), &input, nullptr), NANOARROW_OK);
+
+  nanoarrow::UniqueSchema roundtrip_schema;
+  ASSERT_EQ(ArrowArrayStreamGetSchema(reader.get(), roundtrip_schema.get(), &error),
+            NANOARROW_OK)
+      << error.message;
+  ASSERT_EQ(roundtrip_schema->n_children, 1);
+  ASSERT_NE(roundtrip_schema->children[0]->dictionary, nullptr);
+
+  struct ArrowStringView value;
+  ASSERT_EQ(ArrowMetadataGetValue(roundtrip_schema->children[0]->metadata,
+                                  ArrowCharView("field_key"), &value),
+            NANOARROW_OK);
+  EXPECT_EQ(std::string(value.data, value.size_bytes), "field_value");
+  EXPECT_EQ(ArrowMetadataHasKey(roundtrip_schema->children[0]->metadata,
+                                ArrowCharView("ARROW:extension:name")),
+            0);
+
+  const char* roundtrip_value_metadata =
+      roundtrip_schema->children[0]->dictionary->metadata;
+  ASSERT_NE(roundtrip_value_metadata, nullptr);
+  EXPECT_EQ(ArrowMetadataSizeOf(roundtrip_value_metadata),
+            ArrowMetadataSizeOf(reinterpret_cast<char*>(value_metadata->data)));
+  EXPECT_EQ(memcmp(roundtrip_value_metadata, value_metadata->data,
+                   ArrowMetadataSizeOf(roundtrip_value_metadata)),
+            0);
+  EXPECT_EQ(ArrowMetadataHasKey(roundtrip_value_metadata, ArrowCharView("field_key")), 0);
+
+  // The dictionary-encoded values decode as before
+  nanoarrow::UniqueArray roundtrip_array;
+  ASSERT_EQ(ArrowArrayStreamGetNext(reader.get(), roundtrip_array.get(), &error),
+            NANOARROW_OK)
+      << error.message;
+  ASSERT_EQ(roundtrip_array->length, 3);
+  ASSERT_NE(roundtrip_array->children[0]->dictionary, nullptr);
+  EXPECT_EQ(roundtrip_array->children[0]->dictionary->length, 2);
+}
+
 // A struct array with a single int32 column of repeating values (i.e., compressible)
 static constexpr int64_t kCompressibleBatchLength = 1024;
 
