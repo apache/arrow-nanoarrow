@@ -34,6 +34,23 @@ test_that("as_nanoarrow_schema() works for nanoarrow_schema", {
   expect_identical(as_nanoarrow_schema(schema), schema)
 })
 
+test_that("nanoarrow_schema_identical() can ignore the root name", {
+  schema <- na_int32()
+  named_schema <- na_int32()
+  named_schema$name <- "x"
+
+  expect_false(nanoarrow_schema_identical(schema, named_schema))
+  expect_true(
+    nanoarrow_schema_identical(schema, named_schema, ignore_name = TRUE)
+  )
+
+  schema_x <- na_struct(list(x = na_int32()))
+  schema_y <- na_struct(list(y = na_int32()))
+  expect_false(
+    nanoarrow_schema_identical(schema_x, schema_y, ignore_name = TRUE)
+  )
+})
+
 test_that("infer_nanoarrow_schema() errors for unsupported types", {
   expect_error(
     infer_nanoarrow_schema(environment()),

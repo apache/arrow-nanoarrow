@@ -28,7 +28,7 @@ test_that("as_nanoarrow_vctr() works for basic input", {
 test_that("print() and str() work on empty nanoarrow_vctr", {
   vctr <- nanoarrow_vctr()
   expect_identical(
-    expect_output(print(vctr),"<nanoarrow_vctr <any>>"),
+    expect_output(print(vctr), "<nanoarrow_vctr <any>>"),
     vctr
   )
 
@@ -80,6 +80,78 @@ test_that("nanoarrow_vctr works in a data.frame()", {
   expect_error(as.data.frame(vctr), "cannot coerce object")
 })
 
+test_that("single-chunk nanoarrow_vctr converts to an array without copying", {
+  vctr <- as_nanoarrow_vctr(as_nanoarrow_array(c("one", "two")))
+  chunk <- attr(vctr, "chunks", exact = TRUE)[[1]]
+
+  expect_identical(as_nanoarrow_array(vctr), chunk)
+  expect_identical(as_nanoarrow_array(vctr, schema = na_string()), chunk)
+
+  named_schema <- na_string()
+  named_schema$name <- "x"
+  named_array <- as_nanoarrow_array(vctr, schema = named_schema)
+  expect_false(identical(named_array, chunk))
+  expect_identical(infer_nanoarrow_schema(named_array)$name, "x")
+
+  array <- as_nanoarrow_array(data.frame(x = vctr))
+  expect_identical(as.data.frame(array), data.frame(x = c("one", "two")))
+  expect_identical(infer_nanoarrow_schema(chunk)$name, "")
+})
+
+test_that("single-chunk nanoarrow_vctr slices convert to shallow arrays", {
+  array <- as_nanoarrow_array(c("one", NA, "three"))
+  vctr <- as_nanoarrow_vctr(array)
+
+  sliced <- as_nanoarrow_array(vctr[2:3])
+  expect_identical(sliced$offset, 1L)
+  expect_identical(sliced$length, 2L)
+  expect_identical(sliced$null_count, -1L)
+  expect_identical(as.vector(sliced), c(NA_character_, "three"))
+
+  named_schema <- na_string()
+  named_schema$name <- "x"
+  named_slice <- as_nanoarrow_array(vctr[2:3], schema = named_schema)
+  expect_identical(infer_nanoarrow_schema(named_slice)$name, "x")
+  expect_identical(as.vector(named_slice), c(NA_character_, "three"))
+
+  empty <- as_nanoarrow_array(vctr[integer()])
+  expect_identical(empty$length, 0L)
+  expect_identical(empty$null_count, 0L)
+  expect_identical(as.vector(empty), character())
+
+  expect_identical(array$offset, 0L)
+  expect_identical(array$length, 3L)
+  expect_identical(array$null_count, 1L)
+})
+
+test_that("nanoarrow_vctr array fast path falls through for other cases", {
+  array <- as_nanoarrow_array(c("one", "two"))
+  vctr <- as_nanoarrow_vctr(array)
+  multi_chunk_vctr <- new_nanoarrow_vctr(list(array, array), na_string())
+  fallback <- structure(list(), class = "fallback_array")
+  local_mocked_bindings(
+    as_nanoarrow_array.default = function(...) fallback,
+    .package = "nanoarrow"
+  )
+
+  # Schema differences other than the root name are not identity casts.
+  expect_identical(
+    as_nanoarrow_array(vctr, schema = na_large_string()),
+    fallback
+  )
+
+  metadata_schema <- na_string()
+  metadata_schema$metadata <- list(key = "value")
+  expect_identical(as_nanoarrow_array(vctr, schema = metadata_schema), fallback)
+
+  flags_schema <- na_string()
+  flags_schema$flags <- 0L
+  expect_identical(as_nanoarrow_array(vctr, schema = flags_schema), fallback)
+
+  # Multiple chunks cannot reuse a single complete array.
+  expect_identical(as_nanoarrow_array(multi_chunk_vctr), fallback)
+})
+
 test_that("format() works for nanoarrow_vctr", {
   empty_vctr <- nanoarrow_vctr(na_string())
   expect_identical(format(empty_vctr), character())
@@ -122,7 +194,10 @@ test_that("nanoarrow_vctr to stream generates identical stream for identity slic
 test_that("nanoarrow_vctr to stream works for arbitrary slices", {
   array1 <- as_nanoarrow_array(c("one", "two", "three"))
   array2 <- as_nanoarrow_array(c("four", "five", "six", "seven"))
-  vctr <- new_nanoarrow_vctr(list(array1, array2), infer_nanoarrow_schema(array1))
+  vctr <- new_nanoarrow_vctr(
+    list(array1, array2),
+    infer_nanoarrow_schema(array1)
+  )
 
   chunks16 <- collect_array_stream(
     as_nanoarrow_array_stream(vctr[1:6])
