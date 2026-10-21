@@ -66,7 +66,8 @@ static ArrowErrorCode ArrowIpcInputStreamBufferRead(struct ArrowIpcInputStream* 
   }
 
   if (bytes_to_read > 0) {
-    memcpy(buf, private_data->input.data + private_data->cursor_bytes, bytes_to_read);
+    memcpy(buf, private_data->input.data + private_data->cursor_bytes,
+           (size_t)bytes_to_read);
   }
 
   *size_read_out = bytes_to_read;
@@ -133,7 +134,8 @@ static ArrowErrorCode ArrowIpcInputStreamFileRead(struct ArrowIpcInputStream* st
   }
 
   // Do the read
-  int64_t bytes_read = (int64_t)fread(buf, 1, buf_size_bytes, private_data->file_ptr);
+  int64_t bytes_read =
+      (int64_t)fread(buf, 1, (size_t)buf_size_bytes, private_data->file_ptr);
   *size_read_out = bytes_read;
 
   if (bytes_read != buf_size_bytes) {
@@ -293,7 +295,7 @@ static int ArrowIpcArrayStreamReaderNextHeader(
     NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowBufferReserve(&private_data->header, 4),
                                        &private_data->error);
     memmove(private_data->header.data + 4, private_data->header.data,
-            private_data->header.size_bytes);
+            (size_t)private_data->header.size_bytes);
     uint32_t continuation = 0xFFFFFFFFU;
     memcpy(private_data->header.data, &continuation, sizeof(uint32_t));
     private_data->header.size_bytes += 4;

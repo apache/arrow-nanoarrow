@@ -89,7 +89,7 @@ static ArrowErrorCode ArrowDeviceCpuBufferCopy(struct ArrowDevice* device_src,
     return EINVAL;
   }
 
-  memcpy((uint8_t*)dst.data.as_uint8, src.data.as_uint8, dst.size_bytes);
+  memcpy((uint8_t*)dst.data.as_uint8, src.data.as_uint8, (size_t)dst.size_bytes);
   return NANOARROW_OK;
 }
 

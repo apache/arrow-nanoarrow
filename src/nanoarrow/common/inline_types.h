@@ -265,7 +265,7 @@ static inline void ArrowErrorSetString(struct ArrowError* error, const char* src
     memcpy(error->message, src, sizeof(error->message) - 1);
     error->message[sizeof(error->message) - 1] = '\0';
   } else {
-    memcpy(error->message, src, src_len);
+    memcpy(error->message, src, (size_t)src_len);
     error->message[src_len] = '\0';
   }
 }

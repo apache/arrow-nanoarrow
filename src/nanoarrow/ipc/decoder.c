@@ -721,7 +721,7 @@ static ArrowErrorCode ArrowIpcDecoderVisitMetadata(
   int64_t n_pairs = ns(KeyValue_vec_len(kv_vec));
 
   for (int64_t i = 0; i < n_pairs; i++) {
-    ns(KeyValue_table_t) kv = ns(KeyValue_vec_at(kv_vec, i));
+    ns(KeyValue_table_t) kv = ns(KeyValue_vec_at(kv_vec, (size_t)i));
     flatbuffers_string_t key = ns(KeyValue_key(kv));
     flatbuffers_string_t value = ns(KeyValue_value(kv));
 
@@ -1168,7 +1168,7 @@ static int ArrowIpcDecoderSetTypeUnion(struct ArrowSchema* schema,
 
       for (int64_t i = 1; i < n_type_ids; i++) {
         n_chars = snprintf(format_cursor, format_out_size, ",%" PRId32,
-                           flatbuffers_int32_vec_at(type_ids, i));
+                           flatbuffers_int32_vec_at(type_ids, (size_t)i));
         format_cursor += n_chars;
         format_out_size -= n_chars;
 
@@ -1417,7 +1417,7 @@ static int ArrowIpcDecoderSetChildren(struct ArrowSchema* schema, ns(Field_vec_t
   int64_t n_fields = ns(Schema_vec_len(fields));
 
   for (int64_t i = 0; i < n_fields; i++) {
-    ns(Field_table_t) field = ns(Field_vec_at(fields, i));
+    ns(Field_table_t) field = ns(Field_vec_at(fields, (size_t)i));
     NANOARROW_RETURN_NOT_OK(
         ArrowIpcDecoderSetField(schema->children[i], field, dictionaries, error));
   }
@@ -1449,7 +1449,7 @@ static int ArrowIpcDecoderDecodeSchemaHeader(struct ArrowIpcDecoder* decoder,
   decoder->feature_flags = 0;
 
   for (int64_t i = 0; i < n_features; i++) {
-    ns(Feature_enum_t) feature = ns(Feature_vec_at(features, i));
+    ns(Feature_enum_t) feature = ns(Feature_vec_at(features, (size_t)i));
     switch (feature) {
       case ns(Feature_COMPRESSED_BODY):
         decoder->feature_flags |= NANOARROW_IPC_FEATURE_COMPRESSED_BODY;
@@ -2086,7 +2086,8 @@ ArrowErrorCode ArrowIpcDecoderSetSchemaWithDictionaries(
     ArrowErrorSet(error, "Failed to allocate decoder->fields");
     return ENOMEM;
   }
-  memset(private_data->fields, 0, private_data->n_fields * sizeof(struct ArrowIpcField));
+  memset(private_data->fields, 0,
+         (size_t)private_data->n_fields * sizeof(struct ArrowIpcField));
 
   // Init field information and calculate starting buffer offset for each
   int64_t field_i = 0;
