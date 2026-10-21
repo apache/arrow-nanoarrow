@@ -108,6 +108,8 @@
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcEncoderSetCompression)
 #define ArrowIpcEncoderSetCompressor \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcEncoderSetCompressor)
+#define ArrowIpcEncoderSetDictionaryReplacement \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcEncoderSetDictionaryReplacement)
 #define ArrowIpcEncoderEncodeSchema \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcEncoderEncodeSchema)
 #define ArrowIpcEncoderEncodeSimpleRecordBatch \
@@ -991,9 +993,10 @@ NANOARROW_DLL ArrowErrorCode ArrowIpcEncoderFinalizeBuffer(
 
 /// \brief Set the custom metadata of the next encoded message
 ///
-/// Attaches metadata to the next message encoded by ArrowIpcEncoderEncodeSchema() or
-/// ArrowIpcEncoderEncodeSimpleRecordBatch() (i.e., Message::custom_metadata, which is
-/// distinct from the metadata of the Schema or Field that the message may contain).
+/// Attaches metadata to the next message encoded by ArrowIpcEncoderEncodeSchema(),
+/// ArrowIpcEncoderEncodeSimpleRecordBatch(), or
+/// ArrowIpcEncoderEncodeSimpleDictionaryBatch() (i.e., Message::custom_metadata, which
+/// is distinct from the metadata of the Schema or Field that the message may contain).
 /// The metadata applies to exactly one message: after a message is encoded the
 /// encoder's message metadata is cleared. Any metadata that was set but not yet
 /// encoded is replaced by this call; pass NULL to clear it.
@@ -1045,6 +1048,15 @@ NANOARROW_DLL ArrowErrorCode ArrowIpcEncoderSetCompression(
 /// encoded.
 NANOARROW_DLL ArrowErrorCode ArrowIpcEncoderSetCompressor(
     struct ArrowIpcEncoder* encoder, struct ArrowIpcCompressor* compressor);
+
+/// \brief Declare dictionary replacement support in subsequently encoded schemas
+///
+/// Enable this before encoding the schema of a stream that may contain more than one
+/// non-delta DictionaryBatch with the same dictionary ID. The
+/// DICTIONARY_REPLACEMENT feature is only written if the schema contains at least one
+/// dictionary-encoded field. This option is disabled by default.
+NANOARROW_DLL void ArrowIpcEncoderSetDictionaryReplacement(
+    struct ArrowIpcEncoder* encoder, char enabled);
 
 /// \brief Encode an ArrowSchema
 ///
@@ -1193,12 +1205,17 @@ NANOARROW_DLL ArrowErrorCode ArrowIpcWriterWriteArrayView(struct ArrowIpcWriter*
 /// \brief Write an array view and the dictionaries it references
 ///
 /// Writes a DictionaryBatch message for each dictionary-encoded field of in, followed
-/// by the RecordBatch itself, exactly as ArrowIpcWriterWriteArrayStream() does for each
-/// array of a stream. This lets a caller that produces batches one at a time (rather
-/// than from an ArrowArrayStream) write dictionary-encoded data. Dictionary IDs are
-/// assigned in the same order as when the schema was written. Each dictionary is
-/// written in full (not as a delta) before every RecordBatch, and file mode has the
-/// same limitations as ArrowIpcWriterWriteArrayStream(). in must not be NULL; use
+/// by the RecordBatch itself, as ArrowIpcWriterWriteArrayStream() does for each array
+/// of a stream. This lets a caller that produces batches one at a time (rather than
+/// from an ArrowArrayStream) write dictionary-encoded data. Dictionary IDs are
+/// assigned in the same order as when the schema was written, and nested dictionaries
+/// are written before the dictionaries that refer to them.
+///
+/// Because in is borrowed, its dictionaries are not compared with those of earlier
+/// batches (as ArrowIpcWriterWriteArrayStream() does to skip unchanged ones): each
+/// dictionary is written in full before every RecordBatch, replacing the previous
+/// one. In file mode, where a dictionary ID may only be written once, this means only
+/// one batch with dictionaries can be written this way. in must not be NULL; use
 /// ArrowIpcWriterWriteArrayView() to write EOS.
 ///
 /// Errors are propagated from the underlying encoder and output byte stream.
@@ -1211,6 +1228,10 @@ NANOARROW_DLL ArrowErrorCode ArrowIpcWriterWriteArrayViewWithDictionaries(
 /// dictionary_id must match the id assigned to the dictionary-encoded field in the
 /// schema. is_delta selects DictionaryBatch.isDelta. values_view must not itself be
 /// dictionary-encoded. The writer does not check that a schema was already written.
+/// values_view is always written: the writer only sees a borrowed view and cannot
+/// check whether it is identical to a dictionary that was already written. When
+/// writing a file, returns ENOTSUP for a delta or for a dictionary_id that was already
+/// written (IPC files do not support dictionary replacement).
 ///
 /// Errors are propagated from the underlying encoder and output byte stream.
 NANOARROW_DLL ArrowErrorCode ArrowIpcWriterWriteDictionaryBatch(
@@ -1218,6 +1239,17 @@ NANOARROW_DLL ArrowErrorCode ArrowIpcWriterWriteDictionaryBatch(
     const struct ArrowArrayView* values_view, struct ArrowError* error);
 
 /// \brief Write an entire stream (including EOS) to the output byte stream
+///
+/// Dictionaries are written before the first array that references them. For
+/// subsequent arrays, a dictionary is written again (as a replacement) unless it has
+/// the same length, offset, and null count and points to the same buffers as the
+/// corresponding dictionary of the previous array (e.g., because the producer shares
+/// one dictionary among all arrays of the stream). The variadic buffer sizes of a
+/// BinaryView or StringView array are not compared, since producers may generate them
+/// on each export. To ensure that buffer addresses
+/// are not reused for different values, the previous array is kept alive until the
+/// next array is written. Buffers must not be modified while they are referenced by
+/// an exported array. When writing a file, a changed dictionary returns ENOTSUP.
 ///
 /// Errors are propagated from the underlying encoder, array stream, and output byte
 /// stream.
