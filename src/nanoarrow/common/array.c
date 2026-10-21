@@ -1619,6 +1619,17 @@ static int ArrowArrayViewValidateMinimal(struct ArrowArrayView* array_view,
   // Only loop over the first two buffers because the size of the third buffer
   // is always data dependent for all current Arrow types.
   for (int i = 0; i < 2; i++) {
+    // Ensure that the buffer sizes calculated below fit within an int64 (the largest
+    // is the element size in bits times offset + length + 1, rounded up to bytes)
+    int64_t element_size_bits = array_view->layout.element_size_bits[i];
+    if (element_size_bits > 0 &&
+        offset_plus_length > (INT64_MAX - 8) / element_size_bits - 1) {
+      ArrowErrorSet(error,
+                    "Offset + length of %" PRId64 " is too large for %s array buffer %d",
+                    offset_plus_length, ArrowTypeString(array_view->storage_type), i);
+      return EINVAL;
+    }
+
     int64_t element_size_bytes = array_view->layout.element_size_bits[i] / 8;
     // Initialize with a value that will cause an error if accidentally used uninitialized
     // Need to suppress the clang-tidy warning because gcc warns for possible use
@@ -1724,6 +1735,14 @@ static int ArrowArrayViewValidateMinimal(struct ArrowArrayView* array_view,
       break;
 
     case NANOARROW_TYPE_FIXED_SIZE_LIST:
+      if (array_view->layout.child_size_elements > 0 &&
+          offset_plus_length > INT64_MAX / array_view->layout.child_size_elements) {
+        ArrowErrorSet(error,
+                      "Offset + length of %" PRId64
+                      " is too large for fixed_size_list array with list size %" PRId64,
+                      offset_plus_length, array_view->layout.child_size_elements);
+        return EINVAL;
+      }
       child_min_length = (array_view->offset + array_view->length) *
                          array_view->layout.child_size_elements;
       if (array_view->children[0]->length < child_min_length) {
