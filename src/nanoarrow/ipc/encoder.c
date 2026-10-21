@@ -1226,13 +1226,12 @@ ArrowErrorCode ArrowIpcEncoderEncodeFooter(struct ArrowIpcEncoder* encoder,
   struct ns(Block)* flatcc_RecordBatch_blocks =
       ns(Footer_recordBatches_extend(builder, n_blocks));
   FLATCC_RETURN_IF_NULL(flatcc_RecordBatch_blocks, error);
+  // Zero the vector first so that the padding after metaDataLength is
+  // deterministic, then set each field
+  memset(flatcc_RecordBatch_blocks, 0, (size_t)n_blocks * sizeof(struct ns(Block)));
   for (int64_t i = 0; i < n_blocks; i++) {
-    struct ns(Block) block = {
-        blocks[i].offset,
-        blocks[i].metadata_length,
-        blocks[i].body_length,
-    };
-    flatcc_RecordBatch_blocks[i] = block;
+    ns(Block_assign)(&flatcc_RecordBatch_blocks[i], blocks[i].offset,
+                     blocks[i].metadata_length, blocks[i].body_length);
   }
   FLATCC_RETURN_UNLESS_0(Footer_recordBatches_end(builder), error);
 
@@ -1245,13 +1244,12 @@ ArrowErrorCode ArrowIpcEncoderEncodeFooter(struct ArrowIpcEncoder* encoder,
   struct ns(Block)* flatcc_dict_blocks =
       ns(Footer_dictionaries_extend(builder, n_dict_blocks));
   FLATCC_RETURN_IF_NULL(flatcc_dict_blocks, error);
+  // Zero the vector first so that the padding after metaDataLength is
+  // deterministic, then set each field
+  memset(flatcc_dict_blocks, 0, (size_t)n_dict_blocks * sizeof(struct ns(Block)));
   for (int64_t i = 0; i < n_dict_blocks; i++) {
-    struct ns(Block) block = {
-        dict_blocks[i].offset,
-        dict_blocks[i].metadata_length,
-        dict_blocks[i].body_length,
-    };
-    flatcc_dict_blocks[i] = block;
+    ns(Block_assign)(&flatcc_dict_blocks[i], dict_blocks[i].offset,
+                     dict_blocks[i].metadata_length, dict_blocks[i].body_length);
   }
   FLATCC_RETURN_UNLESS_0(Footer_dictionaries_end(builder), error);
 
