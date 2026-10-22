@@ -247,7 +247,7 @@ static inline void ArrowBufferAppendUnsafe(struct ArrowBuffer* buffer, const voi
                                            int64_t size_bytes) {
   if (size_bytes > 0) {
     NANOARROW_DCHECK(buffer->data != NULL);
-    memcpy(buffer->data + buffer->size_bytes, data, (size_t)size_bytes);
+    memcpy(buffer->data + buffer->size_bytes, data, _ArrowInt64ToSizeT(size_bytes));
     buffer->size_bytes += size_bytes;
   }
 }
@@ -329,7 +329,7 @@ static inline ArrowErrorCode ArrowBufferAppendFill(struct ArrowBuffer* buffer,
   NANOARROW_RETURN_NOT_OK(ArrowBufferReserve(buffer, size_bytes));
 
   NANOARROW_DCHECK(buffer->data != NULL);  // To help clang-tidy
-  memset(buffer->data + buffer->size_bytes, value, (size_t)size_bytes);
+  memset(buffer->data + buffer->size_bytes, value, _ArrowInt64ToSizeT(size_bytes));
   buffer->size_bytes += size_bytes;
 
   return NANOARROW_OK;

@@ -434,18 +434,18 @@ ArrowErrorCode ArrowSchemaSetTypeUnion(struct ArrowSchema* schema, enum ArrowTyp
   // Max valid size would be +ud:0,1,...126 = 401 characters + null terminator
   char format_out[512];
   int64_t format_out_size = 512;
-  memset(format_out, 0, (size_t)format_out_size);
+  memset(format_out, 0, _ArrowInt64ToSizeT(format_out_size));
   int n_chars;
   char* format_cursor = format_out;
 
   switch (type) {
     case NANOARROW_TYPE_SPARSE_UNION:
-      n_chars = snprintf(format_cursor, (size_t)format_out_size, "+us:");
+      n_chars = snprintf(format_cursor, _ArrowInt64ToSizeT(format_out_size), "+us:");
       format_cursor += n_chars;
       format_out_size -= n_chars;
       break;
     case NANOARROW_TYPE_DENSE_UNION:
-      n_chars = snprintf(format_cursor, (size_t)format_out_size, "+ud:");
+      n_chars = snprintf(format_cursor, _ArrowInt64ToSizeT(format_out_size), "+ud:");
       format_cursor += n_chars;
       format_out_size -= n_chars;
       break;
@@ -460,12 +460,13 @@ ArrowErrorCode ArrowSchemaSetTypeUnion(struct ArrowSchema* schema, enum ArrowTyp
   }
 
   if (n_children > 0) {
-    n_chars = snprintf(format_cursor, (size_t)format_out_size, "0");
+    n_chars = snprintf(format_cursor, _ArrowInt64ToSizeT(format_out_size), "0");
     format_cursor += n_chars;
     format_out_size -= n_chars;
 
     for (int64_t i = 1; i < n_children; i++) {
-      n_chars = snprintf(format_cursor, (size_t)format_out_size, ",%" PRId64, i);
+      n_chars =
+          snprintf(format_cursor, _ArrowInt64ToSizeT(format_out_size), ",%" PRId64, i);
       format_cursor += n_chars;
       format_out_size -= n_chars;
     }
@@ -533,7 +534,7 @@ ArrowErrorCode ArrowSchemaSetMetadata(struct ArrowSchema* schema, const char* me
   }
 
   if (metadata != NULL) {
-    size_t metadata_size = (size_t)ArrowMetadataSizeOf(metadata);
+    size_t metadata_size = _ArrowInt64ToSizeT(ArrowMetadataSizeOf(metadata));
     schema->metadata = (const char*)ArrowMalloc(metadata_size);
     if (schema->metadata == NULL) {
       return ENOMEM;
@@ -563,7 +564,8 @@ ArrowErrorCode ArrowSchemaAllocateChildren(struct ArrowSchema* schema,
 
     schema->n_children = n_children;
 
-    memset(schema->children, 0, (size_t)n_children * sizeof(struct ArrowSchema*));
+    memset(schema->children, 0,
+           _ArrowInt64ToSizeT(n_children) * sizeof(struct ArrowSchema*));
 
     for (int64_t i = 0; i < n_children; i++) {
       schema->children[i] = (struct ArrowSchema*)ArrowMalloc(sizeof(struct ArrowSchema));
@@ -1616,9 +1618,9 @@ static ArrowErrorCode ArrowMetadataGetValueInternal(const char* metadata,
 
   while (ArrowMetadataReaderRead(&reader, &existing_key, &existing_value) ==
          NANOARROW_OK) {
-    int key_equal =
-        key->size_bytes == existing_key.size_bytes &&
-        strncmp(key->data, existing_key.data, (size_t)existing_key.size_bytes) == 0;
+    int key_equal = key->size_bytes == existing_key.size_bytes &&
+                    strncmp(key->data, existing_key.data,
+                            _ArrowInt64ToSizeT(existing_key.size_bytes)) == 0;
     if (key_equal) {
       value_out->data = existing_value.data;
       value_out->size_bytes = existing_value.size_bytes;
@@ -1722,7 +1724,7 @@ static ArrowErrorCode ArrowMetadataBuilderSetInternal(struct ArrowBuffer* buffer
 
     if (key->size_bytes == existing_key.size_bytes &&
         strncmp((const char*)key->data, (const char*)existing_key.data,
-                (size_t)existing_key.size_bytes) == 0) {
+                _ArrowInt64ToSizeT(existing_key.size_bytes)) == 0) {
       result = ArrowMetadataBuilderAppendInternal(&new_buffer, key, value);
       value = NULL;
     } else {

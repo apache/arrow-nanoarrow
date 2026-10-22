@@ -327,6 +327,22 @@ static inline void ArrowErrorSetString(struct ArrowError* error, const char* src
 #define NANOARROW_DCHECK(EXPR)
 #endif
 
+// Returns nonzero if x is a valid (non-negative) size_t value on this platform
+static inline int _ArrowInt64FitsInSizeT(int64_t x) {
+#if SIZE_MAX < INT64_MAX
+  return x >= 0 && x <= (int64_t)SIZE_MAX;
+#else
+  return x >= 0;
+#endif
+}
+
+// Convert a size or offset known to fit in size_t (e.g., the size of an existing
+// in-memory allocation). Checked in debug builds only.
+static inline size_t _ArrowInt64ToSizeT(int64_t x) {
+  NANOARROW_DCHECK(_ArrowInt64FitsInSizeT(x));
+  return (size_t)x;
+}
+
 static inline void ArrowSchemaMove(struct ArrowSchema* src, struct ArrowSchema* dst) {
   NANOARROW_DCHECK(src != NULL);
   NANOARROW_DCHECK(dst != NULL);

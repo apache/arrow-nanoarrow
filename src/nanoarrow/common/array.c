@@ -854,7 +854,7 @@ ArrowErrorCode ArrowArrayAllocateChildren(struct ArrowArray* array, int64_t n_ch
     return ENOMEM;
   }
 
-  memset(array->children, 0, (size_t)n_children * sizeof(struct ArrowArray*));
+  memset(array->children, 0, _ArrowInt64ToSizeT(n_children) * sizeof(struct ArrowArray*));
 
   for (int64_t i = 0; i < n_children; i++) {
     array->children[i] = (struct ArrowArray*)ArrowMalloc(sizeof(struct ArrowArray));
@@ -2365,7 +2365,7 @@ static void ArrowArrayViewCompareBuffer(const struct ArrowArrayView* actual,
 
   int64_t size_bytes = actual->buffer_views[i].size_bytes;
   if (size_bytes > 0) {
-    size_t buffer_size = (size_t)size_bytes;
+    size_t buffer_size = _ArrowInt64ToSizeT(size_bytes);
     SET_NOT_EQUAL_AND_RETURN_IF(
         memcmp(actual->buffer_views[i].data.data, expected->buffer_views[i].data.data,
                buffer_size) != 0,

@@ -67,7 +67,7 @@ static ArrowErrorCode ArrowIpcInputStreamBufferRead(struct ArrowIpcInputStream* 
 
   if (bytes_to_read > 0) {
     memcpy(buf, private_data->input.data + private_data->cursor_bytes,
-           (size_t)bytes_to_read);
+           _ArrowInt64ToSizeT(bytes_to_read));
   }
 
   *size_read_out = bytes_to_read;
@@ -135,7 +135,7 @@ static ArrowErrorCode ArrowIpcInputStreamFileRead(struct ArrowIpcInputStream* st
 
   // Do the read
   int64_t bytes_read =
-      (int64_t)fread(buf, 1, (size_t)buf_size_bytes, private_data->file_ptr);
+      (int64_t)fread(buf, 1, _ArrowInt64ToSizeT(buf_size_bytes), private_data->file_ptr);
   *size_read_out = bytes_read;
 
   if (bytes_read != buf_size_bytes) {
@@ -292,6 +292,12 @@ static int ArrowIpcArrayStreamReaderNextHeader(
   // https://github.com/apache/arrow-nanoarrow/issues/648
   int64_t extra_bytes_already_read = 0;
   if (prefix_size_bytes == 4) {
+    if (!_ArrowInt64FitsInSizeT(private_data->header.size_bytes)) {
+      ArrowErrorSet(&private_data->error, "Header size %" PRId64 " is out of range",
+                    private_data->header.size_bytes);
+      return EINVAL;
+    }
+
     NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowBufferReserve(&private_data->header, 4),
                                        &private_data->error);
     memmove(private_data->header.data + 4, private_data->header.data,
