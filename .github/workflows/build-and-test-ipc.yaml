@@ -26,6 +26,8 @@ on:
       - main
     paths:
       - 'CMakeLists.txt'
+      - 'cmake/**'
+      - 'ci/scripts/test_cmake_package.py'
       - '.github/workflows/build-and-test-ipc.yaml'
       - 'src/nanoarrow/**'
 
@@ -33,6 +35,20 @@ permissions:
   contents: read
 
 jobs:
+  test-cmake-package:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.x"
+      - name: Test CMake package exports
+        run: python ci/scripts/test_cmake_package.py --build-dir build/package-tests
+
   test-c-ipc:
 
     runs-on: ubuntu-latest

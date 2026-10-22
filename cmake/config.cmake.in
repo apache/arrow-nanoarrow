@@ -15,10 +15,45 @@
 # specific language governing permissions and limitations
 # under the License.
 
-
 @PACKAGE_INIT@
 
 cmake_minimum_required(VERSION @CMAKE_MINIMUM_REQUIRED_VERSION@)
+
+if("@NANOARROW_FLATCC_EXTERNAL@" AND NOT TARGET nanoarrow::flatccrt)
+  find_library(nanoarrow_FLATCCRT_LIBRARY
+               NAMES flatccrt
+               HINTS "${PACKAGE_PREFIX_DIR}/@CMAKE_INSTALL_LIBDIR@"
+                     "@NANOARROW_FLATCC_LIB_DIR@" "@NANOARROW_FLATCC_ROOT_DIR@/lib")
+  find_library(nanoarrow_FLATCCRT_LIBRARY_DEBUG
+               NAMES flatccrt_d flatccrt
+               HINTS "${PACKAGE_PREFIX_DIR}/debug/@CMAKE_INSTALL_LIBDIR@"
+                     "@NANOARROW_FLATCC_ROOT_DIR@/debug/lib" "@NANOARROW_FLATCC_LIB_DIR@"
+                     ${CMAKE_PREFIX_PATH}
+               PATH_SUFFIXES debug/@CMAKE_INSTALL_LIBDIR@
+               NO_DEFAULT_PATH)
+  if(NOT nanoarrow_FLATCCRT_LIBRARY AND NOT nanoarrow_FLATCCRT_LIBRARY_DEBUG)
+    set(${CMAKE_FIND_PACKAGE_NAME}_FOUND FALSE)
+    set(${CMAKE_FIND_PACKAGE_NAME}_NOT_FOUND_MESSAGE
+        "nanoarrow IPC requires the external flatcc runtime library")
+    return()
+  endif()
+
+  add_library(nanoarrow::flatccrt UNKNOWN IMPORTED)
+  if(nanoarrow_FLATCCRT_LIBRARY)
+    set_property(TARGET nanoarrow::flatccrt
+                 APPEND
+                 PROPERTY IMPORTED_CONFIGURATIONS RELEASE)
+    set_property(TARGET nanoarrow::flatccrt PROPERTY IMPORTED_LOCATION_RELEASE
+                                                     "${nanoarrow_FLATCCRT_LIBRARY}")
+  endif()
+  if(nanoarrow_FLATCCRT_LIBRARY_DEBUG)
+    set_property(TARGET nanoarrow::flatccrt
+                 APPEND
+                 PROPERTY IMPORTED_CONFIGURATIONS DEBUG)
+    set_property(TARGET nanoarrow::flatccrt
+                 PROPERTY IMPORTED_LOCATION_DEBUG "${nanoarrow_FLATCCRT_LIBRARY_DEBUG}")
+  endif()
+endif()
 
 include("${CMAKE_CURRENT_LIST_DIR}/nanoarrow-targets.cmake" REQUIRED)
 include("${CMAKE_CURRENT_LIST_DIR}/nanoarrow-config-version.cmake" REQUIRED)

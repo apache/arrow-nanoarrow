@@ -41,3 +41,21 @@ cat ../schema-valid.arrows | ./example_cmake_ipc_app
 cat ../invalid.arrows | ./example_cmake_ipc_app
 # Expected 0xFFFFFFFF at start of message but found 0xFFFFFF00
 ```
+
+## Consuming an installed package
+
+An installed nanoarrow package built with `NANOARROW_IPC=ON` can also be used
+without `FetchContent`:
+
+```cmake
+find_package(nanoarrow CONFIG REQUIRED)
+target_link_libraries(my_app PRIVATE nanoarrow::nanoarrow_ipc_static)
+```
+
+When nanoarrow is built against an external flatcc runtime, package discovery
+resolves that runtime as `nanoarrow::flatccrt`, including separate Debug and
+Release libraries where available. Consumers do not need to create a
+`flatccrt` target. If flatcc is installed in a separate prefix, include that
+prefix in `CMAKE_PREFIX_PATH`. The `nanoarrow_FLATCCRT_LIBRARY` and
+`nanoarrow_FLATCCRT_LIBRARY_DEBUG` cache variables can also select explicit
+runtime library paths.
