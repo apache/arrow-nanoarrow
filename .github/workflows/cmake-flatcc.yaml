@@ -1,0 +1,61 @@
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+
+name: cmake-flatcc
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    paths:
+      - 'CMakeLists.txt'
+      - 'ci/scripts/test_cmake_flatcc.py'
+      - '.github/workflows/cmake-flatcc.yaml'
+      - 'src/nanoarrow/**'
+      - 'thirdparty/flatcc/**'
+
+permissions:
+  contents: read
+
+jobs:
+  external-flatcc:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        cmake: ['latest']
+        include:
+          - os: ubuntu-latest
+            cmake: '3.18.4.post1'
+          - os: ubuntu-latest
+            cmake: '3.23.3'
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.11'
+      - name: Install CMake
+        shell: bash
+        run: |
+          if [ "${{ matrix.cmake }}" = "latest" ]; then
+            python -m pip install --upgrade cmake
+          else
+            python -m pip install "cmake==${{ matrix.cmake }}"
+          fi
+      - name: Test external flatcc discovery and linking
+        run: python ci/scripts/test_cmake_flatcc.py
