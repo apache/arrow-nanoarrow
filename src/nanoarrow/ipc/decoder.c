@@ -2667,10 +2667,13 @@ static ArrowErrorCode ArrowIpcDecoderDecodeArrayInternal(
   return NANOARROW_OK;
 }
 
+// If decompressor is NULL, the decoder's own decompressor is used (initializing the
+// default decompressor if one has not been set).
 static ArrowErrorCode ArrowIpcDecoderDecodeArrayViewInternal(
     struct ArrowIpcDecoder* decoder, struct ArrowIpcBufferFactory factory,
     int64_t field_i, struct ArrowIpcDictionaries* dictionaries,
-    struct ArrowArrayView** out_view, struct ArrowError* error) {
+    struct ArrowIpcDecompressor* decompressor, struct ArrowArrayView** out_view,
+    struct ArrowError* error) {
   struct ArrowIpcDecoderPrivate* private_data =
       (struct ArrowIpcDecoderPrivate*)decoder->private_data;
 
@@ -2700,8 +2703,11 @@ static ArrowErrorCode ArrowIpcDecoderDecodeArrayViewInternal(
   // If we are going to need a decompressor here, ensure the default one is
   // initialized.
   if (setter.src.codec != NANOARROW_IPC_COMPRESSION_TYPE_NONE) {
-    NANOARROW_RETURN_NOT_OK(ArrowIpcDecoderInitDecompressor(private_data));
-    setter.factory.decompressor = &private_data->decompressor;
+    if (decompressor == NULL) {
+      NANOARROW_RETURN_NOT_OK(ArrowIpcDecoderInitDecompressor(private_data));
+      decompressor = &private_data->decompressor;
+    }
+    setter.factory.decompressor = decompressor;
   }
 
   // The flatbuffers FieldNode doesn't count the root struct so we have to loop over the
@@ -2746,7 +2752,7 @@ NANOARROW_DLL ArrowErrorCode ArrowIpcDecoderDecodeArrayViewWithDictionaries(
   }
 
   return ArrowIpcDecoderDecodeArrayViewInternal(
-      decoder, ArrowIpcBufferFactoryFromView(&body), i, dictionaries, out, error);
+      decoder, ArrowIpcBufferFactoryFromView(&body), i, dictionaries, NULL, out, error);
 }
 
 ArrowErrorCode ArrowIpcDecoderDecodeArrayView(struct ArrowIpcDecoder* decoder,
@@ -2771,7 +2777,7 @@ NANOARROW_DLL ArrowErrorCode ArrowIpcDecoderDecodeArrayWithDictionaries(
 
   struct ArrowArrayView* array_view;
   NANOARROW_RETURN_NOT_OK(ArrowIpcDecoderDecodeArrayViewInternal(
-      decoder, ArrowIpcBufferFactoryFromView(&body), i, dictionaries, &array_view,
+      decoder, ArrowIpcBufferFactoryFromView(&body), i, dictionaries, NULL, &array_view,
       error));
 
   NANOARROW_RETURN_NOT_OK(ArrowArrayViewValidate(array_view, validation_level, error));
@@ -2805,7 +2811,7 @@ ArrowErrorCode ArrowIpcDecoderDecodeArrayFromSharedWithDictionaries(
     enum ArrowValidationLevel validation_level, struct ArrowError* error) {
   struct ArrowArrayView* array_view;
   NANOARROW_RETURN_NOT_OK(ArrowIpcDecoderDecodeArrayViewInternal(
-      decoder, ArrowIpcBufferFactoryFromShared(body), i, dictionaries, &array_view,
+      decoder, ArrowIpcBufferFactoryFromShared(body), i, dictionaries, NULL, &array_view,
       error));
 
   NANOARROW_RETURN_NOT_OK(ArrowArrayViewValidate(array_view, validation_level, error));
@@ -2864,17 +2870,25 @@ static ArrowErrorCode ArrowIpcDecoderDecodeDictionaryInternal(
       (struct ArrowIpcDecoderPrivate*)dictionary->decoder.private_data;
   dictionary->decoder.message_type = NANOARROW_IPC_MESSAGE_TYPE_RECORD_BATCH;
   dictionary->decoder.metadata_version = decoder->metadata_version;
-  // Transfer the endianness and compression settings so that buffers are byte-swapped
-  // and decompressed if needed (the nested decoder uses a default decompressor)
+  // Transfer the endianness so that buffers are byte-swapped if needed
   dictionary_decoder_private_data->endianness = private_data->endianness;
   // Validate the nested batch's node and buffer counts before accessing its vectors.
   NANOARROW_RETURN_NOT_OK(
       ArrowIpcDecoderDecodeRecordBatchHeader(&dictionary->decoder, record_batch, error));
   dictionary_decoder_private_data->last_message = record_batch;
 
+  // Decompress the dictionary values with this decoder's decompressor (which may have
+  // been set by the caller with ArrowIpcDecoderSetDecompressor()) rather than with the
+  // nested decoder's default decompressor.
+  struct ArrowIpcDecompressor* decompressor = NULL;
+  if (dictionary->decoder.codec != NANOARROW_IPC_COMPRESSION_TYPE_NONE) {
+    NANOARROW_RETURN_NOT_OK(ArrowIpcDecoderInitDecompressor(private_data));
+    decompressor = &private_data->decompressor;
+  }
+
   struct ArrowArrayView* array_view;
   NANOARROW_RETURN_NOT_OK(ArrowIpcDecoderDecodeArrayViewInternal(
-      &dictionary->decoder, factory, 0, dictionaries, &array_view, error));
+      &dictionary->decoder, factory, 0, dictionaries, decompressor, &array_view, error));
 
   NANOARROW_RETURN_NOT_OK(ArrowArrayViewValidate(array_view, validation_level, error));
 
