@@ -296,6 +296,91 @@ TEST(NanoarrowIpcReader, StreamReaderBasicNoSharedBuffers) {
   ArrowArrayStreamRelease(&stream);
 }
 
+TEST(NanoarrowIpcReader, StreamReaderBufferInputSharedBuffers) {
+  // When the input is a buffer, decoded arrays should reference it in place when
+  // shared buffers are requested (and the input is aligned), and keep it alive
+  // after the stream has been released.
+  struct TestCase {
+    int use_shared_buffers;
+    bool input_is_shared;
+    bool input_is_misaligned;
+    bool expect_values_in_input;
+  };
+
+  alignas(8)
+      uint8_t misaligned_storage[1 + sizeof(kSimpleSchema) + sizeof(kSimpleRecordBatch)];
+
+  for (const auto& test_case :
+       {TestCase{1, false, false, true}, TestCase{1, true, false, true},
+        TestCase{0, false, false, false}, TestCase{0, true, false, false},
+        TestCase{1, false, true, false}}) {
+    SCOPED_TRACE(
+        "use_shared_buffers: " + std::to_string(test_case.use_shared_buffers) +
+        ", input_is_shared: " + std::to_string(test_case.input_is_shared) +
+        ", input_is_misaligned: " + std::to_string(test_case.input_is_misaligned));
+
+    struct ArrowBuffer input_buffer;
+    ArrowBufferInit(&input_buffer);
+    if (test_case.input_is_misaligned) {
+      // Borrow storage that starts one byte past an aligned address
+      uint8_t* data = misaligned_storage + 1;
+      memcpy(data, kSimpleSchema, sizeof(kSimpleSchema));
+      memcpy(data + sizeof(kSimpleSchema), kSimpleRecordBatch,
+             sizeof(kSimpleRecordBatch));
+      ASSERT_EQ(ArrowBufferSetAllocator(
+                    &input_buffer,
+                    ArrowBufferDeallocator(
+                        [](ArrowBufferAllocator*, uint8_t*, int64_t) {}, nullptr)),
+                NANOARROW_OK);
+      input_buffer.data = data;
+      input_buffer.size_bytes = sizeof(kSimpleSchema) + sizeof(kSimpleRecordBatch);
+    } else {
+      ASSERT_EQ(ArrowBufferAppend(&input_buffer, kSimpleSchema, sizeof(kSimpleSchema)),
+                NANOARROW_OK);
+      ASSERT_EQ(ArrowBufferAppend(&input_buffer, kSimpleRecordBatch,
+                                  sizeof(kSimpleRecordBatch)),
+                NANOARROW_OK);
+    }
+
+    if (test_case.input_is_shared) {
+      struct ArrowBuffer shared;
+      ASSERT_EQ(ArrowSharedBufferInit(&shared, &input_buffer), NANOARROW_OK);
+      ArrowBufferMove(&shared, &input_buffer);
+    }
+
+    const uint8_t* input_begin = input_buffer.data;
+    const uint8_t* input_end = input_buffer.data + input_buffer.size_bytes;
+
+    struct ArrowIpcInputStream input;
+    ASSERT_EQ(ArrowIpcInputStreamInitBuffer(&input, &input_buffer), NANOARROW_OK);
+
+    struct ArrowArrayStream stream;
+    struct ArrowIpcArrayStreamReaderOptions options;
+    options.field_index = -1;
+    options.use_shared_buffers = test_case.use_shared_buffers;
+    ASSERT_EQ(ArrowIpcArrayStreamReaderInit(&stream, &input, &options), NANOARROW_OK);
+
+    struct ArrowArray array;
+    ASSERT_EQ(ArrowArrayStreamGetNext(&stream, &array, nullptr), NANOARROW_OK);
+    ArrowArrayStreamRelease(&stream);
+
+    ASSERT_EQ(array.n_children, 1);
+    ASSERT_EQ(array.children[0]->length, 3);
+    auto values = reinterpret_cast<const uint8_t*>(array.children[0]->buffers[1]);
+    bool values_in_input = values >= input_begin && values < input_end;
+    EXPECT_EQ(values_in_input, test_case.expect_values_in_input);
+    EXPECT_EQ(reinterpret_cast<uintptr_t>(values) % 8, 0);
+
+    int32_t int_values[3];
+    memcpy(int_values, values, sizeof(int_values));
+    EXPECT_EQ(int_values[0], 1);
+    EXPECT_EQ(int_values[1], 2);
+    EXPECT_EQ(int_values[2], 3);
+
+    ArrowArrayRelease(&array);
+  }
+}
+
 TEST(NanoarrowIpcReader, StreamReaderBasicWithEndOfStream) {
   struct ArrowBuffer input_buffer;
   ArrowBufferInit(&input_buffer);

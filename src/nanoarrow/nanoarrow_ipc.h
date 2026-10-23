@@ -914,7 +914,10 @@ NANOARROW_DLL void ArrowIpcInputStreamMove(struct ArrowIpcInputStream* src,
 
 /// \brief Create an input stream from an ArrowBuffer
 ///
-/// The stream takes ownership of the buffer and reads bytes from it.
+/// The stream takes ownership of the buffer and reads bytes from it. When this
+/// stream is read by an ArrowIpcArrayStreamReader that uses shared buffers, the
+/// decoded arrays reference the input buffer directly instead of a copy of each
+/// message body, and keep the input buffer alive until they have been released.
 NANOARROW_DLL ArrowErrorCode ArrowIpcInputStreamInitBuffer(
     struct ArrowIpcInputStream* stream, struct ArrowBuffer* input);
 
