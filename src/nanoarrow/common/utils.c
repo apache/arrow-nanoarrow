@@ -237,9 +237,22 @@ void ArrowLayoutInit(struct ArrowLayout* layout, enum ArrowType storage_type) {
   }
 }
 
-void* ArrowMalloc(int64_t size) { return malloc(size); }
+void* ArrowMalloc(int64_t size) {
+  if (!_ArrowInt64FitsInSizeT(size)) {
+    return NULL;
+  }
 
-void* ArrowRealloc(void* ptr, int64_t size) { return realloc(ptr, size); }
+  return malloc((size_t)size);
+}
+
+void* ArrowRealloc(void* ptr, int64_t size) {
+  if (!_ArrowInt64FitsInSizeT(size)) {
+    free(ptr);
+    return NULL;
+  }
+
+  return realloc(ptr, (size_t)size);
+}
 
 void ArrowFree(void* ptr) { free(ptr); }
 
@@ -542,7 +555,7 @@ static void ShiftAndAdd(struct ArrowStringView value, uint32_t* out, int64_t out
 
     const uint64_t multiple = kUInt32PowersOfTen[group_size];
 
-    memcpy(chunk_string, value.data + posn, group_size);
+    memcpy(chunk_string, value.data + posn, _ArrowInt64ToSizeT(group_size));
     chunk_string[group_size] = '\0';
     uint32_t chunk = (uint32_t)strtoll(chunk_string, NULL, 10);
 
@@ -627,8 +640,9 @@ ArrowErrorCode ArrowDecimalAppendDigitsToBuffer(const struct ArrowDecimal* decim
     int32_t value;
     memcpy(&value, decimal->words, sizeof(int32_t));
     NANOARROW_RETURN_NOT_OK(ArrowBufferReserve(buffer, 16));
-    int n_chars = snprintf((char*)buffer->data + buffer->size_bytes,
-                           (buffer->capacity_bytes - buffer->size_bytes), "%d", value);
+    int n_chars = snprintf(
+        (char*)buffer->data + buffer->size_bytes,
+        _ArrowInt64ToSizeT(buffer->capacity_bytes - buffer->size_bytes), "%d", value);
     if (n_chars <= 0) {
       return EINVAL;
     }
@@ -783,7 +797,8 @@ ArrowErrorCode ArrowDecimalAppendStringToBuffer(const struct ArrowDecimal* decim
         ArrowBufferResize(buffer, buffer->size_bytes + num_zeros_after_decimal + 2, 0));
 
     uint8_t* digits_start = buffer->data + is_negative;
-    memmove(digits_start + num_zeros_after_decimal + 2, digits_start, num_digits);
+    memmove(digits_start + num_zeros_after_decimal + 2, digits_start,
+            _ArrowInt64ToSizeT(num_digits));
     *digits_start++ = '0';
     *digits_start++ = '.';
     for (int i = 0; i < num_zeros_after_decimal; i++) {
