@@ -1203,6 +1203,22 @@ static int ArrowIpcDecoderSetTypeUnion(struct ArrowSchema* schema,
   return ArrowIpcDecoderSetTypeSimpleNested(schema, union_types_str, error);
 }
 
+static int ArrowIpcDecoderSetTypeRunEndEncoded(struct ArrowSchema* schema,
+                                               int64_t n_children,
+                                               struct ArrowError* error) {
+  // The RunEndEncoded type table has no parameters: the run ends and values
+  // types are carried by its two children (run_ends, then values)
+  if (n_children != 2) {
+    ArrowErrorSet(error,
+                  "Expected RunEndEncoded field to have exactly two children but found "
+                  "%" PRId64,
+                  n_children);
+    return EINVAL;
+  }
+
+  return ArrowIpcDecoderSetTypeSimpleNested(schema, "+r", error);
+}
+
 static int ArrowIpcDecoderSetType(struct ArrowSchema* schema, ns(Field_table_t) field,
                                   int64_t n_children, struct ArrowError* error) {
   ns(Type_union_type_t) type_type = ns(Field_type_type(field));
@@ -1266,8 +1282,7 @@ static int ArrowIpcDecoderSetType(struct ArrowSchema* schema, ns(Field_table_t) 
     case ns(Type_Union):
       return ArrowIpcDecoderSetTypeUnion(schema, type, n_children, error);
     case ns(Type_RunEndEncoded):
-      ArrowErrorSet(error, "RunEndEncoded not yet supported in IPC reader");
-      return ENOTSUP;
+      return ArrowIpcDecoderSetTypeRunEndEncoded(schema, n_children, error);
     default:
       ArrowErrorSet(error, "Unrecognized Field type with value %d", type_type);
       return EINVAL;
