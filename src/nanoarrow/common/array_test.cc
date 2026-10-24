@@ -20,6 +20,7 @@
 #include <cmath>
 #include <cstdint>
 #include <cstring>
+#include <memory>
 #include <thread>
 
 #if defined(NANOARROW_BUILD_TESTS_WITH_ARROW)
@@ -2837,6 +2838,38 @@ TEST(ArrayTest, ArrayViewTestMove) {
   EXPECT_EQ(array_view2.storage_type, NANOARROW_TYPE_STRING);
 
   ArrowArrayViewReset(&array_view2);
+}
+
+TEST(ArrayTest, ArrayViewTestShortOffsetsBuffer) {
+  // A zero-length array passes minimal validation with an offsets buffer that is
+  // too short to hold one offset; default validation must not read an offset from it
+  struct ArrowError error;
+  for (enum ArrowType type : {NANOARROW_TYPE_STRING, NANOARROW_TYPE_LARGE_STRING,
+                              NANOARROW_TYPE_LIST, NANOARROW_TYPE_LARGE_LIST}) {
+    nanoarrow::UniqueSchema schema;
+    ASSERT_EQ(ArrowSchemaInitFromType(schema.get(), type), NANOARROW_OK);
+    if (type == NANOARROW_TYPE_LIST || type == NANOARROW_TYPE_LARGE_LIST) {
+      ASSERT_EQ(ArrowSchemaSetType(schema->children[0], NANOARROW_TYPE_INT32),
+                NANOARROW_OK);
+    }
+
+    nanoarrow::UniqueArrayView array_view;
+    ASSERT_EQ(ArrowArrayViewInitFromSchema(array_view.get(), schema.get(), &error),
+              NANOARROW_OK);
+    ArrowArrayViewSetLength(array_view.get(), 0);
+
+    // One byte short of a single offset, in a heap buffer of exactly that size
+    int64_t offset_bytes =
+        ArrowArrayViewGetBufferElementSizeBits(array_view.get(), 1) / 8;
+    std::unique_ptr<uint8_t[]> offsets(new uint8_t[offset_bytes - 1]());
+    array_view->buffer_views[1].data.as_uint8 = offsets.get();
+    array_view->buffer_views[1].size_bytes = offset_bytes - 1;
+
+    EXPECT_EQ(ArrowArrayViewValidate(array_view.get(), NANOARROW_VALIDATION_LEVEL_DEFAULT,
+                                     &error),
+              NANOARROW_OK)
+        << ArrowTypeString(type) << ": " << error.message;
+  }
 }
 
 TEST(ArrayTest, ArrayViewTestString) {
