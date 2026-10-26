@@ -2842,6 +2842,44 @@ TEST(ArrayTest, ArrayViewTestMove) {
   ArrowArrayViewReset(&array_view2);
 }
 
+TEST(ArrayTest, ArrayViewTestBufferSizeOverflow) {
+  struct ArrowError error;
+
+  // 4 * (2^62 + 1) wraps around to 4, so without a check a 16-byte data buffer
+  // would pass as large enough for 2^62 + 1 int32 values
+  struct ArrowArrayView array_view;
+  ArrowArrayViewInitFromType(&array_view, NANOARROW_TYPE_INT32);
+  uint8_t data[16] = {0};
+  array_view.length = (int64_t{1} << 62) + 1;
+  array_view.buffer_views[1].data.as_uint8 = data;
+  array_view.buffer_views[1].size_bytes = sizeof(data);
+  EXPECT_EQ(
+      ArrowArrayViewValidate(&array_view, NANOARROW_VALIDATION_LEVEL_MINIMAL, &error),
+      EINVAL);
+  EXPECT_STREQ(error.message,
+               "Offset + length of 4611686018427387905 is too large for int32 array "
+               "buffer 1");
+  ArrowArrayViewReset(&array_view);
+
+  // The same for a fixed-size list's minimum child length
+  nanoarrow::UniqueSchema schema;
+  ArrowSchemaInit(schema.get());
+  ASSERT_EQ(ArrowSchemaSetTypeFixedSize(schema.get(), NANOARROW_TYPE_FIXED_SIZE_LIST, 4),
+            NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaSetType(schema->children[0], NANOARROW_TYPE_NA), NANOARROW_OK);
+  nanoarrow::UniqueArrayView list_view;
+  ASSERT_EQ(ArrowArrayViewInitFromSchema(list_view.get(), schema.get(), &error),
+            NANOARROW_OK);
+  list_view->length = (int64_t{1} << 62) + 1;
+  list_view->children[0]->length = 4;
+  EXPECT_EQ(
+      ArrowArrayViewValidate(list_view.get(), NANOARROW_VALIDATION_LEVEL_MINIMAL, &error),
+      EINVAL);
+  EXPECT_STREQ(error.message,
+               "Offset + length of 4611686018427387905 is too large for fixed_size_list "
+               "array with list size 4");
+}
+
 TEST(ArrayTest, ArrayViewTestString) {
   struct ArrowArrayView array_view;
   struct ArrowError error;
