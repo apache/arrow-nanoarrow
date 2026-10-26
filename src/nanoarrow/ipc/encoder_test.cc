@@ -108,6 +108,55 @@ TEST(NanoarrowIpcTest, NanoarrowIpcFooterEncoding) {
   EXPECT_GT(footer_buffer->size_bytes, raw_schema_buffer->size_bytes);
 }
 
+// Fill a stretch of the stack so that uninitialized stack bytes used by a
+// subsequent call are not zero by chance
+#if defined(_MSC_VER)
+__declspec(noinline)
+#else
+__attribute__((noinline))
+#endif
+    static void FillStack(uint8_t value) {
+  volatile uint8_t bytes[16384];
+  for (size_t i = 0; i < sizeof(bytes); i++) {
+    bytes[i] = value;
+  }
+}
+
+static std::vector<uint8_t> EncodeFooterWithBlocks(uint8_t stack_fill) {
+  nanoarrow::ipc::UniqueEncoder encoder;
+  EXPECT_EQ(ArrowIpcEncoderInit(encoder.get()), NANOARROW_OK);
+
+  nanoarrow::ipc::UniqueFooter footer;
+  EXPECT_EQ(ArrowSchemaInitFromType(&footer->schema, NANOARROW_TYPE_STRUCT),
+            NANOARROW_OK);
+  struct ArrowIpcFileBlock block = {8, 120, 256};
+  EXPECT_EQ(ArrowBufferAppend(&footer->record_batch_blocks, &block, sizeof(block)),
+            NANOARROW_OK);
+  EXPECT_EQ(ArrowBufferAppend(&footer->dictionary_blocks, &block, sizeof(block)),
+            NANOARROW_OK);
+
+  struct ArrowError error;
+  FillStack(stack_fill);
+  EXPECT_EQ(ArrowIpcEncoderEncodeFooter(encoder.get(), footer.get(), &error),
+            NANOARROW_OK)
+      << error.message;
+
+  nanoarrow::UniqueBuffer footer_buffer;
+  EXPECT_EQ(ArrowIpcEncoderFinalizeBuffer(encoder.get(), /*encapsulate=*/false,
+                                          footer_buffer.get()),
+            NANOARROW_OK);
+  return std::vector<uint8_t>(footer_buffer->data,
+                              footer_buffer->data + footer_buffer->size_bytes);
+}
+
+TEST(NanoarrowIpcTest, NanoarrowIpcFooterEncodingIsDeterministic) {
+  // A Block has four bytes of padding after metaDataLength, which must be
+  // written as zeros rather than whatever was on the stack
+  std::vector<uint8_t> zeros = EncodeFooterWithBlocks(0x00);
+  std::vector<uint8_t> ones = EncodeFooterWithBlocks(0xFF);
+  EXPECT_EQ(zeros, ones);
+}
+
 TEST(NanoarrowIpcTest, NanoarrowIpcEncoderRejectsNestedDictionary) {
   nanoarrow::UniqueSchema schema;
   ASSERT_EQ(ArrowSchemaInitFromType(schema.get(), NANOARROW_TYPE_STRUCT), NANOARROW_OK);
