@@ -1321,7 +1321,10 @@ TEST(ArrayTest, ArrayTestAppendToBinaryArrayErrors) {
   struct ArrowBufferView item;
   item.data.as_char = "";
   item.size_bytes = static_cast<int64_t>(INT_MAX) + 1;
-  EXPECT_EQ(ArrowArrayAppendBytes(&array, item), EOVERFLOW);
+  // Overflow must be rejected before accessing item.data. Prevent inlining so
+  // GCC does not diagnose an oversized memcpy in the other storage-type paths.
+  auto* volatile append_bytes = &ArrowArrayAppendBytes;
+  EXPECT_EQ(append_bytes(&array, item), EOVERFLOW);
 
   ArrowArrayRelease(&array);
 }
@@ -1334,7 +1337,10 @@ TEST(ArrayTest, ArrayTestAppendToBinaryViewArrayErrors) {
   struct ArrowBufferView item;
   item.data.as_char = "";
   item.size_bytes = static_cast<int64_t>(INT32_MAX) + 1;
-  EXPECT_EQ(ArrowArrayAppendBytes(&array, item), EOVERFLOW);
+  // Overflow must be rejected before accessing item.data. Prevent inlining so
+  // GCC does not diagnose an oversized memcpy in the other storage-type paths.
+  auto* volatile append_bytes = &ArrowArrayAppendBytes;
+  EXPECT_EQ(append_bytes(&array, item), EOVERFLOW);
 
   ArrowArrayRelease(&array);
 }
