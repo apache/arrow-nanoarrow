@@ -227,8 +227,8 @@ void ArrowIpcEncoderSetDictionaryReplacement(struct ArrowIpcEncoder* encoder,
 }
 
 static ArrowErrorCode ArrowIpcEncoderWriteContinuationAndSize(struct ArrowBuffer* out,
-                                                              size_t size) {
-  _NANOARROW_CHECK_UPPER_LIMIT(size, INT32_MAX);
+                                                              int64_t size) {
+  _NANOARROW_CHECK_RANGE(size, 0, INT32_MAX);
   NANOARROW_RETURN_NOT_OK(ArrowBufferAppendInt32(out, -1));
 
   if (ArrowIpcSystemEndianness() == NANOARROW_IPC_ENDIANNESS_BIG) {
@@ -250,7 +250,7 @@ ArrowErrorCode ArrowIpcEncoderFinalizeBuffer(struct ArrowIpcEncoder* encoder,
     int64_t padded_size = _ArrowRoundUpToMultipleOf8(size);
     NANOARROW_RETURN_NOT_OK(
         ArrowBufferReserve(out, sizeof(int32_t) + sizeof(int32_t) + padded_size));
-    NANOARROW_ASSERT_OK(ArrowIpcEncoderWriteContinuationAndSize(out, padded_size));
+    NANOARROW_RETURN_NOT_OK(ArrowIpcEncoderWriteContinuationAndSize(out, padded_size));
   } else {
     NANOARROW_RETURN_NOT_OK(ArrowBufferReserve(out, size));
   }
@@ -503,9 +503,12 @@ static ArrowErrorCode ArrowIpcEncodeMetadata(flatcc_builder_t* builder,
     NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowMetadataReaderRead(&metadata, &key, &value),
                                        error);
     FLATCC_RETURN_UNLESS_0_NO_NS(push_start(builder), error);
-    FLATCC_RETURN_UNLESS_0(KeyValue_key_create(builder, key.data, key.size_bytes), error);
-    FLATCC_RETURN_UNLESS_0(KeyValue_value_create(builder, value.data, value.size_bytes),
-                           error);
+    FLATCC_RETURN_UNLESS_0(
+        KeyValue_key_create(builder, key.data, _ArrowInt64ToSizeT(key.size_bytes)),
+        error);
+    FLATCC_RETURN_UNLESS_0(
+        KeyValue_value_create(builder, value.data, _ArrowInt64ToSizeT(value.size_bytes)),
+        error);
     FLATCC_RETURN_IF_NULL(push_end(builder), error);
   }
   return NANOARROW_OK;
@@ -821,8 +824,9 @@ static ArrowErrorCode ArrowIpcEncoderReserveCompressedBuffers(
   }
 
   if (private->n_compressed_buffers > 0) {
-    memcpy(buffers, private->compressed_buffers,
-           private->n_compressed_buffers * sizeof(struct ArrowBuffer));
+    memcpy(
+        buffers, private->compressed_buffers,
+        _ArrowInt64ToSizeT(private->n_compressed_buffers) * sizeof(struct ArrowBuffer));
     ArrowFree(private->compressed_buffers);
   }
   for (int64_t i = private->n_compressed_buffers; i < n; i++) {
@@ -1074,14 +1078,16 @@ static ArrowErrorCode ArrowIpcEncoderEncodeRecordBatch(
       ArrowIpcEncoderEncodeRecordBatchImpl(private, array_view, error));
   NANOARROW_RETURN_NOT_OK(ArrowIpcEncoderEncodeBuffers(encoder, buffer_encoder, error));
 
-  FLATCC_RETURN_UNLESS_0(RecordBatch_nodes_create(  //
-                             builder, (struct ns(FieldNode)*)private->nodes.data,
-                             private->nodes.size_bytes / sizeof(struct ns(FieldNode))),
-                         error);
-  FLATCC_RETURN_UNLESS_0(RecordBatch_buffers_create(  //
-                             builder, (struct ns(Buffer)*)private->buffers.data,
-                             private->buffers.size_bytes / sizeof(struct ns(Buffer))),
-                         error);
+  FLATCC_RETURN_UNLESS_0(
+      RecordBatch_nodes_create(  //
+          builder, (struct ns(FieldNode)*)private->nodes.data,
+          _ArrowInt64ToSizeT(private->nodes.size_bytes) / sizeof(struct ns(FieldNode))),
+      error);
+  FLATCC_RETURN_UNLESS_0(
+      RecordBatch_buffers_create(  //
+          builder, (struct ns(Buffer)*)private->buffers.data,
+          _ArrowInt64ToSizeT(private->buffers.size_bytes) / sizeof(struct ns(Buffer))),
+      error);
 
   FLATCC_RETURN_UNLESS_0(Message_header_RecordBatch_end(builder), error);
 
@@ -1145,12 +1151,14 @@ static ArrowErrorCode ArrowIpcEncoderEncodeDictionaryBatch(
   NANOARROW_RETURN_NOT_OK(ArrowIpcEncoderEncodeBuffers(encoder, buffer_encoder, error));
 
   FLATCC_RETURN_UNLESS_0(
-      RecordBatch_nodes_create(builder, (struct ns(FieldNode)*)private->nodes.data,
-                               private->nodes.size_bytes / sizeof(struct ns(FieldNode))),
+      RecordBatch_nodes_create(
+          builder, (struct ns(FieldNode)*)private->nodes.data,
+          _ArrowInt64ToSizeT(private->nodes.size_bytes) / sizeof(struct ns(FieldNode))),
       error);
   FLATCC_RETURN_UNLESS_0(
-      RecordBatch_buffers_create(builder, (struct ns(Buffer)*)private->buffers.data,
-                                 private->buffers.size_bytes / sizeof(struct ns(Buffer))),
+      RecordBatch_buffers_create(
+          builder, (struct ns(Buffer)*)private->buffers.data,
+          _ArrowInt64ToSizeT(private->buffers.size_bytes) / sizeof(struct ns(Buffer))),
       error);
   FLATCC_RETURN_UNLESS_0(DictionaryBatch_data_end(builder), error);
   FLATCC_RETURN_UNLESS_0(DictionaryBatch_isDelta_add(builder, is_delta ? 1 : 0), error);
@@ -1224,7 +1232,7 @@ ArrowErrorCode ArrowIpcEncoderEncodeFooter(struct ArrowIpcEncoder* encoder,
 
   FLATCC_RETURN_UNLESS_0(Footer_recordBatches_start(builder), error);
   struct ns(Block)* flatcc_RecordBatch_blocks =
-      ns(Footer_recordBatches_extend(builder, n_blocks));
+      ns(Footer_recordBatches_extend(builder, _ArrowInt64ToSizeT(n_blocks)));
   FLATCC_RETURN_IF_NULL(flatcc_RecordBatch_blocks, error);
   for (int64_t i = 0; i < n_blocks; i++) {
     struct ns(Block) block = {
@@ -1243,7 +1251,7 @@ ArrowErrorCode ArrowIpcEncoderEncodeFooter(struct ArrowIpcEncoder* encoder,
 
   FLATCC_RETURN_UNLESS_0(Footer_dictionaries_start(builder), error);
   struct ns(Block)* flatcc_dict_blocks =
-      ns(Footer_dictionaries_extend(builder, n_dict_blocks));
+      ns(Footer_dictionaries_extend(builder, _ArrowInt64ToSizeT(n_dict_blocks)));
   FLATCC_RETURN_IF_NULL(flatcc_dict_blocks, error);
   for (int64_t i = 0; i < n_dict_blocks; i++) {
     struct ns(Block) block = {
