@@ -2123,7 +2123,9 @@ static int ArrowAssertInt8In(struct ArrowBufferView view, const int8_t* values,
   return NANOARROW_OK;
 }
 
-// Returns the length of the longest prefix of data that is valid UTF-8 (RFC 3629), so
+// The byte ranges below implement the grammar in RFC 3629, Section 4:
+// https://www.rfc-editor.org/rfc/rfc3629.html#section-4
+// Returns the length of the longest prefix of data that is valid UTF-8, so
 // data is valid UTF-8 if and only if the result is size_bytes. Overlong encodings,
 // surrogates (U+D800 to U+DFFF), code points above U+10FFFF, stray continuation bytes
 // and truncated sequences are all invalid.
@@ -2221,8 +2223,9 @@ static int ArrowArrayViewValidateUtf8Element(const struct ArrowArrayView* array_
 }
 
 // Check that every non-null value of a string or large string array is valid UTF-8.
-// Like Arrow C++, values are checked one at a time (a code point split across two
-// values is invalid) and the bytes of null values are not checked.
+// A code point split across two values is invalid. The fast path also checks bytes
+// in null slots, but invalid UTF-8 in a null slot does not fail validation: the
+// fallback checks non-null values individually.
 static int ArrowArrayViewValidateUtf8(const struct ArrowArrayView* array_view,
                                       struct ArrowError* error) {
   // The offsets buffer of a zero-length array may be empty
