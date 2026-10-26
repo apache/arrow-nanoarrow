@@ -278,6 +278,10 @@ class NANOARROW_DLL TestingJSONComparison {
   ArrowErrorCode CompareMetadata(const char* actual, const char* expected,
                                  ArrowError* error, const std::string& path = "");
 
+  ArrowErrorCode CompareChildrenMetadata(const ArrowSchema* actual,
+                                         const ArrowSchema* expected, ArrowError* error,
+                                         const std::string& path = "");
+
   ArrowErrorCode MetadataEqualKeyValue(const char* actual, const char* expected,
                                        bool* out, ArrowError* error);
 
