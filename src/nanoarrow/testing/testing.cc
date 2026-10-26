@@ -2778,6 +2778,56 @@ ArrowErrorCode TestingJSONComparison::CompareFieldBase(ArrowSchema* actual,
 
   NANOARROW_RETURN_NOT_OK(CompareMetadata(actual->metadata, expected->metadata, error,
                                           path + std::string(".metadata")));
+  NANOARROW_RETURN_NOT_OK(CompareChildrenMetadata(actual, expected, error, path));
+  return NANOARROW_OK;
+}
+
+namespace {
+
+// Empty metadata is equivalent to no metadata (e.g., both are omitted when written to
+// IPC or to the integration JSON)
+ArrowErrorCode MetadataOrNullIfEmpty(const char* metadata, const char** out) {
+  ArrowMetadataReader reader;
+  NANOARROW_RETURN_NOT_OK(ArrowMetadataReaderInit(&reader, metadata));
+  *out = reader.remaining_keys > 0 ? metadata : nullptr;
+  return NANOARROW_OK;
+}
+
+}  // namespace
+
+ArrowErrorCode TestingJSONComparison::CompareChildrenMetadata(const ArrowSchema* actual,
+                                                              const ArrowSchema* expected,
+                                                              ArrowError* error,
+                                                              const std::string& path) {
+  // The serialized field (which does not include metadata) was already compared by
+  // the caller and records any difference in structure (e.g., the number of children
+  // or the presence of a dictionary), so only the metadata of children that exist in
+  // both fields is compared here.
+  if (actual->n_children == expected->n_children) {
+    for (int64_t i = 0; i < expected->n_children; i++) {
+      std::string child_path = path + ".children[" + std::to_string(i) + "]";
+
+      const char* actual_metadata;
+      const char* expected_metadata;
+      NANOARROW_RETURN_NOT_OK_WITH_ERROR(
+          MetadataOrNullIfEmpty(actual->children[i]->metadata, &actual_metadata), error);
+      NANOARROW_RETURN_NOT_OK_WITH_ERROR(
+          MetadataOrNullIfEmpty(expected->children[i]->metadata, &expected_metadata),
+          error);
+      NANOARROW_RETURN_NOT_OK(CompareMetadata(actual_metadata, expected_metadata, error,
+                                              child_path + ".metadata"));
+
+      NANOARROW_RETURN_NOT_OK(CompareChildrenMetadata(
+          actual->children[i], expected->children[i], error, child_path));
+    }
+  }
+
+  // The children of a dictionary-encoded field are those of the dictionary value type
+  if (actual->dictionary != nullptr && expected->dictionary != nullptr) {
+    NANOARROW_RETURN_NOT_OK(CompareChildrenMetadata(
+        actual->dictionary, expected->dictionary, error, path + ".dictionary"));
+  }
+
   return NANOARROW_OK;
 }
 
