@@ -2467,6 +2467,31 @@ static int ArrowIpcDecoderMakeBuffer(struct ArrowIpcArraySetter* setter, int64_t
   NANOARROW_RETURN_NOT_OK(
       setter->factory.make_buffer(&setter->factory, &setter->src, out_view, out, error));
 
+  // Body alignment does not imply buffer alignment: IPC offsets may be unaligned.
+  // Align each typed buffer before validation or endian swapping can read it.
+  // Decimal and interval values are represented using scalar words of at most 64 bits.
+  int64_t alignment = setter->src.element_size_bits / 8;
+  if (alignment > 8) {
+    alignment = 8;
+  }
+  if (setter->src.data_type == NANOARROW_TYPE_BINARY ||
+      setter->src.data_type == NANOARROW_TYPE_STRING) {
+    alignment = 1;
+  }
+  if (alignment > 1 && out_view->size_bytes > 0 &&
+      ((uintptr_t)out_view->data.data % alignment) != 0) {
+    struct ArrowBuffer aligned;
+    ArrowBufferInit(&aligned);
+    int result = ArrowBufferAppendBufferView(&aligned, *out_view);
+    if (result != NANOARROW_OK) {
+      ArrowBufferReset(&aligned);
+      return result;
+    }
+    ArrowBufferReset(out);
+    ArrowBufferMove(&aligned, out);
+    out_view->data.data = out->data;
+  }
+
   if (setter->src.swap_endian) {
     NANOARROW_RETURN_NOT_OK(
         ArrowIpcDecoderSwapEndian(&setter->src, out_view, out, error));

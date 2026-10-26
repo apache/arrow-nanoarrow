@@ -21,7 +21,7 @@
 
 #include <string>
 
-#include "nanoarrow/nanoarrow_ipc.h"
+#include "nanoarrow/nanoarrow_ipc.hpp"
 
 static uint8_t kSimpleSchema[] = {
     0xff, 0xff, 0xff, 0xff, 0x10, 0x01, 0x00, 0x00, 0x10, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -294,6 +294,93 @@ TEST(NanoarrowIpcReader, StreamReaderBasicNoSharedBuffers) {
   EXPECT_EQ(array.release, nullptr);
 
   ArrowArrayStreamRelease(&stream);
+}
+
+TEST(NanoarrowIpcReader, StreamReaderBufferInputSharedBuffers) {
+  // When the input is a buffer, decoded arrays should reference it in place when
+  // shared buffers are requested (and the input is aligned), and keep it alive
+  // after the stream has been released.
+  struct TestCase {
+    int use_shared_buffers;
+    bool input_is_shared;
+    bool input_is_misaligned;
+    bool expect_values_in_input;
+  };
+
+  alignas(8)
+      uint8_t misaligned_storage[1 + sizeof(kSimpleSchema) + sizeof(kSimpleRecordBatch)];
+
+  for (const auto& test_case :
+       {TestCase{1, false, false, true}, TestCase{1, true, false, true},
+        TestCase{0, false, false, false}, TestCase{0, true, false, false},
+        TestCase{1, false, true, false}}) {
+    SCOPED_TRACE(
+        "use_shared_buffers: " + std::to_string(test_case.use_shared_buffers) +
+        ", input_is_shared: " + std::to_string(test_case.input_is_shared) +
+        ", input_is_misaligned: " + std::to_string(test_case.input_is_misaligned));
+
+    struct ArrowBuffer input_buffer;
+    ArrowBufferInit(&input_buffer);
+    if (test_case.input_is_misaligned) {
+      // Borrow storage that starts one byte past an aligned address
+      uint8_t* data = misaligned_storage + 1;
+      memcpy(data, kSimpleSchema, sizeof(kSimpleSchema));
+      memcpy(data + sizeof(kSimpleSchema), kSimpleRecordBatch,
+             sizeof(kSimpleRecordBatch));
+      ASSERT_EQ(ArrowBufferSetAllocator(
+                    &input_buffer,
+                    ArrowBufferDeallocator(
+                        [](ArrowBufferAllocator*, uint8_t*, int64_t) {}, nullptr)),
+                NANOARROW_OK);
+      input_buffer.data = data;
+      input_buffer.size_bytes = sizeof(kSimpleSchema) + sizeof(kSimpleRecordBatch);
+    } else {
+      ASSERT_EQ(ArrowBufferAppend(&input_buffer, kSimpleSchema, sizeof(kSimpleSchema)),
+                NANOARROW_OK);
+      ASSERT_EQ(ArrowBufferAppend(&input_buffer, kSimpleRecordBatch,
+                                  sizeof(kSimpleRecordBatch)),
+                NANOARROW_OK);
+    }
+
+    if (test_case.input_is_shared) {
+      struct ArrowBuffer shared;
+      ASSERT_EQ(ArrowSharedBufferInit(&shared, &input_buffer), NANOARROW_OK);
+      ArrowBufferMove(&shared, &input_buffer);
+    }
+
+    const uint8_t* input_begin = input_buffer.data;
+    const uint8_t* input_end = input_buffer.data + input_buffer.size_bytes;
+
+    struct ArrowIpcRandomAccessInput input;
+    ASSERT_EQ(ArrowIpcRandomAccessInputInitBuffer(&input, &input_buffer), NANOARROW_OK);
+
+    struct ArrowArrayStream stream;
+    struct ArrowIpcArrayStreamReaderOptions options;
+    options.field_index = -1;
+    options.use_shared_buffers = test_case.use_shared_buffers;
+    options.validation_level = NANOARROW_VALIDATION_LEVEL_FULL;
+    ASSERT_EQ(ArrowIpcArrayStreamReaderInitRandomAccess(&stream, &input, &options),
+              NANOARROW_OK);
+
+    struct ArrowArray array;
+    ASSERT_EQ(ArrowArrayStreamGetNext(&stream, &array, nullptr), NANOARROW_OK);
+    ArrowArrayStreamRelease(&stream);
+
+    ASSERT_EQ(array.n_children, 1);
+    ASSERT_EQ(array.children[0]->length, 3);
+    auto values = reinterpret_cast<const uint8_t*>(array.children[0]->buffers[1]);
+    bool values_in_input = values >= input_begin && values < input_end;
+    EXPECT_EQ(values_in_input, test_case.expect_values_in_input);
+    EXPECT_EQ(reinterpret_cast<uintptr_t>(values) % 8, 0);
+
+    int32_t int_values[3];
+    memcpy(int_values, values, sizeof(int_values));
+    EXPECT_EQ(int_values[0], 1);
+    EXPECT_EQ(int_values[1], 2);
+    EXPECT_EQ(int_values[2], 3);
+
+    ArrowArrayRelease(&array);
+  }
 }
 
 TEST(NanoarrowIpcReader, StreamReaderBasicWithEndOfStream) {
@@ -711,4 +798,344 @@ TEST(NanoarrowIpcReader, StreamReaderRecordBatchWithoutDictionaryBatch) {
   ASSERT_GT(strlen(ArrowArrayStreamGetLastError(&stream)), 0);
 
   ArrowArrayStreamRelease(&stream);
+}
+
+TEST(NanoarrowIpcReader, RandomAccessBufferBoundsAndLifetime) {
+  nanoarrow::UniqueBuffer buffer;
+  ASSERT_EQ(ArrowBufferAppend(buffer.get(), "abcde", 5), NANOARROW_OK);
+  nanoarrow::ipc::UniqueRandomAccessInput input;
+  ASSERT_EQ(ArrowIpcRandomAccessInputInitBuffer(input.get(), buffer.get()), NANOARROW_OK);
+  EXPECT_EQ(buffer->data, nullptr);
+
+  ArrowBufferView peek;
+  ASSERT_EQ(input->peek_at(input.get(), 2, 100, &peek, nullptr), NANOARROW_OK);
+  ASSERT_EQ(peek.size_bytes, 3);
+  EXPECT_EQ(memcmp(peek.data.data, "cde", 3), 0);
+  EXPECT_EQ(input->peek_at(input.get(), -1, 1, &peek, nullptr), EINVAL);
+  EXPECT_EQ(input->peek_at(input.get(), 0, -1, &peek, nullptr), EINVAL);
+  ASSERT_EQ(input->peek_at(input.get(), INT64_MAX, INT64_MAX, &peek, nullptr),
+            NANOARROW_OK);
+  EXPECT_EQ(peek.size_bytes, 0);
+
+  ASSERT_EQ(input->read_at(input.get(), 3, 100, buffer.get(), nullptr), NANOARROW_OK);
+  ASSERT_EQ(buffer->size_bytes, 2);
+  EXPECT_EQ(memcmp(buffer->data, "de", 2), 0);
+  // Absolute offsets allow going backwards, independent of previous reads.
+  ASSERT_EQ(input->read_at(input.get(), 0, 2, buffer.get(), nullptr), NANOARROW_OK);
+  ASSERT_EQ(buffer->size_bytes, 2);
+  EXPECT_EQ(memcmp(buffer->data, "ab", 2), 0);
+  ASSERT_EQ(input->read_at(input.get(), 0, 0, buffer.get(), nullptr), NANOARROW_OK);
+  EXPECT_EQ(buffer->size_bytes, 0);
+  ASSERT_EQ(input->read_at(input.get(), 1, 3, buffer.get(), nullptr), NANOARROW_OK);
+  nanoarrow::ipc::UniqueRandomAccessInput moved(std::move(input));
+  EXPECT_EQ(input->release, nullptr);
+  moved.reset();
+  EXPECT_EQ(memcmp(buffer->data, "bcd", 3), 0);
+}
+
+TEST(NanoarrowIpcReader, RandomAccessFileBoundsAndSeeking) {
+  FILE* file = tmpfile();
+  ASSERT_NE(file, nullptr);
+  ASSERT_EQ(fwrite("abcde", 1, 5, file), 5);
+  nanoarrow::ipc::UniqueRandomAccessInput input;
+  ASSERT_EQ(ArrowIpcRandomAccessInputInitFile(input.get(), nullptr, 0), EINVAL);
+  ASSERT_EQ(ArrowIpcRandomAccessInputInitFile(input.get(), file, 0), NANOARROW_OK);
+  ArrowBufferView peek;
+  EXPECT_EQ(input->peek_at(input.get(), 0, 1, &peek, nullptr), ENOTSUP);
+  nanoarrow::UniqueBuffer out;
+  EXPECT_EQ(input->read_at(input.get(), -1, 1, out.get(), nullptr), EINVAL);
+  EXPECT_EQ(input->read_at(input.get(), 0, -1, out.get(), nullptr), EINVAL);
+  ASSERT_EQ(input->read_at(input.get(), 3, 10, out.get(), nullptr), NANOARROW_OK);
+  ASSERT_EQ(out->size_bytes, 2);
+  EXPECT_EQ(memcmp(out->data, "de", 2), 0);
+  ASSERT_EQ(input->read_at(input.get(), 5, 10, out.get(), nullptr), NANOARROW_OK);
+  EXPECT_EQ(out->size_bytes, 0);
+  ASSERT_EQ(input->read_at(input.get(), 1, 3, out.get(), nullptr), NANOARROW_OK);
+  ASSERT_EQ(out->size_bytes, 3);
+  EXPECT_EQ(memcmp(out->data, "bcd", 3), 0);
+  input.reset();
+  EXPECT_EQ(fseek(file, 0, SEEK_SET), 0);
+  EXPECT_EQ(fclose(file), 0);
+  EXPECT_EQ(memcmp(out->data, "bcd", 3), 0);
+}
+
+// A custom input whose peek result is invalidated by its next read. This also
+// exercises the reader without relying on the built-in callback addresses.
+struct RandomAccessReaderTestInput {
+  nanoarrow::ipc::UniqueRandomAccessInput underlying;
+  nanoarrow::UniqueBuffer scratch;
+  int read_count = 0;
+  int peek_count = 0;
+  bool peek_unsupported = false;
+};
+
+static void InitRandomAccessReaderTestInput(RandomAccessReaderTestInput* state,
+                                            ArrowIpcRandomAccessInput* input) {
+  input->private_data = state;
+  input->peek_at = [](ArrowIpcRandomAccessInput* self, int64_t offset, int64_t size,
+                      ArrowBufferView* out, ArrowError* error) -> ArrowErrorCode {
+    auto* state = static_cast<RandomAccessReaderTestInput*>(self->private_data);
+    state->peek_count++;
+    if (state->peek_unsupported) {
+      return ENOTSUP;
+    }
+    NANOARROW_RETURN_NOT_OK(state->underlying->read_at(
+        state->underlying.get(), offset, size, state->scratch.get(), error));
+    // Make a private copy that the next callback can overwrite.
+    nanoarrow::UniqueBuffer copy;
+    NANOARROW_RETURN_NOT_OK(
+        ArrowBufferAppend(copy.get(), state->scratch->data, state->scratch->size_bytes));
+    state->scratch = std::move(copy);
+    out->data.data = state->scratch->data;
+    out->size_bytes = state->scratch->size_bytes;
+    return NANOARROW_OK;
+  };
+  input->read_at = [](ArrowIpcRandomAccessInput* self, int64_t offset, int64_t size,
+                      ArrowBuffer* out, ArrowError* error) -> ArrowErrorCode {
+    auto* state = static_cast<RandomAccessReaderTestInput*>(self->private_data);
+    state->read_count++;
+    if (state->scratch->size_bytes > 0) {
+      memset(state->scratch->data, 0xff, state->scratch->size_bytes);
+    }
+    return state->underlying->read_at(state->underlying.get(), offset, size, out, error);
+  };
+  input->release = [](ArrowIpcRandomAccessInput* self) {
+    auto* state = static_cast<RandomAccessReaderTestInput*>(self->private_data);
+    state->underlying.reset();
+    state->scratch.reset();
+    self->release = nullptr;
+  };
+}
+
+TEST(NanoarrowIpcReader, RandomAccessReaderCustomAndFileInputs) {
+  for (int backend : {0, 1, 2, 3}) {
+    for (int sharing : {0, 1}) {
+      SCOPED_TRACE("backend=" + std::to_string(backend) +
+                   " sharing=" + std::to_string(sharing));
+      nanoarrow::UniqueBuffer buffer;
+      ASSERT_EQ(ArrowBufferAppend(buffer.get(), kSimpleSchema, sizeof(kSimpleSchema)),
+                NANOARROW_OK);
+      ASSERT_EQ(
+          ArrowBufferAppend(buffer.get(), kSimpleRecordBatch, sizeof(kSimpleRecordBatch)),
+          NANOARROW_OK);
+      ASSERT_EQ(
+          ArrowBufferAppend(buffer.get(), kSimpleRecordBatch, sizeof(kSimpleRecordBatch)),
+          NANOARROW_OK);
+      ASSERT_EQ(ArrowBufferAppend(buffer.get(), kEndOfStream, sizeof(kEndOfStream)),
+                NANOARROW_OK);
+      RandomAccessReaderTestInput state;
+      if (backend == 3) {
+        FILE* file = tmpfile();
+        ASSERT_NE(file, nullptr);
+        ASSERT_EQ(fwrite(buffer->data, 1, buffer->size_bytes, file), buffer->size_bytes);
+        ASSERT_EQ(ArrowIpcRandomAccessInputInitFile(state.underlying.get(), file, 1),
+                  NANOARROW_OK);
+      } else {
+        ASSERT_EQ(
+            ArrowIpcRandomAccessInputInitBuffer(state.underlying.get(), buffer.get()),
+            NANOARROW_OK);
+      }
+      nanoarrow::ipc::UniqueRandomAccessInput input;
+      InitRandomAccessReaderTestInput(&state, input.get());
+      if (backend == 1) input->peek_at = nullptr;
+      if (backend == 2) state.peek_unsupported = true;
+      ArrowIpcArrayStreamReaderOptions options = {-1, sharing,
+                                                  NANOARROW_VALIDATION_LEVEL_FULL};
+      nanoarrow::UniqueArrayStream reader;
+      ASSERT_EQ(
+          ArrowIpcArrayStreamReaderInitRandomAccess(reader.get(), input.get(), &options),
+          NANOARROW_OK);
+      EXPECT_EQ(input->release, nullptr);
+      nanoarrow::UniqueSchema schema;
+      ASSERT_EQ(ArrowArrayStreamGetSchema(reader.get(), schema.get(), nullptr),
+                NANOARROW_OK);
+      nanoarrow::UniqueArray first, second, eos;
+      ASSERT_EQ(ArrowArrayStreamGetNext(reader.get(), first.get(), nullptr),
+                NANOARROW_OK);
+      ASSERT_EQ(ArrowArrayStreamGetNext(reader.get(), second.get(), nullptr),
+                NANOARROW_OK);
+      ASSERT_EQ(ArrowArrayStreamGetNext(reader.get(), eos.get(), nullptr), NANOARROW_OK);
+      EXPECT_EQ(eos->release, nullptr);
+      reader.reset();
+      EXPECT_GT(state.read_count, 0);
+      if (backend != 1) EXPECT_GT(state.peek_count, 0);
+      for (auto* array : {first.get(), second.get()}) {
+        ASSERT_EQ(array->length, 3);
+        const auto* values = static_cast<const int32_t*>(array->children[0]->buffers[1]);
+        EXPECT_EQ(values[0], 1);
+        EXPECT_EQ(values[1], 2);
+        EXPECT_EQ(values[2], 3);
+      }
+    }
+  }
+}
+
+TEST(NanoarrowIpcReader, RandomAccessReaderUnalignedBufferOffset) {
+  // The body is aligned, but its int32 buffer starts at offset one.
+  uint8_t batch[sizeof(kSimpleRecordBatch)];
+  memcpy(batch, kSimpleRecordBatch, sizeof(batch));
+  ASSERT_EQ(batch[104], 0);
+  batch[104] = 1;  // Second Buffer.offset in the flatbuffer header.
+  memmove(batch + 145, batch + 144, 12);
+  nanoarrow::UniqueBuffer buffer;
+  ASSERT_EQ(ArrowBufferAppend(buffer.get(), kSimpleSchema, sizeof(kSimpleSchema)),
+            NANOARROW_OK);
+  ASSERT_EQ(ArrowBufferAppend(buffer.get(), batch, sizeof(batch)), NANOARROW_OK);
+  const uint8_t* original_values = buffer->data + sizeof(kSimpleSchema) + 145;
+  nanoarrow::ipc::UniqueRandomAccessInput input;
+  ASSERT_EQ(ArrowIpcRandomAccessInputInitBuffer(input.get(), buffer.get()), NANOARROW_OK);
+  ArrowIpcArrayStreamReaderOptions options = {-1, 1, NANOARROW_VALIDATION_LEVEL_FULL};
+  nanoarrow::UniqueArrayStream reader;
+  ASSERT_EQ(
+      ArrowIpcArrayStreamReaderInitRandomAccess(reader.get(), input.get(), &options),
+      NANOARROW_OK);
+  nanoarrow::UniqueArray array;
+  ArrowError error;
+  ASSERT_EQ(ArrowArrayStreamGetNext(reader.get(), array.get(), &error), NANOARROW_OK)
+      << error.message;
+  const auto* values = static_cast<const int32_t*>(array->children[0]->buffers[1]);
+  EXPECT_NE(static_cast<const void*>(values), original_values);
+  EXPECT_EQ(reinterpret_cast<uintptr_t>(values) % alignof(int32_t), 0);
+  reader.reset();
+  EXPECT_EQ(values[0], 1);
+  EXPECT_EQ(values[1], 2);
+  EXPECT_EQ(values[2], 3);
+}
+
+TEST(NanoarrowIpcReader, RandomAccessReaderDictionaryLifetime) {
+  nanoarrow::UniqueBuffer buffer;
+  ASSERT_EQ(ArrowBufferAppend(buffer.get(), kDictionarySchema, sizeof(kDictionarySchema)),
+            NANOARROW_OK);
+  ASSERT_EQ(ArrowBufferAppend(buffer.get(), kDictionaryBatch, sizeof(kDictionaryBatch)),
+            NANOARROW_OK);
+  ASSERT_EQ(ArrowBufferAppend(buffer.get(), kDictionaryRecordBatch,
+                              sizeof(kDictionaryRecordBatch)),
+            NANOARROW_OK);
+  nanoarrow::ipc::UniqueRandomAccessInput input;
+  ASSERT_EQ(ArrowIpcRandomAccessInputInitBuffer(input.get(), buffer.get()), NANOARROW_OK);
+  ArrowIpcArrayStreamReaderOptions options = {-1, 1, NANOARROW_VALIDATION_LEVEL_FULL};
+  nanoarrow::UniqueArrayStream reader;
+  ASSERT_EQ(
+      ArrowIpcArrayStreamReaderInitRandomAccess(reader.get(), input.get(), &options),
+      NANOARROW_OK);
+  nanoarrow::UniqueArray array;
+  ArrowError error;
+  ASSERT_EQ(ArrowArrayStreamGetNext(reader.get(), array.get(), &error), NANOARROW_OK)
+      << error.message;
+  reader.reset();
+  ASSERT_NE(array->children[0]->dictionary, nullptr);
+  const auto* dictionary = array->children[0]->dictionary;
+  ASSERT_EQ(dictionary->length, 3);
+  EXPECT_EQ(memcmp(dictionary->buffers[2], "zeroonetwo", 10), 0);
+}
+
+TEST(NanoarrowIpcReader, RandomAccessReaderTruncatedBodyAndInvalidOptions) {
+  nanoarrow::UniqueBuffer buffer;
+  ASSERT_EQ(ArrowBufferAppend(buffer.get(), kSimpleSchema, sizeof(kSimpleSchema)),
+            NANOARROW_OK);
+  ASSERT_EQ(
+      ArrowBufferAppend(buffer.get(), kSimpleRecordBatch, sizeof(kSimpleRecordBatch) - 1),
+      NANOARROW_OK);
+  nanoarrow::ipc::UniqueRandomAccessInput input;
+  ASSERT_EQ(ArrowIpcRandomAccessInputInitBuffer(input.get(), buffer.get()), NANOARROW_OK);
+  nanoarrow::UniqueArrayStream reader;
+  ArrowIpcArrayStreamReaderOptions options = {-1, 1,
+                                              static_cast<ArrowValidationLevel>(999)};
+  EXPECT_EQ(
+      ArrowIpcArrayStreamReaderInitRandomAccess(reader.get(), input.get(), &options),
+      EINVAL);
+  EXPECT_NE(input->release, nullptr);
+  options.validation_level = NANOARROW_VALIDATION_LEVEL_FULL;
+  ASSERT_EQ(
+      ArrowIpcArrayStreamReaderInitRandomAccess(reader.get(), input.get(), &options),
+      NANOARROW_OK);
+  nanoarrow::UniqueArray array;
+  ArrowError error;
+  EXPECT_EQ(ArrowArrayStreamGetNext(reader.get(), array.get(), &error), ESPIPE);
+  EXPECT_STREQ(error.message,
+               "Expected to be able to read 16 bytes for message body but got 15");
+}
+
+TEST(NanoarrowIpcReader, RandomAccessReaderCallbackErrors) {
+  for (int mode : {0, 1, 2, 3}) {
+    SCOPED_TRACE(mode);
+    ArrowIpcRandomAccessInput input = {};
+    input.private_data = &mode;
+    input.release = [](ArrowIpcRandomAccessInput* self) { self->release = nullptr; };
+    input.read_at = [](ArrowIpcRandomAccessInput* self, int64_t, int64_t size,
+                       ArrowBuffer* out, ArrowError* error) -> ArrowErrorCode {
+      NANOARROW_RETURN_NOT_OK(ArrowBufferAppend(out, "x", 1));
+      if (*static_cast<int*>(self->private_data) == 2) {
+        ArrowErrorSet(error, "read failure");
+        return EIO;
+      }
+      out->size_bytes = size + 1;
+      return NANOARROW_OK;
+    };
+    if (mode < 2) {
+      input.peek_at = [](ArrowIpcRandomAccessInput* self, int64_t, int64_t size,
+                         ArrowBufferView* out, ArrowError* error) -> ArrowErrorCode {
+        if (*static_cast<int*>(self->private_data) == 0) {
+          ArrowErrorSet(error, "peek failure");
+          return EIO;
+        }
+        out->data.data = nullptr;
+        out->size_bytes = size + 1;
+        return NANOARROW_OK;
+      };
+    }
+    nanoarrow::UniqueArrayStream reader;
+    ASSERT_EQ(ArrowIpcArrayStreamReaderInitRandomAccess(reader.get(), &input, nullptr),
+              NANOARROW_OK);
+    nanoarrow::UniqueSchema schema;
+    ArrowError error;
+    EXPECT_EQ(ArrowArrayStreamGetSchema(reader.get(), schema.get(), &error),
+              mode % 2 == 0 ? EIO : EINVAL);
+    EXPECT_GT(strlen(error.message), 0);
+  }
+  ArrowIpcRandomAccessInput invalid = {};
+  nanoarrow::UniqueArrayStream reader;
+  EXPECT_EQ(ArrowIpcArrayStreamReaderInitRandomAccess(reader.get(), &invalid, nullptr),
+            EINVAL);
+}
+
+TEST(NanoarrowIpcReader, RandomAccessReaderLegacyHeaders) {
+  nanoarrow::UniqueBuffer buffer;
+  for (ArrowBufferView message :
+       {ArrowBufferView{{kSimpleSchema}, sizeof(kSimpleSchema)},
+        ArrowBufferView{{kSimpleRecordBatch}, sizeof(kSimpleRecordBatch)}}) {
+    nanoarrow::UniqueBuffer legacy;
+    ASSERT_EQ(ArrowBufferAppendBufferView(legacy.get(), message), NANOARROW_OK);
+    // Locate Message.version through the flatbuffer's root and vtable, then set V4.
+    auto read16 = [](const uint8_t* p) { return p[0] | (p[1] << 8); };
+    auto read32 = [](const uint8_t* p) {
+      return p[0] | (p[1] << 8) | (p[2] << 16) | (p[3] << 24);
+    };
+    int table = 8 + read32(legacy->data + 8);
+    int vtable = table - read32(legacy->data + table);
+    int version = table + read16(legacy->data + vtable + 4);
+    legacy->data[version] = 3;  // MetadataVersion.V4
+    legacy->data[version + 1] = 0;
+    // Legacy messages omit the continuation token.
+    ASSERT_EQ(ArrowBufferAppend(buffer.get(), legacy->data + 4, legacy->size_bytes - 4),
+              NANOARROW_OK);
+  }
+  ASSERT_EQ(ArrowBufferAppend(buffer.get(), kEndOfStream + 4, 4), NANOARROW_OK);
+  nanoarrow::ipc::UniqueRandomAccessInput input;
+  ASSERT_EQ(ArrowIpcRandomAccessInputInitBuffer(input.get(), buffer.get()), NANOARROW_OK);
+  ArrowIpcArrayStreamReaderOptions options = {-1, 1, NANOARROW_VALIDATION_LEVEL_FULL};
+  nanoarrow::UniqueArrayStream reader;
+  ASSERT_EQ(
+      ArrowIpcArrayStreamReaderInitRandomAccess(reader.get(), input.get(), &options),
+      NANOARROW_OK);
+  nanoarrow::UniqueArray array, eos;
+  ArrowError error;
+  ASSERT_EQ(ArrowArrayStreamGetNext(reader.get(), array.get(), &error), NANOARROW_OK)
+      << error.message;
+  ASSERT_EQ(array->length, 3);
+  ASSERT_EQ(ArrowArrayStreamGetNext(reader.get(), eos.get(), &error), NANOARROW_OK)
+      << error.message;
+  EXPECT_EQ(eos->release, nullptr);
+  reader.reset();
+  EXPECT_EQ(static_cast<const int32_t*>(array->children[0]->buffers[1])[2], 3);
 }
