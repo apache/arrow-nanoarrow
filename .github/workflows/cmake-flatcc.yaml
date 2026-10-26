@@ -23,7 +23,7 @@ on:
   pull_request:
     paths:
       - 'CMakeLists.txt'
-      - 'ci/scripts/test_cmake_flatcc.py'
+      - 'examples/cmake-flatcc/**'
       - '.github/workflows/cmake-flatcc.yaml'
       - 'src/nanoarrow/**'
       - 'thirdparty/flatcc/**'
@@ -58,4 +58,5 @@ jobs:
             python -m pip install "cmake==${{ matrix.cmake }}"
           fi
       - name: Test external flatcc discovery and linking
-        run: python ci/scripts/test_cmake_flatcc.py
+        shell: bash
+        run: examples/cmake-flatcc/build.sh
