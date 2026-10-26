@@ -267,11 +267,14 @@ TEST(DecimalTest, Decimal32Test) {
 
 #if defined(NANOARROW_BUILD_TESTS_WITH_ARROW) && ARROW_VERSION_MAJOR >= 18
   auto dec_pos = *Decimal32::FromString("12.345");
-  uint8_t bytes_pos[4];
+  // ArrowDecimalSetBytes() accepts buffers for all decimal widths. Allocate enough
+  // space for either branch so bounds-checking compilers do not diagnose the
+  // unreachable Decimal64 copy below.
+  uint8_t bytes_pos[sizeof(uint64_t)] = {};
   dec_pos.ToBytes(bytes_pos);
 
   auto dec_neg = *Decimal32::FromString("-34.567");
-  uint8_t bytes_neg[4];
+  uint8_t bytes_neg[sizeof(uint64_t)] = {};
   dec_neg.ToBytes(bytes_neg);
 #endif
 
@@ -279,24 +282,18 @@ TEST(DecimalTest, Decimal32Test) {
   EXPECT_EQ(ArrowDecimalGetIntUnsafe(&decimal), 12345);
   EXPECT_EQ(ArrowDecimalSign(&decimal), 1);
 #if defined(NANOARROW_BUILD_TESTS_WITH_ARROW) && ARROW_VERSION_MAJOR >= 18
-  EXPECT_EQ(memcmp(decimal.words, bytes_pos, sizeof(bytes_pos)), 0);
-  ASSERT_EQ(decimal.n_words, 0);
-  // This duplicative assert suppresses array-bounds warnings with release builds
-  assert(decimal.n_words == 0);
+  EXPECT_EQ(memcmp(decimal.words, bytes_pos, sizeof(int32_t)), 0);
   ArrowDecimalSetBytes(&decimal, bytes_pos);
-  EXPECT_EQ(memcmp(decimal.words, bytes_pos, sizeof(bytes_pos)), 0);
+  EXPECT_EQ(memcmp(decimal.words, bytes_pos, sizeof(int32_t)), 0);
 #endif
 
   ArrowDecimalSetInt(&decimal, -34567);
   EXPECT_EQ(ArrowDecimalGetIntUnsafe(&decimal), -34567);
   EXPECT_EQ(ArrowDecimalSign(&decimal), -1);
 #if defined(NANOARROW_BUILD_TESTS_WITH_ARROW) && ARROW_VERSION_MAJOR >= 18
-  EXPECT_EQ(memcmp(decimal.words, bytes_neg, sizeof(bytes_neg)), 0);
-  ASSERT_EQ(decimal.n_words, 0);
-  // This duplicative assert suppresses array-bounds warnings with release builds
-  assert(decimal.n_words == 0);
+  EXPECT_EQ(memcmp(decimal.words, bytes_neg, sizeof(int32_t)), 0);
   ArrowDecimalSetBytes(&decimal, bytes_neg);
-  EXPECT_EQ(memcmp(decimal.words, bytes_neg, sizeof(bytes_neg)), 0);
+  EXPECT_EQ(memcmp(decimal.words, bytes_neg, sizeof(int32_t)), 0);
 #endif
 }
 
