@@ -169,21 +169,25 @@ struct FileCloser {
   FILE* file_{};
 };
 
+static FILE* CreateTemporaryFile() {
+#ifdef _MSC_VER
+  FILE* file = nullptr;
+  if (tmpfile_s(&file) != 0) {
+    return nullptr;
+  }
+  return file;
+#else
+  return tmpfile();
+#endif
+}
+
 TEST(NanoarrowIpcReader, InputStreamFile) {
   struct ArrowIpcInputStream stream;
   errno = EINVAL;
   ASSERT_EQ(ArrowIpcInputStreamInitFile(&stream, nullptr, 1), EINVAL);
 
   uint8_t input_data[] = {0x01, 0x02, 0x03, 0x04, 0x05};
-#ifdef _MSC_VER
-  // This macro suppresses warnings when using tmpfile and the MSVC compiler
-  // warning C4996: 'tmpfile': This function or variable may be unsafe. Consider
-  // using tmpfile_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS
-  FILE* file_ptr;
-  ASSERT_EQ(tmpfile_s(&file_ptr), 0);
-#else
-  FILE* file_ptr = tmpfile();
-#endif
+  FILE* file_ptr = CreateTemporaryFile();
   FileCloser closer{file_ptr};
   ASSERT_NE(file_ptr, nullptr);
   ASSERT_EQ(fwrite(input_data, 1, sizeof(input_data), file_ptr), sizeof(input_data));
@@ -834,7 +838,7 @@ TEST(NanoarrowIpcReader, RandomAccessBufferBoundsAndLifetime) {
 }
 
 TEST(NanoarrowIpcReader, RandomAccessFileBoundsAndSeeking) {
-  FILE* file = tmpfile();
+  FILE* file = CreateTemporaryFile();
   ASSERT_NE(file, nullptr);
   ASSERT_EQ(fwrite("abcde", 1, 5, file), 5);
   nanoarrow::ipc::UniqueRandomAccessInput input;
@@ -925,7 +929,7 @@ TEST(NanoarrowIpcReader, RandomAccessReaderCustomAndFileInputs) {
                 NANOARROW_OK);
       RandomAccessReaderTestInput state;
       if (backend == 3) {
-        FILE* file = tmpfile();
+        FILE* file = CreateTemporaryFile();
         ASSERT_NE(file, nullptr);
         ASSERT_EQ(fwrite(buffer->data, 1, buffer->size_bytes, file), buffer->size_bytes);
         ASSERT_EQ(ArrowIpcRandomAccessInputInitFile(state.underlying.get(), file, 1),
@@ -937,8 +941,12 @@ TEST(NanoarrowIpcReader, RandomAccessReaderCustomAndFileInputs) {
       }
       nanoarrow::ipc::UniqueRandomAccessInput input;
       InitRandomAccessReaderTestInput(&state, input.get());
-      if (backend == 1) input->peek_at = nullptr;
-      if (backend == 2) state.peek_unsupported = true;
+      if (backend == 1) {
+        input->peek_at = nullptr;
+      }
+      if (backend == 2) {
+        state.peek_unsupported = true;
+      }
       ArrowIpcArrayStreamReaderOptions options = {-1, sharing,
                                                   NANOARROW_VALIDATION_LEVEL_FULL};
       nanoarrow::UniqueArrayStream reader;
@@ -958,7 +966,9 @@ TEST(NanoarrowIpcReader, RandomAccessReaderCustomAndFileInputs) {
       EXPECT_EQ(eos->release, nullptr);
       reader.reset();
       EXPECT_GT(state.read_count, 0);
-      if (backend != 1) EXPECT_GT(state.peek_count, 0);
+      if (backend != 1) {
+        EXPECT_GT(state.peek_count, 0);
+      }
       for (auto* array : {first.get(), second.get()}) {
         ASSERT_EQ(array->length, 3);
         const auto* values = static_cast<const int32_t*>(array->children[0]->buffers[1]);
