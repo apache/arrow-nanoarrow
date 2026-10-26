@@ -832,13 +832,14 @@ TEST(NanoarrowIpcReader, RandomAccessBufferBoundsAndLifetime) {
   EXPECT_EQ(buffer->size_bytes, 0);
   ASSERT_EQ(input->read_at(input.get(), 1, 3, buffer.get(), nullptr), NANOARROW_OK);
   nanoarrow::ipc::UniqueRandomAccessInput moved(std::move(input));
-  EXPECT_EQ(input->release, nullptr);
+  EXPECT_EQ(input->release, nullptr);  // NOLINT(clang-analyzer-cplusplus.Move)
   moved.reset();
   EXPECT_EQ(memcmp(buffer->data, "bcd", 3), 0);
 }
 
 TEST(NanoarrowIpcReader, RandomAccessFileBoundsAndSeeking) {
   FILE* file = CreateTemporaryFile();
+  FileCloser closer{file};
   ASSERT_NE(file, nullptr);
   ASSERT_EQ(fwrite("abcde", 1, 5, file), 5);
   nanoarrow::ipc::UniqueRandomAccessInput input;
@@ -860,6 +861,7 @@ TEST(NanoarrowIpcReader, RandomAccessFileBoundsAndSeeking) {
   input.reset();
   EXPECT_EQ(fseek(file, 0, SEEK_SET), 0);
   EXPECT_EQ(fclose(file), 0);
+  closer.file_ = nullptr;
   EXPECT_EQ(memcmp(out->data, "bcd", 3), 0);
 }
 
@@ -930,10 +932,12 @@ TEST(NanoarrowIpcReader, RandomAccessReaderCustomAndFileInputs) {
       RandomAccessReaderTestInput state;
       if (backend == 3) {
         FILE* file = CreateTemporaryFile();
+        FileCloser closer{file};
         ASSERT_NE(file, nullptr);
         ASSERT_EQ(fwrite(buffer->data, 1, buffer->size_bytes, file), buffer->size_bytes);
         ASSERT_EQ(ArrowIpcRandomAccessInputInitFile(state.underlying.get(), file, 1),
                   NANOARROW_OK);
+        closer.file_ = nullptr;
       } else {
         ASSERT_EQ(
             ArrowIpcRandomAccessInputInitBuffer(state.underlying.get(), buffer.get()),
@@ -1049,8 +1053,9 @@ TEST(NanoarrowIpcReader, RandomAccessReaderTruncatedBodyAndInvalidOptions) {
   nanoarrow::ipc::UniqueRandomAccessInput input;
   ASSERT_EQ(ArrowIpcRandomAccessInputInitBuffer(input.get(), buffer.get()), NANOARROW_OK);
   nanoarrow::UniqueArrayStream reader;
-  ArrowIpcArrayStreamReaderOptions options = {-1, 1,
-                                              static_cast<ArrowValidationLevel>(999)};
+  ArrowIpcArrayStreamReaderOptions options = {-1, 1, NANOARROW_VALIDATION_LEVEL_FULL};
+  // NOLINTNEXTLINE(clang-analyzer-optin.core.EnumCastOutOfRange): deliberately invalid
+  options.validation_level = static_cast<ArrowValidationLevel>(999);
   EXPECT_EQ(
       ArrowIpcArrayStreamReaderInitRandomAccess(reader.get(), input.get(), &options),
       EINVAL);
