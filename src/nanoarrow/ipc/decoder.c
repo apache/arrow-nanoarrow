@@ -1612,14 +1612,21 @@ static inline int ArrowIpcDecoderReadHeaderPrefix(struct ArrowIpcDecoder* decode
     length = ArrowIpcReadInt32LE(data_mut, swap_endian);
     *prefix_size_bytes = sizeof(continuation) + sizeof(length);
   }
-  decoder->header_size_bytes = *prefix_size_bytes + length;
-
   if (length < 0) {
     ArrowErrorSet(error,
                   "Expected message size > 0 but found message size of %" PRId32 " bytes",
                   length);
     return EINVAL;
   }
+
+  // The prefix and the message size must together fit in header_size_bytes
+  if (length > INT32_MAX - *prefix_size_bytes) {
+    ArrowErrorSet(error, "Expected message size <= %" PRId32 " but found %" PRId32,
+                  INT32_MAX - *prefix_size_bytes, length);
+    return EINVAL;
+  }
+
+  decoder->header_size_bytes = *prefix_size_bytes + length;
 
   if (length == 0) {
     ArrowErrorSet(error, "End of Arrow stream");
