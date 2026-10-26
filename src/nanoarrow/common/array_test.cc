@@ -427,12 +427,15 @@ TEST(ArrayTest, ArrayTestFinishBuildingEmptyArrayOffsets) {
         << error.message;
     ASSERT_NE(array->buffers[1], nullptr);
     EXPECT_EQ(ArrowArrayBuffer(array.get(), 1)->size_bytes, test_case.offset_size);
-    int64_t first_offset = -1;
-    memcpy(&first_offset, array->buffers[1], test_case.offset_size);
     if (test_case.offset_size == 4) {
-      first_offset = static_cast<int32_t>(first_offset);
+      int32_t first_offset = -1;
+      memcpy(&first_offset, array->buffers[1], sizeof(first_offset));
+      EXPECT_EQ(first_offset, 0);
+    } else {
+      int64_t first_offset = -1;
+      memcpy(&first_offset, array->buffers[1], sizeof(first_offset));
+      EXPECT_EQ(first_offset, 0);
     }
-    EXPECT_EQ(first_offset, 0);
   }
 }
 
