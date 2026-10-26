@@ -1655,6 +1655,114 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestMetadataComparison) {
   ASSERT_EQ(comparison.CompareSchema(actual.get(), expected.get()), ENOTSUP);
 }
 
+TEST(NanoarrowTestingTest, NanoarrowTestingTestNestedMetadataComparison) {
+  nanoarrow::UniqueSchema actual;
+  nanoarrow::UniqueSchema expected;
+  nanoarrow::UniqueBuffer buf;
+
+  ASSERT_EQ(ArrowMetadataBuilderInit(buf.get(), nullptr), NANOARROW_OK);
+  ASSERT_EQ(ArrowMetadataBuilderAppend(buf.get(), "key1"_asv, "value1"_asv),
+            NANOARROW_OK);
+  const char* metadata = reinterpret_cast<char*>(buf->data);
+
+  // Start with two identical schemas whose list item has metadata
+  ArrowSchemaInit(actual.get());
+  ASSERT_EQ(ArrowSchemaSetTypeStruct(actual.get(), 1), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaSetType(actual->children[0], NANOARROW_TYPE_LIST), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaSetType(actual->children[0]->children[0], NANOARROW_TYPE_INT32),
+            NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaSetMetadata(actual->children[0]->children[0], metadata),
+            NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaDeepCopy(actual.get(), expected.get()), NANOARROW_OK);
+  AssertSchemasCompareEqual(actual.get(), expected.get());
+
+  // With the metadata of the list item dropped from the actual schema
+  ASSERT_EQ(ArrowSchemaSetMetadata(actual->children[0]->children[0], nullptr),
+            NANOARROW_OK);
+  AssertSchemasCompareUnequal(actual.get(), expected.get(), /*num_differences*/ 1,
+                              /*differences*/
+                              "Path: .children[0].children[0].metadata"
+                              R"(
+- null
++ [{"key": "key1", "value": "value1"}]
+
+)");
+
+  // ...also using the comparison that does *not* consider ordering
+  AssertSchemasCompareUnequal(actual.get(), expected.get(), /*num_differences*/ 1,
+                              /*differences*/
+                              "Path: .children[0].children[0].metadata"
+                              R"(
+- null
++ [{"key": "key1", "value": "value1"}]
+
+)",
+                              [](TestingJSONComparison& comparison) {
+                                comparison.set_compare_metadata_order(false);
+                              });
+
+  // Empty metadata on a child is equivalent to no metadata (IPC and the integration
+  // JSON both omit empty metadata)
+  ASSERT_EQ(ArrowSchemaSetMetadata(actual->children[0]->children[0], "\0\0\0\0"),
+            NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaSetMetadata(expected->children[0]->children[0], nullptr),
+            NANOARROW_OK);
+  AssertSchemasCompareEqual(actual.get(), expected.get());
+
+  // Metadata on the value child of a map is compared (the map's canonical names
+  // are forced before comparison, which must not affect the metadata)
+  actual.reset();
+  expected.reset();
+  ArrowSchemaInit(actual.get());
+  ASSERT_EQ(ArrowSchemaSetTypeStruct(actual.get(), 1), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaSetType(actual->children[0], NANOARROW_TYPE_MAP), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaSetType(actual->children[0]->children[0]->children[0],
+                               NANOARROW_TYPE_STRING),
+            NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaSetType(actual->children[0]->children[0]->children[1],
+                               NANOARROW_TYPE_INT32),
+            NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaDeepCopy(actual.get(), expected.get()), NANOARROW_OK);
+  ASSERT_EQ(
+      ArrowSchemaSetMetadata(expected->children[0]->children[0]->children[1], metadata),
+      NANOARROW_OK);
+  AssertSchemasCompareUnequal(actual.get(), expected.get(), /*num_differences*/ 1,
+                              /*differences*/
+                              "Path: .children[0].children[0].children[1].metadata"
+                              R"(
+- null
++ [{"key": "key1", "value": "value1"}]
+
+)");
+
+  // Metadata on a child of a dictionary value type is compared
+  actual.reset();
+  expected.reset();
+  ArrowSchemaInit(actual.get());
+  ASSERT_EQ(ArrowSchemaSetTypeStruct(actual.get(), 1), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaSetType(actual->children[0], NANOARROW_TYPE_INT32), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaAllocateDictionary(actual->children[0]), NANOARROW_OK);
+  ArrowSchemaInit(actual->children[0]->dictionary);
+  ASSERT_EQ(ArrowSchemaSetTypeStruct(actual->children[0]->dictionary, 1), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaSetType(actual->children[0]->dictionary->children[0],
+                               NANOARROW_TYPE_INT32),
+            NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaDeepCopy(actual.get(), expected.get()), NANOARROW_OK);
+  AssertSchemasCompareEqual(actual.get(), expected.get());
+
+  ASSERT_EQ(
+      ArrowSchemaSetMetadata(expected->children[0]->dictionary->children[0], metadata),
+      NANOARROW_OK);
+  AssertSchemasCompareUnequal(actual.get(), expected.get(), /*num_differences*/ 1,
+                              /*differences*/
+                              "Path: .children[0].dictionary.children[0].metadata"
+                              R"(
+- null
++ [{"key": "key1", "value": "value1"}]
+
+)");
+}
+
 TEST(NanoarrowTestingTest, NanoarrowTestingTestArrayComparison) {
   nanoarrow::UniqueSchema schema;
   nanoarrow::UniqueArray actual;
