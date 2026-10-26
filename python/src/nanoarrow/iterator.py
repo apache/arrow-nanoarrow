@@ -281,6 +281,26 @@ class PyIterator(ArrayViewBaseIterator):
             for start, end in zip(starts, ends):
                 yield list(islice(child_iter, end - start))
 
+    def _map_iter(self, offset: int, length: int):
+        # A map is a list of (key, value) structs, converted to a list of tuples
+        view = self._array_view
+        offset += view.offset
+
+        offsets = memoryview(view.buffer(1))[offset : (offset + length + 1)]
+        starts = offsets[:-1]
+        ends = offsets[1:]
+        entries = self._children[0]
+        entries_iter = entries._struct_tuple_iter(starts[0], ends[-1] - starts[0])
+
+        if self._contains_nulls():
+            validity = view.buffer(0).elements(offset, length)
+            for is_valid, start, end in zip(validity, starts, ends):
+                item = list(islice(entries_iter, end - start))
+                yield item if is_valid else None
+        else:
+            for start, end in zip(starts, ends):
+                yield list(islice(entries_iter, end - start))
+
     def _fixed_size_list_iter(self, offset, length):
         view = self._array_view
         offset += view.offset
@@ -625,6 +645,7 @@ _ITEMS_ITER_LOOKUP = {
     _types.STRUCT: "_struct_iter",
     _types.LIST: "_list_iter",
     _types.LARGE_LIST: "_list_iter",
+    _types.MAP: "_map_iter",
     _types.FIXED_SIZE_LIST: "_fixed_size_list_iter",
     _types.SPARSE_UNION: "_sparse_union_iter",
     _types.DENSE_UNION: "_dense_union_iter",

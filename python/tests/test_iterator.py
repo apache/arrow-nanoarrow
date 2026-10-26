@@ -278,6 +278,19 @@ def test_iterator_nullable_list():
     assert (list(iter_py(nested_sliced))) == [[4, 5, 6], [7, 8, None], [0], None]
 
 
+def test_iterator_map():
+    pa = pytest.importorskip("pyarrow")
+    items = [[("a", 1), ("b", None)], [], None, [("c", 3)]]
+    array = pa.array(items, pa.map_(pa.string(), pa.int64()))
+    assert list(iter_py(array)) == items
+    assert list(iter_py(array[1:])) == items[1:]
+
+    # No nulls takes the non-nullable path
+    items = [[("a", 1)], [], [("b", 2), ("c", 3)]]
+    array = pa.array(items, pa.map_(pa.string(), pa.int64()))
+    assert list(iter_py(array)) == items
+
+
 def test_iterator_fixed_size_list():
     pa = pytest.importorskip("pyarrow")
     items = [[1, 2, 3], [4, 5, 6], [7, 8, None]]
