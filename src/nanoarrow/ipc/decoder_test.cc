@@ -16,6 +16,7 @@
 // under the License.
 
 #include <cstring>
+#include <memory>
 #include <thread>
 
 #if defined(NANOARROW_BUILD_TESTS_WITH_ARROW)
@@ -1311,6 +1312,13 @@ TEST(NanoarrowIpcTest, NanoarrowIpcFooterDecodingErrors) {
   EXPECT_EQ(ArrowIpcDecoderPeekFooter(decoder.get(), {{"\0\0\0\0blargh"}, 10}, &error),
             EINVAL)
       << error.message;
+
+  // the message must not read past the end of data, which isn't NUL-terminated
+  std::unique_ptr<char[]> unterminated(new char[10]);
+  memcpy(unterminated.get(), "\0\0\0\0blargh", 10);
+  EXPECT_EQ(ArrowIpcDecoderPeekFooter(decoder.get(), {{unterminated.get()}, 10}, &error),
+            EINVAL);
+  EXPECT_STREQ(error.message, "Expected file to end with ARROW1 but got blargh");
 
   // negative size
   EXPECT_EQ(ArrowIpcDecoderPeekFooter(decoder.get(),
