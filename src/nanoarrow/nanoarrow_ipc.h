@@ -1211,12 +1211,18 @@ NANOARROW_DLL ArrowErrorCode ArrowIpcWriterWriteArrayView(struct ArrowIpcWriter*
 /// assigned in the same order as when the schema was written, and nested dictionaries
 /// are written before the dictionaries that refer to them.
 ///
-/// Because in is borrowed, its dictionaries are not compared with those of earlier
-/// batches (as ArrowIpcWriterWriteArrayStream() does to skip unchanged ones): each
-/// dictionary is written in full before every RecordBatch, replacing the previous
-/// one. In file mode, where a dictionary ID may only be written once, this means only
-/// one batch with dictionaries can be written this way. in must not be NULL; use
-/// ArrowIpcWriterWriteArrayView() to write EOS.
+/// A dictionary whose values are identical to the ones this function last wrote for
+/// its ID is not written again. Because in is borrowed, the writer keeps a copy of
+/// each dictionary it writes to compare with the next batch's (so the comparison costs
+/// a copy of each dictionary per batch); values that can't be copied (e.g., a dense
+/// union) are written every time. In a stream, a dictionary that only grew (its values
+/// start with the ones last written) is written as a delta of the appended values.
+/// Otherwise, a changed dictionary is written in full, replacing the previous one,
+/// which a file does not support (ENOTSUP). A dictionary whose
+/// values contain a dictionary that was written is written again too, in full.
+/// ArrowIpcWriterWriteDictionaryBatch() and ArrowIpcWriterWriteSchema() clear the
+/// copies they affect. in must not be NULL; use ArrowIpcWriterWriteArrayView() to
+/// write EOS.
 ///
 /// Errors are propagated from the underlying encoder and output byte stream.
 NANOARROW_DLL ArrowErrorCode ArrowIpcWriterWriteArrayViewWithDictionaries(
@@ -1228,8 +1234,9 @@ NANOARROW_DLL ArrowErrorCode ArrowIpcWriterWriteArrayViewWithDictionaries(
 /// dictionary_id must match the id assigned to the dictionary-encoded field in the
 /// schema. is_delta selects DictionaryBatch.isDelta. values_view must not itself be
 /// dictionary-encoded. The writer does not check that a schema was already written.
-/// values_view is always written: the writer only sees a borrowed view and cannot
-/// check whether it is identical to a dictionary that was already written. When
+/// values_view is always written: unlike ArrowIpcWriterWriteArrayViewWithDictionaries(),
+/// this does not check whether it is identical to a dictionary that was already
+/// written. When
 /// writing a file, returns ENOTSUP for a delta or for a dictionary_id that was already
 /// written (IPC files do not support dictionary replacement).
 ///
