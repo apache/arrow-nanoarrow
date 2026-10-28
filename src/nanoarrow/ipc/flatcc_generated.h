@@ -1958,8 +1958,14 @@ static inline int org_apache_arrow_flatbuf_TimeUnit_is_known_value(org_apache_ar
     }
 }
 
+/**  The unit of an Interval.
+ *
+ *  All integers in the units below are stored in the endianness indicated
+ *  by the schema. */
 typedef int16_t org_apache_arrow_flatbuf_IntervalUnit_enum_t;
 __flatbuffers_define_integer_type(org_apache_arrow_flatbuf_IntervalUnit, org_apache_arrow_flatbuf_IntervalUnit_enum_t, 16)
+/**  Indicates the number of elapsed whole months, stored as
+ *  4-byte signed integers. */
 #define org_apache_arrow_flatbuf_IntervalUnit_YEAR_MONTH ((org_apache_arrow_flatbuf_IntervalUnit_enum_t)INT16_C(0))
 #define org_apache_arrow_flatbuf_IntervalUnit_DAY_TIME ((org_apache_arrow_flatbuf_IntervalUnit_enum_t)INT16_C(1))
 #define org_apache_arrow_flatbuf_IntervalUnit_MONTH_DAY_NANO ((org_apache_arrow_flatbuf_IntervalUnit_enum_t)INT16_C(2))
@@ -2506,6 +2512,9 @@ __flatbuffers_define_scalar_field(0, org_apache_arrow_flatbuf_Timestamp, unit, o
  *  the data (see above). */
 __flatbuffers_define_string_field(1, org_apache_arrow_flatbuf_Timestamp, timezone, 0)
 
+/**  A "calendar" interval which models types that don't necessarily
+ *  have a precise duration without the context of a base timestamp (e.g.
+ *  days can differ in length during day light savings time transitions). */
 struct org_apache_arrow_flatbuf_Interval_table { uint8_t unused__; };
 
 static inline size_t org_apache_arrow_flatbuf_Interval_vec_len(org_apache_arrow_flatbuf_Interval_vec_t vec)
@@ -2516,6 +2525,19 @@ __flatbuffers_table_as_root(org_apache_arrow_flatbuf_Interval)
 
 __flatbuffers_define_scalar_field(0, org_apache_arrow_flatbuf_Interval, unit, org_apache_arrow_flatbuf_IntervalUnit, org_apache_arrow_flatbuf_IntervalUnit_enum_t, INT16_C(0))
 
+/**  An absolute length of time unrelated to any calendar artifacts.
+ *
+ *  For the purposes of Arrow Implementations, adding this value to a Timestamp
+ *  ("t1") naively (i.e. simply summing the two numbers) is acceptable even
+ *  though in some cases the resulting Timestamp (t2) would not account for
+ *  leap-seconds during the elapsed time between "t1" and "t2".  Similarly,
+ *  representing the difference between two Unix timestamps is acceptable, but
+ *  would yield a value that is possibly a few seconds off from the true elapsed
+ *  time.
+ *
+ *  The resolution defaults to millisecond, but can be any of the other
+ *  supported TimeUnit values as with Timestamp and Time types.  This type is
+ *  always represented as an 8-byte integer. */
 struct org_apache_arrow_flatbuf_Duration_table { uint8_t unused__; };
 
 static inline size_t org_apache_arrow_flatbuf_Duration_vec_len(org_apache_arrow_flatbuf_Duration_vec_t vec)
@@ -2532,7 +2554,7 @@ typedef uint8_t org_apache_arrow_flatbuf_Type_union_type_t;
 __flatbuffers_define_integer_type(org_apache_arrow_flatbuf_Type, org_apache_arrow_flatbuf_Type_union_type_t, 8)
 __flatbuffers_define_union(flatbuffers_, org_apache_arrow_flatbuf_Type)
 /**  ----------------------------------------------------------------------
- *  user defined key value pairs to add custom metadata to arrow
+ *  user defined key value pairs to add custom metadata to Arrow
  *  key namespacing is the responsibility of the user */
 #define org_apache_arrow_flatbuf_Type_NONE ((org_apache_arrow_flatbuf_Type_union_type_t)UINT8_C(0))
 #define org_apache_arrow_flatbuf_Type_Null ((org_apache_arrow_flatbuf_Type_union_type_t)UINT8_C(1))
@@ -2666,6 +2688,8 @@ __flatbuffers_define_table_field(1, org_apache_arrow_flatbuf_DictionaryEncoding,
  *  preserve that metadata here */
 __flatbuffers_define_scalar_field(2, org_apache_arrow_flatbuf_DictionaryEncoding, isOrdered, flatbuffers_bool, flatbuffers_bool_t, UINT8_C(0))
 __flatbuffers_define_scalar_field(3, org_apache_arrow_flatbuf_DictionaryEncoding, dictionaryKind, org_apache_arrow_flatbuf_DictionaryKind, org_apache_arrow_flatbuf_DictionaryKind_enum_t, INT16_C(0))
+/**  Metadata for the dictionary value type, e.g. the extension type of the values */
+__flatbuffers_define_vector_field(4, org_apache_arrow_flatbuf_DictionaryEncoding, custom_metadata, org_apache_arrow_flatbuf_KeyValue_vec_t, 0)
 
 /**  ----------------------------------------------------------------------
  *  A field represents a named column in a record / row batch or child of a
@@ -2707,6 +2731,7 @@ __flatbuffers_table_as_root(org_apache_arrow_flatbuf_Schema)
  *  if endianness doesn't match the underlying system then the vectors need to be converted */
 __flatbuffers_define_scalar_field(0, org_apache_arrow_flatbuf_Schema, endianness, org_apache_arrow_flatbuf_Endianness, org_apache_arrow_flatbuf_Endianness_enum_t, INT16_C(0))
 __flatbuffers_define_vector_field(1, org_apache_arrow_flatbuf_Schema, fields, org_apache_arrow_flatbuf_Field_vec_t, 0)
+/**  User-defined metadata */
 __flatbuffers_define_vector_field(2, org_apache_arrow_flatbuf_Schema, custom_metadata, org_apache_arrow_flatbuf_KeyValue_vec_t, 0)
 /**  Features used in the stream/file. */
 __flatbuffers_define_vector_field(3, org_apache_arrow_flatbuf_Schema, features, org_apache_arrow_flatbuf_Feature_vec_t, 0)
@@ -2926,7 +2951,7 @@ __flatbuffers_build_table(flatbuffers_, org_apache_arrow_flatbuf_KeyValue, 2)
 static const flatbuffers_voffset_t __org_apache_arrow_flatbuf_DictionaryEncoding_required[] = { 0 };
 typedef flatbuffers_ref_t org_apache_arrow_flatbuf_DictionaryEncoding_ref_t;
 static org_apache_arrow_flatbuf_DictionaryEncoding_ref_t org_apache_arrow_flatbuf_DictionaryEncoding_clone(flatbuffers_builder_t *B, org_apache_arrow_flatbuf_DictionaryEncoding_table_t t);
-__flatbuffers_build_table(flatbuffers_, org_apache_arrow_flatbuf_DictionaryEncoding, 4)
+__flatbuffers_build_table(flatbuffers_, org_apache_arrow_flatbuf_DictionaryEncoding, 5)
 
 static const flatbuffers_voffset_t __org_apache_arrow_flatbuf_Field_required[] = { 0 };
 typedef flatbuffers_ref_t org_apache_arrow_flatbuf_Field_ref_t;
@@ -3073,8 +3098,10 @@ __flatbuffers_build_table_prolog(flatbuffers_, org_apache_arrow_flatbuf_Duration
 static inline org_apache_arrow_flatbuf_KeyValue_ref_t org_apache_arrow_flatbuf_KeyValue_create(flatbuffers_builder_t *B __org_apache_arrow_flatbuf_KeyValue_formal_args);
 __flatbuffers_build_table_prolog(flatbuffers_, org_apache_arrow_flatbuf_KeyValue, org_apache_arrow_flatbuf_KeyValue_file_identifier, org_apache_arrow_flatbuf_KeyValue_type_identifier)
 
-#define __org_apache_arrow_flatbuf_DictionaryEncoding_formal_args , int64_t v0, org_apache_arrow_flatbuf_Int_ref_t v1, flatbuffers_bool_t v2, org_apache_arrow_flatbuf_DictionaryKind_enum_t v3
-#define __org_apache_arrow_flatbuf_DictionaryEncoding_call_args , v0, v1, v2, v3
+#define __org_apache_arrow_flatbuf_DictionaryEncoding_formal_args ,\
+  int64_t v0, org_apache_arrow_flatbuf_Int_ref_t v1, flatbuffers_bool_t v2, org_apache_arrow_flatbuf_DictionaryKind_enum_t v3, org_apache_arrow_flatbuf_KeyValue_vec_ref_t v4
+#define __org_apache_arrow_flatbuf_DictionaryEncoding_call_args ,\
+  v0, v1, v2, v3, v4
 static inline org_apache_arrow_flatbuf_DictionaryEncoding_ref_t org_apache_arrow_flatbuf_DictionaryEncoding_create(flatbuffers_builder_t *B __org_apache_arrow_flatbuf_DictionaryEncoding_formal_args);
 __flatbuffers_build_table_prolog(flatbuffers_, org_apache_arrow_flatbuf_DictionaryEncoding, org_apache_arrow_flatbuf_DictionaryEncoding_file_identifier, org_apache_arrow_flatbuf_DictionaryEncoding_type_identifier)
 
@@ -3729,12 +3756,14 @@ __flatbuffers_build_scalar_field(0, flatbuffers_, org_apache_arrow_flatbuf_Dicti
 __flatbuffers_build_table_field(1, flatbuffers_, org_apache_arrow_flatbuf_DictionaryEncoding_indexType, org_apache_arrow_flatbuf_Int, org_apache_arrow_flatbuf_DictionaryEncoding)
 __flatbuffers_build_scalar_field(2, flatbuffers_, org_apache_arrow_flatbuf_DictionaryEncoding_isOrdered, flatbuffers_bool, flatbuffers_bool_t, 1, 1, UINT8_C(0), org_apache_arrow_flatbuf_DictionaryEncoding)
 __flatbuffers_build_scalar_field(3, flatbuffers_, org_apache_arrow_flatbuf_DictionaryEncoding_dictionaryKind, org_apache_arrow_flatbuf_DictionaryKind, org_apache_arrow_flatbuf_DictionaryKind_enum_t, 2, 2, INT16_C(0), org_apache_arrow_flatbuf_DictionaryEncoding)
+__flatbuffers_build_table_vector_field(4, flatbuffers_, org_apache_arrow_flatbuf_DictionaryEncoding_custom_metadata, org_apache_arrow_flatbuf_KeyValue, org_apache_arrow_flatbuf_DictionaryEncoding)
 
 static inline org_apache_arrow_flatbuf_DictionaryEncoding_ref_t org_apache_arrow_flatbuf_DictionaryEncoding_create(flatbuffers_builder_t *B __org_apache_arrow_flatbuf_DictionaryEncoding_formal_args)
 {
     if (org_apache_arrow_flatbuf_DictionaryEncoding_start(B)
         || org_apache_arrow_flatbuf_DictionaryEncoding_id_add(B, v0)
         || org_apache_arrow_flatbuf_DictionaryEncoding_indexType_add(B, v1)
+        || org_apache_arrow_flatbuf_DictionaryEncoding_custom_metadata_add(B, v4)
         || org_apache_arrow_flatbuf_DictionaryEncoding_dictionaryKind_add(B, v3)
         || org_apache_arrow_flatbuf_DictionaryEncoding_isOrdered_add(B, v2)) {
         return 0;
@@ -3748,6 +3777,7 @@ static org_apache_arrow_flatbuf_DictionaryEncoding_ref_t org_apache_arrow_flatbu
     if (org_apache_arrow_flatbuf_DictionaryEncoding_start(B)
         || org_apache_arrow_flatbuf_DictionaryEncoding_id_pick(B, t)
         || org_apache_arrow_flatbuf_DictionaryEncoding_indexType_pick(B, t)
+        || org_apache_arrow_flatbuf_DictionaryEncoding_custom_metadata_pick(B, t)
         || org_apache_arrow_flatbuf_DictionaryEncoding_dictionaryKind_pick(B, t)
         || org_apache_arrow_flatbuf_DictionaryEncoding_isOrdered_pick(B, t)) {
         return 0;
@@ -5220,6 +5250,7 @@ static int org_apache_arrow_flatbuf_DictionaryEncoding_verify_table(flatcc_table
     if ((ret = flatcc_verify_table_field(td, 1, 0, &org_apache_arrow_flatbuf_Int_verify_table) /* indexType */)) return ret;
     if ((ret = flatcc_verify_field(td, 2, 1, 1) /* isOrdered */)) return ret;
     if ((ret = flatcc_verify_field(td, 3, 2, 2) /* dictionaryKind */)) return ret;
+    if ((ret = flatcc_verify_table_vector_field(td, 4, 0, &org_apache_arrow_flatbuf_KeyValue_verify_table) /* custom_metadata */)) return ret;
     return flatcc_verify_ok;
 }
 
@@ -6370,8 +6401,14 @@ static inline int org_apache_arrow_flatbuf_TimeUnit_is_known_value(org_apache_ar
     }
 }
 
+/**  The unit of an Interval.
+ *
+ *  All integers in the units below are stored in the endianness indicated
+ *  by the schema. */
 typedef int16_t org_apache_arrow_flatbuf_IntervalUnit_enum_t;
 __flatbuffers_define_integer_type(org_apache_arrow_flatbuf_IntervalUnit, org_apache_arrow_flatbuf_IntervalUnit_enum_t, 16)
+/**  Indicates the number of elapsed whole months, stored as
+ *  4-byte signed integers. */
 #define org_apache_arrow_flatbuf_IntervalUnit_YEAR_MONTH ((org_apache_arrow_flatbuf_IntervalUnit_enum_t)INT16_C(0))
 #define org_apache_arrow_flatbuf_IntervalUnit_DAY_TIME ((org_apache_arrow_flatbuf_IntervalUnit_enum_t)INT16_C(1))
 #define org_apache_arrow_flatbuf_IntervalUnit_MONTH_DAY_NANO ((org_apache_arrow_flatbuf_IntervalUnit_enum_t)INT16_C(2))
@@ -6918,6 +6955,9 @@ __flatbuffers_define_scalar_field(0, org_apache_arrow_flatbuf_Timestamp, unit, o
  *  the data (see above). */
 __flatbuffers_define_string_field(1, org_apache_arrow_flatbuf_Timestamp, timezone, 0)
 
+/**  A "calendar" interval which models types that don't necessarily
+ *  have a precise duration without the context of a base timestamp (e.g.
+ *  days can differ in length during day light savings time transitions). */
 struct org_apache_arrow_flatbuf_Interval_table { uint8_t unused__; };
 
 static inline size_t org_apache_arrow_flatbuf_Interval_vec_len(org_apache_arrow_flatbuf_Interval_vec_t vec)
@@ -6928,6 +6968,19 @@ __flatbuffers_table_as_root(org_apache_arrow_flatbuf_Interval)
 
 __flatbuffers_define_scalar_field(0, org_apache_arrow_flatbuf_Interval, unit, org_apache_arrow_flatbuf_IntervalUnit, org_apache_arrow_flatbuf_IntervalUnit_enum_t, INT16_C(0))
 
+/**  An absolute length of time unrelated to any calendar artifacts.
+ *
+ *  For the purposes of Arrow Implementations, adding this value to a Timestamp
+ *  ("t1") naively (i.e. simply summing the two numbers) is acceptable even
+ *  though in some cases the resulting Timestamp (t2) would not account for
+ *  leap-seconds during the elapsed time between "t1" and "t2".  Similarly,
+ *  representing the difference between two Unix timestamps is acceptable, but
+ *  would yield a value that is possibly a few seconds off from the true elapsed
+ *  time.
+ *
+ *  The resolution defaults to millisecond, but can be any of the other
+ *  supported TimeUnit values as with Timestamp and Time types.  This type is
+ *  always represented as an 8-byte integer. */
 struct org_apache_arrow_flatbuf_Duration_table { uint8_t unused__; };
 
 static inline size_t org_apache_arrow_flatbuf_Duration_vec_len(org_apache_arrow_flatbuf_Duration_vec_t vec)
@@ -6944,7 +6997,7 @@ typedef uint8_t org_apache_arrow_flatbuf_Type_union_type_t;
 __flatbuffers_define_integer_type(org_apache_arrow_flatbuf_Type, org_apache_arrow_flatbuf_Type_union_type_t, 8)
 __flatbuffers_define_union(flatbuffers_, org_apache_arrow_flatbuf_Type)
 /**  ----------------------------------------------------------------------
- *  user defined key value pairs to add custom metadata to arrow
+ *  user defined key value pairs to add custom metadata to Arrow
  *  key namespacing is the responsibility of the user */
 #define org_apache_arrow_flatbuf_Type_NONE ((org_apache_arrow_flatbuf_Type_union_type_t)UINT8_C(0))
 #define org_apache_arrow_flatbuf_Type_Null ((org_apache_arrow_flatbuf_Type_union_type_t)UINT8_C(1))
@@ -7078,6 +7131,8 @@ __flatbuffers_define_table_field(1, org_apache_arrow_flatbuf_DictionaryEncoding,
  *  preserve that metadata here */
 __flatbuffers_define_scalar_field(2, org_apache_arrow_flatbuf_DictionaryEncoding, isOrdered, flatbuffers_bool, flatbuffers_bool_t, UINT8_C(0))
 __flatbuffers_define_scalar_field(3, org_apache_arrow_flatbuf_DictionaryEncoding, dictionaryKind, org_apache_arrow_flatbuf_DictionaryKind, org_apache_arrow_flatbuf_DictionaryKind_enum_t, INT16_C(0))
+/**  Metadata for the dictionary value type, e.g. the extension type of the values */
+__flatbuffers_define_vector_field(4, org_apache_arrow_flatbuf_DictionaryEncoding, custom_metadata, org_apache_arrow_flatbuf_KeyValue_vec_t, 0)
 
 /**  ----------------------------------------------------------------------
  *  A field represents a named column in a record / row batch or child of a
@@ -7119,6 +7174,7 @@ __flatbuffers_table_as_root(org_apache_arrow_flatbuf_Schema)
  *  if endianness doesn't match the underlying system then the vectors need to be converted */
 __flatbuffers_define_scalar_field(0, org_apache_arrow_flatbuf_Schema, endianness, org_apache_arrow_flatbuf_Endianness, org_apache_arrow_flatbuf_Endianness_enum_t, INT16_C(0))
 __flatbuffers_define_vector_field(1, org_apache_arrow_flatbuf_Schema, fields, org_apache_arrow_flatbuf_Field_vec_t, 0)
+/**  User-defined metadata */
 __flatbuffers_define_vector_field(2, org_apache_arrow_flatbuf_Schema, custom_metadata, org_apache_arrow_flatbuf_KeyValue_vec_t, 0)
 /**  Features used in the stream/file. */
 __flatbuffers_define_vector_field(3, org_apache_arrow_flatbuf_Schema, features, org_apache_arrow_flatbuf_Feature_vec_t, 0)
@@ -7338,7 +7394,7 @@ __flatbuffers_build_table(flatbuffers_, org_apache_arrow_flatbuf_KeyValue, 2)
 static const flatbuffers_voffset_t __org_apache_arrow_flatbuf_DictionaryEncoding_required[] = { 0 };
 typedef flatbuffers_ref_t org_apache_arrow_flatbuf_DictionaryEncoding_ref_t;
 static org_apache_arrow_flatbuf_DictionaryEncoding_ref_t org_apache_arrow_flatbuf_DictionaryEncoding_clone(flatbuffers_builder_t *B, org_apache_arrow_flatbuf_DictionaryEncoding_table_t t);
-__flatbuffers_build_table(flatbuffers_, org_apache_arrow_flatbuf_DictionaryEncoding, 4)
+__flatbuffers_build_table(flatbuffers_, org_apache_arrow_flatbuf_DictionaryEncoding, 5)
 
 static const flatbuffers_voffset_t __org_apache_arrow_flatbuf_Field_required[] = { 0 };
 typedef flatbuffers_ref_t org_apache_arrow_flatbuf_Field_ref_t;
@@ -7485,8 +7541,10 @@ __flatbuffers_build_table_prolog(flatbuffers_, org_apache_arrow_flatbuf_Duration
 static inline org_apache_arrow_flatbuf_KeyValue_ref_t org_apache_arrow_flatbuf_KeyValue_create(flatbuffers_builder_t *B __org_apache_arrow_flatbuf_KeyValue_formal_args);
 __flatbuffers_build_table_prolog(flatbuffers_, org_apache_arrow_flatbuf_KeyValue, org_apache_arrow_flatbuf_KeyValue_file_identifier, org_apache_arrow_flatbuf_KeyValue_type_identifier)
 
-#define __org_apache_arrow_flatbuf_DictionaryEncoding_formal_args , int64_t v0, org_apache_arrow_flatbuf_Int_ref_t v1, flatbuffers_bool_t v2, org_apache_arrow_flatbuf_DictionaryKind_enum_t v3
-#define __org_apache_arrow_flatbuf_DictionaryEncoding_call_args , v0, v1, v2, v3
+#define __org_apache_arrow_flatbuf_DictionaryEncoding_formal_args ,\
+  int64_t v0, org_apache_arrow_flatbuf_Int_ref_t v1, flatbuffers_bool_t v2, org_apache_arrow_flatbuf_DictionaryKind_enum_t v3, org_apache_arrow_flatbuf_KeyValue_vec_ref_t v4
+#define __org_apache_arrow_flatbuf_DictionaryEncoding_call_args ,\
+  v0, v1, v2, v3, v4
 static inline org_apache_arrow_flatbuf_DictionaryEncoding_ref_t org_apache_arrow_flatbuf_DictionaryEncoding_create(flatbuffers_builder_t *B __org_apache_arrow_flatbuf_DictionaryEncoding_formal_args);
 __flatbuffers_build_table_prolog(flatbuffers_, org_apache_arrow_flatbuf_DictionaryEncoding, org_apache_arrow_flatbuf_DictionaryEncoding_file_identifier, org_apache_arrow_flatbuf_DictionaryEncoding_type_identifier)
 
@@ -8141,12 +8199,14 @@ __flatbuffers_build_scalar_field(0, flatbuffers_, org_apache_arrow_flatbuf_Dicti
 __flatbuffers_build_table_field(1, flatbuffers_, org_apache_arrow_flatbuf_DictionaryEncoding_indexType, org_apache_arrow_flatbuf_Int, org_apache_arrow_flatbuf_DictionaryEncoding)
 __flatbuffers_build_scalar_field(2, flatbuffers_, org_apache_arrow_flatbuf_DictionaryEncoding_isOrdered, flatbuffers_bool, flatbuffers_bool_t, 1, 1, UINT8_C(0), org_apache_arrow_flatbuf_DictionaryEncoding)
 __flatbuffers_build_scalar_field(3, flatbuffers_, org_apache_arrow_flatbuf_DictionaryEncoding_dictionaryKind, org_apache_arrow_flatbuf_DictionaryKind, org_apache_arrow_flatbuf_DictionaryKind_enum_t, 2, 2, INT16_C(0), org_apache_arrow_flatbuf_DictionaryEncoding)
+__flatbuffers_build_table_vector_field(4, flatbuffers_, org_apache_arrow_flatbuf_DictionaryEncoding_custom_metadata, org_apache_arrow_flatbuf_KeyValue, org_apache_arrow_flatbuf_DictionaryEncoding)
 
 static inline org_apache_arrow_flatbuf_DictionaryEncoding_ref_t org_apache_arrow_flatbuf_DictionaryEncoding_create(flatbuffers_builder_t *B __org_apache_arrow_flatbuf_DictionaryEncoding_formal_args)
 {
     if (org_apache_arrow_flatbuf_DictionaryEncoding_start(B)
         || org_apache_arrow_flatbuf_DictionaryEncoding_id_add(B, v0)
         || org_apache_arrow_flatbuf_DictionaryEncoding_indexType_add(B, v1)
+        || org_apache_arrow_flatbuf_DictionaryEncoding_custom_metadata_add(B, v4)
         || org_apache_arrow_flatbuf_DictionaryEncoding_dictionaryKind_add(B, v3)
         || org_apache_arrow_flatbuf_DictionaryEncoding_isOrdered_add(B, v2)) {
         return 0;
@@ -8160,6 +8220,7 @@ static org_apache_arrow_flatbuf_DictionaryEncoding_ref_t org_apache_arrow_flatbu
     if (org_apache_arrow_flatbuf_DictionaryEncoding_start(B)
         || org_apache_arrow_flatbuf_DictionaryEncoding_id_pick(B, t)
         || org_apache_arrow_flatbuf_DictionaryEncoding_indexType_pick(B, t)
+        || org_apache_arrow_flatbuf_DictionaryEncoding_custom_metadata_pick(B, t)
         || org_apache_arrow_flatbuf_DictionaryEncoding_dictionaryKind_pick(B, t)
         || org_apache_arrow_flatbuf_DictionaryEncoding_isOrdered_pick(B, t)) {
         return 0;
@@ -9632,6 +9693,7 @@ static int org_apache_arrow_flatbuf_DictionaryEncoding_verify_table(flatcc_table
     if ((ret = flatcc_verify_table_field(td, 1, 0, &org_apache_arrow_flatbuf_Int_verify_table) /* indexType */)) return ret;
     if ((ret = flatcc_verify_field(td, 2, 1, 1) /* isOrdered */)) return ret;
     if ((ret = flatcc_verify_field(td, 3, 2, 2) /* dictionaryKind */)) return ret;
+    if ((ret = flatcc_verify_table_vector_field(td, 4, 0, &org_apache_arrow_flatbuf_KeyValue_verify_table) /* custom_metadata */)) return ret;
     return flatcc_verify_ok;
 }
 
@@ -9854,6 +9916,8 @@ __flatbuffers_define_scalar_field(0, org_apache_arrow_flatbuf_TensorDim, size, f
 /**  Name of the dimension, optional */
 __flatbuffers_define_string_field(1, org_apache_arrow_flatbuf_TensorDim, name, 0)
 
+/**  DEPRECATED: The recommended way to pass tensors over Arrow IPC is
+ *  using columns with the `arrow.fixed_shape_tensor` canonical type. */
 struct org_apache_arrow_flatbuf_Tensor_table { uint8_t unused__; };
 
 static inline size_t org_apache_arrow_flatbuf_Tensor_vec_len(org_apache_arrow_flatbuf_Tensor_vec_t vec)
@@ -10416,6 +10480,11 @@ __flatbuffers_define_vector_field(4, org_apache_arrow_flatbuf_SparseTensorIndexC
 typedef uint8_t org_apache_arrow_flatbuf_SparseTensorIndex_union_type_t;
 __flatbuffers_define_integer_type(org_apache_arrow_flatbuf_SparseTensorIndex, org_apache_arrow_flatbuf_SparseTensorIndex_union_type_t, 8)
 __flatbuffers_define_union(flatbuffers_, org_apache_arrow_flatbuf_SparseTensorIndex)
+/**  DEPRECATED. Unlike dense tensors (see Tensor.fbs), the SparseTensor message
+ *  currently doesn't have a recommended replacement as a RecordBatch column type.
+ *  Feel free to discuss this on the development mailing-list (*) if this use case
+ *  is important to you.
+ *  (*) see https://arrow.apache.org/community/ */
 #define org_apache_arrow_flatbuf_SparseTensorIndex_NONE ((org_apache_arrow_flatbuf_SparseTensorIndex_union_type_t)UINT8_C(0))
 #define org_apache_arrow_flatbuf_SparseTensorIndex_SparseTensorIndexCOO ((org_apache_arrow_flatbuf_SparseTensorIndex_union_type_t)UINT8_C(1))
 #define org_apache_arrow_flatbuf_SparseTensorIndex_SparseMatrixIndexCSX ((org_apache_arrow_flatbuf_SparseTensorIndex_union_type_t)UINT8_C(2))
@@ -11074,6 +11143,9 @@ typedef flatbuffers_uoffset_t *org_apache_arrow_flatbuf_Message_mutable_vec_t;
 
 typedef int8_t org_apache_arrow_flatbuf_CompressionType_enum_t;
 __flatbuffers_define_integer_type(org_apache_arrow_flatbuf_CompressionType, org_apache_arrow_flatbuf_CompressionType_enum_t, 8)
+/**  LZ4 frame format, for portability, as provided by lz4frame.h or wrappers
+ *  thereof. Not to be confused with "raw" (also called "block") format
+ *  provided by lz4.h */
 #define org_apache_arrow_flatbuf_CompressionType_LZ4_FRAME ((org_apache_arrow_flatbuf_CompressionType_enum_t)INT8_C(0))
 #define org_apache_arrow_flatbuf_CompressionType_ZSTD ((org_apache_arrow_flatbuf_CompressionType_enum_t)INT8_C(1))
 
@@ -11246,7 +11318,11 @@ __flatbuffers_define_scalar_field(2, org_apache_arrow_flatbuf_DictionaryBatch, i
  *
  *  Arrow implementations do not need to implement all of the message types,
  *  which may include experimental metadata types. For maximum compatibility,
- *  it is best to send data using RecordBatch */
+ *  it is best to send data using RecordBatch.
+ *
+ *  Tensor and SparseTensor are DEPRECATED. The recommended way to pass dense
+ *  tensors over Arrow IPC is a RecordBatch field with the `arrow.fixed_shape_tensor`
+ *  canonical type. Sparse tensors currently do not have a recommended replacement. */
 typedef uint8_t org_apache_arrow_flatbuf_MessageHeader_union_type_t;
 __flatbuffers_define_integer_type(org_apache_arrow_flatbuf_MessageHeader, org_apache_arrow_flatbuf_MessageHeader_union_type_t, 8)
 __flatbuffers_define_union(flatbuffers_, org_apache_arrow_flatbuf_MessageHeader)
@@ -12526,8 +12602,14 @@ static inline int org_apache_arrow_flatbuf_TimeUnit_is_known_value(org_apache_ar
     }
 }
 
+/**  The unit of an Interval.
+ *
+ *  All integers in the units below are stored in the endianness indicated
+ *  by the schema. */
 typedef int16_t org_apache_arrow_flatbuf_IntervalUnit_enum_t;
 __flatbuffers_define_integer_type(org_apache_arrow_flatbuf_IntervalUnit, org_apache_arrow_flatbuf_IntervalUnit_enum_t, 16)
+/**  Indicates the number of elapsed whole months, stored as
+ *  4-byte signed integers. */
 #define org_apache_arrow_flatbuf_IntervalUnit_YEAR_MONTH ((org_apache_arrow_flatbuf_IntervalUnit_enum_t)INT16_C(0))
 #define org_apache_arrow_flatbuf_IntervalUnit_DAY_TIME ((org_apache_arrow_flatbuf_IntervalUnit_enum_t)INT16_C(1))
 #define org_apache_arrow_flatbuf_IntervalUnit_MONTH_DAY_NANO ((org_apache_arrow_flatbuf_IntervalUnit_enum_t)INT16_C(2))
@@ -13074,6 +13156,9 @@ __flatbuffers_define_scalar_field(0, org_apache_arrow_flatbuf_Timestamp, unit, o
  *  the data (see above). */
 __flatbuffers_define_string_field(1, org_apache_arrow_flatbuf_Timestamp, timezone, 0)
 
+/**  A "calendar" interval which models types that don't necessarily
+ *  have a precise duration without the context of a base timestamp (e.g.
+ *  days can differ in length during day light savings time transitions). */
 struct org_apache_arrow_flatbuf_Interval_table { uint8_t unused__; };
 
 static inline size_t org_apache_arrow_flatbuf_Interval_vec_len(org_apache_arrow_flatbuf_Interval_vec_t vec)
@@ -13084,6 +13169,19 @@ __flatbuffers_table_as_root(org_apache_arrow_flatbuf_Interval)
 
 __flatbuffers_define_scalar_field(0, org_apache_arrow_flatbuf_Interval, unit, org_apache_arrow_flatbuf_IntervalUnit, org_apache_arrow_flatbuf_IntervalUnit_enum_t, INT16_C(0))
 
+/**  An absolute length of time unrelated to any calendar artifacts.
+ *
+ *  For the purposes of Arrow Implementations, adding this value to a Timestamp
+ *  ("t1") naively (i.e. simply summing the two numbers) is acceptable even
+ *  though in some cases the resulting Timestamp (t2) would not account for
+ *  leap-seconds during the elapsed time between "t1" and "t2".  Similarly,
+ *  representing the difference between two Unix timestamps is acceptable, but
+ *  would yield a value that is possibly a few seconds off from the true elapsed
+ *  time.
+ *
+ *  The resolution defaults to millisecond, but can be any of the other
+ *  supported TimeUnit values as with Timestamp and Time types.  This type is
+ *  always represented as an 8-byte integer. */
 struct org_apache_arrow_flatbuf_Duration_table { uint8_t unused__; };
 
 static inline size_t org_apache_arrow_flatbuf_Duration_vec_len(org_apache_arrow_flatbuf_Duration_vec_t vec)
@@ -13100,7 +13198,7 @@ typedef uint8_t org_apache_arrow_flatbuf_Type_union_type_t;
 __flatbuffers_define_integer_type(org_apache_arrow_flatbuf_Type, org_apache_arrow_flatbuf_Type_union_type_t, 8)
 __flatbuffers_define_union(flatbuffers_, org_apache_arrow_flatbuf_Type)
 /**  ----------------------------------------------------------------------
- *  user defined key value pairs to add custom metadata to arrow
+ *  user defined key value pairs to add custom metadata to Arrow
  *  key namespacing is the responsibility of the user */
 #define org_apache_arrow_flatbuf_Type_NONE ((org_apache_arrow_flatbuf_Type_union_type_t)UINT8_C(0))
 #define org_apache_arrow_flatbuf_Type_Null ((org_apache_arrow_flatbuf_Type_union_type_t)UINT8_C(1))
@@ -13234,6 +13332,8 @@ __flatbuffers_define_table_field(1, org_apache_arrow_flatbuf_DictionaryEncoding,
  *  preserve that metadata here */
 __flatbuffers_define_scalar_field(2, org_apache_arrow_flatbuf_DictionaryEncoding, isOrdered, flatbuffers_bool, flatbuffers_bool_t, UINT8_C(0))
 __flatbuffers_define_scalar_field(3, org_apache_arrow_flatbuf_DictionaryEncoding, dictionaryKind, org_apache_arrow_flatbuf_DictionaryKind, org_apache_arrow_flatbuf_DictionaryKind_enum_t, INT16_C(0))
+/**  Metadata for the dictionary value type, e.g. the extension type of the values */
+__flatbuffers_define_vector_field(4, org_apache_arrow_flatbuf_DictionaryEncoding, custom_metadata, org_apache_arrow_flatbuf_KeyValue_vec_t, 0)
 
 /**  ----------------------------------------------------------------------
  *  A field represents a named column in a record / row batch or child of a
@@ -13275,6 +13375,7 @@ __flatbuffers_table_as_root(org_apache_arrow_flatbuf_Schema)
  *  if endianness doesn't match the underlying system then the vectors need to be converted */
 __flatbuffers_define_scalar_field(0, org_apache_arrow_flatbuf_Schema, endianness, org_apache_arrow_flatbuf_Endianness, org_apache_arrow_flatbuf_Endianness_enum_t, INT16_C(0))
 __flatbuffers_define_vector_field(1, org_apache_arrow_flatbuf_Schema, fields, org_apache_arrow_flatbuf_Field_vec_t, 0)
+/**  User-defined metadata */
 __flatbuffers_define_vector_field(2, org_apache_arrow_flatbuf_Schema, custom_metadata, org_apache_arrow_flatbuf_KeyValue_vec_t, 0)
 /**  Features used in the stream/file. */
 __flatbuffers_define_vector_field(3, org_apache_arrow_flatbuf_Schema, features, org_apache_arrow_flatbuf_Feature_vec_t, 0)
@@ -13494,7 +13595,7 @@ __flatbuffers_build_table(flatbuffers_, org_apache_arrow_flatbuf_KeyValue, 2)
 static const flatbuffers_voffset_t __org_apache_arrow_flatbuf_DictionaryEncoding_required[] = { 0 };
 typedef flatbuffers_ref_t org_apache_arrow_flatbuf_DictionaryEncoding_ref_t;
 static org_apache_arrow_flatbuf_DictionaryEncoding_ref_t org_apache_arrow_flatbuf_DictionaryEncoding_clone(flatbuffers_builder_t *B, org_apache_arrow_flatbuf_DictionaryEncoding_table_t t);
-__flatbuffers_build_table(flatbuffers_, org_apache_arrow_flatbuf_DictionaryEncoding, 4)
+__flatbuffers_build_table(flatbuffers_, org_apache_arrow_flatbuf_DictionaryEncoding, 5)
 
 static const flatbuffers_voffset_t __org_apache_arrow_flatbuf_Field_required[] = { 0 };
 typedef flatbuffers_ref_t org_apache_arrow_flatbuf_Field_ref_t;
@@ -13641,8 +13742,10 @@ __flatbuffers_build_table_prolog(flatbuffers_, org_apache_arrow_flatbuf_Duration
 static inline org_apache_arrow_flatbuf_KeyValue_ref_t org_apache_arrow_flatbuf_KeyValue_create(flatbuffers_builder_t *B __org_apache_arrow_flatbuf_KeyValue_formal_args);
 __flatbuffers_build_table_prolog(flatbuffers_, org_apache_arrow_flatbuf_KeyValue, org_apache_arrow_flatbuf_KeyValue_file_identifier, org_apache_arrow_flatbuf_KeyValue_type_identifier)
 
-#define __org_apache_arrow_flatbuf_DictionaryEncoding_formal_args , int64_t v0, org_apache_arrow_flatbuf_Int_ref_t v1, flatbuffers_bool_t v2, org_apache_arrow_flatbuf_DictionaryKind_enum_t v3
-#define __org_apache_arrow_flatbuf_DictionaryEncoding_call_args , v0, v1, v2, v3
+#define __org_apache_arrow_flatbuf_DictionaryEncoding_formal_args ,\
+  int64_t v0, org_apache_arrow_flatbuf_Int_ref_t v1, flatbuffers_bool_t v2, org_apache_arrow_flatbuf_DictionaryKind_enum_t v3, org_apache_arrow_flatbuf_KeyValue_vec_ref_t v4
+#define __org_apache_arrow_flatbuf_DictionaryEncoding_call_args ,\
+  v0, v1, v2, v3, v4
 static inline org_apache_arrow_flatbuf_DictionaryEncoding_ref_t org_apache_arrow_flatbuf_DictionaryEncoding_create(flatbuffers_builder_t *B __org_apache_arrow_flatbuf_DictionaryEncoding_formal_args);
 __flatbuffers_build_table_prolog(flatbuffers_, org_apache_arrow_flatbuf_DictionaryEncoding, org_apache_arrow_flatbuf_DictionaryEncoding_file_identifier, org_apache_arrow_flatbuf_DictionaryEncoding_type_identifier)
 
@@ -14297,12 +14400,14 @@ __flatbuffers_build_scalar_field(0, flatbuffers_, org_apache_arrow_flatbuf_Dicti
 __flatbuffers_build_table_field(1, flatbuffers_, org_apache_arrow_flatbuf_DictionaryEncoding_indexType, org_apache_arrow_flatbuf_Int, org_apache_arrow_flatbuf_DictionaryEncoding)
 __flatbuffers_build_scalar_field(2, flatbuffers_, org_apache_arrow_flatbuf_DictionaryEncoding_isOrdered, flatbuffers_bool, flatbuffers_bool_t, 1, 1, UINT8_C(0), org_apache_arrow_flatbuf_DictionaryEncoding)
 __flatbuffers_build_scalar_field(3, flatbuffers_, org_apache_arrow_flatbuf_DictionaryEncoding_dictionaryKind, org_apache_arrow_flatbuf_DictionaryKind, org_apache_arrow_flatbuf_DictionaryKind_enum_t, 2, 2, INT16_C(0), org_apache_arrow_flatbuf_DictionaryEncoding)
+__flatbuffers_build_table_vector_field(4, flatbuffers_, org_apache_arrow_flatbuf_DictionaryEncoding_custom_metadata, org_apache_arrow_flatbuf_KeyValue, org_apache_arrow_flatbuf_DictionaryEncoding)
 
 static inline org_apache_arrow_flatbuf_DictionaryEncoding_ref_t org_apache_arrow_flatbuf_DictionaryEncoding_create(flatbuffers_builder_t *B __org_apache_arrow_flatbuf_DictionaryEncoding_formal_args)
 {
     if (org_apache_arrow_flatbuf_DictionaryEncoding_start(B)
         || org_apache_arrow_flatbuf_DictionaryEncoding_id_add(B, v0)
         || org_apache_arrow_flatbuf_DictionaryEncoding_indexType_add(B, v1)
+        || org_apache_arrow_flatbuf_DictionaryEncoding_custom_metadata_add(B, v4)
         || org_apache_arrow_flatbuf_DictionaryEncoding_dictionaryKind_add(B, v3)
         || org_apache_arrow_flatbuf_DictionaryEncoding_isOrdered_add(B, v2)) {
         return 0;
@@ -14316,6 +14421,7 @@ static org_apache_arrow_flatbuf_DictionaryEncoding_ref_t org_apache_arrow_flatbu
     if (org_apache_arrow_flatbuf_DictionaryEncoding_start(B)
         || org_apache_arrow_flatbuf_DictionaryEncoding_id_pick(B, t)
         || org_apache_arrow_flatbuf_DictionaryEncoding_indexType_pick(B, t)
+        || org_apache_arrow_flatbuf_DictionaryEncoding_custom_metadata_pick(B, t)
         || org_apache_arrow_flatbuf_DictionaryEncoding_dictionaryKind_pick(B, t)
         || org_apache_arrow_flatbuf_DictionaryEncoding_isOrdered_pick(B, t)) {
         return 0;
@@ -15788,6 +15894,7 @@ static int org_apache_arrow_flatbuf_DictionaryEncoding_verify_table(flatcc_table
     if ((ret = flatcc_verify_table_field(td, 1, 0, &org_apache_arrow_flatbuf_Int_verify_table) /* indexType */)) return ret;
     if ((ret = flatcc_verify_field(td, 2, 1, 1) /* isOrdered */)) return ret;
     if ((ret = flatcc_verify_field(td, 3, 2, 2) /* dictionaryKind */)) return ret;
+    if ((ret = flatcc_verify_table_vector_field(td, 4, 0, &org_apache_arrow_flatbuf_KeyValue_verify_table) /* custom_metadata */)) return ret;
     return flatcc_verify_ok;
 }
 
@@ -16632,8 +16739,14 @@ static inline int org_apache_arrow_flatbuf_TimeUnit_is_known_value(org_apache_ar
     }
 }
 
+/**  The unit of an Interval.
+ *
+ *  All integers in the units below are stored in the endianness indicated
+ *  by the schema. */
 typedef int16_t org_apache_arrow_flatbuf_IntervalUnit_enum_t;
 __flatbuffers_define_integer_type(org_apache_arrow_flatbuf_IntervalUnit, org_apache_arrow_flatbuf_IntervalUnit_enum_t, 16)
+/**  Indicates the number of elapsed whole months, stored as
+ *  4-byte signed integers. */
 #define org_apache_arrow_flatbuf_IntervalUnit_YEAR_MONTH ((org_apache_arrow_flatbuf_IntervalUnit_enum_t)INT16_C(0))
 #define org_apache_arrow_flatbuf_IntervalUnit_DAY_TIME ((org_apache_arrow_flatbuf_IntervalUnit_enum_t)INT16_C(1))
 #define org_apache_arrow_flatbuf_IntervalUnit_MONTH_DAY_NANO ((org_apache_arrow_flatbuf_IntervalUnit_enum_t)INT16_C(2))
@@ -17180,6 +17293,9 @@ __flatbuffers_define_scalar_field(0, org_apache_arrow_flatbuf_Timestamp, unit, o
  *  the data (see above). */
 __flatbuffers_define_string_field(1, org_apache_arrow_flatbuf_Timestamp, timezone, 0)
 
+/**  A "calendar" interval which models types that don't necessarily
+ *  have a precise duration without the context of a base timestamp (e.g.
+ *  days can differ in length during day light savings time transitions). */
 struct org_apache_arrow_flatbuf_Interval_table { uint8_t unused__; };
 
 static inline size_t org_apache_arrow_flatbuf_Interval_vec_len(org_apache_arrow_flatbuf_Interval_vec_t vec)
@@ -17190,6 +17306,19 @@ __flatbuffers_table_as_root(org_apache_arrow_flatbuf_Interval)
 
 __flatbuffers_define_scalar_field(0, org_apache_arrow_flatbuf_Interval, unit, org_apache_arrow_flatbuf_IntervalUnit, org_apache_arrow_flatbuf_IntervalUnit_enum_t, INT16_C(0))
 
+/**  An absolute length of time unrelated to any calendar artifacts.
+ *
+ *  For the purposes of Arrow Implementations, adding this value to a Timestamp
+ *  ("t1") naively (i.e. simply summing the two numbers) is acceptable even
+ *  though in some cases the resulting Timestamp (t2) would not account for
+ *  leap-seconds during the elapsed time between "t1" and "t2".  Similarly,
+ *  representing the difference between two Unix timestamps is acceptable, but
+ *  would yield a value that is possibly a few seconds off from the true elapsed
+ *  time.
+ *
+ *  The resolution defaults to millisecond, but can be any of the other
+ *  supported TimeUnit values as with Timestamp and Time types.  This type is
+ *  always represented as an 8-byte integer. */
 struct org_apache_arrow_flatbuf_Duration_table { uint8_t unused__; };
 
 static inline size_t org_apache_arrow_flatbuf_Duration_vec_len(org_apache_arrow_flatbuf_Duration_vec_t vec)
@@ -17206,7 +17335,7 @@ typedef uint8_t org_apache_arrow_flatbuf_Type_union_type_t;
 __flatbuffers_define_integer_type(org_apache_arrow_flatbuf_Type, org_apache_arrow_flatbuf_Type_union_type_t, 8)
 __flatbuffers_define_union(flatbuffers_, org_apache_arrow_flatbuf_Type)
 /**  ----------------------------------------------------------------------
- *  user defined key value pairs to add custom metadata to arrow
+ *  user defined key value pairs to add custom metadata to Arrow
  *  key namespacing is the responsibility of the user */
 #define org_apache_arrow_flatbuf_Type_NONE ((org_apache_arrow_flatbuf_Type_union_type_t)UINT8_C(0))
 #define org_apache_arrow_flatbuf_Type_Null ((org_apache_arrow_flatbuf_Type_union_type_t)UINT8_C(1))
@@ -17340,6 +17469,8 @@ __flatbuffers_define_table_field(1, org_apache_arrow_flatbuf_DictionaryEncoding,
  *  preserve that metadata here */
 __flatbuffers_define_scalar_field(2, org_apache_arrow_flatbuf_DictionaryEncoding, isOrdered, flatbuffers_bool, flatbuffers_bool_t, UINT8_C(0))
 __flatbuffers_define_scalar_field(3, org_apache_arrow_flatbuf_DictionaryEncoding, dictionaryKind, org_apache_arrow_flatbuf_DictionaryKind, org_apache_arrow_flatbuf_DictionaryKind_enum_t, INT16_C(0))
+/**  Metadata for the dictionary value type, e.g. the extension type of the values */
+__flatbuffers_define_vector_field(4, org_apache_arrow_flatbuf_DictionaryEncoding, custom_metadata, org_apache_arrow_flatbuf_KeyValue_vec_t, 0)
 
 /**  ----------------------------------------------------------------------
  *  A field represents a named column in a record / row batch or child of a
@@ -17381,6 +17512,7 @@ __flatbuffers_table_as_root(org_apache_arrow_flatbuf_Schema)
  *  if endianness doesn't match the underlying system then the vectors need to be converted */
 __flatbuffers_define_scalar_field(0, org_apache_arrow_flatbuf_Schema, endianness, org_apache_arrow_flatbuf_Endianness, org_apache_arrow_flatbuf_Endianness_enum_t, INT16_C(0))
 __flatbuffers_define_vector_field(1, org_apache_arrow_flatbuf_Schema, fields, org_apache_arrow_flatbuf_Field_vec_t, 0)
+/**  User-defined metadata */
 __flatbuffers_define_vector_field(2, org_apache_arrow_flatbuf_Schema, custom_metadata, org_apache_arrow_flatbuf_KeyValue_vec_t, 0)
 /**  Features used in the stream/file. */
 __flatbuffers_define_vector_field(3, org_apache_arrow_flatbuf_Schema, features, org_apache_arrow_flatbuf_Feature_vec_t, 0)
@@ -17600,7 +17732,7 @@ __flatbuffers_build_table(flatbuffers_, org_apache_arrow_flatbuf_KeyValue, 2)
 static const flatbuffers_voffset_t __org_apache_arrow_flatbuf_DictionaryEncoding_required[] = { 0 };
 typedef flatbuffers_ref_t org_apache_arrow_flatbuf_DictionaryEncoding_ref_t;
 static org_apache_arrow_flatbuf_DictionaryEncoding_ref_t org_apache_arrow_flatbuf_DictionaryEncoding_clone(flatbuffers_builder_t *B, org_apache_arrow_flatbuf_DictionaryEncoding_table_t t);
-__flatbuffers_build_table(flatbuffers_, org_apache_arrow_flatbuf_DictionaryEncoding, 4)
+__flatbuffers_build_table(flatbuffers_, org_apache_arrow_flatbuf_DictionaryEncoding, 5)
 
 static const flatbuffers_voffset_t __org_apache_arrow_flatbuf_Field_required[] = { 0 };
 typedef flatbuffers_ref_t org_apache_arrow_flatbuf_Field_ref_t;
@@ -17747,8 +17879,10 @@ __flatbuffers_build_table_prolog(flatbuffers_, org_apache_arrow_flatbuf_Duration
 static inline org_apache_arrow_flatbuf_KeyValue_ref_t org_apache_arrow_flatbuf_KeyValue_create(flatbuffers_builder_t *B __org_apache_arrow_flatbuf_KeyValue_formal_args);
 __flatbuffers_build_table_prolog(flatbuffers_, org_apache_arrow_flatbuf_KeyValue, org_apache_arrow_flatbuf_KeyValue_file_identifier, org_apache_arrow_flatbuf_KeyValue_type_identifier)
 
-#define __org_apache_arrow_flatbuf_DictionaryEncoding_formal_args , int64_t v0, org_apache_arrow_flatbuf_Int_ref_t v1, flatbuffers_bool_t v2, org_apache_arrow_flatbuf_DictionaryKind_enum_t v3
-#define __org_apache_arrow_flatbuf_DictionaryEncoding_call_args , v0, v1, v2, v3
+#define __org_apache_arrow_flatbuf_DictionaryEncoding_formal_args ,\
+  int64_t v0, org_apache_arrow_flatbuf_Int_ref_t v1, flatbuffers_bool_t v2, org_apache_arrow_flatbuf_DictionaryKind_enum_t v3, org_apache_arrow_flatbuf_KeyValue_vec_ref_t v4
+#define __org_apache_arrow_flatbuf_DictionaryEncoding_call_args ,\
+  v0, v1, v2, v3, v4
 static inline org_apache_arrow_flatbuf_DictionaryEncoding_ref_t org_apache_arrow_flatbuf_DictionaryEncoding_create(flatbuffers_builder_t *B __org_apache_arrow_flatbuf_DictionaryEncoding_formal_args);
 __flatbuffers_build_table_prolog(flatbuffers_, org_apache_arrow_flatbuf_DictionaryEncoding, org_apache_arrow_flatbuf_DictionaryEncoding_file_identifier, org_apache_arrow_flatbuf_DictionaryEncoding_type_identifier)
 
@@ -18403,12 +18537,14 @@ __flatbuffers_build_scalar_field(0, flatbuffers_, org_apache_arrow_flatbuf_Dicti
 __flatbuffers_build_table_field(1, flatbuffers_, org_apache_arrow_flatbuf_DictionaryEncoding_indexType, org_apache_arrow_flatbuf_Int, org_apache_arrow_flatbuf_DictionaryEncoding)
 __flatbuffers_build_scalar_field(2, flatbuffers_, org_apache_arrow_flatbuf_DictionaryEncoding_isOrdered, flatbuffers_bool, flatbuffers_bool_t, 1, 1, UINT8_C(0), org_apache_arrow_flatbuf_DictionaryEncoding)
 __flatbuffers_build_scalar_field(3, flatbuffers_, org_apache_arrow_flatbuf_DictionaryEncoding_dictionaryKind, org_apache_arrow_flatbuf_DictionaryKind, org_apache_arrow_flatbuf_DictionaryKind_enum_t, 2, 2, INT16_C(0), org_apache_arrow_flatbuf_DictionaryEncoding)
+__flatbuffers_build_table_vector_field(4, flatbuffers_, org_apache_arrow_flatbuf_DictionaryEncoding_custom_metadata, org_apache_arrow_flatbuf_KeyValue, org_apache_arrow_flatbuf_DictionaryEncoding)
 
 static inline org_apache_arrow_flatbuf_DictionaryEncoding_ref_t org_apache_arrow_flatbuf_DictionaryEncoding_create(flatbuffers_builder_t *B __org_apache_arrow_flatbuf_DictionaryEncoding_formal_args)
 {
     if (org_apache_arrow_flatbuf_DictionaryEncoding_start(B)
         || org_apache_arrow_flatbuf_DictionaryEncoding_id_add(B, v0)
         || org_apache_arrow_flatbuf_DictionaryEncoding_indexType_add(B, v1)
+        || org_apache_arrow_flatbuf_DictionaryEncoding_custom_metadata_add(B, v4)
         || org_apache_arrow_flatbuf_DictionaryEncoding_dictionaryKind_add(B, v3)
         || org_apache_arrow_flatbuf_DictionaryEncoding_isOrdered_add(B, v2)) {
         return 0;
@@ -18422,6 +18558,7 @@ static org_apache_arrow_flatbuf_DictionaryEncoding_ref_t org_apache_arrow_flatbu
     if (org_apache_arrow_flatbuf_DictionaryEncoding_start(B)
         || org_apache_arrow_flatbuf_DictionaryEncoding_id_pick(B, t)
         || org_apache_arrow_flatbuf_DictionaryEncoding_indexType_pick(B, t)
+        || org_apache_arrow_flatbuf_DictionaryEncoding_custom_metadata_pick(B, t)
         || org_apache_arrow_flatbuf_DictionaryEncoding_dictionaryKind_pick(B, t)
         || org_apache_arrow_flatbuf_DictionaryEncoding_isOrdered_pick(B, t)) {
         return 0;
@@ -19894,6 +20031,7 @@ static int org_apache_arrow_flatbuf_DictionaryEncoding_verify_table(flatcc_table
     if ((ret = flatcc_verify_table_field(td, 1, 0, &org_apache_arrow_flatbuf_Int_verify_table) /* indexType */)) return ret;
     if ((ret = flatcc_verify_field(td, 2, 1, 1) /* isOrdered */)) return ret;
     if ((ret = flatcc_verify_field(td, 3, 2, 2) /* dictionaryKind */)) return ret;
+    if ((ret = flatcc_verify_table_vector_field(td, 4, 0, &org_apache_arrow_flatbuf_KeyValue_verify_table) /* custom_metadata */)) return ret;
     return flatcc_verify_ok;
 }
 
@@ -20116,6 +20254,8 @@ __flatbuffers_define_scalar_field(0, org_apache_arrow_flatbuf_TensorDim, size, f
 /**  Name of the dimension, optional */
 __flatbuffers_define_string_field(1, org_apache_arrow_flatbuf_TensorDim, name, 0)
 
+/**  DEPRECATED: The recommended way to pass tensors over Arrow IPC is
+ *  using columns with the `arrow.fixed_shape_tensor` canonical type. */
 struct org_apache_arrow_flatbuf_Tensor_table { uint8_t unused__; };
 
 static inline size_t org_apache_arrow_flatbuf_Tensor_vec_len(org_apache_arrow_flatbuf_Tensor_vec_t vec)
@@ -20678,6 +20818,11 @@ __flatbuffers_define_vector_field(4, org_apache_arrow_flatbuf_SparseTensorIndexC
 typedef uint8_t org_apache_arrow_flatbuf_SparseTensorIndex_union_type_t;
 __flatbuffers_define_integer_type(org_apache_arrow_flatbuf_SparseTensorIndex, org_apache_arrow_flatbuf_SparseTensorIndex_union_type_t, 8)
 __flatbuffers_define_union(flatbuffers_, org_apache_arrow_flatbuf_SparseTensorIndex)
+/**  DEPRECATED. Unlike dense tensors (see Tensor.fbs), the SparseTensor message
+ *  currently doesn't have a recommended replacement as a RecordBatch column type.
+ *  Feel free to discuss this on the development mailing-list (*) if this use case
+ *  is important to you.
+ *  (*) see https://arrow.apache.org/community/ */
 #define org_apache_arrow_flatbuf_SparseTensorIndex_NONE ((org_apache_arrow_flatbuf_SparseTensorIndex_union_type_t)UINT8_C(0))
 #define org_apache_arrow_flatbuf_SparseTensorIndex_SparseTensorIndexCOO ((org_apache_arrow_flatbuf_SparseTensorIndex_union_type_t)UINT8_C(1))
 #define org_apache_arrow_flatbuf_SparseTensorIndex_SparseMatrixIndexCSX ((org_apache_arrow_flatbuf_SparseTensorIndex_union_type_t)UINT8_C(2))
@@ -21919,8 +22064,14 @@ static inline int org_apache_arrow_flatbuf_TimeUnit_is_known_value(org_apache_ar
     }
 }
 
+/**  The unit of an Interval.
+ *
+ *  All integers in the units below are stored in the endianness indicated
+ *  by the schema. */
 typedef int16_t org_apache_arrow_flatbuf_IntervalUnit_enum_t;
 __flatbuffers_define_integer_type(org_apache_arrow_flatbuf_IntervalUnit, org_apache_arrow_flatbuf_IntervalUnit_enum_t, 16)
+/**  Indicates the number of elapsed whole months, stored as
+ *  4-byte signed integers. */
 #define org_apache_arrow_flatbuf_IntervalUnit_YEAR_MONTH ((org_apache_arrow_flatbuf_IntervalUnit_enum_t)INT16_C(0))
 #define org_apache_arrow_flatbuf_IntervalUnit_DAY_TIME ((org_apache_arrow_flatbuf_IntervalUnit_enum_t)INT16_C(1))
 #define org_apache_arrow_flatbuf_IntervalUnit_MONTH_DAY_NANO ((org_apache_arrow_flatbuf_IntervalUnit_enum_t)INT16_C(2))
@@ -22467,6 +22618,9 @@ __flatbuffers_define_scalar_field(0, org_apache_arrow_flatbuf_Timestamp, unit, o
  *  the data (see above). */
 __flatbuffers_define_string_field(1, org_apache_arrow_flatbuf_Timestamp, timezone, 0)
 
+/**  A "calendar" interval which models types that don't necessarily
+ *  have a precise duration without the context of a base timestamp (e.g.
+ *  days can differ in length during day light savings time transitions). */
 struct org_apache_arrow_flatbuf_Interval_table { uint8_t unused__; };
 
 static inline size_t org_apache_arrow_flatbuf_Interval_vec_len(org_apache_arrow_flatbuf_Interval_vec_t vec)
@@ -22477,6 +22631,19 @@ __flatbuffers_table_as_root(org_apache_arrow_flatbuf_Interval)
 
 __flatbuffers_define_scalar_field(0, org_apache_arrow_flatbuf_Interval, unit, org_apache_arrow_flatbuf_IntervalUnit, org_apache_arrow_flatbuf_IntervalUnit_enum_t, INT16_C(0))
 
+/**  An absolute length of time unrelated to any calendar artifacts.
+ *
+ *  For the purposes of Arrow Implementations, adding this value to a Timestamp
+ *  ("t1") naively (i.e. simply summing the two numbers) is acceptable even
+ *  though in some cases the resulting Timestamp (t2) would not account for
+ *  leap-seconds during the elapsed time between "t1" and "t2".  Similarly,
+ *  representing the difference between two Unix timestamps is acceptable, but
+ *  would yield a value that is possibly a few seconds off from the true elapsed
+ *  time.
+ *
+ *  The resolution defaults to millisecond, but can be any of the other
+ *  supported TimeUnit values as with Timestamp and Time types.  This type is
+ *  always represented as an 8-byte integer. */
 struct org_apache_arrow_flatbuf_Duration_table { uint8_t unused__; };
 
 static inline size_t org_apache_arrow_flatbuf_Duration_vec_len(org_apache_arrow_flatbuf_Duration_vec_t vec)
@@ -22493,7 +22660,7 @@ typedef uint8_t org_apache_arrow_flatbuf_Type_union_type_t;
 __flatbuffers_define_integer_type(org_apache_arrow_flatbuf_Type, org_apache_arrow_flatbuf_Type_union_type_t, 8)
 __flatbuffers_define_union(flatbuffers_, org_apache_arrow_flatbuf_Type)
 /**  ----------------------------------------------------------------------
- *  user defined key value pairs to add custom metadata to arrow
+ *  user defined key value pairs to add custom metadata to Arrow
  *  key namespacing is the responsibility of the user */
 #define org_apache_arrow_flatbuf_Type_NONE ((org_apache_arrow_flatbuf_Type_union_type_t)UINT8_C(0))
 #define org_apache_arrow_flatbuf_Type_Null ((org_apache_arrow_flatbuf_Type_union_type_t)UINT8_C(1))
@@ -22627,6 +22794,8 @@ __flatbuffers_define_table_field(1, org_apache_arrow_flatbuf_DictionaryEncoding,
  *  preserve that metadata here */
 __flatbuffers_define_scalar_field(2, org_apache_arrow_flatbuf_DictionaryEncoding, isOrdered, flatbuffers_bool, flatbuffers_bool_t, UINT8_C(0))
 __flatbuffers_define_scalar_field(3, org_apache_arrow_flatbuf_DictionaryEncoding, dictionaryKind, org_apache_arrow_flatbuf_DictionaryKind, org_apache_arrow_flatbuf_DictionaryKind_enum_t, INT16_C(0))
+/**  Metadata for the dictionary value type, e.g. the extension type of the values */
+__flatbuffers_define_vector_field(4, org_apache_arrow_flatbuf_DictionaryEncoding, custom_metadata, org_apache_arrow_flatbuf_KeyValue_vec_t, 0)
 
 /**  ----------------------------------------------------------------------
  *  A field represents a named column in a record / row batch or child of a
@@ -22668,6 +22837,7 @@ __flatbuffers_table_as_root(org_apache_arrow_flatbuf_Schema)
  *  if endianness doesn't match the underlying system then the vectors need to be converted */
 __flatbuffers_define_scalar_field(0, org_apache_arrow_flatbuf_Schema, endianness, org_apache_arrow_flatbuf_Endianness, org_apache_arrow_flatbuf_Endianness_enum_t, INT16_C(0))
 __flatbuffers_define_vector_field(1, org_apache_arrow_flatbuf_Schema, fields, org_apache_arrow_flatbuf_Field_vec_t, 0)
+/**  User-defined metadata */
 __flatbuffers_define_vector_field(2, org_apache_arrow_flatbuf_Schema, custom_metadata, org_apache_arrow_flatbuf_KeyValue_vec_t, 0)
 /**  Features used in the stream/file. */
 __flatbuffers_define_vector_field(3, org_apache_arrow_flatbuf_Schema, features, org_apache_arrow_flatbuf_Feature_vec_t, 0)
@@ -22887,7 +23057,7 @@ __flatbuffers_build_table(flatbuffers_, org_apache_arrow_flatbuf_KeyValue, 2)
 static const flatbuffers_voffset_t __org_apache_arrow_flatbuf_DictionaryEncoding_required[] = { 0 };
 typedef flatbuffers_ref_t org_apache_arrow_flatbuf_DictionaryEncoding_ref_t;
 static org_apache_arrow_flatbuf_DictionaryEncoding_ref_t org_apache_arrow_flatbuf_DictionaryEncoding_clone(flatbuffers_builder_t *B, org_apache_arrow_flatbuf_DictionaryEncoding_table_t t);
-__flatbuffers_build_table(flatbuffers_, org_apache_arrow_flatbuf_DictionaryEncoding, 4)
+__flatbuffers_build_table(flatbuffers_, org_apache_arrow_flatbuf_DictionaryEncoding, 5)
 
 static const flatbuffers_voffset_t __org_apache_arrow_flatbuf_Field_required[] = { 0 };
 typedef flatbuffers_ref_t org_apache_arrow_flatbuf_Field_ref_t;
@@ -23034,8 +23204,10 @@ __flatbuffers_build_table_prolog(flatbuffers_, org_apache_arrow_flatbuf_Duration
 static inline org_apache_arrow_flatbuf_KeyValue_ref_t org_apache_arrow_flatbuf_KeyValue_create(flatbuffers_builder_t *B __org_apache_arrow_flatbuf_KeyValue_formal_args);
 __flatbuffers_build_table_prolog(flatbuffers_, org_apache_arrow_flatbuf_KeyValue, org_apache_arrow_flatbuf_KeyValue_file_identifier, org_apache_arrow_flatbuf_KeyValue_type_identifier)
 
-#define __org_apache_arrow_flatbuf_DictionaryEncoding_formal_args , int64_t v0, org_apache_arrow_flatbuf_Int_ref_t v1, flatbuffers_bool_t v2, org_apache_arrow_flatbuf_DictionaryKind_enum_t v3
-#define __org_apache_arrow_flatbuf_DictionaryEncoding_call_args , v0, v1, v2, v3
+#define __org_apache_arrow_flatbuf_DictionaryEncoding_formal_args ,\
+  int64_t v0, org_apache_arrow_flatbuf_Int_ref_t v1, flatbuffers_bool_t v2, org_apache_arrow_flatbuf_DictionaryKind_enum_t v3, org_apache_arrow_flatbuf_KeyValue_vec_ref_t v4
+#define __org_apache_arrow_flatbuf_DictionaryEncoding_call_args ,\
+  v0, v1, v2, v3, v4
 static inline org_apache_arrow_flatbuf_DictionaryEncoding_ref_t org_apache_arrow_flatbuf_DictionaryEncoding_create(flatbuffers_builder_t *B __org_apache_arrow_flatbuf_DictionaryEncoding_formal_args);
 __flatbuffers_build_table_prolog(flatbuffers_, org_apache_arrow_flatbuf_DictionaryEncoding, org_apache_arrow_flatbuf_DictionaryEncoding_file_identifier, org_apache_arrow_flatbuf_DictionaryEncoding_type_identifier)
 
@@ -23690,12 +23862,14 @@ __flatbuffers_build_scalar_field(0, flatbuffers_, org_apache_arrow_flatbuf_Dicti
 __flatbuffers_build_table_field(1, flatbuffers_, org_apache_arrow_flatbuf_DictionaryEncoding_indexType, org_apache_arrow_flatbuf_Int, org_apache_arrow_flatbuf_DictionaryEncoding)
 __flatbuffers_build_scalar_field(2, flatbuffers_, org_apache_arrow_flatbuf_DictionaryEncoding_isOrdered, flatbuffers_bool, flatbuffers_bool_t, 1, 1, UINT8_C(0), org_apache_arrow_flatbuf_DictionaryEncoding)
 __flatbuffers_build_scalar_field(3, flatbuffers_, org_apache_arrow_flatbuf_DictionaryEncoding_dictionaryKind, org_apache_arrow_flatbuf_DictionaryKind, org_apache_arrow_flatbuf_DictionaryKind_enum_t, 2, 2, INT16_C(0), org_apache_arrow_flatbuf_DictionaryEncoding)
+__flatbuffers_build_table_vector_field(4, flatbuffers_, org_apache_arrow_flatbuf_DictionaryEncoding_custom_metadata, org_apache_arrow_flatbuf_KeyValue, org_apache_arrow_flatbuf_DictionaryEncoding)
 
 static inline org_apache_arrow_flatbuf_DictionaryEncoding_ref_t org_apache_arrow_flatbuf_DictionaryEncoding_create(flatbuffers_builder_t *B __org_apache_arrow_flatbuf_DictionaryEncoding_formal_args)
 {
     if (org_apache_arrow_flatbuf_DictionaryEncoding_start(B)
         || org_apache_arrow_flatbuf_DictionaryEncoding_id_add(B, v0)
         || org_apache_arrow_flatbuf_DictionaryEncoding_indexType_add(B, v1)
+        || org_apache_arrow_flatbuf_DictionaryEncoding_custom_metadata_add(B, v4)
         || org_apache_arrow_flatbuf_DictionaryEncoding_dictionaryKind_add(B, v3)
         || org_apache_arrow_flatbuf_DictionaryEncoding_isOrdered_add(B, v2)) {
         return 0;
@@ -23709,6 +23883,7 @@ static org_apache_arrow_flatbuf_DictionaryEncoding_ref_t org_apache_arrow_flatbu
     if (org_apache_arrow_flatbuf_DictionaryEncoding_start(B)
         || org_apache_arrow_flatbuf_DictionaryEncoding_id_pick(B, t)
         || org_apache_arrow_flatbuf_DictionaryEncoding_indexType_pick(B, t)
+        || org_apache_arrow_flatbuf_DictionaryEncoding_custom_metadata_pick(B, t)
         || org_apache_arrow_flatbuf_DictionaryEncoding_dictionaryKind_pick(B, t)
         || org_apache_arrow_flatbuf_DictionaryEncoding_isOrdered_pick(B, t)) {
         return 0;
@@ -25181,6 +25356,7 @@ static int org_apache_arrow_flatbuf_DictionaryEncoding_verify_table(flatcc_table
     if ((ret = flatcc_verify_table_field(td, 1, 0, &org_apache_arrow_flatbuf_Int_verify_table) /* indexType */)) return ret;
     if ((ret = flatcc_verify_field(td, 2, 1, 1) /* isOrdered */)) return ret;
     if ((ret = flatcc_verify_field(td, 3, 2, 2) /* dictionaryKind */)) return ret;
+    if ((ret = flatcc_verify_table_vector_field(td, 4, 0, &org_apache_arrow_flatbuf_KeyValue_verify_table) /* custom_metadata */)) return ret;
     return flatcc_verify_ok;
 }
 
@@ -25403,6 +25579,8 @@ __flatbuffers_define_scalar_field(0, org_apache_arrow_flatbuf_TensorDim, size, f
 /**  Name of the dimension, optional */
 __flatbuffers_define_string_field(1, org_apache_arrow_flatbuf_TensorDim, name, 0)
 
+/**  DEPRECATED: The recommended way to pass tensors over Arrow IPC is
+ *  using columns with the `arrow.fixed_shape_tensor` canonical type. */
 struct org_apache_arrow_flatbuf_Tensor_table { uint8_t unused__; };
 
 static inline size_t org_apache_arrow_flatbuf_Tensor_vec_len(org_apache_arrow_flatbuf_Tensor_vec_t vec)

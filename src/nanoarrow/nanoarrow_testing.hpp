@@ -120,7 +120,8 @@ class NANOARROW_DLL TestingJSONWriter {
 
   ArrowErrorCode WriteFieldDictionary(std::ostream& out, int32_t dictionary_id,
                                       bool is_ordered,
-                                      const ArrowSchemaView* indices_field);
+                                      const ArrowSchemaView* indices_field,
+                                      const char* value_metadata);
 
   ArrowErrorCode WriteChildren(std::ostream& out, const ArrowSchema* field,
                                const ArrowArrayView* value);
