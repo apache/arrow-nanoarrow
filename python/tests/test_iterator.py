@@ -280,6 +280,10 @@ def test_iterator_nullable_list():
 
 def test_iterator_map():
     pa = pytest.importorskip("pyarrow")
+
+    array = pa.array([], pa.map_(pa.string(), pa.int64()))
+    assert list(iter_py(array)) == []
+
     items = [[("a", 1), ("b", None)], [], None, [("c", 3)]]
     array = pa.array(items, pa.map_(pa.string(), pa.int64()))
     assert list(iter_py(array)) == items

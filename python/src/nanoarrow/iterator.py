@@ -282,7 +282,9 @@ class PyIterator(ArrayViewBaseIterator):
                 yield list(islice(child_iter, end - start))
 
     def _map_iter(self, offset: int, length: int):
-        # A map is a list of (key, value) structs, converted to a list of tuples
+        if length == 0:
+            return
+
         view = self._array_view
         offset += view.offset
 
