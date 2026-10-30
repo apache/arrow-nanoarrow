@@ -620,7 +620,7 @@ INSTANTIATE_TEST_SUITE_P(
         TestFile::OK("cpp-21.0.0/generated_nested_dictionary.stream"),
         TestFile::NotSupported("cpp-21.0.0/generated_list_view.stream"),
         TestFile::NotSupported("cpp-21.0.0/generated_binary_view.stream"),
-        TestFile::NotSupported("cpp-21.0.0/generated_run_end_encoded.stream")
+        TestFile::OK("cpp-21.0.0/generated_run_end_encoded.stream")
         // Comment to keep line from wrapping
         ));
 
