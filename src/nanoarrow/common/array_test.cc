@@ -3660,6 +3660,100 @@ TEST(ArrayTest, ArrayViewTestListView) {
   ArrowArrayViewReset(&array_view);
 }
 
+class ListViewSizeBufferTest : public ::testing::TestWithParam<enum ArrowType> {
+ protected:
+  void SetUp() override {
+    ArrowArrayViewInitFromType(array_view.get(), GetParam());
+    ASSERT_EQ(ArrowArrayViewAllocateChildren(array_view.get(), 1), NANOARROW_OK);
+    ArrowArrayViewInitFromType(array_view->children[0], NANOARROW_TYPE_NA);
+    element_size = array_view->layout.element_size_bits[2] / 8;
+    array_view->buffer_views[1].data.data = offsets;
+    array_view->buffer_views[1].size_bytes = sizeof(offsets);
+    array_view->buffer_views[2].data.data = sizes;
+  }
+
+  nanoarrow::UniqueArrayView array_view;
+  int64_t element_size;
+  int64_t offsets[2] = {0, 0};
+  int64_t sizes[2] = {0, 0};
+};
+
+TEST_P(ListViewSizeBufferTest, RejectsMissingSizes) {
+  struct ArrowArray child = {};
+  struct ArrowArray* children[] = {&child};
+  const void* buffers[] = {nullptr, offsets, nullptr};
+  struct ArrowArray array = {};
+  array.length = 1;
+  array.n_buffers = 3;
+  array.buffers = buffers;
+  array.n_children = 1;
+  array.children = children;
+  struct ArrowError error;
+
+  EXPECT_EQ(ArrowArrayViewSetArray(array_view.get(), &array, &error), EINVAL);
+}
+
+TEST_P(ListViewSizeBufferTest, RejectsShortSizes) {
+  struct ArrowError error;
+  array_view->length = 1;
+  for (int64_t offset : {0, 1}) {
+    array_view->offset = offset;
+    const int64_t required_size = (offset + array_view->length) * element_size;
+    for (int64_t size = 0; size < required_size; size++) {
+      array_view->buffer_views[2].size_bytes = size;
+      for (auto level :
+           {NANOARROW_VALIDATION_LEVEL_MINIMAL, NANOARROW_VALIDATION_LEVEL_DEFAULT,
+            NANOARROW_VALIDATION_LEVEL_FULL}) {
+        ASSERT_EQ(ArrowArrayViewValidate(array_view.get(), level, &error), EINVAL)
+            << "offset: " << offset << ", size: " << size << ", level: " << level;
+      }
+    }
+  }
+}
+
+TEST_P(ListViewSizeBufferTest, InfersUnknownSizes) {
+  struct ArrowError error;
+  array_view->length = 1;
+  array_view->offset = 1;
+  for (auto level :
+       {NANOARROW_VALIDATION_LEVEL_MINIMAL, NANOARROW_VALIDATION_LEVEL_DEFAULT,
+        NANOARROW_VALIDATION_LEVEL_FULL}) {
+    array_view->buffer_views[2].size_bytes = -1;
+    ASSERT_EQ(ArrowArrayViewValidate(array_view.get(), level, &error), NANOARROW_OK)
+        << error.message;
+    EXPECT_EQ(array_view->buffer_views[2].size_bytes, 2 * element_size);
+  }
+}
+
+TEST_P(ListViewSizeBufferTest, AcceptsSufficientSizes) {
+  struct ArrowError error;
+  array_view->length = 1;
+  for (int64_t offset : {0, 1}) {
+    array_view->offset = offset;
+    array_view->buffer_views[2].size_bytes = (offset + 1) * element_size;
+    EXPECT_EQ(
+        ArrowArrayViewValidate(array_view.get(), NANOARROW_VALIDATION_LEVEL_FULL, &error),
+        NANOARROW_OK)
+        << error.message;
+  }
+}
+
+TEST_P(ListViewSizeBufferTest, AcceptsEmptySizes) {
+  struct ArrowError error;
+  array_view->buffer_views[1].data.data = nullptr;
+  array_view->buffer_views[1].size_bytes = 0;
+  array_view->buffer_views[2].data.data = nullptr;
+  array_view->buffer_views[2].size_bytes = 0;
+  EXPECT_EQ(
+      ArrowArrayViewValidate(array_view.get(), NANOARROW_VALIDATION_LEVEL_FULL, &error),
+      NANOARROW_OK)
+      << error.message;
+}
+
+INSTANTIATE_TEST_SUITE_P(ArrayTest, ListViewSizeBufferTest,
+                         ::testing::Values(NANOARROW_TYPE_LIST_VIEW,
+                                           NANOARROW_TYPE_LARGE_LIST_VIEW));
+
 TEST(ArrayTest, ArrayViewTestListViewGet) {
   struct ArrowArrayView array_view;
   ArrowArrayViewInitFromType(&array_view, NANOARROW_TYPE_LIST_VIEW);
