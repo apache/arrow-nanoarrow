@@ -38,14 +38,19 @@ test_that("schemaless nanoarrow_array format, print, and str methods work", {
 })
 
 test_that("string/binary view nanoarrow_array buffers print correctly", {
+  # str() spacing differs between R versions.
+  normalize_str_output <- function(x) {
+    gsub(": (List of|<nanoarrow_buffer)", ":\\1", x)
+  }
+
   view_array_all_inlined <- as_nanoarrow_array(letters, schema = na_string_view())
-  expect_snapshot(print(view_array_all_inlined))
+  expect_snapshot(print(view_array_all_inlined), transform = normalize_str_output)
 
   view_array_not_all_inlined <- as_nanoarrow_array(
     "this string is longer than 12 bytes",
     schema = na_string_view()
   )
-  expect_snapshot(print(view_array_not_all_inlined))
+  expect_snapshot(print(view_array_not_all_inlined), transform = normalize_str_output)
 })
 
 test_that("as_nanoarrow_array() / convert_array() default method works", {
