@@ -1701,7 +1701,8 @@ ArrowErrorCode ArrowIpcDecoderPeekFooter(struct ArrowIpcDecoder* decoder,
   const char* footer_size_data = magic - sizeof(int32_t);
 
   if (memcmp(magic, NANOARROW_IPC_MAGIC, strlen(NANOARROW_IPC_MAGIC)) != 0) {
-    ArrowErrorSet(error, "Expected file to end with ARROW1 but got %s", data_end);
+    // data is not NUL-terminated: print only the bytes that were compared
+    ArrowErrorSet(error, "Expected file to end with ARROW1 but got %.6s", magic);
     return EINVAL;
   }
 
