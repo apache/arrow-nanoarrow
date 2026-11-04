@@ -20,7 +20,10 @@
 #include <cmath>
 #include <cstdint>
 #include <cstring>
+#include <string>
 #include <thread>
+#include <utility>
+#include <vector>
 
 #if defined(NANOARROW_BUILD_TESTS_WITH_ARROW)
 #include <arrow/array.h>
@@ -3015,6 +3018,167 @@ TEST(ArrayTest, ArrayViewTestValidateUnalignedOffsets) {
         ArrowArrayViewValidate(&array_view, NANOARROW_VALIDATION_LEVEL_FULL, &error),
         NANOARROW_OK);
     ArrowArrayViewReset(&array_view);
+  }
+}
+
+// A value of a string or binary test array, or a null (kNullValue)
+struct TestStringValue {
+  TestStringValue(const char* value) : is_null(false), value(value) {}
+  TestStringValue(std::string value) : is_null(false), value(std::move(value)) {}
+  TestStringValue() : is_null(true) {}
+
+  bool is_null;
+  std::string value;
+};
+
+static const TestStringValue kNullValue;
+
+// Build an array of type from values, slice it, and validate it at level. On failure,
+// *message holds the error message.
+static ArrowErrorCode ValidateStringValues(enum ArrowType type,
+                                           const std::vector<TestStringValue>& values,
+                                           enum ArrowValidationLevel level,
+                                           std::string* message, int64_t offset = 0,
+                                           int64_t length = -1) {
+  nanoarrow::UniqueArray array;
+  nanoarrow::UniqueArrayView array_view;
+  struct ArrowError error;
+  error.message[0] = '\0';
+
+  NANOARROW_RETURN_NOT_OK(ArrowArrayInitFromType(array.get(), type));
+  NANOARROW_RETURN_NOT_OK(ArrowArrayStartAppending(array.get()));
+  for (const auto& value : values) {
+    if (value.is_null) {
+      NANOARROW_RETURN_NOT_OK(ArrowArrayAppendNull(array.get(), 1));
+    } else {
+      struct ArrowStringView sv = {value.value.data(),
+                                   static_cast<int64_t>(value.value.size())};
+      NANOARROW_RETURN_NOT_OK(ArrowArrayAppendString(array.get(), sv));
+    }
+  }
+  NANOARROW_RETURN_NOT_OK(
+      ArrowArrayFinishBuilding(array.get(), NANOARROW_VALIDATION_LEVEL_NONE, &error));
+
+  array->offset = offset;
+  array->length = length == -1 ? array->length - offset : length;
+
+  ArrowArrayViewInitFromType(array_view.get(), type);
+  NANOARROW_RETURN_NOT_OK(ArrowArrayViewSetArray(array_view.get(), array.get(), &error));
+  ArrowErrorCode result = ArrowArrayViewValidate(array_view.get(), level, &error);
+  *message = error.message;
+  return result;
+}
+
+TEST(ArrayTest, ArrayViewTestValidateUtf8) {
+  std::string message;
+  const std::string long_ascii(40, 'a');
+
+  for (const auto type : {NANOARROW_TYPE_STRING, NANOARROW_TYPE_LARGE_STRING}) {
+    SCOPED_TRACE(ArrowTypeString(type));
+    const std::string type_name = ArrowTypeString(type);
+    auto invalid_message = [&](int64_t i, int64_t byte) {
+      return "[" + std::to_string(i) + "] Expected valid UTF-8 " + type_name +
+             " value but found invalid sequence at byte " + std::to_string(byte);
+    };
+
+    // Valid ASCII and two-, three- and four-byte sequences
+    EXPECT_EQ(
+        ValidateStringValues(type,
+                             {"", "abc", "\xc3\xa9t\xc3\xa9", "\xe2\x82\xac",
+                              "\xf0\x9f\x98\x80", "\xf4\x8f\xbf\xbf", "\xef\xbf\xbf",
+                              long_ascii + "\xc3\xa9" + long_ascii, kNullValue},
+                             NANOARROW_VALIDATION_LEVEL_FULL, &message),
+        NANOARROW_OK)
+        << message;
+
+    // Each kind of invalid sequence
+    const std::vector<std::pair<std::string, int64_t>> invalid = {
+        {"\x80", 0},                         // Stray continuation byte
+        {"ab\xc3", 2},                       // Truncated two-byte sequence
+        {"\xe2\x82", 0},                     // Truncated three-byte sequence
+        {"\xf0\x9f\x98", 0},                 // Truncated four-byte sequence
+        {"\xc3\x28", 0},                     // Invalid continuation byte
+        {"\xc0\x80", 0},                     // Overlong two-byte encoding
+        {"\xc1\xbf", 0},                     // Overlong two-byte encoding
+        {"\xe0\x80\x80", 0},                 // Overlong three-byte encoding
+        {"\xf0\x80\x80\x80", 0},             // Overlong four-byte encoding
+        {"\xed\xa0\x80", 0},                 // Surrogate (U+D800)
+        {"\xed\xbf\xbf", 0},                 // Surrogate (U+DFFF)
+        {"\xf4\x90\x80\x80", 0},             // Above U+10FFFF
+        {"\xf5\x80\x80\x80", 0},             // Above U+10FFFF
+        {"\xff", 0},                         // Never valid
+        {"abcdefg\xffhijklmno", 7},          // Within an eight-byte word
+        {long_ascii + "\xff", 40},           // After the ASCII fast path
+        {long_ascii + "\xc3\xa9\xa9", 42}};  // After a valid multi-byte sequence
+    for (const auto& item : invalid) {
+      SCOPED_TRACE(item.second);
+      EXPECT_EQ(ValidateStringValues(type, {"abc", item.first},
+                                     NANOARROW_VALIDATION_LEVEL_FULL, &message),
+                EINVAL);
+      EXPECT_EQ(message, invalid_message(1, item.second));
+
+      // ...and with a null in the array
+      EXPECT_EQ(ValidateStringValues(type, {kNullValue, item.first},
+                                     NANOARROW_VALIDATION_LEVEL_FULL, &message),
+                EINVAL);
+      EXPECT_EQ(message, invalid_message(1, item.second));
+
+      // Invalid UTF-8 is still valid below NANOARROW_VALIDATION_LEVEL_FULL
+      EXPECT_EQ(ValidateStringValues(type, {"abc", item.first},
+                                     NANOARROW_VALIDATION_LEVEL_DEFAULT, &message),
+                NANOARROW_OK);
+    }
+
+    // Values are checked one at a time: a code point split across two values is
+    // invalid even though their concatenation is valid
+    EXPECT_EQ(ValidateStringValues(type, {"a\xc3", "\xa9"},
+                                   NANOARROW_VALIDATION_LEVEL_FULL, &message),
+              EINVAL);
+    EXPECT_EQ(message, invalid_message(0, 1));
+
+    // The bytes of a null value are not checked
+    EXPECT_EQ(ValidateStringValues(type, {"abc", "\xff", long_ascii + "\xff", "def"},
+                                   NANOARROW_VALIDATION_LEVEL_FULL, &message),
+              EINVAL);
+    nanoarrow::UniqueArray with_nulls;
+    ASSERT_EQ(ArrowArrayInitFromType(with_nulls.get(), type), NANOARROW_OK);
+    ASSERT_EQ(ArrowArrayStartAppending(with_nulls.get()), NANOARROW_OK);
+    ASSERT_EQ(ArrowArrayAppendString(with_nulls.get(), "abc"_asv), NANOARROW_OK);
+    ASSERT_EQ(ArrowArrayAppendString(with_nulls.get(), "\xff"_asv), NANOARROW_OK);
+    ASSERT_EQ(ArrowArrayAppendString(with_nulls.get(),
+                                     {long_ascii.data(), (int64_t)long_ascii.size()}),
+              NANOARROW_OK);
+    ASSERT_EQ(ArrowArrayFinishBuildingDefault(with_nulls.get(), nullptr), NANOARROW_OK);
+    // Invalidate the third value and mark the second and third values null
+    ASSERT_EQ(ArrowBitmapReserve(ArrowArrayValidityBitmap(with_nulls.get()), 3),
+              NANOARROW_OK);
+    ArrowBitmapAppendUnsafe(ArrowArrayValidityBitmap(with_nulls.get()), 1, 1);
+    ArrowBitmapAppendUnsafe(ArrowArrayValidityBitmap(with_nulls.get()), 0, 2);
+    with_nulls->null_count = 2;
+    ArrowArrayBuffer(with_nulls.get(), 2)->data[4] = 0xff;
+    struct ArrowError error;
+    EXPECT_EQ(ArrowArrayFinishBuilding(with_nulls.get(), NANOARROW_VALIDATION_LEVEL_FULL,
+                                       &error),
+              NANOARROW_OK)
+        << error.message;
+
+    // Only the values within a slice are checked, and indices are relative to it
+    EXPECT_EQ(ValidateStringValues(type, {"\xff", "abc", "def", "\xff"},
+                                   NANOARROW_VALIDATION_LEVEL_FULL, &message, 1, 2),
+              NANOARROW_OK)
+        << message;
+    EXPECT_EQ(ValidateStringValues(type, {"\xff", "abc", "\xff", "def"},
+                                   NANOARROW_VALIDATION_LEVEL_FULL, &message, 1, 2),
+              EINVAL);
+    EXPECT_EQ(message, invalid_message(1, 0));
+  }
+
+  // Binary values are not checked
+  for (const auto type : {NANOARROW_TYPE_BINARY, NANOARROW_TYPE_LARGE_BINARY}) {
+    EXPECT_EQ(ValidateStringValues(type, {"\xff", long_ascii + "\xff"},
+                                   NANOARROW_VALIDATION_LEVEL_FULL, &message),
+              NANOARROW_OK)
+        << message;
   }
 }
 
