@@ -432,6 +432,27 @@ static void ArrowIpcDictionariesNoOpSchemaRelease(struct ArrowSchema* schema) {
   NANOARROW_UNUSED(schema);
 }
 
+// Whether two value types are the same: their formats, children and dictionaries
+// (names, flags and metadata are not part of the type)
+static int ArrowIpcDictionaryValueTypesEqual(const struct ArrowSchema* lhs,
+                                             const struct ArrowSchema* rhs) {
+  if (lhs == NULL || rhs == NULL) {
+    return lhs == rhs;
+  }
+
+  if (strcmp(lhs->format, rhs->format) != 0 || lhs->n_children != rhs->n_children) {
+    return 0;
+  }
+
+  for (int64_t i = 0; i < lhs->n_children; i++) {
+    if (!ArrowIpcDictionaryValueTypesEqual(lhs->children[i], rhs->children[i])) {
+      return 0;
+    }
+  }
+
+  return ArrowIpcDictionaryValueTypesEqual(lhs->dictionary, rhs->dictionary);
+}
+
 static ArrowErrorCode ArrowIpcDictionariesInitDictionaries(
     struct ArrowIpcDictionariesPrivate* private_data,
     const struct ArrowIpcDictionaryEncodings* dictionary_encodings,
@@ -472,6 +493,25 @@ static ArrowErrorCode ArrowIpcDictionariesInitDictionaries(
                     "Internal error (dictionary with id not present in encodings list)");
       *num_initialized_decoders_out = i + 1;
       return EINVAL;
+    }
+
+    // A dictionary batch is decoded with one value type, so every field that shares
+    // this dictionary must have that value type
+    const struct ArrowIpcDictionaryEncoding* encodings =
+        (const struct ArrowIpcDictionaryEncoding*)dictionary_encodings->encodings.data;
+    int64_t n_encodings = dictionary_encodings->encodings.size_bytes /
+                          sizeof(struct ArrowIpcDictionaryEncoding);
+    for (int64_t j = 0; j < n_encodings; j++) {
+      if (encodings[j].id == unique_ids[i] &&
+          !ArrowIpcDictionaryValueTypesEqual(encodings[j].schema->dictionary,
+                                             encoding->schema->dictionary)) {
+        ArrowErrorSet(error,
+                      "Expected fields that share dictionary with id %" PRId64
+                      " to have the same value type",
+                      unique_ids[i]);
+        *num_initialized_decoders_out = i + 1;
+        return EINVAL;
+      }
     }
 
     // The decoder's schema will be a struct with one column (the value type of

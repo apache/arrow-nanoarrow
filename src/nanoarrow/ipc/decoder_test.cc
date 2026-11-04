@@ -371,6 +371,64 @@ TEST(NanoarrowIpcTest, NanoarrowIpcCheckHeader) {
   ArrowIpcDecoderReset(&decoder);
 }
 
+TEST(NanoarrowIpcTest, NanoarrowIpcSharedDictionaryValueTypes) {
+  struct ArrowError error;
+
+  // Two dictionary-encoded fields that will share dictionary id 0
+  nanoarrow::UniqueSchema schema;
+  ArrowSchemaInit(schema.get());
+  ASSERT_EQ(ArrowSchemaSetTypeStruct(schema.get(), 2), NANOARROW_OK);
+  for (int64_t i = 0; i < 2; i++) {
+    ASSERT_EQ(ArrowSchemaSetType(schema->children[i], NANOARROW_TYPE_INT32),
+              NANOARROW_OK);
+    ASSERT_EQ(ArrowSchemaAllocateDictionary(schema->children[i]), NANOARROW_OK);
+  }
+  ASSERT_EQ(
+      ArrowSchemaInitFromType(schema->children[0]->dictionary, NANOARROW_TYPE_STRING),
+      NANOARROW_OK);
+  ASSERT_EQ(
+      ArrowSchemaInitFromType(schema->children[1]->dictionary, NANOARROW_TYPE_STRING),
+      NANOARROW_OK);
+
+  auto encodings_with_shared_id = [&](nanoarrow::ipc::UniqueDictionaryEncodings* out) {
+    ArrowIpcDictionaryEncodingsInit(out->get());
+    for (int64_t i = 0; i < 2; i++) {
+      struct ArrowIpcDictionaryEncoding encoding;
+      encoding.id = 0;
+      encoding.kind = NANOARROW_IPC_DICTIONARY_KIND_DENSE_ARRAY;
+      encoding.schema = schema->children[i];
+      ASSERT_EQ(ArrowIpcDictionaryEncodingsAppend(out->get(), encoding), NANOARROW_OK);
+    }
+  };
+
+  // Sharing a dictionary is fine when the value types match
+  {
+    nanoarrow::ipc::UniqueDictionaryEncodings encodings;
+    encodings_with_shared_id(&encodings);
+    nanoarrow::ipc::UniqueDictionaries dictionaries;
+    EXPECT_EQ(ArrowIpcDictionariesInit(dictionaries.get(), encodings.get(), &error),
+              NANOARROW_OK)
+        << error.message;
+  }
+
+  // ...but not when they differ: the dictionary would be decoded as one type and
+  // read as the other
+  ArrowSchemaRelease(schema->children[1]->dictionary);
+  ASSERT_EQ(ArrowSchemaInitFromType(schema->children[1]->dictionary,
+                                    NANOARROW_TYPE_LARGE_STRING),
+            NANOARROW_OK);
+  {
+    nanoarrow::ipc::UniqueDictionaryEncodings encodings;
+    encodings_with_shared_id(&encodings);
+    nanoarrow::ipc::UniqueDictionaries dictionaries;
+    EXPECT_EQ(ArrowIpcDictionariesInit(dictionaries.get(), encodings.get(), &error),
+              EINVAL);
+    EXPECT_STREQ(error.message,
+                 "Expected fields that share dictionary with id 0 to have the same "
+                 "value type");
+  }
+}
+
 TEST(NanoarrowIpcTest, NanoarrowIpcPeekSimpleSchema) {
   struct ArrowIpcDecoder decoder;
   struct ArrowError error;
