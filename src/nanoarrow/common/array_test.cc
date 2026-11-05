@@ -3847,6 +3847,16 @@ TEST(ArrayTest, ArrayViewTestLargeListView) {
             EINVAL);
   EXPECT_STREQ(error.message,
                "Offset: 1 + size: 42 at index: 1 exceeds length of child view: 1");
+
+  // An offset and a size whose sum overflows int64_t must still be out of bounds
+  offsets[1] = INT64_MAX;
+  sizes[1] = INT64_MAX;
+  EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayViewValidate(&array_view, NANOARROW_VALIDATION_LEVEL_FULL, &error),
+            EINVAL);
+  EXPECT_STREQ(error.message,
+               "Offset: 9223372036854775807 + size: 9223372036854775807 at index: 1 "
+               "exceeds length of child view: 1");
   ArrowArrayRelease(&array);
   ArrowArrayViewReset(&array_view);
 }

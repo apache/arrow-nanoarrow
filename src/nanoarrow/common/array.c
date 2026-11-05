@@ -2252,7 +2252,8 @@ static int ArrowArrayViewValidateFull(struct ArrowArrayView* array_view,
         return EINVAL;
       }
 
-      if ((offset + size) > child_len) {
+      // offset and size are non-negative here, so this cannot overflow like their sum
+      if (size > child_len - offset) {
         ArrowErrorSet(error,
                       "Offset: %" PRId64 " + size: %" PRId64 " at index: %" PRId64
                       " exceeds length of child view: %" PRId64,
