@@ -60,10 +60,10 @@ nanoarrow_array_init(na_string())
 #>  $ length    : int 0
 #>  $ null_count: int 0
 #>  $ offset    : int 0
-#>  $ buffers   :List of 3
-#>   ..$ :<nanoarrow_buffer validity<bool>[null] ``
-#>   ..$ :<nanoarrow_buffer data_offset<int32>[null] ``
-#>   ..$ :<nanoarrow_buffer data<string>[null] ``
+#>  $ buffers   : List of 3
+#>   ..$ : <nanoarrow_buffer validity<bool>[null] ``
+#>   ..$ : <nanoarrow_buffer data_offset<int32>[null] ``
+#>   ..$ : <nanoarrow_buffer data<string>[null] ``
 #>  $ dictionary: NULL
 #>  $ children  : list()
 

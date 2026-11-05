@@ -41,9 +41,9 @@ nanoarrow_extension_array(1:10, "some_ext", '{"key": "value"}')
 #>  $ length    : int 10
 #>  $ null_count: int 0
 #>  $ offset    : int 0
-#>  $ buffers   :List of 2
-#>   ..$ :<nanoarrow_buffer validity<bool>[null] ``
-#>   ..$ :<nanoarrow_buffer data<int32>[10][40 b]> `1 2 3 4 5 6 7 8 9 10`
+#>  $ buffers   : List of 2
+#>   ..$ : <nanoarrow_buffer validity<bool>[null] ``
+#>   ..$ : <nanoarrow_buffer data<int32>[10][40 b]> `1 2 3 4 5 6 7 8 9 10`
 #>  $ dictionary: NULL
 #>  $ children  : list()
 ```

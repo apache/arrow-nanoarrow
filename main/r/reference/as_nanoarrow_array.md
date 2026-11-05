@@ -44,9 +44,9 @@ An object of class 'nanoarrow_array'
 #>  $ length    : int 5
 #>  $ null_count: int 0
 #>  $ offset    : int 0
-#>  $ buffers   :List of 2
-#>   ..$ :<nanoarrow_buffer validity<bool>[null] ``
-#>   ..$ :<nanoarrow_buffer data<int32>[5][20 b]> `1 2 3 4 5`
+#>  $ buffers   : List of 2
+#>   ..$ : <nanoarrow_buffer validity<bool>[null] ``
+#>   ..$ : <nanoarrow_buffer data<int32>[5][20 b]> `1 2 3 4 5`
 #>  $ dictionary: NULL
 #>  $ children  : list()
 as.vector(array)
@@ -57,16 +57,16 @@ as.vector(array)
 #>  $ length    : int 5
 #>  $ null_count: int 0
 #>  $ offset    : int 0
-#>  $ buffers   :List of 1
-#>   ..$ :<nanoarrow_buffer validity<bool>[null] ``
-#>  $ children  :List of 1
+#>  $ buffers   : List of 1
+#>   ..$ : <nanoarrow_buffer validity<bool>[null] ``
+#>  $ children  : List of 1
 #>   ..$ x:<nanoarrow_array int32[5]>
 #>   .. ..$ length    : int 5
 #>   .. ..$ null_count: int 0
 #>   .. ..$ offset    : int 0
-#>   .. ..$ buffers   :List of 2
-#>   .. .. ..$ :<nanoarrow_buffer validity<bool>[null] ``
-#>   .. .. ..$ :<nanoarrow_buffer data<int32>[5][20 b]> `1 2 3 4 5`
+#>   .. ..$ buffers   : List of 2
+#>   .. .. ..$ : <nanoarrow_buffer validity<bool>[null] ``
+#>   .. .. ..$ : <nanoarrow_buffer data<int32>[5][20 b]> `1 2 3 4 5`
 #>   .. ..$ dictionary: NULL
 #>   .. ..$ children  : list()
 #>  $ dictionary: NULL
