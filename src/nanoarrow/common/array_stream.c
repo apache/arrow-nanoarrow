@@ -106,7 +106,9 @@ ArrowErrorCode ArrowBasicArrayStreamInit(struct ArrowArrayStream* array_stream,
     private_data->arrays =
         (struct ArrowArray*)ArrowMalloc(n_arrays * sizeof(struct ArrowArray));
     if (private_data->arrays == NULL) {
-      ArrowBasicArrayStreamRelease(array_stream);
+      // array_stream is not initialized yet, so give the schema back to the caller
+      // as the first allocation failure above does
+      ArrowSchemaMove(&private_data->schema, schema);
       ArrowFree(private_data);
       return ENOMEM;
     }
