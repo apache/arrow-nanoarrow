@@ -2039,6 +2039,10 @@ INSTANTIATE_TEST_SUITE_P(
         arrow::dense_union({arrow::field("col1", arrow::int32()),
                             arrow::field("col2", arrow::utf8())},
                            {126, 127}),
+        // Run-end encoded
+        arrow::run_end_encoded(arrow::int16(), arrow::utf8()),
+        arrow::run_end_encoded(arrow::int32(), arrow::int64()),
+        arrow::run_end_encoded(arrow::int64(), arrow::float64()),
 
         // Type with nested metadata
         arrow::list(arrow::field("some_custom_name", arrow::int32(),
