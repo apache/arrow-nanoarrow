@@ -17,6 +17,7 @@
 
 #include <cstdlib>
 #include <sstream>
+#include <stdexcept>
 
 #include <nanoarrow/nanoarrow_ipc.hpp>
 #include <nanoarrow/nanoarrow_testing.hpp>
@@ -115,14 +116,25 @@ struct File {
   }
 
   std::string read() const {
-    fseek(file_, 0, SEEK_END);
-    std::string contents(ftell(file_), '\0');
-    rewind(file_);
-
-    size_t bytes_read = 0;
-    while (bytes_read < contents.size()) {
-      bytes_read += fread(&contents[bytes_read], 1, contents.size() - bytes_read, file_);
+    if (fseek(file_, 0, SEEK_END) != 0) {
+      throw std::runtime_error("Could not seek to the end of the input file");
     }
+
+    long file_size = ftell(file_);
+    if (file_size < 0) {
+      throw std::runtime_error("Could not determine the input file size");
+    }
+
+    if (fseek(file_, 0, SEEK_SET) != 0) {
+      throw std::runtime_error("Could not seek to the beginning of the input file");
+    }
+
+    std::string contents(static_cast<size_t>(file_size), '\0');
+    if (!contents.empty() &&
+        fread(&contents[0], 1, contents.size(), file_) != contents.size()) {
+      throw std::runtime_error("Could not read the complete input file");
+    }
+
     return contents;
   }
 

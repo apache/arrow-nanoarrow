@@ -15,6 +15,8 @@
 // specific language governing permissions and limitations
 // under the License.
 
+#include <array>
+
 #include <gmock/gmock-matchers.h>
 #include <gtest/gtest.h>
 
@@ -107,9 +109,9 @@ TEST_P(BinaryViewTypeTestFixture, NanoarrowHppViewBinaryViewArrayAsBytesTest) {
   array->offset = offset;
   array->length = array->length - offset;
 
-  ArrowStringView expected[] = {"foo"_asv, ""_asv,
-                                "this_string_is_longer_than_inline"_asv, ""_asv,
-                                "here_is_another_string"_asv};
+  std::array<ArrowStringView, 5> expected = {"foo"_asv, ""_asv,
+                                             "this_string_is_longer_than_inline"_asv,
+                                             ""_asv, "here_is_another_string"_asv};
 
   nanoarrow::UniqueArrayView array_view{};
   ArrowArrayViewInitFromType(array_view.get(), type);
@@ -120,7 +122,7 @@ TEST_P(BinaryViewTypeTestFixture, NanoarrowHppViewBinaryViewArrayAsBytesTest) {
     if (i == 1 || i == 3) {
       EXPECT_EQ(slot, nanoarrow::NA);
     } else {
-      EXPECT_EQ(slot, expected[i]);
+      EXPECT_EQ(slot, expected.at(i));
     }
     ++i;
   }
@@ -130,7 +132,7 @@ TEST_P(BinaryViewTypeTestFixture, NanoarrowHppViewBinaryViewArrayAsBytesTest) {
     if (i == 1 || i == 3) {
       EXPECT_EQ(slot, nanoarrow::NA);
     } else {
-      EXPECT_EQ(slot, expected[i]);
+      EXPECT_EQ(slot, expected.at(i));
     }
     ++i;
   }
