@@ -16,7 +16,7 @@
 # under the License.
 
 message(STATUS "Building using CMake version: ${CMAKE_VERSION}")
-cmake_minimum_required(VERSION 3.14)
+cmake_minimum_required(VERSION 3.18)
 
 set(NANOARROW_VERSION "0.10.0-SNAPSHOT")
 string(REGEX MATCH "^[0-9]+\\.[0-9]+\\.[0-9]+" NANOARROW_BASE_VERSION
@@ -37,7 +37,7 @@ option(NANOARROW_IPC "Build IPC extension" OFF)
 option(NANOARROW_FLATCC_ROOT_DIR "Root directory for flatcc include and lib directories"
        OFF)
 option(NANOARROW_FLATCC_INCLUDE_DIR "Include directory for flatcc includes" OFF)
-option(NANOARROW_FLATCC_LIB_DIR "Library directory that contains libflatccrt.a" OFF)
+option(NANOARROW_FLATCC_LIB_DIR "Library directory that contains the flatcc runtime" OFF)
 option(NANOARROW_IPC_WITH_ZSTD "Build nanoarrow with ZSTD compression support built in"
        OFF)
 option(NANOARROW_IPC_WITH_LZ4 "Build nanoarrow with LZ4 compression support built in" OFF)
@@ -95,8 +95,8 @@ if(NANOARROW_CODE_COVERAGE)
 endif()
 
 # Avoids a warning about timestamps on downloaded files (prefer new policy
-# if available))
-if(${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.23")
+# if available).
+if(POLICY CMP0135)
   cmake_policy(SET CMP0135 NEW)
 endif()
 
@@ -241,6 +241,8 @@ if(NANOARROW_IPC)
     find_library(NANOARROW_FLATCC_LIBRARY_DEBUG
                  NAMES "${CMAKE_STATIC_LIBRARY_PREFIX}flatccrt_d${CMAKE_STATIC_LIBRARY_SUFFIX}"
                        flatccrt_d
+                       "${CMAKE_STATIC_LIBRARY_PREFIX}flatccrt${CMAKE_STATIC_LIBRARY_SUFFIX}"
+                       flatccrt
                  PATHS "${NANOARROW_FLATCC_ROOT_DIR}/debug/lib"
                  NO_DEFAULT_PATH)
     add_library(flatccrt UNKNOWN IMPORTED)
