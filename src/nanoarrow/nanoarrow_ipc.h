@@ -98,6 +98,14 @@
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcInputStreamMove)
 #define ArrowIpcArrayStreamReaderInit \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcArrayStreamReaderInit)
+#define ArrowIpcRandomAccessInputInitBuffer \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcRandomAccessInputInitBuffer)
+#define ArrowIpcRandomAccessInputInitFile \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcRandomAccessInputInitFile)
+#define ArrowIpcRandomAccessInputMove \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcRandomAccessInputMove)
+#define ArrowIpcArrayStreamReaderInitRandomAccess \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcArrayStreamReaderInitRandomAccess)
 #define ArrowIpcEncoderInit NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcEncoderInit)
 #define ArrowIpcEncoderReset NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIpcEncoderReset)
 #define ArrowIpcEncoderFinalizeBuffer \
@@ -926,7 +934,60 @@ NANOARROW_DLL ArrowErrorCode ArrowIpcInputStreamInitBuffer(
 NANOARROW_DLL ArrowErrorCode ArrowIpcInputStreamInitFile(
     struct ArrowIpcInputStream* stream, void* file_ptr, int close_on_release);
 
-/// \brief Options for ArrowIpcArrayStreamReaderInit()
+/// \brief A user-extensible input with absolute byte offsets
+///
+/// Reads do not advance a cursor. The array stream reader manages its own position;
+/// callbacks receive non-negative offsets relative to the beginning of the input.
+/// Callbacks return up to size_bytes bytes, including a short or empty result at EOF.
+/// An implementation need not support concurrent calls.
+struct ArrowIpcRandomAccessInput {
+  /// \brief Borrow bytes without IO, or return ENOTSUP
+  ///
+  /// Optional: may be NULL. On success, out is valid until the next callback on
+  /// this input. The pointer need not be aligned. The reader copies unaligned
+  /// metadata before decoding it.
+  ArrowErrorCode (*peek_at)(struct ArrowIpcRandomAccessInput* input, int64_t offset,
+                            int64_t size_bytes, struct ArrowBufferView* out,
+                            struct ArrowError* error);
+
+  /// \brief Read bytes into an owned buffer
+  ///
+  /// Required. out is initialized by the caller. The implementation replaces its
+  /// contents with a buffer that remains valid independently of the input. This
+  /// may be a shared slice of existing memory or a newly allocated buffer. On
+  /// error, out must remain safe to ArrowBufferReset().
+  ArrowErrorCode (*read_at)(struct ArrowIpcRandomAccessInput* input, int64_t offset,
+                            int64_t size_bytes, struct ArrowBuffer* out,
+                            struct ArrowError* error);
+
+  /// \brief Release the input; implementations must set release to NULL
+  void (*release)(struct ArrowIpcRandomAccessInput* input);
+  void* private_data;
+};
+
+/// \brief Transfer ownership of a random-access input
+NANOARROW_DLL void ArrowIpcRandomAccessInputMove(struct ArrowIpcRandomAccessInput* src,
+                                                 struct ArrowIpcRandomAccessInput* dst);
+
+/// \brief Create a random-access input that takes ownership of input on success
+///
+/// peek_at() borrows memory and read_at() returns shared slices. Decoded arrays
+/// may retain the whole input buffer until released. If
+/// ArrowSharedBufferIsThreadSafe() is false, shared slices must be released on
+/// the same thread as the input.
+NANOARROW_DLL ArrowErrorCode ArrowIpcRandomAccessInputInitBuffer(
+    struct ArrowIpcRandomAccessInput* out, struct ArrowBuffer* input);
+
+/// \brief Create a random-access input from a seekable C FILE* pointer
+///
+/// Offsets are absolute file offsets. read_at() seeks and reads the FILE*, so the
+/// caller must not use it concurrently. peek_at() returns ENOTSUP. On success,
+/// close_on_release determines whether release() closes the FILE*. Close errors
+/// cannot be reported by release(); use close_on_release = 0 to handle them yourself.
+NANOARROW_DLL ArrowErrorCode ArrowIpcRandomAccessInputInitFile(
+    struct ArrowIpcRandomAccessInput* out, void* file_ptr, int close_on_release);
+
+/// \brief Options for the IPC array stream reader initializers
 struct ArrowIpcArrayStreamReaderOptions {
   /// \brief The field index to extract.
   ///
@@ -961,6 +1022,16 @@ struct ArrowIpcArrayStreamReaderOptions {
 /// the caller is responsible for releasing out.
 NANOARROW_DLL ArrowErrorCode ArrowIpcArrayStreamReaderInit(
     struct ArrowArrayStream* out, struct ArrowIpcInputStream* input_stream,
+    struct ArrowIpcArrayStreamReaderOptions* options);
+
+/// \brief Initialize the same IPC stream reader from a random-access input
+///
+/// Reading starts at absolute offset zero, which must contain a Schema message.
+/// This reads the IPC stream format, not the IPC file format. On success, out
+/// takes ownership of input. With use_shared_buffers enabled, read_at() buffers
+/// are shared among decoded arrays. Unaligned array buffers are copied as needed.
+NANOARROW_DLL ArrowErrorCode ArrowIpcArrayStreamReaderInitRandomAccess(
+    struct ArrowArrayStream* out, struct ArrowIpcRandomAccessInput* input,
     struct ArrowIpcArrayStreamReaderOptions* options);
 
 /// \brief Encoder for Arrow IPC messages
