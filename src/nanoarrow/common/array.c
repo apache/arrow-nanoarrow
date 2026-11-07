@@ -1616,9 +1616,10 @@ static int ArrowArrayViewValidateMinimal(struct ArrowArrayView* array_view,
   // unknown, assign the buffer size; otherwise, validate it.
   int64_t offset_plus_length = array_view->offset + array_view->length;
 
-  // Only loop over the first two buffers because the size of the third buffer
-  // is always data dependent for all current Arrow types.
-  for (int i = 0; i < 2; i++) {
+  // List views also have a fixed-size buffer containing element sizes.
+  const int n_buffers =
+      array_view->layout.buffer_type[2] == NANOARROW_BUFFER_TYPE_SIZE ? 3 : 2;
+  for (int i = 0; i < n_buffers; i++) {
     // Ensure that the buffer sizes calculated below fit within an int64 (the largest
     // is the element size in bits times offset + length + 1, rounded up to bytes)
     int64_t element_size_bits = array_view->layout.element_size_bits[i];
