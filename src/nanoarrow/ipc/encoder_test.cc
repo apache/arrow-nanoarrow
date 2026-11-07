@@ -1561,7 +1561,59 @@ TEST(NanoarrowIpcTest, NanoarrowIpcEncoderCompressedAllocationFailures) {
 }
 
 // DictionaryBatch bodies are compressed like RecordBatch bodies and must declare it
-static void TestCompressedDictionaryBatch(enum ArrowIpcCompressionType codec) {
+// A decompressor that forwards to the serial decompressor and counts how many
+// buffers it was asked to decompress
+struct CountingDecompressorPrivate {
+  struct ArrowIpcDecompressor wrapped;
+  int64_t* n_calls;
+};
+
+static ArrowErrorCode CountingDecompressorAdd(
+    struct ArrowIpcDecompressor* decompressor,
+    enum ArrowIpcCompressionType compression_type, struct ArrowBufferView src,
+    uint8_t* dst, int64_t dst_size, struct ArrowError* error) {
+  auto private_data =
+      reinterpret_cast<CountingDecompressorPrivate*>(decompressor->private_data);
+  ++*private_data->n_calls;
+  return private_data->wrapped.decompress_add(&private_data->wrapped, compression_type,
+                                              src, dst, dst_size, error);
+}
+
+static ArrowErrorCode CountingDecompressorWait(struct ArrowIpcDecompressor* decompressor,
+                                               int64_t timeout_ms,
+                                               struct ArrowError* error) {
+  auto private_data =
+      reinterpret_cast<CountingDecompressorPrivate*>(decompressor->private_data);
+  return private_data->wrapped.decompress_wait(&private_data->wrapped, timeout_ms, error);
+}
+
+static void CountingDecompressorRelease(struct ArrowIpcDecompressor* decompressor) {
+  auto private_data =
+      reinterpret_cast<CountingDecompressorPrivate*>(decompressor->private_data);
+  private_data->wrapped.release(&private_data->wrapped);
+  delete private_data;
+  decompressor->release = nullptr;
+}
+
+static ArrowErrorCode CountingDecompressor(struct ArrowIpcDecompressor* out,
+                                           int64_t* n_calls) {
+  auto private_data = new CountingDecompressorPrivate;
+  private_data->n_calls = n_calls;
+  ArrowErrorCode result = ArrowIpcSerialDecompressor(&private_data->wrapped);
+  if (result != NANOARROW_OK) {
+    delete private_data;
+    return result;
+  }
+
+  out->decompress_add = &CountingDecompressorAdd;
+  out->decompress_wait = &CountingDecompressorWait;
+  out->release = &CountingDecompressorRelease;
+  out->private_data = private_data;
+  return NANOARROW_OK;
+}
+
+static void TestCompressedDictionaryBatch(enum ArrowIpcCompressionType codec,
+                                          bool custom_decompressor = false) {
   struct ArrowError error;
 
   // A dictionary-encoded int32 -> utf8 field, which gets dictionary id 0
@@ -1638,6 +1690,12 @@ static void TestCompressedDictionaryBatch(enum ArrowIpcCompressionType codec) {
   ASSERT_EQ(ArrowIpcDecoderInit(decoder.get()), NANOARROW_OK);
   ASSERT_EQ(ArrowIpcDecoderSetEndianness(decoder.get(), ArrowIpcSystemEndianness()),
             NANOARROW_OK);
+  int64_t n_decompress_calls = 0;
+  if (custom_decompressor) {
+    struct ArrowIpcDecompressor decompressor;
+    ASSERT_EQ(CountingDecompressor(&decompressor, &n_decompress_calls), NANOARROW_OK);
+    ASSERT_EQ(ArrowIpcDecoderSetDecompressor(decoder.get(), &decompressor), NANOARROW_OK);
+  }
   struct ArrowBufferView message_view = {{message->data}, message->size_bytes};
   ASSERT_EQ(ArrowIpcDecoderVerifyHeader(decoder.get(), message_view, &error),
             NANOARROW_OK)
@@ -1678,6 +1736,12 @@ static void TestCompressedDictionaryBatch(enum ArrowIpcCompressionType codec) {
     EXPECT_EQ(is_equal, 1) << error.message;
   }
 
+  // The dictionary values must be decompressed with the decompressor that was set
+  // on the decoder
+  if (custom_decompressor) {
+    EXPECT_GT(n_decompress_calls, 0);
+  }
+
   ArrowIpcDictionariesReset(&dictionaries);
   ArrowIpcDictionaryEncodingsReset(&encodings);
 }
@@ -1694,6 +1758,14 @@ TEST(NanoarrowIpcTest, NanoarrowIpcEncoderCompressedDictionaryBatchZstd) {
     GTEST_SKIP() << "nanoarrow_ipc not built with NANOARROW_IPC_WITH_ZSTD";
   }
   TestCompressedDictionaryBatch(NANOARROW_IPC_COMPRESSION_TYPE_ZSTD);
+}
+
+TEST(NanoarrowIpcTest, NanoarrowIpcEncoderCompressedDictionaryBatchCustomDecompressor) {
+  if (ArrowIpcGetZstdCompressionFunction() == nullptr) {
+    GTEST_SKIP() << "nanoarrow_ipc not built with NANOARROW_IPC_WITH_ZSTD";
+  }
+  TestCompressedDictionaryBatch(NANOARROW_IPC_COMPRESSION_TYPE_ZSTD,
+                                /*custom_decompressor=*/true);
 }
 
 // Schemas encoded while a compressor is set declare the COMPRESSED_BODY feature
