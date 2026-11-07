@@ -1620,6 +1620,17 @@ static int ArrowArrayViewValidateMinimal(struct ArrowArrayView* array_view,
   const int n_buffers =
       array_view->layout.buffer_type[2] == NANOARROW_BUFFER_TYPE_SIZE ? 3 : 2;
   for (int i = 0; i < n_buffers; i++) {
+    // Ensure that the buffer sizes calculated below fit within an int64 (the largest
+    // is the element size in bits times offset + length + 1, rounded up to bytes)
+    int64_t element_size_bits = array_view->layout.element_size_bits[i];
+    if (element_size_bits > 0 &&
+        offset_plus_length > (INT64_MAX - 8) / element_size_bits - 1) {
+      ArrowErrorSet(error,
+                    "Offset + length of %" PRId64 " is too large for %s array buffer %d",
+                    offset_plus_length, ArrowTypeString(array_view->storage_type), i);
+      return EINVAL;
+    }
+
     int64_t element_size_bytes = array_view->layout.element_size_bits[i] / 8;
     // Initialize with a value that will cause an error if accidentally used uninitialized
     // Need to suppress the clang-tidy warning because gcc warns for possible use
@@ -1725,6 +1736,14 @@ static int ArrowArrayViewValidateMinimal(struct ArrowArrayView* array_view,
       break;
 
     case NANOARROW_TYPE_FIXED_SIZE_LIST:
+      if (array_view->layout.child_size_elements > 0 &&
+          offset_plus_length > INT64_MAX / array_view->layout.child_size_elements) {
+        ArrowErrorSet(error,
+                      "Offset + length of %" PRId64
+                      " is too large for fixed_size_list array with list size %" PRId64,
+                      offset_plus_length, array_view->layout.child_size_elements);
+        return EINVAL;
+      }
       child_min_length = (array_view->offset + array_view->length) *
                          array_view->layout.child_size_elements;
       if (array_view->children[0]->length < child_min_length) {
@@ -1817,6 +1836,49 @@ static int ArrowArrayViewValidateMinimal(struct ArrowArrayView* array_view,
   }
 
   return NANOARROW_OK;
+}
+
+// Like ArrowArrayViewGetIntUnsafe() for the integer types, but without assuming
+// that the data buffer is aligned to the element size: the C Data interface
+// allows unaligned buffers
+static int64_t ArrowArrayViewGetIntUnaligned(const struct ArrowArrayView* array_view,
+                                             int64_t i) {
+  const uint8_t* data = array_view->buffer_views[1].data.as_uint8;
+  i += array_view->offset;
+  switch (array_view->storage_type) {
+    case NANOARROW_TYPE_INT64: {
+      int64_t value;
+      memcpy(&value, data + i * sizeof(value), sizeof(value));
+      return value;
+    }
+    case NANOARROW_TYPE_UINT64: {
+      uint64_t value;
+      memcpy(&value, data + i * sizeof(value), sizeof(value));
+      return (int64_t)value;
+    }
+    case NANOARROW_TYPE_INT32: {
+      int32_t value;
+      memcpy(&value, data + i * sizeof(value), sizeof(value));
+      return value;
+    }
+    case NANOARROW_TYPE_UINT32: {
+      uint32_t value;
+      memcpy(&value, data + i * sizeof(value), sizeof(value));
+      return value;
+    }
+    case NANOARROW_TYPE_INT16: {
+      int16_t value;
+      memcpy(&value, data + i * sizeof(value), sizeof(value));
+      return value;
+    }
+    case NANOARROW_TYPE_UINT16: {
+      uint16_t value;
+      memcpy(&value, data + i * sizeof(value), sizeof(value));
+      return value;
+    }
+    default:
+      return ArrowArrayViewGetIntUnsafe(array_view, i - array_view->offset);
+  }
 }
 
 static int ArrowArrayViewValidateDefault(struct ArrowArrayView* array_view,
@@ -1989,7 +2051,7 @@ static int ArrowArrayViewValidateDefault(struct ArrowArrayView* array_view,
         break;
       }
 
-      int64_t first_run_end = ArrowArrayViewGetIntUnsafe(run_ends_view, 0);
+      int64_t first_run_end = ArrowArrayViewGetIntUnaligned(run_ends_view, 0);
       if (first_run_end < 1) {
         ArrowErrorSet(
             error,
@@ -2000,7 +2062,7 @@ static int ArrowArrayViewValidateDefault(struct ArrowArrayView* array_view,
 
       // offset + length < INT64_MAX is checked in ArrowArrayViewValidateMinimal()
       int64_t last_run_end =
-          ArrowArrayViewGetIntUnsafe(run_ends_view, run_ends_view->length - 1);
+          ArrowArrayViewGetIntUnaligned(run_ends_view, run_ends_view->length - 1);
       if (last_run_end < offset_plus_length) {
         ArrowErrorSet(error,
                       "Last run end is %" PRId64 " but it should be >= (%" PRId64
@@ -2205,9 +2267,9 @@ static int ArrowArrayViewValidateFull(struct ArrowArrayView* array_view,
   if (array_view->storage_type == NANOARROW_TYPE_RUN_END_ENCODED) {
     struct ArrowArrayView* run_ends_view = array_view->children[0];
     if (run_ends_view->length > 0) {
-      int64_t last_run_end = ArrowArrayViewGetIntUnsafe(run_ends_view, 0);
+      int64_t last_run_end = ArrowArrayViewGetIntUnaligned(run_ends_view, 0);
       for (int64_t i = 1; i < run_ends_view->length; i++) {
-        const int64_t run_end = ArrowArrayViewGetIntUnsafe(run_ends_view, i);
+        const int64_t run_end = ArrowArrayViewGetIntUnaligned(run_ends_view, i);
         if (run_end <= last_run_end) {
           ArrowErrorSet(
               error,
@@ -2234,11 +2296,11 @@ static int ArrowArrayViewValidateFull(struct ArrowArrayView* array_view,
          i++) {
       int64_t offset, size;
       if (array_view->storage_type == NANOARROW_TYPE_LIST_VIEW) {
-        offset = offsets.data.as_int32[i];
-        size = sizes.data.as_int32[i];
+        offset = ArrowBufferViewGetInt32Unsafe(&offsets, i);
+        size = ArrowBufferViewGetInt32Unsafe(&sizes, i);
       } else {
-        offset = offsets.data.as_int64[i];
-        size = sizes.data.as_int64[i];
+        offset = ArrowBufferViewGetInt64Unsafe(&offsets, i);
+        size = ArrowBufferViewGetInt64Unsafe(&sizes, i);
       }
 
       if (offset < 0) {
@@ -2253,7 +2315,8 @@ static int ArrowArrayViewValidateFull(struct ArrowArrayView* array_view,
         return EINVAL;
       }
 
-      if ((offset + size) > child_len) {
+      // offset and size are non-negative here, so this cannot overflow like their sum
+      if (size > child_len - offset) {
         ArrowErrorSet(error,
                       "Offset: %" PRId64 " + size: %" PRId64 " at index: %" PRId64
                       " exceeds length of child view: %" PRId64,
@@ -2279,7 +2342,7 @@ static int ArrowArrayViewValidateFull(struct ArrowArrayView* array_view,
         continue;
       }
 
-      int64_t index = ArrowArrayViewGetIntUnsafe(array_view, i);
+      int64_t index = ArrowArrayViewGetIntUnaligned(array_view, i);
       if (index < 0 || index >= dictionary_length) {
         ArrowErrorSet(error,
                       "[%" PRId64 "] Expected dictionary index >= 0 and < %" PRId64
