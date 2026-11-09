@@ -328,11 +328,11 @@ class PyIterator(ArrayViewBaseIterator):
             member_id: i for i, member_id in enumerate(type_codes)
         }
 
-        type_id = memoryview(view.buffer(0))[offset : (offset + length + 1)]
+        type_id = memoryview(view.buffer(0))[offset : (offset + length)]
 
         # Try as hard as we can to reduce the number of times we request a child
         # iterator by iterating over runs of consecutive type_ids
-        i = 0
+        i = offset
         for item_type_id, item_type_id_iter in groupby(type_id):
             type_id_run_length = len(list(item_type_id_iter))
             child = self._children[child_index_by_type_id[item_type_id]]
@@ -349,8 +349,8 @@ class PyIterator(ArrayViewBaseIterator):
             member_id: i for i, member_id in enumerate(type_codes)
         }
 
-        type_id = memoryview(view.buffer(0))[offset : (offset + length + 1)]
-        offsets = memoryview(view.buffer(1))[offset : (offset + length + 1)]
+        type_id = memoryview(view.buffer(0))[offset : (offset + length)]
+        offsets = memoryview(view.buffer(1))[offset : (offset + length)]
 
         # Try as hard as we can to reduce the number of times we request a child
         # iterator by iterating over runs of consecutive type_ids
