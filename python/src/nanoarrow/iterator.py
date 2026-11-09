@@ -439,7 +439,7 @@ class PyIterator(ArrayViewBaseIterator):
             if item is None:
                 yield None
             else:
-                int_value = int.from_bytes(item, byteorder)
+                int_value = int.from_bytes(item, byteorder, signed=True)
                 yield Decimal(int_value).scaleb(scaleb, context)
 
     def _date_iter(self, offset, length):
