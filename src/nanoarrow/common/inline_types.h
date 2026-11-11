@@ -730,17 +730,63 @@ struct ArrowBufferView {
   int64_t size_bytes;
 };
 
+// Read element i of a buffer that is not necessarily aligned to the element size.
+// Indexing the buffer as an array of byte arrays (instead of computing
+// i * sizeof(value)) avoids an extra multiplication in clang's inlining cost model,
+// so callers like ArrowArrayViewGetIntUnsafe() are still inlined.
 static inline int32_t ArrowBufferViewGetInt32Unsafe(const struct ArrowBufferView* view,
                                                     int64_t i) {
   int32_t value;
-  memcpy(&value, view->data.as_uint8 + i * sizeof(int32_t), sizeof(value));
+  memcpy(&value, ((const uint8_t(*)[sizeof(value)])view->data.data)[i], sizeof(value));
   return value;
 }
 
 static inline int64_t ArrowBufferViewGetInt64Unsafe(const struct ArrowBufferView* view,
                                                     int64_t i) {
   int64_t value;
-  memcpy(&value, view->data.as_uint8 + i * sizeof(int64_t), sizeof(value));
+  memcpy(&value, ((const uint8_t(*)[sizeof(value)])view->data.data)[i], sizeof(value));
+  return value;
+}
+
+static inline int16_t ArrowBufferViewGetInt16Unsafe(const struct ArrowBufferView* view,
+                                                    int64_t i) {
+  int16_t value;
+  memcpy(&value, ((const uint8_t(*)[sizeof(value)])view->data.data)[i], sizeof(value));
+  return value;
+}
+
+static inline uint16_t ArrowBufferViewGetUInt16Unsafe(const struct ArrowBufferView* view,
+                                                      int64_t i) {
+  uint16_t value;
+  memcpy(&value, ((const uint8_t(*)[sizeof(value)])view->data.data)[i], sizeof(value));
+  return value;
+}
+
+static inline uint32_t ArrowBufferViewGetUInt32Unsafe(const struct ArrowBufferView* view,
+                                                      int64_t i) {
+  uint32_t value;
+  memcpy(&value, ((const uint8_t(*)[sizeof(value)])view->data.data)[i], sizeof(value));
+  return value;
+}
+
+static inline uint64_t ArrowBufferViewGetUInt64Unsafe(const struct ArrowBufferView* view,
+                                                      int64_t i) {
+  uint64_t value;
+  memcpy(&value, ((const uint8_t(*)[sizeof(value)])view->data.data)[i], sizeof(value));
+  return value;
+}
+
+static inline float ArrowBufferViewGetFloatUnsafe(const struct ArrowBufferView* view,
+                                                  int64_t i) {
+  float value;
+  memcpy(&value, ((const uint8_t(*)[sizeof(value)])view->data.data)[i], sizeof(value));
+  return value;
+}
+
+static inline double ArrowBufferViewGetDoubleUnsafe(const struct ArrowBufferView* view,
+                                                    int64_t i) {
+  double value;
+  memcpy(&value, ((const uint8_t(*)[sizeof(value)])view->data.data)[i], sizeof(value));
   return value;
 }
 

@@ -5174,6 +5174,152 @@ TEST(ArrayViewTest, ArrayViewTestGetDecimal256) {
 }
 #endif
 
+// Copies the content of view to an address that is misaligned by misalignment
+// bytes (1-7) relative to an 8-byte boundary. Getters must be able to read from
+// such buffers without misaligned loads (checked by -fsanitize=alignment).
+static const uint8_t* CopyToMisalignedStorage(std::vector<uint64_t>* storage,
+                                              struct ArrowBufferView view,
+                                              int misalignment) {
+  storage->resize(view.size_bytes / sizeof(uint64_t) + 2);
+  uint8_t* out = reinterpret_cast<uint8_t*>(storage->data()) + misalignment;
+  memcpy(out, view.data.data, view.size_bytes);
+  return out;
+}
+
+TEST(ArrayViewTest, ArrayViewTestGetNumericUnaligned) {
+  for (enum ArrowType type :
+       {NANOARROW_TYPE_INT8, NANOARROW_TYPE_UINT8, NANOARROW_TYPE_INT16,
+        NANOARROW_TYPE_UINT16, NANOARROW_TYPE_INT32, NANOARROW_TYPE_UINT32,
+        NANOARROW_TYPE_INT64, NANOARROW_TYPE_UINT64, NANOARROW_TYPE_HALF_FLOAT,
+        NANOARROW_TYPE_FLOAT, NANOARROW_TYPE_DOUBLE}) {
+    SCOPED_TRACE(ArrowTypeString(type));
+    nanoarrow::UniqueArray array;
+    ASSERT_EQ(ArrowArrayInitFromType(array.get(), type), NANOARROW_OK);
+    ASSERT_EQ(ArrowArrayStartAppending(array.get()), NANOARROW_OK);
+    for (int64_t value = 0; value < 5; value++) {
+      ASSERT_EQ(ArrowArrayAppendInt(array.get(), value), NANOARROW_OK);
+    }
+    ASSERT_EQ(ArrowArrayFinishBuildingDefault(array.get(), nullptr), NANOARROW_OK);
+    array->offset = 1;
+    array->length = 4;
+
+    nanoarrow::UniqueArrayView array_view;
+    ArrowArrayViewInitFromType(array_view.get(), type);
+    ASSERT_EQ(ArrowArrayViewSetArray(array_view.get(), array.get(), nullptr),
+              NANOARROW_OK);
+    struct ArrowBufferView data = array_view->buffer_views[1];
+
+    for (int misalignment = 1; misalignment < 8; misalignment++) {
+      SCOPED_TRACE(misalignment);
+      std::vector<uint64_t> storage;
+      array_view->buffer_views[1].data.as_uint8 =
+          CopyToMisalignedStorage(&storage, data, misalignment);
+      for (int64_t i = 0; i < array_view->length; i++) {
+        EXPECT_EQ(ArrowArrayViewGetIntUnsafe(array_view.get(), i), i + 1);
+        EXPECT_EQ(ArrowArrayViewGetUIntUnsafe(array_view.get(), i),
+                  static_cast<uint64_t>(i + 1));
+        EXPECT_EQ(ArrowArrayViewGetDoubleUnsafe(array_view.get(), i),
+                  static_cast<double>(i + 1));
+      }
+    }
+  }
+}
+
+TEST(ArrayViewTest, ArrayViewTestGetStringUnaligned) {
+  // Includes the largest inlined and the smallest non-inlined binary view
+  const std::vector<std::string> values = {"a", "", "twelve bytes", "thirteen byte",
+                                           "fourteen bytes"};
+
+  for (enum ArrowType type : {NANOARROW_TYPE_STRING, NANOARROW_TYPE_LARGE_STRING,
+                              NANOARROW_TYPE_BINARY, NANOARROW_TYPE_LARGE_BINARY,
+                              NANOARROW_TYPE_STRING_VIEW, NANOARROW_TYPE_BINARY_VIEW}) {
+    SCOPED_TRACE(ArrowTypeString(type));
+    nanoarrow::UniqueArray array;
+    ASSERT_EQ(ArrowArrayInitFromType(array.get(), type), NANOARROW_OK);
+    ASSERT_EQ(ArrowArrayStartAppending(array.get()), NANOARROW_OK);
+    for (const auto& value : values) {
+      ASSERT_EQ(ArrowArrayAppendString(array.get(), ArrowCharView(value.c_str())),
+                NANOARROW_OK);
+    }
+    ASSERT_EQ(ArrowArrayFinishBuildingDefault(array.get(), nullptr), NANOARROW_OK);
+    array->offset = 1;
+    array->length = 4;
+
+    nanoarrow::UniqueArrayView array_view;
+    ArrowArrayViewInitFromType(array_view.get(), type);
+    ASSERT_EQ(ArrowArrayViewSetArray(array_view.get(), array.get(), nullptr),
+              NANOARROW_OK);
+    // Offsets, or views for the binary view types
+    struct ArrowBufferView offsets = array_view->buffer_views[1];
+
+    for (int misalignment = 1; misalignment < 8; misalignment++) {
+      SCOPED_TRACE(misalignment);
+      std::vector<uint64_t> storage;
+      array_view->buffer_views[1].data.as_uint8 =
+          CopyToMisalignedStorage(&storage, offsets, misalignment);
+      for (int64_t i = 0; i < array_view->length; i++) {
+        struct ArrowStringView string_view =
+            ArrowArrayViewGetStringUnsafe(array_view.get(), i);
+        EXPECT_EQ(std::string(string_view.data, string_view.size_bytes), values[i + 1]);
+        struct ArrowBufferView bytes_view =
+            ArrowArrayViewGetBytesUnsafe(array_view.get(), i);
+        EXPECT_EQ(std::string(bytes_view.data.as_char, bytes_view.size_bytes),
+                  values[i + 1]);
+
+        if ((type == NANOARROW_TYPE_STRING_VIEW || type == NANOARROW_TYPE_BINARY_VIEW) &&
+            values[i + 1].size() <= NANOARROW_BINARY_VIEW_INLINE_SIZE) {
+          // Inlined bytes must point into the views buffer, after the 4-byte size
+          const uint8_t* view = array_view->buffer_views[1].data.as_uint8 +
+                                (array_view->offset + i) * sizeof(union ArrowBinaryView);
+          EXPECT_EQ(bytes_view.data.as_uint8, view + sizeof(int32_t));
+        }
+      }
+    }
+  }
+}
+
+TEST(ArrayViewTest, ArrayViewTestGetChildOffsetUnaligned) {
+  const int32_t offsets32[] = {0, 1, 3, 6};
+  const int64_t offsets64[] = {0, 1, 3, 6};
+
+  for (enum ArrowType type :
+       {NANOARROW_TYPE_LIST, NANOARROW_TYPE_LARGE_LIST, NANOARROW_TYPE_MAP,
+        NANOARROW_TYPE_LIST_VIEW, NANOARROW_TYPE_LARGE_LIST_VIEW,
+        NANOARROW_TYPE_DENSE_UNION}) {
+    SCOPED_TRACE(ArrowTypeString(type));
+    nanoarrow::UniqueArrayView array_view;
+    ArrowArrayViewInitFromType(array_view.get(), type);
+    array_view->offset = 1;
+    array_view->length = 3;
+
+    struct ArrowBufferView offsets;
+    if (array_view->layout.element_size_bits[1] == 64) {
+      offsets.data.as_int64 = offsets64;
+      offsets.size_bytes = sizeof(offsets64);
+    } else {
+      offsets.data.as_int32 = offsets32;
+      offsets.size_bytes = sizeof(offsets32);
+    }
+
+    for (int misalignment = 1; misalignment < 8; misalignment++) {
+      SCOPED_TRACE(misalignment);
+      std::vector<uint64_t> storage;
+      array_view->buffer_views[1].data.as_uint8 =
+          CopyToMisalignedStorage(&storage, offsets, misalignment);
+      for (int64_t i = 0; i < array_view->length; i++) {
+        if (type == NANOARROW_TYPE_DENSE_UNION) {
+          EXPECT_EQ(ArrowArrayViewUnionChildOffset(array_view.get(), i),
+                    offsets32[i + 1]);
+        } else {
+          // ArrowArrayViewListChildOffset() does not apply the array offset
+          EXPECT_EQ(ArrowArrayViewListChildOffset(array_view.get(), i + 1),
+                    offsets32[i + 1]);
+        }
+      }
+    }
+  }
+}
+
 // Helper to build a simple int32 array with known data for shared array tests
 static void MakeInt32ArrayForSharedTest(struct ArrowArray* array, const int32_t* values,
                                         int64_t n) {
