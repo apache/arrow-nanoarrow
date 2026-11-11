@@ -584,6 +584,63 @@ def test_iterator_sparse_union():
     assert list(iter_py(c_array)) == [True, 123, 456.0, "789", None, False]
 
 
+@pytest.mark.parametrize("mode", ["sparse", "dense"])
+@pytest.mark.parametrize("type_codes", [[0, 1], [3, 7]])
+@pytest.mark.parametrize("child_offset", [0, 2])
+def test_iterator_union_slices(mode, type_codes, child_offset):
+    pa = pytest.importorskip("pyarrow")
+
+    type_ids = pa.array([type_codes[i] for i in [0, 0, 1, 1, 0, 1]], pa.int8())
+    if mode == "sparse":
+        children = [
+            pa.array([999] * child_offset + [10, 20, None, None, None, None]),
+            pa.array(
+                ["padding"] * child_offset + [None, None, "thirty", None, None, "sixty"]
+            ),
+        ]
+        array = pa.UnionArray.from_sparse(
+            type_ids,
+            [child.slice(child_offset) for child in children],
+            type_codes=type_codes,
+        )
+    else:
+        children = [
+            pa.array([999] * child_offset + [10, 20, None]),
+            pa.array(["padding"] * child_offset + ["thirty", None, "sixty"]),
+        ]
+        array = pa.UnionArray.from_dense(
+            type_ids,
+            pa.array([0, 1, 0, 1, 2, 2], pa.int32()),
+            [child.slice(child_offset) for child in children],
+            type_codes=type_codes,
+        )
+
+    array.validate(full=True)
+    for offset, length in [(0, 6), (0, 2), (1, 3), (2, 2), (4, 2), (1, 0), (6, 0)]:
+        sliced = array.slice(offset, length)
+        sliced.validate(full=True)
+        expected = sliced.to_pylist()
+        assert list(iter_py(sliced)) == expected
+        assert na.Array(sliced).to_pylist() == expected
+        assert na.ArrayStream(sliced).read_all().to_pylist() == expected
+        assert pa.chunked_array(na.Array(sliced)).to_pylist() == expected
+
+    list_array = pa.ListArray.from_arrays(pa.array([0, 2, 2, 4, 6], pa.int32()), array)
+    struct_array = pa.StructArray.from_arrays([array], names=["value"])
+    batch = pa.record_batch([array], names=["value"])
+    for nested in [list_array, struct_array, batch]:
+        for offset, length in [(0, 2), (1, 2), (2, 1), (1, 0), (len(nested), 0)]:
+            if nested is list_array and length == 0:
+                continue
+            sliced = nested.slice(offset, length)
+            sliced.validate(full=True)
+            assert list(iter_py(sliced)) == sliced.to_pylist()
+            assert na.Array(sliced).to_pylist() == sliced.to_pylist()
+            if nested is not list_array:
+                expected = [(row["value"],) for row in sliced.to_pylist()]
+                assert list(iter_tuples(sliced)) == expected
+
+
 def test_iterator_dense_union():
     children = [
         na.c_array([True, None, False], na.bool_()),
