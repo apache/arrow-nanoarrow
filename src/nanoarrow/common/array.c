@@ -1897,7 +1897,10 @@ static int ArrowArrayViewValidateDefault(struct ArrowArrayView* array_view,
   switch (array_view->storage_type) {
     case NANOARROW_TYPE_STRING:
     case NANOARROW_TYPE_BINARY:
-      if (array_view->buffer_views[1].size_bytes != 0) {
+      // A zero-length array may have an offsets buffer that is too short to
+      // hold one offset: only read offsets from a buffer that holds them
+      if (array_view->buffer_views[1].size_bytes >=
+          (offset_plus_length + 1) * (int64_t)sizeof(int32_t)) {
         first_offset = ArrowBufferViewGetInt32Unsafe(&array_view->buffer_views[1],
                                                      array_view->offset);
         if (first_offset < 0) {
@@ -1935,7 +1938,10 @@ static int ArrowArrayViewValidateDefault(struct ArrowArrayView* array_view,
 
     case NANOARROW_TYPE_LARGE_STRING:
     case NANOARROW_TYPE_LARGE_BINARY:
-      if (array_view->buffer_views[1].size_bytes != 0) {
+      // A zero-length array may have an offsets buffer that is too short to
+      // hold one offset: only read offsets from a buffer that holds them
+      if (array_view->buffer_views[1].size_bytes >=
+          (offset_plus_length + 1) * (int64_t)sizeof(int64_t)) {
         first_offset = ArrowBufferViewGetInt64Unsafe(&array_view->buffer_views[1],
                                                      array_view->offset);
         if (first_offset < 0) {
@@ -1986,7 +1992,10 @@ static int ArrowArrayViewValidateDefault(struct ArrowArrayView* array_view,
 
     case NANOARROW_TYPE_LIST:
     case NANOARROW_TYPE_MAP:
-      if (array_view->buffer_views[1].size_bytes != 0) {
+      // A zero-length array may have an offsets buffer that is too short to
+      // hold one offset: only read offsets from a buffer that holds them
+      if (array_view->buffer_views[1].size_bytes >=
+          (offset_plus_length + 1) * (int64_t)sizeof(int32_t)) {
         first_offset = ArrowBufferViewGetInt32Unsafe(&array_view->buffer_views[1],
                                                      array_view->offset);
         if (first_offset < 0) {
@@ -2016,7 +2025,10 @@ static int ArrowArrayViewValidateDefault(struct ArrowArrayView* array_view,
       break;
 
     case NANOARROW_TYPE_LARGE_LIST:
-      if (array_view->buffer_views[1].size_bytes != 0) {
+      // A zero-length array may have an offsets buffer that is too short to
+      // hold one offset: only read offsets from a buffer that holds them
+      if (array_view->buffer_views[1].size_bytes >=
+          (offset_plus_length + 1) * (int64_t)sizeof(int64_t)) {
         first_offset = ArrowBufferViewGetInt64Unsafe(&array_view->buffer_views[1],
                                                      array_view->offset);
         if (first_offset < 0) {
