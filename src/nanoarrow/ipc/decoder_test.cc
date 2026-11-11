@@ -371,6 +371,40 @@ TEST(NanoarrowIpcTest, NanoarrowIpcCheckHeader) {
   ArrowIpcDecoderReset(&decoder);
 }
 
+TEST(NanoarrowIpcTest, NanoarrowIpcCheckHeaderSizeOverflow) {
+  struct ArrowIpcDecoder decoder;
+  struct ArrowError error;
+
+  uint32_t int32_max_le = INT32_MAX;
+  uint32_t pre_015_max_le = INT32_MAX - 3;
+  if (ArrowIpcSystemEndianness() == NANOARROW_IPC_ENDIANNESS_BIG) {
+    int32_max_le = bswap32(int32_max_le);
+    pre_015_max_le = bswap32(pre_015_max_le);
+  }
+
+  int32_t prefix_size_bytes;
+  ArrowIpcDecoderInit(&decoder);
+
+  // A message size whose sum with the 8-byte prefix overflows int32_t
+  uint32_t continued[] = {0xFFFFFFFF, int32_max_le};
+  struct ArrowBufferView data;
+  data.data.as_uint32 = continued;
+  data.size_bytes = sizeof(continued);
+  EXPECT_EQ(ArrowIpcDecoderPeekHeader(&decoder, data, &prefix_size_bytes, &error),
+            EINVAL);
+  EXPECT_STREQ(error.message, "Expected message size <= 2147483639 but found 2147483647");
+
+  // A pre-0.15 message with only the 4-byte length prefix
+  uint32_t legacy[] = {pre_015_max_le, 0};
+  data.data.as_uint32 = legacy;
+  data.size_bytes = sizeof(legacy);
+  EXPECT_EQ(ArrowIpcDecoderPeekHeader(&decoder, data, &prefix_size_bytes, &error),
+            EINVAL);
+  EXPECT_STREQ(error.message, "Expected message size <= 2147483643 but found 2147483644");
+
+  ArrowIpcDecoderReset(&decoder);
+}
+
 TEST(NanoarrowIpcTest, NanoarrowIpcPeekSimpleSchema) {
   struct ArrowIpcDecoder decoder;
   struct ArrowError error;
@@ -2039,6 +2073,10 @@ INSTANTIATE_TEST_SUITE_P(
         arrow::dense_union({arrow::field("col1", arrow::int32()),
                             arrow::field("col2", arrow::utf8())},
                            {126, 127}),
+        // Run-end encoded
+        arrow::run_end_encoded(arrow::int16(), arrow::utf8()),
+        arrow::run_end_encoded(arrow::int32(), arrow::int64()),
+        arrow::run_end_encoded(arrow::int64(), arrow::float64()),
 
         // Type with nested metadata
         arrow::list(arrow::field("some_custom_name", arrow::int32(),
