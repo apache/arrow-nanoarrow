@@ -357,7 +357,13 @@ def test_iterator_nullable_dictionary():
 def test_iterator_decimal():
     pa = pytest.importorskip("pyarrow")
 
-    items = [decimal.Decimal("12.3450"), None, decimal.Decimal("1234567.3456")]
+    items = [
+        decimal.Decimal("12.3450"),
+        None,
+        decimal.Decimal("1234567.3456"),
+        decimal.Decimal("-12.3450"),
+        decimal.Decimal("0.0000"),
+    ]
     array = pa.array(items, pa.decimal128(11, 4))
     assert list(iter_py(array)) == items
 
@@ -367,6 +373,29 @@ def test_iterator_decimal():
     # Make sure this isn't affected by user-modified context
     with decimal.localcontext(decimal.Context(prec=1)):
         assert list(iter_py(array)) == items
+
+
+@pytest.mark.parametrize("bitwidth,precision", [(128, 38), (256, 76)])
+@pytest.mark.parametrize("scale", [-2, 0, 2, None])
+def test_iterator_decimal_precision(bitwidth, precision, scale):
+    pa = pytest.importorskip("pyarrow")
+
+    if scale is None:
+        scale = precision
+    digits = (9,) * (precision + min(scale, 0))
+    items = [
+        decimal.Decimal((1, digits, -scale)),
+        decimal.Decimal((0, digits, -scale)),
+        decimal.Decimal((0, (0,), -scale)),
+        None,
+    ]
+    array = pa.array(items, getattr(pa, f"decimal{bitwidth}")(precision, scale))
+
+    for global_precision in [1, 28, 100]:
+        context = decimal.Context(prec=global_precision, rounding=decimal.ROUND_DOWN)
+        context.traps[decimal.Inexact] = True
+        with decimal.localcontext(context):
+            assert list(iter_py(array)) == items
 
 
 def test_iterator_date():
