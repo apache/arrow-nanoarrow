@@ -116,6 +116,34 @@ def test_iterator_nullable_binary(arrow_type):
     assert list(iter_py(sliced)) == [b"cde", None]
 
 
+@pytest.mark.parametrize(
+    "type_name,type_args,items",
+    [
+        ("binary", (2,), [b"aa", b"bb", b"cc", b"dd"]),
+        ("float16", (), [1.0, 2.0, 3.0, 4.0]),
+        ("decimal128", (10, 2), [decimal.Decimal(i) for i in range(1, 5)]),
+        ("decimal256", (10, 2), [decimal.Decimal(i) for i in range(1, 5)]),
+        ("month_day_nano_interval", (), [(i, i + 1, i + 2) for i in range(4)]),
+    ],
+)
+@pytest.mark.parametrize("nullable", [False, True])
+def test_iterator_struct_buffer_slice(type_name, type_args, items, nullable):
+    pa = pytest.importorskip("pyarrow")
+    items = items.copy()
+    if nullable:
+        items[2] = None
+    array = pa.array(items, getattr(pa, type_name)(*type_args))
+    batch = pa.record_batch([array], names=["value"])
+
+    for offset, length in [(0, 1), (1, 1), (1, 3), (4, 0)]:
+        sliced = array.slice(offset, length)
+        assert list(iter_py(sliced)) == sliced.to_pylist()
+        assert na.Array(sliced).to_pylist() == sliced.to_pylist()
+
+        sliced_batch = batch.slice(offset, length)
+        assert na.Array(sliced_batch).to_pylist() == sliced_batch.to_pylist()
+
+
 def test_iter_tuples():
     array = na.c_array_from_buffers(
         na.struct({"col1": na.int32(), "col2": na.bool_()}),
