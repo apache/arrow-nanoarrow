@@ -18,6 +18,8 @@
 #include <gmock/gmock-matchers.h>
 #include <gtest/gtest.h>
 
+#include <limits>
+
 #include "nanoarrow/nanoarrow.hpp"
 
 using testing::ElementsAre;
@@ -75,6 +77,26 @@ TEST(ArrayStreamTest, ArrayStreamTestEmpty) {
   }
 
   ArrowArrayStreamRelease(&array_stream);
+}
+
+TEST(ArrayStreamTest, ArrayStreamTestInitError) {
+#if !defined(__SANITIZE_ADDRESS__)
+  struct ArrowArrayStream array_stream;
+  array_stream.release = nullptr;
+  struct ArrowSchema schema;
+
+  // If the arrays can't be allocated, the caller keeps the schema and the stream is
+  // left uninitialized
+  ASSERT_EQ(ArrowSchemaInitFromType(&schema, NANOARROW_TYPE_INT32), NANOARROW_OK);
+  EXPECT_EQ(ArrowBasicArrayStreamInit(
+                &array_stream, &schema,
+                std::numeric_limits<int64_t>::max() / sizeof(struct ArrowArray)),
+            ENOMEM);
+  EXPECT_EQ(array_stream.release, nullptr);
+  ASSERT_NE(schema.release, nullptr);
+  EXPECT_STREQ(schema.format, "i");
+  ArrowSchemaRelease(&schema);
+#endif
 }
 
 TEST(ArrayStreamTest, ArrayStreamTestIncomplete) {
