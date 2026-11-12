@@ -316,19 +316,19 @@ TEST(NanoarrowIpcWriter, WriteDictionaryBatch) {
   EXPECT_EQ(p2->bytes_written, bytes_written);
 }
 
-// Build a struct array with a single dictionary-encoded (int32 -> utf8) child.
+// Build a struct array with a single dictionary-encoded (int32 -> utf8 by default) child.
 static void MakeDictionaryStructArray(struct ArrowArray* array,
                                       struct ArrowSchema* schema,
-                                      const char* value1 = "bar") {
+                                      const char* value1 = "bar",
+                                      enum ArrowType value_type = NANOARROW_TYPE_STRING) {
   ASSERT_EQ(ArrowSchemaInitFromType(schema, NANOARROW_TYPE_STRUCT), NANOARROW_OK);
   ASSERT_EQ(ArrowSchemaAllocateChildren(schema, 1), NANOARROW_OK);
   ASSERT_EQ(ArrowSchemaInitFromType(schema->children[0], NANOARROW_TYPE_INT32),
             NANOARROW_OK);
   ASSERT_EQ(ArrowSchemaSetName(schema->children[0], "dict_col"), NANOARROW_OK);
   ASSERT_EQ(ArrowSchemaAllocateDictionary(schema->children[0]), NANOARROW_OK);
-  ASSERT_EQ(
-      ArrowSchemaInitFromType(schema->children[0]->dictionary, NANOARROW_TYPE_STRING),
-      NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaInitFromType(schema->children[0]->dictionary, value_type),
+            NANOARROW_OK);
 
   ASSERT_EQ(ArrowArrayInitFromSchema(array, schema, nullptr), NANOARROW_OK);
   struct ArrowArray* indices = array->children[0];
@@ -556,10 +556,11 @@ static void ReadArrays(struct ArrowBuffer* buffer,
   }
 }
 
-static std::vector<std::string> StringValues(const struct ArrowArray* array) {
+static std::vector<std::string> StringValues(
+    const struct ArrowArray* array, enum ArrowType type = NANOARROW_TYPE_STRING) {
   std::vector<std::string> values;
   nanoarrow::UniqueArrayView view;
-  ArrowArrayViewInitFromType(view.get(), NANOARROW_TYPE_STRING);
+  ArrowArrayViewInitFromType(view.get(), type);
   EXPECT_EQ(ArrowArrayViewSetArray(view.get(), array, nullptr), NANOARROW_OK);
   for (int64_t i = 0; i < view->length; i++) {
     struct ArrowStringView value = ArrowArrayViewGetStringUnsafe(view.get(), i);
@@ -674,6 +675,62 @@ TEST(NanoarrowIpcWriter, EmitsChangedDictionary) {
             (std::vector<std::string>{"foo", "bar"}));
   EXPECT_EQ(StringValues(roundtrip[1]->children[0]->dictionary),
             (std::vector<std::string>{"foo", "baz"}));
+}
+
+TEST(NanoarrowIpcWriter, RoundtripStringViewDictionary) {
+  // A dictionary of string views, one of which is too long to be inlined
+  struct ArrowError error;
+  const char* long_value = "a string view value that is not inlined";
+
+  for (bool as_file : {false, true}) {
+    SCOPED_TRACE(as_file ? "file" : "stream");
+    nanoarrow::UniqueSchema schema;
+    std::vector<nanoarrow::UniqueArray> arrays(1);
+    MakeDictionaryStructArray(arrays[0].get(), schema.get(), long_value,
+                              NANOARROW_TYPE_STRING_VIEW);
+
+    nanoarrow::UniqueBuffer output;
+    ASSERT_EQ(WriteArrays(schema.get(), &arrays, output.get(), as_file, &error),
+              NANOARROW_OK)
+        << error.message;
+
+#if defined(NANOARROW_BUILD_TESTS_WITH_ARROW)
+    auto arrow_input = std::make_shared<arrow::io::BufferReader>(
+        arrow::Buffer::Wrap(output->data, output->size_bytes));
+    std::shared_ptr<arrow::RecordBatch> arrow_batch;
+    if (as_file) {
+      auto maybe_arrow_reader = arrow::ipc::RecordBatchFileReader::Open(arrow_input);
+      ASSERT_TRUE(maybe_arrow_reader.ok()) << maybe_arrow_reader.status();
+      auto maybe_batch = maybe_arrow_reader.ValueUnsafe()->ReadRecordBatch(0);
+      ASSERT_TRUE(maybe_batch.ok()) << maybe_batch.status();
+      arrow_batch = maybe_batch.ValueUnsafe();
+    } else {
+      auto maybe_arrow_reader = arrow::ipc::RecordBatchStreamReader::Open(arrow_input);
+      ASSERT_TRUE(maybe_arrow_reader.ok()) << maybe_arrow_reader.status();
+      ASSERT_TRUE(maybe_arrow_reader.ValueUnsafe()->ReadNext(&arrow_batch).ok());
+    }
+    ASSERT_NE(arrow_batch, nullptr);
+    ASSERT_TRUE(arrow_batch->ValidateFull().ok());
+    auto arrow_dictionary =
+        std::static_pointer_cast<arrow::DictionaryArray>(arrow_batch->column(0));
+    auto arrow_values =
+        std::static_pointer_cast<arrow::StringViewArray>(arrow_dictionary->dictionary());
+    ASSERT_EQ(arrow_values->length(), 2);
+    EXPECT_EQ(arrow_values->GetString(0), "foo");
+    EXPECT_EQ(arrow_values->GetString(1), long_value);
+#endif
+
+    if (as_file) {
+      continue;
+    }
+
+    std::vector<nanoarrow::UniqueArray> roundtrip;
+    ReadArrays(output.get(), &roundtrip);
+    ASSERT_EQ(roundtrip.size(), 1);
+    EXPECT_EQ(
+        StringValues(roundtrip[0]->children[0]->dictionary, NANOARROW_TYPE_STRING_VIEW),
+        (std::vector<std::string>{"foo", long_value}));
+  }
 }
 
 TEST(NanoarrowIpcWriter, RejectsChangedDictionaryInFile) {

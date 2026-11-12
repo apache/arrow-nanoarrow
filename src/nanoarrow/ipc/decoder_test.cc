@@ -28,6 +28,7 @@
 #include <arrow/extension/uuid.h>
 #include <arrow/io/memory.h>
 #include <arrow/ipc/api.h>
+#include <arrow/util/compression.h>
 #include <arrow/util/decimal.h>
 #include <arrow/util/key_value_metadata.h>
 #endif
@@ -55,6 +56,7 @@ struct ArrowIpcField {
   struct ArrowArrayView* array_view;
   struct ArrowArray* array;
   int64_t buffer_offset;
+  int64_t variadic_buffer_count_offset;
   int64_t dictionary_id;
 };
 
@@ -1641,6 +1643,16 @@ void AssertArrayViewIdentical(const struct ArrowArrayView* actual,
     }
   }
 
+  ASSERT_EQ(actual->n_variadic_buffers, expected->n_variadic_buffers);
+  for (int32_t i = 0; i < expected->n_variadic_buffers; i++) {
+    ASSERT_EQ(actual->variadic_buffer_sizes[i], expected->variadic_buffer_sizes[i]);
+    if (expected->variadic_buffer_sizes[i] != 0) {
+      ASSERT_EQ(memcmp(actual->variadic_buffers[i], expected->variadic_buffers[i],
+                       expected->variadic_buffer_sizes[i]),
+                0);
+    }
+  }
+
   ASSERT_EQ(actual->n_children, expected->n_children);
   for (int i = 0; i < actual->n_children; i++) {
     AssertArrayViewIdentical(actual->children[i], expected->children[i]);
@@ -2077,6 +2089,11 @@ INSTANTIATE_TEST_SUITE_P(
         arrow::run_end_encoded(arrow::int16(), arrow::utf8()),
         arrow::run_end_encoded(arrow::int32(), arrow::int64()),
         arrow::run_end_encoded(arrow::int64(), arrow::float64()),
+        // Binary view and string view
+        arrow::binary_view(), arrow::utf8_view(),
+        arrow::struct_({arrow::field("col1", arrow::utf8_view()),
+                        arrow::field("col2", arrow::int32()),
+                        arrow::field("col3", arrow::binary_view())}),
 
         // Type with nested metadata
         arrow::list(arrow::field("some_custom_name", arrow::int32(),
@@ -2092,6 +2109,8 @@ INSTANTIATE_TEST_SUITE_P(
         arrow::dictionary(arrow::uint64(), arrow::utf8()),
         // Ordered dictionary encoding
         arrow::dictionary(arrow::int32(), arrow::utf8(), true),
+        // Dictionary-encoded string view
+        arrow::dictionary(arrow::int32(), arrow::utf8_view()),
         // Extension type
         arrow::extension::uuid(),
         // Extension type with dictionary as the storage type
@@ -2821,3 +2840,437 @@ TEST(NanoarrowIpcTest, NanoarrowIpcDecodeEmptyArrayOffsets) {
     EXPECT_EQ(first_offset, 0);
   }
 }
+
+// A value for the binary view and string view arrays in the tests below. Most are
+// longer than the 12 bytes that a view holds inline, so they are stored in variadic
+// buffers, and some are empty or inlined.
+static std::string ViewTestValue(int64_t i, int64_t max_size) {
+  std::string value(static_cast<size_t>((i * 37) % max_size), ' ');
+  for (size_t j = 0; j < value.size(); j++) {
+    value[j] = static_cast<char>('a' + (i + static_cast<int64_t>(j)) % 26);
+  }
+  return value;
+}
+
+// A struct<bv: binary_view, l: list<string_view>, i: int32, sv: string_view> array with
+// nulls in the binary view and string view columns. Values of up to 400 bytes give
+// those arrays several variadic buffers (nanoarrow starts a new one every 32 KB).
+static void MakeViewStructArray(struct ArrowSchema* schema, struct ArrowArray* array,
+                                int64_t length) {
+  ArrowSchemaInit(schema);
+  ASSERT_EQ(ArrowSchemaSetTypeStruct(schema, 4), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaSetType(schema->children[0], NANOARROW_TYPE_BINARY_VIEW),
+            NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaSetName(schema->children[0], "bv"), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaSetType(schema->children[1], NANOARROW_TYPE_LIST), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaSetName(schema->children[1], "l"), NANOARROW_OK);
+  ASSERT_EQ(
+      ArrowSchemaSetType(schema->children[1]->children[0], NANOARROW_TYPE_STRING_VIEW),
+      NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaSetType(schema->children[2], NANOARROW_TYPE_INT32), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaSetName(schema->children[2], "i"), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaSetType(schema->children[3], NANOARROW_TYPE_STRING_VIEW),
+            NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaSetName(schema->children[3], "sv"), NANOARROW_OK);
+
+  ASSERT_EQ(ArrowArrayInitFromSchema(array, schema, nullptr), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayStartAppending(array), NANOARROW_OK);
+  for (int64_t i = 0; i < length; i++) {
+    if (i % 7 == 3) {
+      ASSERT_EQ(ArrowArrayAppendNull(array->children[0], 1), NANOARROW_OK);
+      ASSERT_EQ(ArrowArrayAppendNull(array->children[3], 1), NANOARROW_OK);
+    } else {
+      std::string bv = ViewTestValue(i, 400);
+      std::string sv = ViewTestValue(i + 1, 400);
+      ASSERT_EQ(ArrowArrayAppendString(array->children[0], ArrowCharView(bv.c_str())),
+                NANOARROW_OK);
+      ASSERT_EQ(ArrowArrayAppendString(array->children[3], ArrowCharView(sv.c_str())),
+                NANOARROW_OK);
+    }
+
+    for (int64_t j = 0; j < i % 4; j++) {
+      std::string item = ViewTestValue(i * 3 + j, 400);
+      ASSERT_EQ(ArrowArrayAppendString(array->children[1]->children[0],
+                                       ArrowCharView(item.c_str())),
+                NANOARROW_OK);
+    }
+    ASSERT_EQ(ArrowArrayFinishElement(array->children[1]), NANOARROW_OK);
+
+    ASSERT_EQ(ArrowArrayAppendInt(array->children[2], i), NANOARROW_OK);
+    ASSERT_EQ(ArrowArrayFinishElement(array), NANOARROW_OK);
+  }
+
+  ASSERT_EQ(ArrowArrayFinishBuildingDefault(array, nullptr), NANOARROW_OK);
+}
+
+TEST(NanoarrowIpcTest, NanoarrowIpcViewArrayRoundtrip) {
+  struct ArrowError error;
+  std::vector<enum ArrowIpcCompressionType> codecs = {
+      NANOARROW_IPC_COMPRESSION_TYPE_NONE};
+  if (ArrowIpcGetLZ4CompressionFunction() != nullptr) {
+    codecs.push_back(NANOARROW_IPC_COMPRESSION_TYPE_LZ4_FRAME);
+  }
+  if (ArrowIpcGetZstdCompressionFunction() != nullptr) {
+    codecs.push_back(NANOARROW_IPC_COMPRESSION_TYPE_ZSTD);
+  }
+
+  for (auto codec : codecs) {
+    // One decoder reads batches whose arrays have more, then fewer variadic buffers than
+    // the batch before. (Lengths are multiples of 8 so that AssertArrayViewIdentical()
+    // doesn't compare the unset bits at the end of a validity bitmap.)
+    nanoarrow::ipc::UniqueDecoder decoder;
+    ASSERT_EQ(ArrowIpcDecoderInit(decoder.get()), NANOARROW_OK);
+    bool decoder_has_schema = false;
+
+    for (int64_t length : {400, 1000, 0, 400}) {
+      SCOPED_TRACE(::testing::Message() << "codec " << codec << ", length " << length);
+      nanoarrow::UniqueSchema schema;
+      nanoarrow::UniqueArray array;
+      ASSERT_NO_FATAL_FAILURE(MakeViewStructArray(schema.get(), array.get(), length));
+      nanoarrow::UniqueArrayView array_view;
+      ASSERT_EQ(ArrowArrayViewInitFromSchema(array_view.get(), schema.get(), &error),
+                NANOARROW_OK);
+      ASSERT_EQ(ArrowArrayViewSetArray(array_view.get(), array.get(), &error),
+                NANOARROW_OK)
+          << error.message;
+
+      struct ArrowArrayView* bv = array_view->children[0];
+      struct ArrowArrayView* l_sv = array_view->children[1]->children[0];
+      struct ArrowArrayView* sv = array_view->children[3];
+      if (length > 0) {
+        ASSERT_GT(bv->n_variadic_buffers, 1);
+        ASSERT_GT(l_sv->n_variadic_buffers, 1);
+        ASSERT_GT(sv->n_variadic_buffers, 1);
+      }
+
+      nanoarrow::ipc::UniqueEncoder encoder;
+      ASSERT_EQ(ArrowIpcEncoderInit(encoder.get()), NANOARROW_OK);
+      ASSERT_EQ(
+          ArrowIpcEncoderSetCompression(encoder.get(), codec,
+                                        NANOARROW_IPC_COMPRESSION_LEVEL_DEFAULT, &error),
+          NANOARROW_OK)
+          << error.message;
+      nanoarrow::UniqueBuffer message, body;
+      ASSERT_EQ(ArrowIpcEncoderEncodeSimpleRecordBatch(encoder.get(), array_view.get(),
+                                                       body.get(), &error),
+                NANOARROW_OK)
+          << error.message;
+      ASSERT_EQ(ArrowIpcEncoderFinalizeBuffer(encoder.get(), /*encapsulate=*/true,
+                                              message.get()),
+                NANOARROW_OK);
+
+      // The message has a variadicBufferCounts entry for each view array in field order
+      ns(Message_table_t) fb_message = ns(Message_as_root(message->data + 8));
+      ns(RecordBatch_table_t) fb_batch =
+          (ns(RecordBatch_table_t))ns(Message_header(fb_message));
+      flatbuffers_int64_vec_t counts = ns(RecordBatch_variadicBufferCounts(fb_batch));
+      ASSERT_EQ(flatbuffers_int64_vec_len(counts), 3);
+      EXPECT_EQ(flatbuffers_int64_vec_at(counts, 0), bv->n_variadic_buffers);
+      EXPECT_EQ(flatbuffers_int64_vec_at(counts, 1), l_sv->n_variadic_buffers);
+      EXPECT_EQ(flatbuffers_int64_vec_at(counts, 2), sv->n_variadic_buffers);
+
+      if (!decoder_has_schema) {
+        ASSERT_EQ(ArrowIpcDecoderSetSchema(decoder.get(), schema.get(), &error),
+                  NANOARROW_OK)
+            << error.message;
+        decoder_has_schema = true;
+      }
+      ASSERT_EQ(ArrowIpcDecoderDecodeHeader(
+                    decoder.get(), {{message->data}, message->size_bytes}, &error),
+                NANOARROW_OK)
+          << error.message;
+      struct ArrowBufferView body_view = {{body->data}, body->size_bytes};
+
+      // Decode the whole batch and each field on its own (in the depth-first order of
+      // field indices), whose buffers follow the variadic buffers of any view arrays
+      // before it
+      struct ArrowArrayView* decoded;
+      ASSERT_EQ(
+          ArrowIpcDecoderDecodeArrayView(decoder.get(), body_view, -1, &decoded, &error),
+          NANOARROW_OK)
+          << error.message;
+      ASSERT_NO_FATAL_FAILURE(AssertArrayViewIdentical(decoded, array_view.get()));
+      const struct ArrowArrayView* fields[] = {bv, array_view->children[1], l_sv,
+                                               array_view->children[2], sv};
+      for (int64_t i = 0; i < 5; i++) {
+        SCOPED_TRACE(::testing::Message() << "field " << i);
+        ASSERT_EQ(
+            ArrowIpcDecoderDecodeArrayView(decoder.get(), body_view, i, &decoded, &error),
+            NANOARROW_OK)
+            << error.message;
+        ASSERT_NO_FATAL_FAILURE(AssertArrayViewIdentical(decoded, fields[i]));
+      }
+
+      // Decode arrays that own a copy of the body or share it. (The view of an empty
+      // array has no offsets for the list column, so only compare a non-empty one.)
+      if (length == 0) {
+        continue;
+      }
+
+      nanoarrow::UniqueBuffer body_copy;
+      ASSERT_EQ(ArrowBufferAppend(body_copy.get(), body->data, body->size_bytes),
+                NANOARROW_OK);
+      nanoarrow::UniqueBuffer shared_body;
+      ASSERT_EQ(ArrowIpcSharedBufferInit(shared_body.get(), body_copy.get()),
+                NANOARROW_OK);
+      for (bool shared : {false, true}) {
+        SCOPED_TRACE(shared ? "shared body" : "copied body");
+        nanoarrow::UniqueArray decoded_array;
+        if (shared) {
+          ASSERT_EQ(ArrowIpcDecoderDecodeArrayFromShared(
+                        decoder.get(), shared_body.get(), -1, decoded_array.get(),
+                        NANOARROW_VALIDATION_LEVEL_FULL, &error),
+                    NANOARROW_OK)
+              << error.message;
+        } else {
+          ASSERT_EQ(ArrowIpcDecoderDecodeArray(decoder.get(), body_view, -1,
+                                               decoded_array.get(),
+                                               NANOARROW_VALIDATION_LEVEL_FULL, &error),
+                    NANOARROW_OK)
+              << error.message;
+        }
+
+        nanoarrow::UniqueArrayView decoded_view;
+        ASSERT_EQ(ArrowArrayViewInitFromSchema(decoded_view.get(), schema.get(), &error),
+                  NANOARROW_OK);
+        ASSERT_EQ(ArrowArrayViewSetArray(decoded_view.get(), decoded_array.get(), &error),
+                  NANOARROW_OK)
+            << error.message;
+        ASSERT_NO_FATAL_FAILURE(
+            AssertArrayViewIdentical(decoded_view.get(), array_view.get()));
+      }
+
+      // As in Arrow C++, view arrays can't be read from a message of the other
+      // endianness
+#if defined(__BIG_ENDIAN__)
+      ASSERT_EQ(
+          ArrowIpcDecoderSetEndianness(decoder.get(), NANOARROW_IPC_ENDIANNESS_LITTLE),
+          NANOARROW_OK);
+#else
+      ASSERT_EQ(ArrowIpcDecoderSetEndianness(decoder.get(), NANOARROW_IPC_ENDIANNESS_BIG),
+                NANOARROW_OK);
+#endif
+      ASSERT_EQ(ArrowIpcDecoderDecodeHeader(
+                    decoder.get(), {{message->data}, message->size_bytes}, &error),
+                NANOARROW_OK)
+          << error.message;
+      EXPECT_EQ(
+          ArrowIpcDecoderDecodeArrayView(decoder.get(), body_view, 0, &decoded, &error),
+          ENOTSUP);
+      EXPECT_STREQ(error.message,
+                   "Endian swapping of binary view and string view arrays is not "
+                   "supported");
+      ASSERT_EQ(ArrowIpcDecoderSetEndianness(decoder.get(),
+                                             NANOARROW_IPC_ENDIANNESS_UNINITIALIZED),
+                NANOARROW_OK);
+    }
+  }
+}
+
+// Builds an encapsulated RecordBatch message with one field node, n_buffers empty
+// buffers, and the given variadicBufferCounts (omitted if counts is nullptr)
+static void MakeRecordBatchWithVariadicBufferCounts(int64_t n_buffers,
+                                                    const std::vector<int64_t>* counts,
+                                                    struct ArrowBuffer* out) {
+  flatcc_builder_t builder;
+  flatcc_builder_init(&builder);
+
+  ASSERT_EQ(ns(Message_start_as_root(&builder)), 0);
+  ASSERT_EQ(ns(Message_version_add(&builder, ns(MetadataVersion_V5))), 0);
+  ASSERT_EQ(ns(Message_header_RecordBatch_start(&builder)), 0);
+  struct ns(FieldNode) node = {0, 0};
+  ASSERT_EQ(ns(RecordBatch_nodes_create(&builder, &node, 1)), 0);
+  std::vector<struct ns(Buffer)> buffers(n_buffers);
+  ASSERT_EQ(ns(RecordBatch_buffers_create(&builder, buffers.data(), buffers.size())), 0);
+  if (counts != nullptr) {
+    ASSERT_EQ(ns(RecordBatch_variadicBufferCounts_create(&builder, counts->data(),
+                                                         counts->size())),
+              0);
+  }
+  ASSERT_EQ(ns(Message_header_RecordBatch_end(&builder)), 0);
+  ASSERT_NE(ns(Message_end_as_root(&builder)), 0);
+
+  ASSERT_NO_FATAL_FAILURE(FinishEncapsulatedMessage(&builder, out));
+  flatcc_builder_clear(&builder);
+}
+
+TEST(NanoarrowIpcTest, NanoarrowIpcDecodeVariadicBufferCounts) {
+  struct ArrowError error;
+
+  // A string view column has a validity buffer, a views buffer, and one buffer for
+  // each variadic buffer
+  nanoarrow::UniqueSchema schema;
+  ArrowSchemaInit(schema.get());
+  ASSERT_EQ(ArrowSchemaSetTypeStruct(schema.get(), 1), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaSetType(schema->children[0], NANOARROW_TYPE_STRING_VIEW),
+            NANOARROW_OK);
+
+  nanoarrow::ipc::UniqueDecoder decoder;
+  ASSERT_EQ(ArrowIpcDecoderInit(decoder.get()), NANOARROW_OK);
+  ASSERT_EQ(ArrowIpcDecoderSetSchema(decoder.get(), schema.get(), &error), NANOARROW_OK)
+      << error.message;
+
+  struct Case {
+    int64_t n_buffers;
+    bool has_counts;
+    std::vector<int64_t> counts;
+    std::string expected_error;
+  };
+  const std::vector<Case> cases = {
+      {2, false, {}, "Expected 1 variadic buffer counts in message but found 0"},
+      {2, true, {}, "Expected 1 variadic buffer counts in message but found 0"},
+      {2, true, {0, 0}, "Expected 1 variadic buffer counts in message but found 2"},
+      {2, true, {-1}, "Expected variadic buffer count between 0 and 2 but found -1"},
+      {2,
+       true,
+       {INT64_MAX},
+       "Expected variadic buffer count between 0 and 2 but found 9223372036854775807"},
+      {2, true, {1}, "Expected 3 buffers in message but found 2"},
+      {3, true, {0}, "Expected 2 buffers in message but found 3"},
+      {2, true, {0}, ""},
+      {4, true, {2}, ""}};
+
+  for (const auto& c : cases) {
+    SCOPED_TRACE(::testing::Message() << "buffers=" << c.n_buffers << ", counts="
+                                      << ::testing::PrintToString(c.counts));
+    nanoarrow::UniqueBuffer message;
+    ASSERT_NO_FATAL_FAILURE(MakeRecordBatchWithVariadicBufferCounts(
+        c.n_buffers, c.has_counts ? &c.counts : nullptr, message.get()));
+    struct ArrowBufferView data = {{message->data}, message->size_bytes};
+    ASSERT_EQ(ArrowIpcDecoderVerifyHeader(decoder.get(), data, &error), NANOARROW_OK)
+        << error.message;
+
+    if (!c.expected_error.empty()) {
+      EXPECT_EQ(ArrowIpcDecoderDecodeHeader(decoder.get(), data, &error), EINVAL);
+      EXPECT_EQ(std::string(error.message), c.expected_error);
+      continue;
+    }
+
+    ASSERT_EQ(ArrowIpcDecoderDecodeHeader(decoder.get(), data, &error), NANOARROW_OK)
+        << error.message;
+    struct ArrowArrayView* decoded;
+    ASSERT_EQ(ArrowIpcDecoderDecodeArrayView(decoder.get(), {{nullptr}, 0}, -1, &decoded,
+                                             &error),
+              NANOARROW_OK)
+        << error.message;
+    EXPECT_EQ(decoded->children[0]->n_variadic_buffers, c.counts[0]);
+  }
+
+  // A schema without view fields does not expect any variadic buffer counts
+  ASSERT_EQ(ArrowSchemaSetType(schema->children[0], NANOARROW_TYPE_STRING), NANOARROW_OK);
+  ASSERT_EQ(ArrowIpcDecoderSetSchema(decoder.get(), schema.get(), &error), NANOARROW_OK)
+      << error.message;
+  std::vector<int64_t> counts = {0};
+  nanoarrow::UniqueBuffer message;
+  ASSERT_NO_FATAL_FAILURE(
+      MakeRecordBatchWithVariadicBufferCounts(3, &counts, message.get()));
+  EXPECT_EQ(ArrowIpcDecoderDecodeHeader(decoder.get(),
+                                        {{message->data}, message->size_bytes}, &error),
+            EINVAL);
+  EXPECT_STREQ(error.message, "Expected 0 variadic buffer counts in message but found 1");
+}
+
+#if defined(NANOARROW_BUILD_TESTS_WITH_ARROW)
+TEST(NanoarrowIpcTest, NanoarrowIpcViewArrayArrowInterop) {
+  struct ArrowError error;
+  constexpr int64_t kLength = 200;
+
+  // Values of up to 40 bytes in blocks of 64 bytes give the binary view array a
+  // variadic buffer for every one or two values that are not inlined. The string view
+  // array is a slice.
+  arrow::BinaryViewBuilder bv_builder;
+  bv_builder.SetBlockSize(64);
+  arrow::StringViewBuilder sv_builder;
+  for (int64_t i = 0; i < kLength + 10; i++) {
+    if (i % 5 == 1) {
+      ASSERT_TRUE(bv_builder.AppendNull().ok());
+      ASSERT_TRUE(sv_builder.AppendNull().ok());
+    } else {
+      ASSERT_TRUE(bv_builder.Append(ViewTestValue(i, 41)).ok());
+      ASSERT_TRUE(sv_builder.Append(ViewTestValue(i + 1, 41)).ok());
+    }
+  }
+  auto bv = bv_builder.Finish().ValueOrDie()->Slice(0, kLength);
+  auto sv = sv_builder.Finish().ValueOrDie()->Slice(10, kLength);
+  ASSERT_GT(bv->data()->buffers.size(), static_cast<size_t>(20));
+
+  auto arrow_schema = arrow::schema(
+      {arrow::field("bv", arrow::binary_view()), arrow::field("sv", arrow::utf8_view())});
+  auto batch = arrow::RecordBatch::Make(arrow_schema, kLength, {bv, sv});
+  nanoarrow::UniqueSchema schema;
+  ASSERT_TRUE(arrow::ExportSchema(*arrow_schema, schema.get()).ok());
+
+  std::vector<arrow::Compression::type> codecs = {arrow::Compression::UNCOMPRESSED};
+  if (ArrowIpcGetLZ4DecompressionFunction() != nullptr &&
+      arrow::util::Codec::IsAvailable(arrow::Compression::LZ4_FRAME)) {
+    codecs.push_back(arrow::Compression::LZ4_FRAME);
+  }
+  if (ArrowIpcGetZstdDecompressionFunction() != nullptr &&
+      arrow::util::Codec::IsAvailable(arrow::Compression::ZSTD)) {
+    codecs.push_back(arrow::Compression::ZSTD);
+  }
+
+  for (auto codec : codecs) {
+    SCOPED_TRACE(arrow::util::Codec::GetCodecAsString(codec));
+    auto options = arrow::ipc::IpcWriteOptions::Defaults();
+    if (codec != arrow::Compression::UNCOMPRESSED) {
+      options.codec = arrow::util::Codec::Create(codec).ValueOrDie();
+    }
+    auto maybe_serialized = arrow::ipc::SerializeRecordBatch(*batch, options);
+    ASSERT_TRUE(maybe_serialized.ok()) << maybe_serialized.status();
+    auto serialized = maybe_serialized.ValueUnsafe();
+
+    // nanoarrow reads the message that Arrow C++ wrote
+    nanoarrow::ipc::UniqueDecoder decoder;
+    ASSERT_EQ(ArrowIpcDecoderInit(decoder.get()), NANOARROW_OK);
+    ASSERT_EQ(ArrowIpcDecoderSetSchema(decoder.get(), schema.get(), &error), NANOARROW_OK)
+        << error.message;
+    struct ArrowBufferView data = {{serialized->data()}, serialized->size()};
+    ASSERT_EQ(ArrowIpcDecoderDecodeHeader(decoder.get(), data, &error), NANOARROW_OK)
+        << error.message;
+    data.data.as_uint8 += decoder->header_size_bytes;
+    data.size_bytes -= decoder->header_size_bytes;
+    nanoarrow::UniqueArray array;
+    ASSERT_EQ(ArrowIpcDecoderDecodeArray(decoder.get(), data, -1, array.get(),
+                                         NANOARROW_VALIDATION_LEVEL_FULL, &error),
+              NANOARROW_OK)
+        << error.message;
+
+    // Arrow C++ reads the message that nanoarrow writes from what it read
+    nanoarrow::UniqueArrayView array_view;
+    ASSERT_EQ(ArrowArrayViewInitFromSchema(array_view.get(), schema.get(), &error),
+              NANOARROW_OK);
+    ASSERT_EQ(ArrowArrayViewSetArray(array_view.get(), array.get(), &error), NANOARROW_OK)
+        << error.message;
+    nanoarrow::ipc::UniqueEncoder encoder;
+    ASSERT_EQ(ArrowIpcEncoderInit(encoder.get()), NANOARROW_OK);
+    nanoarrow::UniqueBuffer message, body;
+    ASSERT_EQ(ArrowIpcEncoderEncodeSimpleRecordBatch(encoder.get(), array_view.get(),
+                                                     body.get(), &error),
+              NANOARROW_OK)
+        << error.message;
+    ASSERT_EQ(
+        ArrowIpcEncoderFinalizeBuffer(encoder.get(), /*encapsulate=*/true, message.get()),
+        NANOARROW_OK);
+    ASSERT_EQ(ArrowBufferAppend(message.get(), body->data, body->size_bytes),
+              NANOARROW_OK);
+
+    arrow::io::BufferReader message_reader(
+        arrow::Buffer::Wrap(message->data, message->size_bytes));
+    auto maybe_message = arrow::ipc::ReadMessage(&message_reader);
+    ASSERT_TRUE(maybe_message.ok()) << maybe_message.status();
+    arrow::ipc::DictionaryMemo memo;
+    auto maybe_roundtripped =
+        arrow::ipc::ReadRecordBatch(*maybe_message.ValueUnsafe(), arrow_schema, &memo,
+                                    arrow::ipc::IpcReadOptions::Defaults());
+    ASSERT_TRUE(maybe_roundtripped.ok()) << maybe_roundtripped.status();
+    ASSERT_TRUE(maybe_roundtripped.ValueUnsafe()->ValidateFull().ok());
+    EXPECT_TRUE(maybe_roundtripped.ValueUnsafe()->Equals(*batch));
+
+    auto maybe_batch = arrow::ImportRecordBatch(array.get(), arrow_schema);
+    ASSERT_TRUE(maybe_batch.ok()) << maybe_batch.status();
+    ASSERT_TRUE(maybe_batch.ValueUnsafe()->ValidateFull().ok());
+    EXPECT_TRUE(maybe_batch.ValueUnsafe()->Equals(*batch));
+  }
+}
+#endif
