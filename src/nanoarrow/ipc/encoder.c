@@ -58,6 +58,9 @@ struct ArrowIpcEncoderPrivate {
   int has_compressed_body;
   // Views of the body buffers of the message being encoded, in body order
   struct ArrowBuffer buffer_views;
+  // The number of variadic buffers of each BinaryView or StringView array in the
+  // message being encoded, in the order of their field nodes
+  struct ArrowBuffer variadic_buffer_counts;
   // Compressed copies of those buffers (reused between messages)
   struct ArrowBuffer* compressed_buffers;
   int64_t n_compressed_buffers;
@@ -85,6 +88,7 @@ ArrowErrorCode ArrowIpcEncoderInit(struct ArrowIpcEncoder* encoder) {
   private->compressor.release = NULL;
   private->has_compressed_body = 0;
   ArrowBufferInit(&private->buffer_views);
+  ArrowBufferInit(&private->variadic_buffer_counts);
   private->compressed_buffers = NULL;
   private->n_compressed_buffers = 0;
   return NANOARROW_OK;
@@ -104,6 +108,7 @@ void ArrowIpcEncoderReset(struct ArrowIpcEncoder* encoder) {
       private->compressor.release(&private->compressor);
     }
     ArrowBufferReset(&private->buffer_views);
+    ArrowBufferReset(&private->variadic_buffer_counts);
     for (int64_t i = 0; i < private->n_compressed_buffers; i++) {
       ArrowBufferReset(&private->compressed_buffers[i]);
     }
@@ -356,6 +361,14 @@ static ArrowErrorCode ArrowIpcEncodeFieldType(flatcc_builder_t* builder,
 
     case NANOARROW_TYPE_LARGE_BINARY:
       FLATCC_RETURN_UNLESS_0(Field_type_LargeBinary_create(builder), error);
+      return NANOARROW_OK;
+
+    case NANOARROW_TYPE_STRING_VIEW:
+      FLATCC_RETURN_UNLESS_0(Field_type_Utf8View_create(builder), error);
+      return NANOARROW_OK;
+
+    case NANOARROW_TYPE_BINARY_VIEW:
+      FLATCC_RETURN_UNLESS_0(Field_type_BinaryView_create(builder), error);
       return NANOARROW_OK;
 
     case NANOARROW_TYPE_DATE32:
@@ -996,7 +1009,14 @@ static ArrowErrorCode ArrowIpcEncoderCollectArray(struct ArrowIpcEncoderPrivate*
   struct ns(FieldNode) node = {array_view->length, null_count};
   NANOARROW_RETURN_NOT_OK_WITH_ERROR(
       ArrowBufferAppend(&private->nodes, &node, sizeof(node)), error);
-  for (int64_t b = 0; b < array_view->array->n_buffers; ++b) {
+
+  // The variadic buffers of a BinaryView or StringView array are collected below. The
+  // final buffer of such an array (the sizes of the variadic buffers) is not written.
+  int is_view = array_view->storage_type == NANOARROW_TYPE_BINARY_VIEW ||
+                array_view->storage_type == NANOARROW_TYPE_STRING_VIEW;
+  int64_t n_buffers =
+      is_view ? NANOARROW_BINARY_VIEW_FIXED_BUFFERS : array_view->array->n_buffers;
+  for (int64_t b = 0; b < n_buffers; ++b) {
     struct ArrowBufferView buffer_view = array_view->buffer_views[b];
 
     // An offsets buffer holds length + 1 offsets, so even an empty array has one.
@@ -1014,6 +1034,40 @@ static ArrowErrorCode ArrowIpcEncoderCollectArray(struct ArrowIpcEncoderPrivate*
                           sizeof(struct ArrowBufferView)),
         error);
   }
+
+  if (is_view) {
+    NANOARROW_RETURN_NOT_OK_WITH_ERROR(
+        ArrowBufferAppendInt64(&private->variadic_buffer_counts,
+                               array_view->n_variadic_buffers),
+        error);
+    for (int32_t i = 0; i < array_view->n_variadic_buffers; i++) {
+      struct ArrowBufferView buffer_view;
+      buffer_view.data.data = array_view->variadic_buffers[i];
+      buffer_view.size_bytes = array_view->variadic_buffer_sizes[i];
+      NANOARROW_RETURN_NOT_OK_WITH_ERROR(
+          ArrowBufferAppend(&private->buffer_views, &buffer_view,
+                            sizeof(struct ArrowBufferView)),
+          error);
+    }
+  }
+
+  return NANOARROW_OK;
+}
+
+// Add the variadicBufferCounts of the RecordBatch currently being built, if the message
+// being encoded has any BinaryView or StringView arrays
+static ArrowErrorCode ArrowIpcEncoderEncodeVariadicBufferCounts(
+    struct ArrowIpcEncoderPrivate* private, struct ArrowError* error) {
+  if (private->variadic_buffer_counts.size_bytes == 0) {
+    return NANOARROW_OK;
+  }
+
+  FLATCC_RETURN_UNLESS_0(
+      RecordBatch_variadicBufferCounts_create(
+          &private->builder, (int64_t*)private->variadic_buffer_counts.data,
+          _ArrowInt64ToSizeT(private->variadic_buffer_counts.size_bytes) /
+              sizeof(int64_t)),
+      error);
   return NANOARROW_OK;
 }
 
@@ -1074,6 +1128,7 @@ static ArrowErrorCode ArrowIpcEncoderEncodeRecordBatch(
   NANOARROW_ASSERT_OK(ArrowBufferResize(&private->buffers, 0, 0));
   NANOARROW_ASSERT_OK(ArrowBufferResize(&private->nodes, 0, 0));
   NANOARROW_ASSERT_OK(ArrowBufferResize(&private->buffer_views, 0, 0));
+  NANOARROW_ASSERT_OK(ArrowBufferResize(&private->variadic_buffer_counts, 0, 0));
   NANOARROW_RETURN_NOT_OK(
       ArrowIpcEncoderEncodeRecordBatchImpl(private, array_view, error));
   NANOARROW_RETURN_NOT_OK(ArrowIpcEncoderEncodeBuffers(encoder, buffer_encoder, error));
@@ -1088,6 +1143,7 @@ static ArrowErrorCode ArrowIpcEncoderEncodeRecordBatch(
           builder, (struct ns(Buffer)*)private->buffers.data,
           _ArrowInt64ToSizeT(private->buffers.size_bytes) / sizeof(struct ns(Buffer))),
       error);
+  NANOARROW_RETURN_NOT_OK(ArrowIpcEncoderEncodeVariadicBufferCounts(private, error));
 
   FLATCC_RETURN_UNLESS_0(Message_header_RecordBatch_end(builder), error);
 
@@ -1142,6 +1198,7 @@ static ArrowErrorCode ArrowIpcEncoderEncodeDictionaryBatch(
   NANOARROW_ASSERT_OK(ArrowBufferResize(&private->buffers, 0, 0));
   NANOARROW_ASSERT_OK(ArrowBufferResize(&private->nodes, 0, 0));
   NANOARROW_ASSERT_OK(ArrowBufferResize(&private->buffer_views, 0, 0));
+  NANOARROW_ASSERT_OK(ArrowBufferResize(&private->variadic_buffer_counts, 0, 0));
 
   // The values array is a single top-level column: collect it, then descend into any
   // nested children.
@@ -1160,6 +1217,7 @@ static ArrowErrorCode ArrowIpcEncoderEncodeDictionaryBatch(
           builder, (struct ns(Buffer)*)private->buffers.data,
           _ArrowInt64ToSizeT(private->buffers.size_bytes) / sizeof(struct ns(Buffer))),
       error);
+  NANOARROW_RETURN_NOT_OK(ArrowIpcEncoderEncodeVariadicBufferCounts(private, error));
   FLATCC_RETURN_UNLESS_0(DictionaryBatch_data_end(builder), error);
   FLATCC_RETURN_UNLESS_0(DictionaryBatch_isDelta_add(builder, is_delta ? 1 : 0), error);
   FLATCC_RETURN_UNLESS_0(Message_header_DictionaryBatch_end(builder), error);
