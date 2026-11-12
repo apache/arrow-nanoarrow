@@ -1372,6 +1372,29 @@ TEST(NanoarrowIpcTest, NanoarrowIpcFooterDecodingErrors) {
   EXPECT_EQ(decoder->header_size_bytes, 0xFFFF);
 }
 
+TEST(NanoarrowIpcTest, NanoarrowIpcFooterSizeOverflow) {
+  struct ArrowError error;
+
+  nanoarrow::ipc::UniqueDecoder decoder;
+  ArrowIpcDecoderInit(decoder.get());
+
+  // A footer size close to INT32_MAX must not overflow the size computation
+  struct ArrowBufferView data = {{"\0\0\0\0\0\0"
+                                  "\xFE\xFF\xFF\x7F"
+                                  "ARROW1"},
+                                 16};
+  EXPECT_EQ(ArrowIpcDecoderVerifyFooter(decoder.get(), data, &error), ESPIPE);
+  EXPECT_STREQ(error.message,
+               "Expected >= 2147483656 bytes of data but only 16 bytes are in the "
+               "buffer");
+  EXPECT_EQ(decoder->header_size_bytes, 0x7FFFFFFE);
+
+  // DecodeFooter must not read out of bounds either
+  EXPECT_EQ(ArrowIpcDecoderPeekFooter(decoder.get(), data, &error), NANOARROW_OK)
+      << error.message;
+  EXPECT_EQ(ArrowIpcDecoderDecodeFooter(decoder.get(), data, &error), ESPIPE);
+}
+
 #if defined(NANOARROW_BUILD_TESTS_WITH_ARROW)
 class ArrowTypeParameterizedTestFixture
     : public ::testing::TestWithParam<std::shared_ptr<arrow::DataType>> {
