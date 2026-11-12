@@ -621,20 +621,37 @@ static ArrowErrorCode ArrowIpcEncodeField(
         return EINVAL;
     }
 
-    // Create the Int type for the index type
-    ns(Int_ref_t) index_type_ref =
-        ns(Int_create(builder, index_bitwidth, index_is_signed));
-    FLATCC_RETURN_IF_NULL(index_type_ref, error);
-
-    // Create the DictionaryEncoding with id, indexType, isOrdered, and dictionaryKind
+    // Add the DictionaryEncoding with id, indexType, isOrdered, dictionaryKind, and
+    // custom_metadata to the field
     flatbuffers_bool_t is_ordered = (schema->flags & ARROW_FLAG_DICTIONARY_ORDERED) != 0;
-    ns(DictionaryEncoding_ref_t) dict_encoding_ref =
-        ns(DictionaryEncoding_create(builder, encoding->id, index_type_ref, is_ordered,
-                                     ns(DictionaryKind_DenseArray)));
-    FLATCC_RETURN_IF_NULL(dict_encoding_ref, error);
+    FLATCC_RETURN_UNLESS_0(Field_dictionary_start(builder), error);
+    FLATCC_RETURN_UNLESS_0(DictionaryEncoding_id_add(builder, encoding->id), error);
+    FLATCC_RETURN_UNLESS_0(
+        DictionaryEncoding_indexType_create(builder, index_bitwidth, index_is_signed),
+        error);
+    FLATCC_RETURN_UNLESS_0(DictionaryEncoding_isOrdered_add(builder, is_ordered), error);
+    FLATCC_RETURN_UNLESS_0(
+        DictionaryEncoding_dictionaryKind_add(builder, ns(DictionaryKind_DenseArray)),
+        error);
 
-    // Add the dictionary encoding to the field
-    FLATCC_RETURN_UNLESS_0(Field_dictionary_add(builder, dict_encoding_ref), error);
+    // The metadata of the dictionary (value) schema is the metadata of the dictionary
+    // value type, whose IPC counterpart is DictionaryEncoding.custom_metadata (format
+    // version 1.6, https://github.com/apache/arrow/issues/49704). The metadata of the
+    // field itself (i.e., schema->metadata) is written to Field.custom_metadata below.
+    // Writers omit DictionaryEncoding.custom_metadata if there is no value metadata.
+    struct ArrowMetadataReader value_metadata;
+    NANOARROW_RETURN_NOT_OK_WITH_ERROR(
+        ArrowMetadataReaderInit(&value_metadata, schema->dictionary->metadata), error);
+    if (value_metadata.remaining_keys > 0) {
+      FLATCC_RETURN_UNLESS_0(DictionaryEncoding_custom_metadata_start(builder), error);
+      NANOARROW_RETURN_NOT_OK(ArrowIpcEncodeMetadata(
+          builder, schema->dictionary->metadata,
+          &ns(DictionaryEncoding_custom_metadata_push_start),
+          &ns(DictionaryEncoding_custom_metadata_push_end), error));
+      FLATCC_RETURN_UNLESS_0(DictionaryEncoding_custom_metadata_end(builder), error);
+    }
+
+    FLATCC_RETURN_UNLESS_0(Field_dictionary_end(builder), error);
 
     value_schema = schema->dictionary;
     NANOARROW_RETURN_NOT_OK(ArrowSchemaViewInit(&schema_view, value_schema, error));
