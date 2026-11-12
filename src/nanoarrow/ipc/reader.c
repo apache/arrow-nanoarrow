@@ -17,6 +17,7 @@
 
 #include <errno.h>
 #include <inttypes.h>
+#include <limits.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -185,8 +186,177 @@ ArrowErrorCode ArrowIpcInputStreamInitFile(struct ArrowIpcInputStream* stream,
   return NANOARROW_OK;
 }
 
+void ArrowIpcRandomAccessInputMove(struct ArrowIpcRandomAccessInput* src,
+                                   struct ArrowIpcRandomAccessInput* dst) {
+  memcpy(dst, src, sizeof(*dst));
+  src->release = NULL;
+}
+
+struct ArrowIpcRandomAccessBufferPrivate {
+  struct ArrowBuffer buffer;
+};
+
+static ArrowErrorCode ArrowIpcRandomAccessBufferPeek(
+    struct ArrowIpcRandomAccessInput* input, int64_t offset, int64_t size_bytes,
+    struct ArrowBufferView* out, struct ArrowError* error) {
+  if (offset < 0 || size_bytes < 0) {
+    ArrowErrorSet(error, "Offset and size must be non-negative");
+    return EINVAL;
+  }
+  struct ArrowIpcRandomAccessBufferPrivate* private_data =
+      (struct ArrowIpcRandomAccessBufferPrivate*)input->private_data;
+  out->data.data = NULL;
+  out->size_bytes = 0;
+  if (offset >= private_data->buffer.size_bytes || size_bytes == 0) {
+    return NANOARROW_OK;
+  }
+  out->data.as_uint8 = private_data->buffer.data + offset;
+  out->size_bytes = private_data->buffer.size_bytes - offset;
+  if (out->size_bytes > size_bytes) {
+    out->size_bytes = size_bytes;
+  }
+  return NANOARROW_OK;
+}
+
+static ArrowErrorCode ArrowIpcRandomAccessBufferRead(
+    struct ArrowIpcRandomAccessInput* input, int64_t offset, int64_t size_bytes,
+    struct ArrowBuffer* out, struct ArrowError* error) {
+  struct ArrowBufferView view;
+  NANOARROW_RETURN_NOT_OK(
+      ArrowIpcRandomAccessBufferPeek(input, offset, size_bytes, &view, error));
+  struct ArrowIpcRandomAccessBufferPrivate* private_data =
+      (struct ArrowIpcRandomAccessBufferPrivate*)input->private_data;
+  ArrowBufferReset(out);
+  if (view.size_bytes > 0) {
+    NANOARROW_RETURN_NOT_OK(ArrowSharedBufferClone(&private_data->buffer, out));
+    out->data += offset;
+    out->size_bytes = view.size_bytes;
+    out->capacity_bytes = view.size_bytes;
+  }
+  return NANOARROW_OK;
+}
+
+static void ArrowIpcRandomAccessBufferRelease(struct ArrowIpcRandomAccessInput* input) {
+  struct ArrowIpcRandomAccessBufferPrivate* private_data =
+      (struct ArrowIpcRandomAccessBufferPrivate*)input->private_data;
+  ArrowBufferReset(&private_data->buffer);
+  ArrowFree(private_data);
+  input->release = NULL;
+}
+
+ArrowErrorCode ArrowIpcRandomAccessInputInitBuffer(struct ArrowIpcRandomAccessInput* out,
+                                                   struct ArrowBuffer* input) {
+  if (input->size_bytes < 0 || !_ArrowInt64FitsInSizeT(input->size_bytes) ||
+      (input->size_bytes > 0 && input->data == NULL)) {
+    return EINVAL;
+  }
+  struct ArrowIpcRandomAccessBufferPrivate* private_data =
+      (struct ArrowIpcRandomAccessBufferPrivate*)ArrowMalloc(sizeof(*private_data));
+  if (private_data == NULL) {
+    return ENOMEM;
+  }
+  if (ArrowIsSharedBuffer(input)) {
+    ArrowBufferMove(input, &private_data->buffer);
+  } else {
+    int result = ArrowSharedBufferInit(&private_data->buffer, input);
+    if (result != NANOARROW_OK) {
+      ArrowFree(private_data);
+      return result;
+    }
+  }
+  out->peek_at = &ArrowIpcRandomAccessBufferPeek;
+  out->read_at = &ArrowIpcRandomAccessBufferRead;
+  out->release = &ArrowIpcRandomAccessBufferRelease;
+  out->private_data = private_data;
+  return NANOARROW_OK;
+}
+
+struct ArrowIpcRandomAccessFilePrivate {
+  FILE* file_ptr;
+  int close_on_release;
+};
+
+static ArrowErrorCode ArrowIpcRandomAccessFilePeek(
+    struct ArrowIpcRandomAccessInput* input, int64_t offset, int64_t size_bytes,
+    struct ArrowBufferView* out, struct ArrowError* error) {
+  NANOARROW_UNUSED(input);
+  NANOARROW_UNUSED(offset);
+  NANOARROW_UNUSED(size_bytes);
+  NANOARROW_UNUSED(out);
+  NANOARROW_UNUSED(error);
+  return ENOTSUP;
+}
+
+static ArrowErrorCode ArrowIpcRandomAccessFileRead(
+    struct ArrowIpcRandomAccessInput* input, int64_t offset, int64_t size_bytes,
+    struct ArrowBuffer* out, struct ArrowError* error) {
+  if (offset < 0 || size_bytes < 0 || !_ArrowInt64FitsInSizeT(size_bytes)) {
+    ArrowErrorSet(error, "Offset or size is out of range");
+    return EINVAL;
+  }
+  struct ArrowIpcRandomAccessFilePrivate* private_data =
+      (struct ArrowIpcRandomAccessFilePrivate*)input->private_data;
+  ArrowBufferReset(out);
+  if (size_bytes == 0) {
+    return NANOARROW_OK;
+  }
+#if defined(_WIN32)
+  int seek_result = _fseeki64(private_data->file_ptr, offset, SEEK_SET);
+#else
+  if (offset > LONG_MAX) {
+    ArrowErrorSet(error, "Offset exceeds the range supported by fseek()");
+    return EINVAL;
+  }
+  int seek_result = fseek(private_data->file_ptr, (long)offset, SEEK_SET);
+#endif
+  if (seek_result != 0) {
+    ArrowErrorSet(error, "ArrowIpcRandomAccessInput seek failed");
+    return EIO;
+  }
+  clearerr(private_data->file_ptr);
+  NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowBufferReserve(out, size_bytes), error);
+  out->size_bytes =
+      (int64_t)fread(out->data, 1, (size_t)size_bytes, private_data->file_ptr);
+  if (ferror(private_data->file_ptr)) {
+    ArrowErrorSet(error, "ArrowIpcRandomAccessInput read failed");
+    return EIO;
+  }
+  return NANOARROW_OK;
+}
+
+static void ArrowIpcRandomAccessFileRelease(struct ArrowIpcRandomAccessInput* input) {
+  struct ArrowIpcRandomAccessFilePrivate* private_data =
+      (struct ArrowIpcRandomAccessFilePrivate*)input->private_data;
+  if (private_data->close_on_release) {
+    fclose(private_data->file_ptr);
+  }
+  ArrowFree(private_data);
+  input->release = NULL;
+}
+
+ArrowErrorCode ArrowIpcRandomAccessInputInitFile(struct ArrowIpcRandomAccessInput* out,
+                                                 void* file_ptr, int close_on_release) {
+  if (file_ptr == NULL) {
+    return EINVAL;
+  }
+  struct ArrowIpcRandomAccessFilePrivate* private_data =
+      (struct ArrowIpcRandomAccessFilePrivate*)ArrowMalloc(sizeof(*private_data));
+  if (private_data == NULL) {
+    return ENOMEM;
+  }
+  private_data->file_ptr = (FILE*)file_ptr;
+  private_data->close_on_release = close_on_release;
+  out->peek_at = &ArrowIpcRandomAccessFilePeek;
+  out->read_at = &ArrowIpcRandomAccessFileRead;
+  out->release = &ArrowIpcRandomAccessFileRelease;
+  out->private_data = private_data;
+  return NANOARROW_OK;
+}
+
 struct ArrowIpcArrayStreamReaderPrivate {
   struct ArrowIpcInputStream input;
+  struct ArrowIpcRandomAccessInput random_input;
+  int64_t input_offset;
   struct ArrowIpcDecoder decoder;
   int use_shared_buffers;
   enum ArrowValidationLevel validation_level;
@@ -207,6 +377,10 @@ static void ArrowIpcArrayStreamReaderRelease(struct ArrowArrayStream* stream) {
     private_data->input.release(&private_data->input);
   }
 
+  if (private_data->random_input.release != NULL) {
+    private_data->random_input.release(&private_data->random_input);
+  }
+
   ArrowIpcDecoderReset(&private_data->decoder);
 
   if (private_data->out_schema.release != NULL) {
@@ -224,17 +398,81 @@ static void ArrowIpcArrayStreamReaderRelease(struct ArrowArrayStream* stream) {
   stream->release = NULL;
 }
 
+static int ArrowIpcArrayStreamReaderCheckRead(
+    struct ArrowIpcArrayStreamReaderPrivate* private_data, const void* data,
+    int64_t size_bytes, int64_t requested) {
+  if (size_bytes < 0 || size_bytes > requested || (size_bytes > 0 && data == NULL)) {
+    ArrowErrorSet(&private_data->error,
+                  "Random-access input returned an invalid size or pointer");
+    return EINVAL;
+  }
+  return NANOARROW_OK;
+}
+
+// Adapt either input interface to the existing sequential header/body parser.
+static int ArrowIpcArrayStreamReaderRead(
+    struct ArrowIpcArrayStreamReaderPrivate* private_data, uint8_t* out,
+    int64_t size_bytes, int64_t* bytes_read) {
+  if (private_data->random_input.release == NULL) {
+    return private_data->input.read(&private_data->input, out, size_bytes, bytes_read,
+                                    &private_data->error);
+  }
+  if (size_bytes < 0 || !_ArrowInt64FitsInSizeT(size_bytes) ||
+      size_bytes > INT64_MAX - private_data->input_offset) {
+    ArrowErrorSet(&private_data->error, "Input position is out of range");
+    return EINVAL;
+  }
+  struct ArrowIpcRandomAccessInput* input = &private_data->random_input;
+  struct ArrowBufferView view;
+  if (input->peek_at != NULL) {
+    int result = input->peek_at(input, private_data->input_offset, size_bytes, &view,
+                                &private_data->error);
+    if (result == NANOARROW_OK) {
+      NANOARROW_RETURN_NOT_OK(ArrowIpcArrayStreamReaderCheckRead(
+          private_data, view.data.data, view.size_bytes, size_bytes));
+      if (view.size_bytes > 0) {
+        memcpy(out, view.data.data, _ArrowInt64ToSizeT(view.size_bytes));
+      }
+      *bytes_read = view.size_bytes;
+      private_data->input_offset += view.size_bytes;
+      return NANOARROW_OK;
+    } else if (result != ENOTSUP) {
+      return result;
+    }
+  }
+
+  struct ArrowBuffer buffer;
+  ArrowBufferInit(&buffer);
+  int result = input->read_at(input, private_data->input_offset, size_bytes, &buffer,
+                              &private_data->error);
+  if (result == NANOARROW_OK) {
+    result = ArrowIpcArrayStreamReaderCheckRead(private_data, buffer.data,
+                                                buffer.size_bytes, size_bytes);
+  }
+  if (result == NANOARROW_OK) {
+    if (buffer.size_bytes > 0) {
+      memcpy(out, buffer.data, _ArrowInt64ToSizeT(buffer.size_bytes));
+    }
+    *bytes_read = buffer.size_bytes;
+    private_data->input_offset += buffer.size_bytes;
+  }
+  ArrowBufferReset(&buffer);
+  return result;
+}
+
 static int ArrowIpcArrayStreamReaderNextHeader(
     struct ArrowIpcArrayStreamReaderPrivate* private_data, int schema_expected) {
+  if (private_data->random_input.release != NULL) {
+    ArrowBufferReset(&private_data->header);
+  }
   private_data->header.size_bytes = 0;
   int64_t bytes_read = 0;
 
   // Read 8 bytes (continuation + header size in bytes)
   NANOARROW_RETURN_NOT_OK_WITH_ERROR(ArrowBufferReserve(&private_data->header, 8),
                                      &private_data->error);
-  NANOARROW_RETURN_NOT_OK(private_data->input.read(&private_data->input,
-                                                   private_data->header.data, 8,
-                                                   &bytes_read, &private_data->error));
+  NANOARROW_RETURN_NOT_OK(ArrowIpcArrayStreamReaderRead(
+      private_data, private_data->header.data, 8, &bytes_read));
   private_data->header.size_bytes += bytes_read;
 
   if (bytes_read == 0) {
@@ -317,21 +555,52 @@ static int ArrowIpcArrayStreamReaderNextHeader(
     NANOARROW_DCHECK(new_prefix_size_bytes == 8);
   }
 
-  // Read the header bytes
   int64_t expected_header_bytes = private_data->decoder.header_size_bytes - 8;
-  NANOARROW_RETURN_NOT_OK_WITH_ERROR(
-      ArrowBufferReserve(&private_data->header,
-                         expected_header_bytes - extra_bytes_already_read),
-      &private_data->error);
-  NANOARROW_RETURN_NOT_OK(private_data->input.read(
-      &private_data->input, private_data->header.data + private_data->header.size_bytes,
-      expected_header_bytes - extra_bytes_already_read, &bytes_read,
-      &private_data->error));
-  private_data->header.size_bytes += bytes_read;
-
-  // Verify + decode the header
+  if (prefix_size_bytes == 8 && private_data->random_input.release != NULL) {
+    // DecodeHeader retains pointers used when decoding the body. A peek is only
+    // valid until the next input callback, so retain an owned header instead.
+    // Buffer inputs return a shared slice here without copying the metadata.
+    int64_t header_start = private_data->input_offset - 8;
+    if (private_data->decoder.header_size_bytes > INT64_MAX - header_start) {
+      ArrowErrorSet(&private_data->error, "Input position is out of range");
+      return EINVAL;
+    }
+    struct ArrowBuffer header;
+    ArrowBufferInit(&header);
+    int result = private_data->random_input.read_at(
+        &private_data->random_input, header_start,
+        private_data->decoder.header_size_bytes, &header, &private_data->error);
+    if (result == NANOARROW_OK) {
+      result =
+          ArrowIpcArrayStreamReaderCheckRead(private_data, header.data, header.size_bytes,
+                                             private_data->decoder.header_size_bytes);
+    }
+    if (result == NANOARROW_OK) {
+      private_data->input_offset = header_start + header.size_bytes;
+      if (((uintptr_t)header.data % 8) == 0) {
+        ArrowBufferReset(&private_data->header);
+        ArrowBufferMove(&header, &private_data->header);
+      } else {
+        private_data->header.size_bytes = 0;
+        result = ArrowBufferAppend(&private_data->header, header.data, header.size_bytes);
+      }
+    }
+    ArrowBufferReset(&header);
+    NANOARROW_RETURN_NOT_OK_WITH_ERROR(result, &private_data->error);
+  } else {
+    // Legacy headers need an inserted continuation token in an aligned buffer.
+    NANOARROW_RETURN_NOT_OK_WITH_ERROR(
+        ArrowBufferReserve(&private_data->header,
+                           expected_header_bytes - extra_bytes_already_read),
+        &private_data->error);
+    NANOARROW_RETURN_NOT_OK(ArrowIpcArrayStreamReaderRead(
+        private_data, private_data->header.data + private_data->header.size_bytes,
+        expected_header_bytes - extra_bytes_already_read, &bytes_read));
+    private_data->header.size_bytes += bytes_read;
+  }
   input_view.data.data = private_data->header.data;
   input_view.size_bytes = private_data->header.size_bytes;
+
   NANOARROW_RETURN_NOT_OK(ArrowIpcDecoderVerifyHeader(&private_data->decoder, input_view,
                                                       &private_data->error));
 
@@ -363,14 +632,26 @@ static int ArrowIpcArrayStreamReaderNextBody(
   int64_t bytes_read;
   int64_t bytes_to_read = private_data->decoder.body_size_bytes;
 
-  // Read the body bytes
-  private_data->body.size_bytes = 0;
-  NANOARROW_RETURN_NOT_OK_WITH_ERROR(
-      ArrowBufferReserve(&private_data->body, bytes_to_read), &private_data->error);
-  NANOARROW_RETURN_NOT_OK(private_data->input.read(&private_data->input,
-                                                   private_data->body.data, bytes_to_read,
-                                                   &bytes_read, &private_data->error));
-  private_data->body.size_bytes += bytes_read;
+  if (private_data->use_shared_buffers && private_data->random_input.release != NULL) {
+    if (bytes_to_read < 0 || bytes_to_read > INT64_MAX - private_data->input_offset) {
+      ArrowErrorSet(&private_data->error, "Input position is out of range");
+      return EINVAL;
+    }
+    NANOARROW_RETURN_NOT_OK(private_data->random_input.read_at(
+        &private_data->random_input, private_data->input_offset, bytes_to_read,
+        &private_data->body, &private_data->error));
+    bytes_read = private_data->body.size_bytes;
+    NANOARROW_RETURN_NOT_OK(ArrowIpcArrayStreamReaderCheckRead(
+        private_data, private_data->body.data, bytes_read, bytes_to_read));
+    private_data->input_offset += bytes_read;
+  } else {
+    private_data->body.size_bytes = 0;
+    NANOARROW_RETURN_NOT_OK_WITH_ERROR(
+        ArrowBufferReserve(&private_data->body, bytes_to_read), &private_data->error);
+    NANOARROW_RETURN_NOT_OK(ArrowIpcArrayStreamReaderRead(
+        private_data, private_data->body.data, bytes_to_read, &bytes_read));
+    private_data->body.size_bytes += bytes_read;
+  }
 
   if (bytes_read != bytes_to_read) {
     ArrowErrorSet(&private_data->error,
@@ -381,6 +662,17 @@ static int ArrowIpcArrayStreamReaderNextBody(
   } else {
     return NANOARROW_OK;
   }
+}
+
+// Transfer the body of the current message to a shared buffer
+static ArrowErrorCode ArrowIpcArrayStreamReaderTakeSharedBody(
+    struct ArrowIpcArrayStreamReaderPrivate* private_data, struct ArrowBuffer* out) {
+  if (ArrowIsSharedBuffer(&private_data->body)) {
+    ArrowBufferMove(&private_data->body, out);
+    return NANOARROW_OK;
+  }
+
+  return ArrowSharedBufferInit(out, &private_data->body);
 }
 
 static int ArrowIpcArrayStreamReaderReadSchemaIfNeeded(
@@ -457,7 +749,8 @@ static int ArrowIpcArrayStreamReaderProcessRecordBatch(
   if (private_data->use_shared_buffers) {
     struct ArrowBuffer shared;
     NANOARROW_RETURN_NOT_OK_WITH_ERROR(
-        ArrowSharedBufferInit(&shared, &private_data->body), &private_data->error);
+        ArrowIpcArrayStreamReaderTakeSharedBody(private_data, &shared),
+        &private_data->error);
     ArrowErrorCode result = ArrowIpcDecoderDecodeArrayFromSharedWithDictionaries(
         &private_data->decoder, &shared, private_data->field_index,
         &private_data->dictionaries, out, private_data->validation_level,
@@ -487,7 +780,8 @@ static int ArrowIpcArrayStreamReaderProcessDictionary(
     // Decode the dictionary
     struct ArrowBuffer shared;
     NANOARROW_RETURN_NOT_OK_WITH_ERROR(
-        ArrowSharedBufferInit(&shared, &private_data->body), &private_data->error);
+        ArrowIpcArrayStreamReaderTakeSharedBody(private_data, &shared),
+        &private_data->error);
     int result = ArrowIpcDecoderDecodeDictionaryFromShared(
         &private_data->decoder, &shared, private_data->validation_level,
         &private_data->dictionaries, &private_data->error);
@@ -603,6 +897,8 @@ ArrowErrorCode ArrowIpcArrayStreamReaderInit(
   ArrowBufferInit(&private_data->body);
   private_data->out_schema.release = NULL;
   ArrowIpcInputStreamMove(input_stream, &private_data->input);
+  private_data->random_input.release = NULL;
+  private_data->input_offset = 0;
   private_data->expected_header_prefix_size = kExpectedHeaderPrefixSizeNotSet;
   private_data->dictionaries.private_data = NULL;
 
@@ -622,5 +918,19 @@ ArrowErrorCode ArrowIpcArrayStreamReaderInit(
   out->get_last_error = &ArrowIpcArrayStreamReaderGetLastError;
   out->release = &ArrowIpcArrayStreamReaderRelease;
 
+  return NANOARROW_OK;
+}
+
+ArrowErrorCode ArrowIpcArrayStreamReaderInitRandomAccess(
+    struct ArrowArrayStream* out, struct ArrowIpcRandomAccessInput* input,
+    struct ArrowIpcArrayStreamReaderOptions* options) {
+  if (input->release == NULL || input->read_at == NULL) {
+    return EINVAL;
+  }
+  struct ArrowIpcInputStream unused = {NULL, NULL, NULL};
+  NANOARROW_RETURN_NOT_OK(ArrowIpcArrayStreamReaderInit(out, &unused, options));
+  struct ArrowIpcArrayStreamReaderPrivate* private_data =
+      (struct ArrowIpcArrayStreamReaderPrivate*)out->private_data;
+  ArrowIpcRandomAccessInputMove(input, &private_data->random_input);
   return NANOARROW_OK;
 }
