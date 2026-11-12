@@ -1750,11 +1750,12 @@ ArrowErrorCode ArrowIpcDecoderVerifyFooter(struct ArrowIpcDecoder* decoder,
 
   // Check that data contains at least the entire footer (return ESPIPE to signal
   // that reading more data may help).
-  int32_t footer_and_size_and_magic_size =
-      decoder->header_size_bytes + sizeof(int32_t) + (int)strlen(NANOARROW_IPC_MAGIC);
+  int64_t footer_and_size_and_magic_size = (int64_t)decoder->header_size_bytes +
+                                           (int64_t)sizeof(int32_t) +
+                                           (int64_t)strlen(NANOARROW_IPC_MAGIC);
   if (data.size_bytes < footer_and_size_and_magic_size) {
     ArrowErrorSet(error,
-                  "Expected >= %d bytes of data but only %" PRId64
+                  "Expected >= %" PRId64 " bytes of data but only %" PRId64
                   " bytes are in the buffer",
                   footer_and_size_and_magic_size, data.size_bytes);
     return ESPIPE;
@@ -1960,8 +1961,19 @@ ArrowErrorCode ArrowIpcDecoderDecodeFooter(struct ArrowIpcDecoder* decoder,
   struct ArrowIpcDecoderPrivate* private_data =
       (struct ArrowIpcDecoderPrivate*)decoder->private_data;
 
-  int32_t footer_and_size_and_magic_size =
-      decoder->header_size_bytes + sizeof(int32_t) + (int)strlen(NANOARROW_IPC_MAGIC);
+  // Check that data contains at least the entire footer (return ESPIPE to signal
+  // that reading more data may help).
+  int64_t footer_and_size_and_magic_size = (int64_t)decoder->header_size_bytes +
+                                           (int64_t)sizeof(int32_t) +
+                                           (int64_t)strlen(NANOARROW_IPC_MAGIC);
+  if (data.size_bytes < footer_and_size_and_magic_size) {
+    ArrowErrorSet(error,
+                  "Expected >= %" PRId64 " bytes of data but only %" PRId64
+                  " bytes are in the buffer",
+                  footer_and_size_and_magic_size, data.size_bytes);
+    return ESPIPE;
+  }
+
   const uint8_t* footer_data =
       data.data.as_uint8 + data.size_bytes - footer_and_size_and_magic_size;
   ns(Footer_table_t) footer = ns(Footer_as_root(footer_data));
