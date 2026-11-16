@@ -263,6 +263,9 @@ class PyIterator(ArrayViewBaseIterator):
             yield None if item is None else {key: val for key, val in zip(names, item)}
 
     def _list_iter(self, offset, length):
+        if length == 0:
+            return
+
         view = self._array_view
         offset += view.offset
 

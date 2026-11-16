@@ -252,6 +252,41 @@ def test_iterator_list():
     ]
 
 
+@pytest.mark.parametrize("list_type", ["list_", "large_list"])
+def test_iterator_empty_list(list_type):
+    pa = pytest.importorskip("pyarrow")
+    arrow_type = getattr(pa, list_type)(pa.int64())
+
+    array = pa.array([], arrow_type)
+    assert list(iter_py(array)) == []
+
+    array = pa.array([[7], [], None], arrow_type)
+    assert list(iter_py(array.slice(1, 0))) == []
+    assert list(iter_py(array.slice(3, 0))) == []
+
+
+@pytest.mark.parametrize("list_type", ["list_", "large_list"])
+def test_iterator_list_stream_empty_batches(list_type):
+    pa = pytest.importorskip("pyarrow")
+    arrow_type = getattr(pa, list_type)(pa.int64())
+    empty = pa.record_batch([pa.array([], arrow_type)], names=["values"])
+    populated = pa.record_batch(
+        [pa.array([[7], [], None], arrow_type)], names=["values"]
+    )
+    reader = pa.RecordBatchReader.from_batches(
+        empty.schema, [empty, populated, empty, populated, empty]
+    )
+
+    assert list(iter_py(reader)) == [
+        {"values": [7]},
+        {"values": []},
+        {"values": None},
+        {"values": [7]},
+        {"values": []},
+        {"values": None},
+    ]
+
+
 def test_iterator_nullable_list():
     pa = pytest.importorskip("pyarrow")
     items = [[1, 2, 3], [4, 5, 6], [7, 8, None], [0], None]
