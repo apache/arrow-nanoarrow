@@ -92,6 +92,22 @@ def test_iterator_nullable_string(arrow_type):
     assert list(iter_py(sliced)) == ["cde", None]
 
 
+def test_iterator_view_with_variadic_buffers():
+    # Values longer than 12 bytes are not inlined, so these arrays have
+    # one or more variadic buffers (i.e., more than three buffers)
+    long_value = "a string longer than 12 bytes"
+
+    array = na.c_array(["ab", None, long_value], na.string_view())
+    assert array.n_buffers == 4
+    assert list(iter_py(array)) == ["ab", None, long_value]
+    assert list(iter_py(array[1:])) == [None, long_value]
+
+    array = na.c_array([b"ab", None, long_value.encode()], na.binary_view())
+    assert array.n_buffers == 4
+    assert list(iter_py(array)) == [b"ab", None, long_value.encode()]
+    assert list(iter_py(array[1:])) == [None, long_value.encode()]
+
+
 @pytest.mark.parametrize(
     "arrow_type", [na.binary(), na.large_binary(), na.binary_view()]
 )
