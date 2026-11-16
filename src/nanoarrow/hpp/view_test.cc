@@ -315,3 +315,99 @@ TEST(NanoarrowHppTest, NanoarrowHppViewArrayAsFixedSizeBytesOffsetTest) {
   EXPECT_THAT(nanoarrow::ViewArrayAsFixedSizeBytes(array_view.get(), FixedSize),
               testing::ElementsAre("baz"_asv, "qux"_asv));
 }
+
+TEST(NanoarrowHppTest, NanoarrowHppViewArrayAsBytesSubscriptOffsetTest) {
+  using namespace nanoarrow::literals;
+
+  nanoarrow::UniqueSchema schema{};
+  ArrowSchemaInit(schema.get());
+  ASSERT_EQ(ArrowSchemaSetType(schema.get(), NANOARROW_TYPE_STRING), NANOARROW_OK);
+
+  nanoarrow::UniqueArray array{};
+  ASSERT_EQ(ArrowArrayInitFromSchema(array.get(), schema.get(), nullptr), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayStartAppending(array.get()), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAppendString(array.get(), "foo"_asv), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAppendString(array.get(), "bar"_asv), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAppendString(array.get(), "baz"_asv), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAppendString(array.get(), "qux"_asv), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayFinishBuildingDefault(array.get(), nullptr), NANOARROW_OK);
+  array->offset = 2;
+  array->length = 2;
+
+  nanoarrow::ViewArrayAsBytes<32> view(array.get());
+  EXPECT_EQ(*view[0], "baz"_asv);
+  EXPECT_EQ(*view[1], "qux"_asv);
+
+  nanoarrow::UniqueArrayView array_view{};
+  ASSERT_EQ(ArrowArrayViewInitFromSchema(array_view.get(), schema.get(), nullptr),
+            NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayViewSetArray(array_view.get(), array.get(), nullptr), NANOARROW_OK);
+
+  nanoarrow::ViewArrayAsBytes<32> view_from_array_view(array_view.get());
+  EXPECT_EQ(*view_from_array_view[0], "baz"_asv);
+  EXPECT_EQ(*view_from_array_view[1], "qux"_asv);
+}
+
+TEST(NanoarrowHppTest, NanoarrowHppViewArrayAsFixedSizeBytesSubscriptOffsetTest) {
+  using namespace nanoarrow::literals;
+
+  constexpr int32_t FixedSize = 3;
+  nanoarrow::UniqueSchema schema{};
+  ArrowSchemaInit(schema.get());
+  ASSERT_EQ(ArrowSchemaSetTypeFixedSize(schema.get(), NANOARROW_TYPE_FIXED_SIZE_BINARY,
+                                        FixedSize),
+            NANOARROW_OK);
+
+  nanoarrow::UniqueArray array{};
+  ASSERT_EQ(ArrowArrayInitFromSchema(array.get(), schema.get(), nullptr), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayStartAppending(array.get()), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAppendBytes(array.get(), {{"foo"}, FixedSize}), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAppendBytes(array.get(), {{"bar"}, FixedSize}), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAppendBytes(array.get(), {{"baz"}, FixedSize}), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAppendBytes(array.get(), {{"qux"}, FixedSize}), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayFinishBuildingDefault(array.get(), nullptr), NANOARROW_OK);
+  array->offset = 2;
+  array->length = 2;
+
+  nanoarrow::ViewArrayAsFixedSizeBytes view(array.get(), FixedSize);
+  EXPECT_EQ(*view[0], "baz"_asv);
+  EXPECT_EQ(*view[1], "qux"_asv);
+
+  nanoarrow::UniqueArrayView array_view{};
+  ASSERT_EQ(ArrowArrayViewInitFromSchema(array_view.get(), schema.get(), nullptr),
+            NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayViewSetArray(array_view.get(), array.get(), nullptr), NANOARROW_OK);
+
+  nanoarrow::ViewArrayAsFixedSizeBytes view_from_array_view(array_view.get(), FixedSize);
+  EXPECT_EQ(*view_from_array_view[0], "baz"_asv);
+  EXPECT_EQ(*view_from_array_view[1], "qux"_asv);
+}
+
+TEST(NanoarrowHppTest, NanoarrowHppViewBinaryViewArrayAsBytesSubscriptOffsetTest) {
+  using namespace nanoarrow::literals;
+
+  nanoarrow::UniqueArray array{};
+  ASSERT_EQ(ArrowArrayInitFromType(array.get(), NANOARROW_TYPE_STRING_VIEW),
+            NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayStartAppending(array.get()), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAppendString(array.get(), "foo"_asv), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAppendString(array.get(), "bar"_asv), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAppendString(array.get(), "this_string_is_longer_than_inline"_asv),
+            NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayAppendString(array.get(), "qux"_asv), NANOARROW_OK);
+  ASSERT_EQ(ArrowArrayFinishBuildingDefault(array.get(), nullptr), NANOARROW_OK);
+  array->offset = 2;
+  array->length = 2;
+
+  nanoarrow::ViewBinaryViewArrayAsBytes view(array.get());
+  EXPECT_EQ(*view[0], "this_string_is_longer_than_inline"_asv);
+  EXPECT_EQ(*view[1], "qux"_asv);
+
+  nanoarrow::UniqueArrayView array_view{};
+  ArrowArrayViewInitFromType(array_view.get(), NANOARROW_TYPE_STRING_VIEW);
+  ASSERT_EQ(ArrowArrayViewSetArray(array_view.get(), array.get(), nullptr), NANOARROW_OK);
+
+  nanoarrow::ViewBinaryViewArrayAsBytes view_from_array_view(array_view.get());
+  EXPECT_EQ(*view_from_array_view[0], "this_string_is_longer_than_inline"_asv);
+  EXPECT_EQ(*view_from_array_view[1], "qux"_asv);
+}
