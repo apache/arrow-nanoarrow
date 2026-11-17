@@ -1395,6 +1395,28 @@ TEST(NanoarrowIpcTest, NanoarrowIpcFooterSizeOverflow) {
   EXPECT_EQ(ArrowIpcDecoderDecodeFooter(decoder.get(), data, &error), ESPIPE);
 }
 
+TEST(NanoarrowIpcTest, NanoarrowIpcFooterMissingSchema) {
+  struct ArrowError error;
+
+  nanoarrow::ipc::UniqueDecoder decoder;
+  ArrowIpcDecoderInit(decoder.get());
+
+  // A Footer flatbuffer with an empty table (no schema, no blocks), followed by
+  // the footer size (12) and the magic bytes
+  alignas(8) const uint8_t footer_bytes[] = {
+      8, 0, 0, 0, 4, 0, 4, 0, 4, 0, 0, 0, 12, 0, 0, 0, 'A', 'R', 'R', 'O', 'W', '1'};
+  struct ArrowBufferView data = {{footer_bytes}, sizeof(footer_bytes)};
+
+  EXPECT_EQ(ArrowIpcDecoderVerifyFooter(decoder.get(), data, &error), EINVAL);
+  EXPECT_STREQ(error.message, "Footer has no schema");
+
+  EXPECT_EQ(ArrowIpcDecoderPeekFooter(decoder.get(), data, &error), NANOARROW_OK)
+      << error.message;
+  error.message[0] = '\0';
+  EXPECT_EQ(ArrowIpcDecoderDecodeFooter(decoder.get(), data, &error), EINVAL);
+  EXPECT_STREQ(error.message, "Footer has no schema");
+}
+
 #if defined(NANOARROW_BUILD_TESTS_WITH_ARROW)
 class ArrowTypeParameterizedTestFixture
     : public ::testing::TestWithParam<std::shared_ptr<arrow::DataType>> {
