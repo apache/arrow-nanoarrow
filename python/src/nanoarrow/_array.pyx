@@ -634,7 +634,7 @@ cdef class CArrayBuilder:
 
         return self
 
-    def append_bytes(self, obj: Iterable[Union[str, None]]) -> CArrayBuilder:
+    def append_bytes(self, obj: Iterable[object]) -> CArrayBuilder:
         cdef Py_buffer buffer
         cdef ArrowBufferView item
 

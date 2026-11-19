@@ -437,10 +437,18 @@ pip install -e ".[test]"
 pytest -vvx
 ```
 
-The Python tests compare public Cython declarations and class members with the
-checked-in stubs. To regenerate the stubs, install nanoarrow from the updated
-source, install mypy and the Black version in `.pre-commit-config.yaml`, and run
-`bash generate_type_stubs.sh` from the `python` directory. Review the generated diff
-before committing it.
+CI regenerates the Cython stubs on Python 3.13 and checks that the generated
+files match the checked-in stubs. The generator includes signatures and
+annotations exposed by the compiled extensions. To regenerate locally, run
+these commands with Python 3.13 from the `python` directory:
+
+```shell
+pip install -r requirements-stubs.txt 'meson>=1.3.0' meson-python
+pip install --no-build-isolation .
+bash generate_type_stubs.sh
+```
+
+The script replaces the generated files after generation and formatting
+succeed. Review the diff before committing it.
 
 CMake is currently required to ensure that the vendored copy of nanoarrow in the Python package stays in sync with the nanoarrow sources in the working tree.

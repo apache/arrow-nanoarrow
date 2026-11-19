@@ -59,13 +59,31 @@ jobs:
       - name: Install nanoarrow
         run: |
           pushd python
-          pip install .[test]
+          if [[ "${{ matrix.python-version }}" == "3.13" ]]; then
+            pip install -r requirements-stubs.txt 'meson>=1.3.0' meson-python
+            pip install --no-build-isolation '.[test]'
+          else
+            pip install '.[test]'
+          fi
           popd
           pip list
 
       - name: Run tests
         run: |
           pytest python/tests -v -s
+
+      - name: Check generated type stubs
+        if: matrix.python-version == '3.13'
+        run: |
+          bash python/generate_type_stubs.sh
+          stubs='python/src/nanoarrow/*.pyi'
+          changes=$(git status --porcelain -- "$stubs")
+          if [[ -n "$changes" ]]; then
+            git diff -- "$stubs"
+            printf '%s\n' "$changes"
+            exit 1
+          fi
+          mypy --follow-imports=silent python/src/nanoarrow/*.pyi
 
       - name: Run doctests
         if: success() && matrix.python-version == '3.13'
