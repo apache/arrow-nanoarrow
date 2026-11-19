@@ -220,7 +220,7 @@ cdef class SchemaMetadata:
         """List metadata values"""
         return [value for _, value in self.items()]
 
-    def items(self) -> Iterable[bytes, bytes]:
+    def items(self) -> Iterable[Tuple[bytes, bytes]]:
         """Iterate over key/value pairs
 
         The result may contain duplicate keys if they exist in the metadata."""

@@ -15,18 +15,21 @@
 # specific language governing permissions and limitations
 # under the License.
 
-import _cython_3_0_11
 import nanoarrow._device
 from _typeshed import Incomplete
-from typing import ClassVar
 
 DEVICE_CPU: nanoarrow._device.Device
-__reduce_cython__: _cython_3_0_11.cython_function_or_method
-__setstate_cython__: _cython_3_0_11.cython_function_or_method
-__test__: dict
 
 class CBuffer:
-    __pyx_vtable__: ClassVar[PyCapsule] = ...
+    """Wrapper around readable owned buffer content
+
+    Like the CBufferView, the CBuffer represents readable buffer content; however,
+    unlike the CBufferView, the CBuffer always represents a valid ArrowBuffer C object.
+    Whereas the CBufferView is primarily concerned with accessing the contents of a
+    buffer, the CBuffer is primarily concerned with managing ownership of an external
+    buffer such that it exported as an Arrow array.
+    """
+
     data_type: Incomplete
     data_type_id: Incomplete
     device: Incomplete
@@ -38,13 +41,13 @@ class CBuffer:
     @classmethod
     def __init__(cls, *args, **kwargs) -> None:
         """Create and return a new object.  See help(type) for accurate signature."""
-    def element(self, *args, **kwargs): ...
-    def elements(self, *args, **kwargs): ...
+    def element(self, i): ...
+    def elements(self, offset=..., length=...): ...
     @staticmethod
-    def empty(*args, **kwargs):
+    def empty():
         """Create an empty CBuffer"""
     @staticmethod
-    def from_dlpack(*args, **kwargs):
+    def from_dlpack(obj, stream=...) -> CBuffer:
         """Create a CBuffer using the DLPack protocol
 
         Wraps a tensor from an external library as a CBuffer that can be used
@@ -62,7 +65,7 @@ class CBuffer:
             or more buffers in this way).
         """
     @staticmethod
-    def from_pybuffer(*args, **kwargs):
+    def from_pybuffer(obj) -> CBuffer:
         """Create a CBuffer using the Python buffer protocol
 
         Wraps a buffer using the Python buffer protocol as a CBuffer that can be
@@ -73,7 +76,7 @@ class CBuffer:
         obj : buffer-like
             The object on which to invoke the Python buffer protocol
         """
-    def view(self, *args, **kwargs):
+    def view(self):
         """Export this buffer as a CBufferView
 
         Returns a :class:`CBufferView` of this buffer. After calling this
@@ -95,7 +98,17 @@ class CBuffer:
         """Release the buffer object that exposes the underlying memory of the object."""
 
 class CBufferBuilder:
-    __pyx_vtable__: ClassVar[PyCapsule] = ...
+    """Wrapper around writable CPU buffer content
+
+    This class provides a growable type-aware buffer that can be used
+    to create a typed buffer from a Python iterable. This method of
+    creating a buffer is usually slower than constructors like
+    ``array.array()`` or ``numpy.array()``; however, this class supports
+    all Arrow types with a single data buffer (e.g., boolean bitmaps,
+    float16, intervals, fixed-size binary), some of which are not supported
+    by other constructors.
+    """
+
     capacity_bytes: Incomplete
     format: Incomplete
     itemsize: Incomplete
@@ -103,14 +116,14 @@ class CBufferBuilder:
     @classmethod
     def __init__(cls, *args, **kwargs) -> None:
         """Create and return a new object.  See help(type) for accurate signature."""
-    def advance(self, *args, **kwargs):
+    def advance(self, additional_bytes):
         """Manually increase :attr:`size_bytes` by ``additional_bytes``
 
         This can be used after writing to the buffer using the buffer protocol
         to ensure that :attr:`size_bytes` accurately reflects the number of
         bytes written to the buffer.
         """
-    def finish(self, *args, **kwargs):
+    def finish(self):
         """Finish building this buffer
 
         Performs any steps required to finish building this buffer and
@@ -118,16 +131,16 @@ class CBufferBuilder:
         on this object after it has been finished is not currently
         defined (but should not crash).
         """
-    def reserve_bytes(self, *args, **kwargs):
+    def reserve_bytes(self, additional_bytes):
         """Ensure that the underlying buffer has space for ``additional_bytes``
         more bytes to be written"""
-    def set_data_type(self, *args, **kwargs):
+    def set_data_type(self, type_id, element_size_bits=...):
         """Set the data type used to interpret elements in :meth:`write_elements`."""
-    def set_format(self, *args, **kwargs):
+    def set_format(self, format):
         """Set the Python buffer format used to interpret elements in
         :meth:`write_elements`.
         """
-    def write(self, *args, **kwargs):
+    def write(self, content):
         """Write bytes to this buffer
 
         Writes the bytes of ``content`` without considering the element type of
@@ -135,7 +148,7 @@ class CBufferBuilder:
 
         This method returns the number of bytes that were written.
         """
-    def write_elements(self, *args, **kwargs):
+    def write_elements(self, obj):
         """ "Write an iterable of elements to this buffer
 
         Writes the elements of iterable ``obj`` according to the binary
@@ -145,7 +158,7 @@ class CBufferBuilder:
 
         This method returns the number of elements that were written.
         """
-    def write_fill(self, *args, **kwargs):
+    def write_fill(self, value, size_bytes):
         """Write fill bytes to this buffer
 
         Appends the byte ``value`` to this buffer ``size_bytes`` times.
@@ -159,7 +172,14 @@ class CBufferBuilder:
         """Release the buffer object that exposes the underlying memory of the object."""
 
 class CBufferView:
-    __pyx_vtable__: ClassVar[PyCapsule] = ...
+    """Wrapper for Array buffer content
+
+    This object is a Python wrapper around a buffer held by an Array.
+    It implements the Python buffer protocol and is best accessed through
+    another implementor (e.g., `np.array(array_view.buffers[1])`)). Note that
+    this buffer content does not apply any parent offset.
+    """
+
     data_type: Incomplete
     data_type_id: Incomplete
     device: Incomplete
@@ -171,15 +191,15 @@ class CBufferView:
     @classmethod
     def __init__(cls, *args, **kwargs) -> None:
         """Create and return a new object.  See help(type) for accurate signature."""
-    def copy(self, *args, **kwargs): ...
-    def copy_into(self, *args, **kwargs): ...
-    def element(self, *args, **kwargs): ...
-    def elements(self, *args, **kwargs): ...
-    def unpack_bits(self, *args, **kwargs): ...
-    def unpack_bits_into(self, *args, **kwargs): ...
+    def copy(self, offset=..., length=...): ...
+    def copy_into(self, dest, offset=..., length=..., dest_offset=...): ...
+    def element(self, i): ...
+    def elements(self, offset=..., length=...): ...
+    def unpack_bits(self, offset=..., length=...): ...
+    def unpack_bits_into(self, dest, offset=..., length=..., dest_offset=...): ...
     def __buffer__(self, *args, **kwargs):
         """Return a buffer object that exposes the underlying memory of the object."""
-    def __dlpack__(self, *args, **kwargs):
+    def __dlpack__(self, stream=...):
         """
         Export CBufferView as a DLPack capsule.
 
@@ -195,7 +215,7 @@ class CBufferView:
         capsule : PyCapsule
             A DLPack capsule for the array, pointing to a DLManagedTensor.
         """
-    def __dlpack_device__(self, *args, **kwargs):
+    def __dlpack_device__(self):
         """
         Return the DLPack device tuple this CBufferView resides on.
 
@@ -217,14 +237,23 @@ class CBufferView:
         """Release the buffer object that exposes the underlying memory of the object."""
 
 class NoneAwareWrapperIterator:
-    __pyx_vtable__: ClassVar[PyCapsule] = ...
+    """Nullable iterator wrapper
+
+    This class wraps an iterable ``obj`` that might contain ``None`` values
+    such that the iterable provided by this class contains "empty" (but valid)
+    values. After ``obj`` has been completely consumed, one can call
+    ``finish()`` to obtain the resulting bitmap. This is useful for passing
+    iterables that might contain None to tools that cannot handle them
+    (e.g., struct.pack(), array.array()).
+    """
+
     @classmethod
     def __init__(cls, *args, **kwargs) -> None:
         """Create and return a new object.  See help(type) for accurate signature."""
-    def finish(self, *args, **kwargs):
+    def finish(self):
         """Obtain the total count, null count, and validity bitmap after
         consuming this iterable."""
-    def reserve(self, *args, **kwargs): ...
+    def reserve(self, additional_elements): ...
     def __iter__(self):
         """Implement iter(self)."""
     def __reduce__(self): ...

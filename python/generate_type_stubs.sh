@@ -15,13 +15,17 @@
 # specific language governing permissions and limitations
 # under the License.
 
+set -euo pipefail
+
+# Generates src/nanoarrow/*.pyi given the currently installed copy of
+# nanoarrow. See requirements-stubs.txt for the regeneration environment.
+
 SOURCE_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+GENERATED_DIR="$(mktemp -d)"
+trap 'rm -rf "$GENERATED_DIR"' EXIT
 
-# Generates src/nanoarrow/*.pxi given the currently installed copy of
-# nanoarrow. Requires mypy and black (where black is pinned to the
-# same version as in pre-commit)
-
-pushd "${SOURCE_DIR}"
+cd "${SOURCE_DIR}/src/nanoarrow"
+shopt -s nullglob
 
 # We'll add the license to the start of the files
 LICENSE='
@@ -43,17 +47,28 @@ LICENSE='
 # under the License.
 '
 
-# Remove old stubs
-find src/nanoarrow -name "*.pyi" -delete
-
-# Generate new ones
-pushd src/nanoarrow
-for mod in $(find . -name "*.pyx" | sed -e "s|./||" -e "s|.pyx||"); do
-  stubgen --module "nanoarrow.${mod}" --include-docstrings -o ../../build/tmp
-  echo "$LICENSE" > "${mod}.pyi"
-  cat "../../build/tmp/nanoarrow/${mod}.pyi" >> "${mod}.pyi"
-  black "${mod}.pyi"
+modules=()
+sources=(*.pyx)
+if (( ${#sources[@]} == 0 )); then
+  echo "No Cython sources found" >&2
+  exit 1
+fi
+for source in "${sources[@]}"; do
+  modules+=("nanoarrow.${source%.pyx}")
 done
-popd
+mkdir "$GENERATED_DIR/raw"
+python "$SOURCE_DIR/generate_type_stubs.py" "$GENERATED_DIR/raw" "${modules[@]}"
 
-popd
+# Only replace the source stubs after generation and formatting succeed.
+for source in "${sources[@]}"; do
+  stub="${source%.pyx}.pyi"
+  {
+    printf '%s\n' "$LICENSE"
+    cat "$GENERATED_DIR/raw/$stub"
+  } > "$GENERATED_DIR/$stub"
+done
+black "$GENERATED_DIR"/*.pyi
+
+# All .pyi files in this directory are generated. Remove stubs for deleted modules.
+rm -f -- ./*.pyi
+cp "$GENERATED_DIR"/*.pyi .

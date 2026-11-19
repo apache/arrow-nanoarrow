@@ -15,19 +15,23 @@
 # specific language governing permissions and limitations
 # under the License.
 
-import _cython_3_0_11
 import nanoarrow._device
 from _typeshed import Incomplete
 from nanoarrow._device import DeviceType as DeviceType
-from typing import ClassVar
+from typing import Iterable
 
 DEVICE_CPU: nanoarrow._device.Device
-__reduce_cython__: _cython_3_0_11.cython_function_or_method
-__setstate_cython__: _cython_3_0_11.cython_function_or_method
-__test__: dict
 
 class CArray:
-    __pyx_vtable__: ClassVar[PyCapsule] = ...
+    """Low-level ArrowArray wrapper
+
+    This object is a literal wrapper around a read-only ArrowArray. It provides field accessors
+    that return Python objects and handles the C Data interface lifecycle (i.e., initialized
+    ArrowArray structures are always released).
+
+    See `nanoarrow.c_array()` for construction and usage examples.
+    """
+
     buffers: Incomplete
     children: Incomplete
     device_id: Incomplete
@@ -44,14 +48,14 @@ class CArray:
     def __init__(cls, *args, **kwargs) -> None:
         """Create and return a new object.  See help(type) for accurate signature."""
     @staticmethod
-    def allocate(*args, **kwargs):
+    def allocate(schema) -> CArray:
         """Allocate a released ArrowArray"""
-    def child(self, *args, **kwargs): ...
-    def is_valid(self, *args, **kwargs):
+    def child(self, i): ...
+    def is_valid(self) -> bool:
         """Check for a non-null and non-released underlying ArrowArray"""
-    def view(self, *args, **kwargs):
+    def view(self) -> CArrayView:
         """Allocate a :class:`CArrayView` to access the buffers of this array"""
-    def __arrow_c_array__(self, *args, **kwargs):
+    def __arrow_c_array__(self, requested_schema=...):
         """
         Get a pair of PyCapsules containing a C ArrowArray representation of the object.
 
@@ -74,20 +78,27 @@ class CArray:
     def __reduce__(self): ...
 
 class CArrayBuilder:
+    """Helper for constructing an ArrowArray
+
+    The primary function of this class is to wrap the nanoarrow C library calls
+    that build up the components of an ArrowArray.
+    """
+
     @classmethod
     def __init__(cls, *args, **kwargs) -> None:
         """Create and return a new object.  See help(type) for accurate signature."""
     @staticmethod
-    def allocate(*args, **kwargs):
+    def allocate(device=...):
         """Create a CArrayBuilder
 
         Allocates memory for an ArrowArray and populates it with nanoarrow's
         ArrowArray private_data/release callback implementation. This should
         usually be followed by :meth:`init_from_type` or :meth:`init_from_schema`.
         """
-    def append_bytes(self, *args, **kwargs): ...
-    def append_strings(self, *args, **kwargs): ...
-    def finish(self, *args, **kwargs):
+    def append_bytes(self, obj: Iterable[object]) -> CArrayBuilder: ...
+    def append_strings(self, obj: Iterable[str | None]) -> CArrayBuilder: ...
+    def ensure_buffers(self, n_buffers) -> CArrayBuilder: ...
+    def finish(self, validation_level=...) -> CArray:
         """Finish building this array
 
         Performs any steps required to return a valid ArrowArray and optionally
@@ -101,22 +112,22 @@ class CArrayBuilder:
             validation if possible. Validation may not be possible if children
             were set that were not created by nanoarrow.
         """
-    def finish_device(self, *args, **kwargs):
+    def finish_device(self):
         """Finish building this array and export to an ArrowDeviceArray
 
         Calls :meth:`finish`, propagating device information into an ArrowDeviceArray.
         """
-    def init_from_schema(self, *args, **kwargs): ...
-    def init_from_type(self, *args, **kwargs): ...
-    def is_empty(self, *args, **kwargs):
+    def init_from_schema(self, schema) -> CArrayBuilder: ...
+    def init_from_type(self, type_id) -> CArrayBuilder: ...
+    def is_empty(self) -> bool:
         """Check if any items have been appended to this builder"""
-    def resolve_null_count(self, *args, **kwargs):
+    def resolve_null_count(self) -> CArrayBuilder:
         """Ensure the output null count is synchronized with existing buffers
 
         Note that this will not attempt to access non-CPU buffers such that
         :attr:`null_count` might still be -1 after calling this method.
         """
-    def set_buffer(self, *args, **kwargs):
+    def set_buffer(self, i, buffer, move=...) -> CArrayBuilder:
         """Set an ArrowArray buffer
 
         Sets a buffer of this ArrowArray such the pointer at array->buffers[i] is
@@ -127,7 +138,7 @@ class CArrayBuilder:
         is False (the default), this function will a make a shallow copy via another
         layer of Python object wrapping.
         """
-    def set_child(self, *args, **kwargs):
+    def set_child(self, i, c_array, move=...) -> CArrayBuilder:
         """Set an ArrowArray child
 
         Set a child of this array by performing a show copy or optionally
@@ -135,10 +146,10 @@ class CArrayBuilder:
         must have been initialized before this call by initializing this
         builder with a schema containing the correct number of children.
         """
-    def set_length(self, *args, **kwargs): ...
-    def set_null_count(self, *args, **kwargs): ...
-    def set_offset(self, *args, **kwargs): ...
-    def start_appending(self, *args, **kwargs):
+    def set_length(self, length) -> CArrayBuilder: ...
+    def set_null_count(self, null_count) -> CArrayBuilder: ...
+    def set_offset(self, offset) -> CArrayBuilder: ...
+    def start_appending(self) -> CArrayBuilder:
         """Use append mode for building this ArrowArray
 
         Calling this method is required to produce a valid array prior to calling
@@ -147,6 +158,15 @@ class CArrayBuilder:
     def __reduce__(self): ...
 
 class CArrayView:
+    """Low-level ArrowArrayView wrapper
+
+    This object is a literal wrapper around an ArrowArrayView. It provides field accessors
+    that return Python objects and handles the structure lifecycle (i.e., initialized
+    ArrowArrayView structures are always released).
+
+    See `nanoarrow.c_array_view()` for construction and usage examples.
+    """
+
     buffers: Incomplete
     children: Incomplete
     dictionary: Incomplete
@@ -161,18 +181,27 @@ class CArrayView:
     @classmethod
     def __init__(cls, *args, **kwargs) -> None:
         """Create and return a new object.  See help(type) for accurate signature."""
-    def buffer(self, *args, **kwargs): ...
-    def buffer_type(self, *args, **kwargs): ...
-    def child(self, *args, **kwargs): ...
+    def buffer(self, i): ...
+    def buffer_type(self, i): ...
+    def child(self, i): ...
     @staticmethod
-    def from_array(*args, **kwargs): ...
+    def from_array(array, device=...): ...
     @staticmethod
-    def from_schema(*args, **kwargs): ...
+    def from_schema(schema): ...
     def __len__(self) -> int:
         """Return len(self)."""
     def __reduce__(self): ...
 
 class CDeviceArray:
+    """Low-level ArrowDeviceArray wrapper
+
+    This object is a literal wrapper around an ArrowDeviceArray. It provides field accessors
+    that return Python objects and handles the structure lifecycle (i.e., initialized
+    ArrowDeviceArray structures are always released).
+
+    See `nanoarrow.device.c_device_array()` for construction and usage examples.
+    """
+
     array: Incomplete
     device_id: Incomplete
     device_type: Incomplete
@@ -181,7 +210,7 @@ class CDeviceArray:
     @classmethod
     def __init__(cls, *args, **kwargs) -> None:
         """Create and return a new object.  See help(type) for accurate signature."""
-    def view(self, *args, **kwargs): ...
-    def __arrow_c_array__(self, *args, **kwargs): ...
-    def __arrow_c_device_array__(self, *args, **kwargs): ...
+    def view(self) -> CArrayView: ...
+    def __arrow_c_array__(self, requested_schema=...): ...
+    def __arrow_c_device_array__(self, requested_schema=...): ...
     def __reduce__(self): ...

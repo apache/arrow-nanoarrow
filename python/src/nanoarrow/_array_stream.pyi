@@ -15,24 +15,31 @@
 # specific language governing permissions and limitations
 # under the License.
 
-import _cython_3_0_11
-import types
 from _typeshed import Incomplete
-from typing import ClassVar
-
-__reduce_cython__: _cython_3_0_11.cython_function_or_method
-__setstate_cython__: _cython_3_0_11.cython_function_or_method
-__test__: dict
+from nanoarrow._array import CArray
+from nanoarrow._schema import CSchema
+from typing import Iterable
 
 class CArrayStream:
+    """Low-level ArrowArrayStream wrapper
+
+    This object is a literal wrapper around an ArrowArrayStream. It provides methods that
+    that wrap the underlying C callbacks and handles the C Data interface lifecycle
+    (i.e., initialized ArrowArrayStream structures are always released).
+
+    See `nanoarrow.c_array_stream()` for construction and usage examples.
+    """
+
     @classmethod
     def __init__(cls, *args, **kwargs) -> None:
         """Create and return a new object.  See help(type) for accurate signature."""
     @staticmethod
-    def allocate(*args, **kwargs):
+    def allocate() -> CArrayStream:
         """Allocate a released ArrowArrayStream"""
     @staticmethod
-    def from_c_arrays(*args, **kwargs):
+    def from_c_arrays(
+        arrays: list[CArray], schema, move=..., validate=...
+    ) -> CArrayStream:
         """Create an ArrowArrayStream from an existing set of arrays
 
         Given a previously resolved list of arrays, create an ArrowArrayStream
@@ -54,22 +61,22 @@ class CArrayStream:
             If True, enforce type equality between the provided schema and the schema
             of each array.
         """
-    def get_next(self, *args, **kwargs):
+    def get_next(self) -> CArray:
         """Get the next Array from this stream
 
         Raises StopIteration when there are no more arrays in this stream.
         """
-    def get_schema(self, *args, **kwargs):
+    def get_schema(self) -> CSchema:
         """Get the schema associated with this stream
 
         Calling this method will always issue a call to the underlying stream's
         get_schema callback.
         """
-    def is_valid(self, *args, **kwargs):
+    def is_valid(self) -> bool:
         """Check for a non-null and non-released underlying ArrowArrayStream"""
-    def release(self, *args, **kwargs):
+    def release(self):
         """Explicitly call the release callback of this stream"""
-    def __arrow_c_stream__(self, *args, **kwargs):
+    def __arrow_c_stream__(self, requested_schema=...):
         """
         Export the stream as an Arrow C stream PyCapsule.
 
@@ -84,41 +91,43 @@ class CArrayStream:
         PyCapsule
         """
     def __enter__(self): ...
-    def __exit__(
-        self,
-        type: type[BaseException] | None,
-        value: BaseException | None,
-        traceback: types.TracebackType | None,
-    ): ...
+    def __exit__(self, *args, **kwargs): ...
     def __iter__(self):
         """Implement iter(self)."""
     def __next__(self): ...
     def __reduce__(self): ...
 
 class CMaterializedArrayStream:
-    __pyx_vtable__: ClassVar[PyCapsule] = ...
+    """Optimized representation of a fully consumed ArrowArrayStream
+
+    This class provides a data structure similar to pyarrow's ChunkedArray
+    where each consumed array is a referenced-counted shared array. This
+    class wraps the utilities provided by the nanoarrow C library to iterate
+    over and facilitate log(n) random access to items in this container.
+    """
+
     arrays: Incomplete
     n_arrays: Incomplete
     schema: Incomplete
     @classmethod
     def __init__(cls, *args, **kwargs) -> None:
         """Create and return a new object.  See help(type) for accurate signature."""
-    def array(self, *args, **kwargs): ...
-    def child(self, *args, **kwargs): ...
+    def array(self, i) -> CArray: ...
+    def child(self, i) -> CMaterializedArrayStream: ...
     @staticmethod
-    def from_c_array(*args, **kwargs):
+    def from_c_array(array) -> CMaterializedArrayStream:
         """ "Create a materialized array stream from a single array"""
     @staticmethod
-    def from_c_array_stream(*args, **kwargs):
+    def from_c_array_stream(stream) -> CMaterializedArrayStream:
         """ "Create a materialized array stream from an unmaterialized ArrowArrayStream"""
     @staticmethod
-    def from_c_arrays(*args, **kwargs):
+    def from_c_arrays(arrays: Iterable[CArray], schema, validate=...):
         """ "Create a materialized array stream from an existing iterable of arrays
 
         This is slightly more efficient than creating a stream and then consuming it
         because the implementation can avoid a shallow copy of each array.
         """
-    def __arrow_c_stream__(self, *args, **kwargs): ...
+    def __arrow_c_stream__(self, requested_schema=...): ...
     def __getitem__(self, index):
         """Return self[key]."""
     def __iter__(self):
