@@ -437,4 +437,10 @@ pip install -e ".[test]"
 pytest -vvx
 ```
 
+The Python tests compare public Cython declarations and class members with the
+checked-in stubs. To regenerate the stubs, install nanoarrow from the updated
+source, install mypy and the Black version in `.pre-commit-config.yaml`, and run
+`bash generate_type_stubs.sh` from the `python` directory. Review the generated diff
+before committing it.
+
 CMake is currently required to ensure that the vendored copy of nanoarrow in the Python package stays in sync with the nanoarrow sources in the working tree.

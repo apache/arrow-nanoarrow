@@ -67,16 +67,6 @@ jobs:
         run: |
           pytest python/tests -v -s
 
-      - name: Check type stubs
-        if: success() && matrix.python-version == '3.13'
-        run: |
-          pip install mypy
-          cd src/nanoarrow
-          for mod in $(find . -name "*.pyx" | sed -e "s|./||" -e "s|.pyx||"); do
-            cat $mod
-            stubtest "nanoarrow.$mod"
-          done
-
       - name: Run doctests
         if: success() && matrix.python-version == '3.13'
         run: |

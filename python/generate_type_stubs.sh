@@ -15,13 +15,17 @@
 # specific language governing permissions and limitations
 # under the License.
 
-SOURCE_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+set -euo pipefail
 
-# Generates src/nanoarrow/*.pxi given the currently installed copy of
+# Generates src/nanoarrow/*.pyi given the currently installed copy of
 # nanoarrow. Requires mypy and black (where black is pinned to the
 # same version as in pre-commit)
 
-pushd "${SOURCE_DIR}"
+SOURCE_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+GENERATED_DIR="$(mktemp -d)"
+trap 'rm -rf "$GENERATED_DIR"' EXIT
+
+cd "${SOURCE_DIR}/src/nanoarrow"
 
 # We'll add the license to the start of the files
 LICENSE='
@@ -43,17 +47,20 @@ LICENSE='
 # under the License.
 '
 
-# Remove old stubs
-find src/nanoarrow -name "*.pyi" -delete
-
-# Generate new ones
-pushd src/nanoarrow
-for mod in $(find . -name "*.pyx" | sed -e "s|./||" -e "s|.pyx||"); do
-  stubgen --module "nanoarrow.${mod}" --include-docstrings -o ../../build/tmp
-  echo "$LICENSE" > "${mod}.pyi"
-  cat "../../build/tmp/nanoarrow/${mod}.pyi" >> "${mod}.pyi"
-  black "${mod}.pyi"
+modules=()
+sources=(*.pyx)
+for source in "${sources[@]}"; do
+  modules+=(--module "nanoarrow.${source%.pyx}")
 done
-popd
+stubgen "${modules[@]}" --include-docstrings -o "$GENERATED_DIR"
 
-popd
+# Only replace the source stubs after generation and formatting succeed.
+for source in "${sources[@]}"; do
+  stub="${source%.pyx}.pyi"
+  {
+    printf '%s\n' "$LICENSE"
+    cat "$GENERATED_DIR/nanoarrow/$stub"
+  } > "$GENERATED_DIR/$stub"
+done
+black "$GENERATED_DIR"/*.pyi
+cp "$GENERATED_DIR"/*.pyi .
