@@ -425,6 +425,72 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestFieldDict) {
       R"("isOrdered": false}, "children": []})");
 }
 
+TEST(NanoarrowTestingTest, NanoarrowTestingTestFieldDictValueMetadata) {
+  // The metadata of the dictionary value type is written in the "dictionary" object and
+  // the field metadata is written in the field
+  // (https://github.com/apache/arrow/issues/49704)
+  TestWriteJSON(
+      [](ArrowSchema* schema) {
+        nanoarrow::UniqueBuffer buffer;
+        NANOARROW_RETURN_NOT_OK(ArrowMetadataBuilderInit(buffer.get(), nullptr));
+        NANOARROW_RETURN_NOT_OK(ArrowMetadataBuilderAppend(
+            buffer.get(), "ARROW:extension:name"_asv, "arrow.uuid"_asv));
+        NANOARROW_RETURN_NOT_OK(ArrowMetadataBuilderAppend(
+            buffer.get(), "ARROW:extension:metadata"_asv, ""_asv));
+
+        NANOARROW_RETURN_NOT_OK(ArrowSchemaInitFromType(schema, NANOARROW_TYPE_INT8));
+        NANOARROW_RETURN_NOT_OK(ArrowSchemaSetMetadata(schema, "\0\0\0\0"));
+        NANOARROW_RETURN_NOT_OK(ArrowSchemaAllocateDictionary(schema));
+        ArrowSchemaInit(schema->dictionary);
+        NANOARROW_RETURN_NOT_OK(ArrowSchemaSetTypeFixedSize(
+            schema->dictionary, NANOARROW_TYPE_FIXED_SIZE_BINARY, 16));
+        NANOARROW_RETURN_NOT_OK(ArrowSchemaSetMetadata(
+            schema->dictionary, reinterpret_cast<const char*>(buffer->data)));
+        return NANOARROW_OK;
+      },
+      /*append_expr*/ nullptr, &WriteFieldJSON,
+      R"({"name": null, "nullable": true, "type": {"name": "fixedsizebinary", "byteWidth": 16}, )"
+      R"("dictionary": {"id": 0, "indexType": {"name": "int", "bitWidth": 8, "isSigned": true}, )"
+      R"("isOrdered": false, "metadata": [{"key": "ARROW:extension:name", "value": "arrow.uuid"}, )"
+      R"({"key": "ARROW:extension:metadata", "value": ""}]}, "children": [], "metadata": []})");
+
+  // Empty value metadata is omitted
+  TestWriteJSON(
+      [](ArrowSchema* schema) {
+        NANOARROW_RETURN_NOT_OK(ArrowSchemaInitFromType(schema, NANOARROW_TYPE_INT16));
+        NANOARROW_RETURN_NOT_OK(ArrowSchemaAllocateDictionary(schema));
+        NANOARROW_RETURN_NOT_OK(
+            ArrowSchemaInitFromType(schema->dictionary, NANOARROW_TYPE_STRING));
+        NANOARROW_RETURN_NOT_OK(ArrowSchemaSetMetadata(schema->dictionary, "\0\0\0\0"));
+        return NANOARROW_OK;
+      },
+      /*append_expr*/ nullptr, &WriteFieldJSON,
+      R"({"name": null, "nullable": true, "type": {"name": "utf8"}, )"
+      R"("dictionary": {"id": 0, "indexType": {"name": "int", "bitWidth": 16, "isSigned": true}, )"
+      R"("isOrdered": false}, "children": []})");
+
+  // Value metadata is omitted when metadata is turned off
+  TestWriteJSON(
+      [](ArrowSchema* schema) {
+        nanoarrow::UniqueBuffer buffer;
+        NANOARROW_RETURN_NOT_OK(ArrowMetadataBuilderInit(buffer.get(), nullptr));
+        NANOARROW_RETURN_NOT_OK(
+            ArrowMetadataBuilderAppend(buffer.get(), "k1"_asv, "v1"_asv));
+        NANOARROW_RETURN_NOT_OK(ArrowSchemaInitFromType(schema, NANOARROW_TYPE_INT16));
+        NANOARROW_RETURN_NOT_OK(ArrowSchemaAllocateDictionary(schema));
+        NANOARROW_RETURN_NOT_OK(
+            ArrowSchemaInitFromType(schema->dictionary, NANOARROW_TYPE_STRING));
+        NANOARROW_RETURN_NOT_OK(ArrowSchemaSetMetadata(
+            schema->dictionary, reinterpret_cast<const char*>(buffer->data)));
+        return NANOARROW_OK;
+      },
+      [](ArrowArray*) { return NANOARROW_OK; }, &WriteFieldJSON,
+      R"({"name": null, "nullable": true, "type": {"name": "utf8"}, )"
+      R"("dictionary": {"id": 0, "indexType": {"name": "int", "bitWidth": 16, "isSigned": true}, )"
+      R"("isOrdered": false}, "children": []})",
+      [](TestingJSONWriter& writer) { writer.set_include_metadata(false); });
+}
+
 TEST(NanoarrowTestingTest, NanoarrowTestingTestFieldMetadata) {
   // Missing metadata
   TestWriteJSON(
@@ -853,6 +919,68 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestReadFieldDictionary) {
           schema.get()),
       NANOARROW_OK);
   EXPECT_TRUE(schema->flags & ARROW_FLAG_DICTIONARY_ORDERED);
+}
+
+TEST(NanoarrowTestingTest, NanoarrowTestingTestReadFieldDictionaryValueMetadata) {
+  nanoarrow::UniqueSchema schema;
+  TestingJSONReader reader;
+  ArrowError error;
+  error.message[0] = '\0';
+
+  // The "metadata" of the "dictionary" object is the metadata of the dictionary value
+  // type and the "metadata" of the field is the metadata of the field
+  ASSERT_EQ(
+      reader.ReadField(
+          R"({"name": "col1", "nullable": true, "type": {"name": "utf8"}, "children": [], )"
+          R"("dictionary": {"id": 0, "indexType": {"name": "int", "bitWidth": 32, "isSigned": true}, )"
+          R"("isOrdered": false, "metadata": [{"key": "ARROW:extension:name", "value": "arrow.opaque"}, )"
+          R"({"key": "ARROW:extension:metadata", "value": "{}"}]}, )"
+          R"("metadata": [{"key": "k1", "value": "v1"}]})",
+          schema.get(), &error),
+      NANOARROW_OK)
+      << error.message;
+  EXPECT_STREQ(schema->format, "i");
+  ASSERT_NE(schema->dictionary, nullptr);
+  EXPECT_STREQ(schema->dictionary->format, "u");
+
+  ArrowStringView value;
+  ArrowMetadataReader metadata;
+  ASSERT_EQ(ArrowMetadataReaderInit(&metadata, schema->metadata), NANOARROW_OK);
+  EXPECT_EQ(metadata.remaining_keys, 1);
+  ASSERT_EQ(ArrowMetadataGetValue(schema->metadata, "k1"_asv, &value), NANOARROW_OK);
+  EXPECT_EQ(value, "v1"_asv);
+
+  ASSERT_EQ(ArrowMetadataReaderInit(&metadata, schema->dictionary->metadata),
+            NANOARROW_OK);
+  EXPECT_EQ(metadata.remaining_keys, 2);
+  ASSERT_EQ(ArrowMetadataGetValue(schema->dictionary->metadata,
+                                  "ARROW:extension:name"_asv, &value),
+            NANOARROW_OK);
+  EXPECT_EQ(value, "arrow.opaque"_asv);
+
+  // Without "metadata" in the "dictionary" object, the value type has no metadata
+  schema.reset();
+  ASSERT_EQ(
+      reader.ReadField(
+          R"({"name": "col1", "nullable": true, "type": {"name": "utf8"}, "children": [], )"
+          R"("dictionary": {"id": 0, "indexType": {"name": "int", "bitWidth": 32, "isSigned": true}, )"
+          R"("isOrdered": false}, "metadata": [{"key": "k1", "value": "v1"}]})",
+          schema.get(), &error),
+      NANOARROW_OK)
+      << error.message;
+  EXPECT_NE(schema->metadata, nullptr);
+  EXPECT_EQ(schema->dictionary->metadata, nullptr);
+
+  // Invalid value metadata
+  schema.reset();
+  EXPECT_EQ(
+      reader.ReadField(
+          R"({"name": "col1", "nullable": true, "type": {"name": "utf8"}, "children": [], )"
+          R"("dictionary": {"id": 0, "indexType": {"name": "int", "bitWidth": 32, "isSigned": true}, )"
+          R"("isOrdered": false, "metadata": {}}})",
+          schema.get(), &error),
+      EINVAL);
+  EXPECT_STREQ(error.message, "Field or Schema metadata must be null or array");
 }
 
 TEST(NanoarrowTestingTest, NanoarrowTestingTestRoundtripDataFile) {
@@ -1344,6 +1472,21 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestFieldDictionaryRoundtrip) {
       R"({"name": null, "nullable": true, "type": {"name": "utf8"}, )"
       R"("dictionary": {"id": 0, "indexType": {"name": "int", "bitWidth": 16, "isSigned": true}, )"
       R"("isOrdered": true}, "children": []})");
+
+  // With value metadata and field metadata
+  TestFieldRoundtrip(
+      R"({"name": "col", "nullable": true, "type": {"name": "utf8"}, )"
+      R"("dictionary": {"id": 0, "indexType": {"name": "int", "bitWidth": 16, "isSigned": true}, )"
+      R"("isOrdered": false, "metadata": [{"key": "ARROW:extension:name", "value": "arrow.opaque"}, )"
+      R"({"key": "ARROW:extension:metadata", "value": "{}"}]}, "children": [], )"
+      R"("metadata": [{"key": "k1", "value": "v1"}]})");
+
+  // Nested
+  TestFieldRoundtrip(
+      R"({"name": "col", "nullable": true, "type": {"name": "list"}, "children": [)"
+      R"({"name": "item", "nullable": true, "type": {"name": "utf8"}, )"
+      R"("dictionary": {"id": 0, "indexType": {"name": "int", "bitWidth": 16, "isSigned": true}, )"
+      R"("isOrdered": false, "metadata": [{"key": "k2", "value": "v2"}]}, "children": []}]})");
 }
 
 void AssertSchemasCompareEqual(
@@ -1653,6 +1796,116 @@ TEST(NanoarrowTestingTest, NanoarrowTestingTestMetadataComparison) {
   TestingJSONComparison comparison;
   comparison.set_compare_metadata_order(false);
   ASSERT_EQ(comparison.CompareSchema(actual.get(), expected.get()), ENOTSUP);
+}
+
+TEST(NanoarrowTestingTest, NanoarrowTestingTestDictionaryValueMetadataComparison) {
+  nanoarrow::UniqueSchema actual;
+  nanoarrow::UniqueSchema expected;
+  nanoarrow::UniqueBuffer buf;
+
+  // A dictionary-encoded field and a list of a dictionary-encoded field
+  ArrowSchemaInit(actual.get());
+  ASSERT_EQ(ArrowSchemaSetTypeStruct(actual.get(), 2), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaSetType(actual->children[0], NANOARROW_TYPE_INT32), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaAllocateDictionary(actual->children[0]), NANOARROW_OK);
+  ASSERT_EQ(
+      ArrowSchemaInitFromType(actual->children[0]->dictionary, NANOARROW_TYPE_STRING),
+      NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaSetType(actual->children[1], NANOARROW_TYPE_LIST), NANOARROW_OK);
+  ArrowSchema* item = actual->children[1]->children[0];
+  ASSERT_EQ(ArrowSchemaSetType(item, NANOARROW_TYPE_INT32), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaAllocateDictionary(item), NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaInitFromType(item->dictionary, NANOARROW_TYPE_STRING),
+            NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaDeepCopy(actual.get(), expected.get()), NANOARROW_OK);
+  AssertSchemasCompareEqual(actual.get(), expected.get());
+
+  // Empty value metadata is equivalent to no value metadata
+  ASSERT_EQ(ArrowSchemaSetMetadata(actual->children[0]->dictionary, "\0\0\0\0"),
+            NANOARROW_OK);
+  AssertSchemasCompareEqual(actual.get(), expected.get());
+
+  // With different value metadata
+  ASSERT_EQ(ArrowMetadataBuilderInit(buf.get(), nullptr), NANOARROW_OK);
+  ASSERT_EQ(ArrowMetadataBuilderAppend(buf.get(), "key1"_asv, "value1"_asv),
+            NANOARROW_OK);
+  ASSERT_EQ(ArrowMetadataBuilderAppend(buf.get(), "key2"_asv, "value2"_asv),
+            NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaSetMetadata(actual->children[0]->dictionary,
+                                   reinterpret_cast<char*>(buf->data)),
+            NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaSetMetadata(item->dictionary, reinterpret_cast<char*>(buf->data)),
+            NANOARROW_OK);
+  AssertSchemasCompareUnequal(actual.get(), expected.get(), /*num_differences*/ 2,
+                              /*differences*/
+                              "Path: .children[0].dictionary.metadata"
+                              R"(
+- [{"key": "key1", "value": "value1"}, {"key": "key2", "value": "value2"}]
++ null
+
+)"
+                              "Path: .children[1].children[0].dictionary.metadata"
+                              R"(
+- [{"key": "key1", "value": "value1"}, {"key": "key2", "value": "value2"}]
++ null
+
+)");
+
+  // With value metadata that differs only in order
+  buf.reset();
+  ASSERT_EQ(ArrowMetadataBuilderInit(buf.get(), nullptr), NANOARROW_OK);
+  ASSERT_EQ(ArrowMetadataBuilderAppend(buf.get(), "key2"_asv, "value2"_asv),
+            NANOARROW_OK);
+  ASSERT_EQ(ArrowMetadataBuilderAppend(buf.get(), "key1"_asv, "value1"_asv),
+            NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaSetMetadata(expected->children[0]->dictionary,
+                                   reinterpret_cast<char*>(buf->data)),
+            NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaSetMetadata(expected->children[1]->children[0]->dictionary,
+                                   reinterpret_cast<char*>(buf->data)),
+            NANOARROW_OK);
+  AssertSchemasCompareUnequal(actual.get(), expected.get(), /*num_differences*/ 2,
+                              /*differences*/
+                              "Path: .children[0].dictionary.metadata"
+                              R"(
+- [{"key": "key1", "value": "value1"}, {"key": "key2", "value": "value2"}]
++ [{"key": "key2", "value": "value2"}, {"key": "key1", "value": "value1"}]
+
+)"
+                              "Path: .children[1].children[0].dictionary.metadata"
+                              R"(
+- [{"key": "key1", "value": "value1"}, {"key": "key2", "value": "value2"}]
++ [{"key": "key2", "value": "value2"}, {"key": "key1", "value": "value1"}]
+
+)");
+  AssertSchemasCompareEqual(actual.get(), expected.get(),
+                            [](TestingJSONComparison& comparison) {
+                              comparison.set_compare_metadata_order(false);
+                            });
+
+  // Value metadata is not the field metadata
+  ASSERT_EQ(ArrowSchemaSetMetadata(expected->children[0]->dictionary, nullptr),
+            NANOARROW_OK);
+  ASSERT_EQ(
+      ArrowSchemaSetMetadata(expected->children[0], reinterpret_cast<char*>(buf->data)),
+      NANOARROW_OK);
+  AssertSchemasCompareUnequal(actual.get(), expected.get(), /*num_differences*/ 2,
+                              /*differences*/
+                              "Path: .children[0].metadata"
+                              R"(
+- null
++ [{"key": "key2", "value": "value2"}, {"key": "key1", "value": "value1"}]
+
+)"
+                              "Path: .children[0].dictionary.metadata"
+                              R"(
+- [{"key": "key1", "value": "value1"}, {"key": "key2", "value": "value2"}]
++ null
+
+)",
+                              [](TestingJSONComparison& comparison) {
+                                comparison.set_compare_metadata_order(false);
+                              });
 }
 
 TEST(NanoarrowTestingTest, NanoarrowTestingTestNestedMetadataComparison) {
