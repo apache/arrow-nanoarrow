@@ -190,7 +190,50 @@ struct ArrowIpcWriterPrivate {
   // DictionaryBatch messages written ahead of it)
   struct ArrowBuffer pending_message_metadata;
   int has_pending_message_metadata;
+  // Copies of the dictionaries last written by
+  // ArrowIpcWriterWriteArrayViewWithDictionaries() (struct ArrowIpcWriterViewDictionary)
+  struct ArrowBuffer view_dictionaries;
 };
+
+// The values of a dictionary as last written by
+// ArrowIpcWriterWriteArrayViewWithDictionaries(). Its input is borrowed, so the
+// values are copied to compare them with the next batch's.
+struct ArrowIpcWriterViewDictionary {
+  int64_t dictionary_id;
+  struct ArrowArray values;
+};
+
+static void ArrowIpcWriterForgetViewDictionary(struct ArrowIpcWriterPrivate* private,
+                                               int64_t dictionary_id) {
+  struct ArrowIpcWriterViewDictionary* entries =
+      (struct ArrowIpcWriterViewDictionary*)private->view_dictionaries.data;
+  int64_t n_entries = private->view_dictionaries.size_bytes /
+                      (int64_t)sizeof(struct ArrowIpcWriterViewDictionary);
+  for (int64_t i = 0; i < n_entries; i++) {
+    if (entries[i].dictionary_id == dictionary_id) {
+      ArrowArrayRelease(&entries[i].values);
+      entries[i] = entries[n_entries - 1];
+      NANOARROW_ASSERT_OK(
+          ArrowBufferResize(&private->view_dictionaries,
+                            private->view_dictionaries.size_bytes -
+                                (int64_t)sizeof(struct ArrowIpcWriterViewDictionary),
+                            /*shrink_to_fit=*/0));
+      return;
+    }
+  }
+}
+
+static void ArrowIpcWriterResetViewDictionaries(struct ArrowIpcWriterPrivate* private) {
+  struct ArrowIpcWriterViewDictionary* entries =
+      (struct ArrowIpcWriterViewDictionary*)private->view_dictionaries.data;
+  int64_t n_entries = private->view_dictionaries.size_bytes /
+                      (int64_t)sizeof(struct ArrowIpcWriterViewDictionary);
+  for (int64_t i = 0; i < n_entries; i++) {
+    ArrowArrayRelease(&entries[i].values);
+  }
+  NANOARROW_ASSERT_OK(
+      ArrowBufferResize(&private->view_dictionaries, 0, /*shrink_to_fit=*/0));
+}
 
 ArrowErrorCode ArrowIpcWriterInit(struct ArrowIpcWriter* writer,
                                   struct ArrowIpcOutputStream* output_stream) {
@@ -214,6 +257,7 @@ ArrowErrorCode ArrowIpcWriterInit(struct ArrowIpcWriter* writer,
   ArrowBufferInit(&private->file_dictionary_ids);
   ArrowBufferInit(&private->pending_message_metadata);
   private->has_pending_message_metadata = 0;
+  ArrowBufferInit(&private->view_dictionaries);
 
   writer->private_data = private;
   return NANOARROW_OK;
@@ -234,6 +278,8 @@ void ArrowIpcWriterReset(struct ArrowIpcWriter* writer) {
     ArrowIpcFooterReset(&private->footer);
     ArrowBufferReset(&private->file_dictionary_ids);
     ArrowBufferReset(&private->pending_message_metadata);
+    ArrowIpcWriterResetViewDictionaries(private);
+    ArrowBufferReset(&private->view_dictionaries);
 
     ArrowFree(private);
   }
@@ -300,6 +346,8 @@ ArrowErrorCode ArrowIpcWriterWriteSchema(struct ArrowIpcWriter* writer,
   // A dictionary may be replaced in a stream (e.g., when the dictionaries of
   // ArrowIpcWriterWriteArrayStream() input change between batches) but not in a file
   ArrowIpcEncoderSetDictionaryReplacement(&private->encoder, !private->writing_file);
+  // Dictionary IDs are assigned again for the new schema
+  ArrowIpcWriterResetViewDictionaries(private);
   NANOARROW_ASSERT_OK(ArrowBufferResize(&private->buffer, 0, 0));
 
   NANOARROW_RETURN_NOT_OK(ArrowIpcEncoderEncodeSchema(&private->encoder, in, error));
@@ -373,10 +421,9 @@ ArrowErrorCode ArrowIpcWriterWriteArrayView(struct ArrowIpcWriter* writer,
   return NANOARROW_OK;
 }
 
-ArrowErrorCode ArrowIpcWriterWriteDictionaryBatch(
+static ArrowErrorCode ArrowIpcWriterWriteDictionaryBatchImpl(
     struct ArrowIpcWriter* writer, int64_t dictionary_id, char is_delta,
     const struct ArrowArrayView* values_view, struct ArrowError* error) {
-  NANOARROW_DCHECK(writer != NULL && writer->private_data != NULL && values_view != NULL);
   struct ArrowIpcWriterPrivate* private =
       (struct ArrowIpcWriterPrivate*)writer->private_data;
 
@@ -431,6 +478,20 @@ ArrowErrorCode ArrowIpcWriterWriteDictionaryBatch(
   NANOARROW_RETURN_NOT_OK(ArrowIpcOutputStreamWrite(
       &private->output_stream, ArrowBufferToBufferView(&private->body_buffer), error));
   return NANOARROW_OK;
+}
+
+ArrowErrorCode ArrowIpcWriterWriteDictionaryBatch(
+    struct ArrowIpcWriter* writer, int64_t dictionary_id, char is_delta,
+    const struct ArrowArrayView* values_view, struct ArrowError* error) {
+  NANOARROW_DCHECK(writer != NULL && writer->private_data != NULL && values_view != NULL);
+  struct ArrowIpcWriterPrivate* private =
+      (struct ArrowIpcWriterPrivate*)writer->private_data;
+
+  // ArrowIpcWriterWriteArrayViewWithDictionaries() must not skip this ID's next
+  // dictionary because it matches the values it wrote before this one
+  ArrowIpcWriterForgetViewDictionary(private, dictionary_id);
+  return ArrowIpcWriterWriteDictionaryBatchImpl(writer, dictionary_id, is_delta,
+                                                values_view, error);
 }
 
 // Check whether two arrays are guaranteed to contain identical values because they
@@ -517,15 +578,255 @@ static ArrowErrorCode ArrowIpcWriterWriteDictionariesForArray(
   return NANOARROW_OK;
 }
 
+// Initialize out as an array view with the same types as src
+static ArrowErrorCode ArrowIpcWriterArrayViewInitLike(struct ArrowArrayView* out,
+                                                      const struct ArrowArrayView* src) {
+  ArrowArrayViewInitFromType(out, src->storage_type);
+  out->layout = src->layout;
+  NANOARROW_RETURN_NOT_OK(ArrowArrayViewAllocateChildren(out, src->n_children));
+  for (int64_t i = 0; i < src->n_children; i++) {
+    NANOARROW_RETURN_NOT_OK(
+        ArrowIpcWriterArrayViewInitLike(out->children[i], src->children[i]));
+  }
+
+  if (src->dictionary != NULL) {
+    NANOARROW_RETURN_NOT_OK(ArrowArrayViewAllocateDictionary(out));
+    NANOARROW_RETURN_NOT_OK(
+        ArrowIpcWriterArrayViewInitLike(out->dictionary, src->dictionary));
+  }
+
+  return NANOARROW_OK;
+}
+
+// Producers need not initialize the padding bits of a bitmap's last byte. Clear them
+// so that they don't make two copies of the same values compare unequal.
+static void ArrowIpcWriterClearBitmapPadding(struct ArrowArray* array,
+                                             const struct ArrowArrayView* array_view) {
+  int64_t remainder = array->length % 8;
+  if (remainder != 0) {
+    uint8_t mask = (uint8_t)((1U << remainder) - 1U);
+    for (int i = 0; i < NANOARROW_MAX_FIXED_BUFFERS; i++) {
+      if (array_view->layout.element_size_bits[i] == 1) {
+        struct ArrowBuffer* buffer = ArrowArrayBuffer(array, i);
+        if (buffer->size_bytes > 0) {
+          buffer->data[buffer->size_bytes - 1] &= mask;
+        }
+      }
+    }
+  }
+
+  for (int64_t i = 0; i < array->n_children; i++) {
+    ArrowIpcWriterClearBitmapPadding(array->children[i], array_view->children[i]);
+  }
+}
+
+// Copy the values of a dictionary into out, in a form that only depends on the values:
+// zero offset, buffers sized to the values, and cleared bitmap padding. A dictionary
+// nested in the values is not copied: it is written (and compared) separately.
+static ArrowErrorCode ArrowIpcWriterCopyDictionaryValues(
+    const struct ArrowArrayView* values_view, struct ArrowArray* out,
+    struct ArrowError* error) {
+  NANOARROW_RETURN_NOT_OK(ArrowArrayInitFromArrayView(out, values_view, error));
+  ArrowErrorCode result = ArrowArrayStartAppending(out);
+  if (result == NANOARROW_OK) {
+    result = ArrowArrayReserve(out, values_view->length);
+  }
+  if (result == NANOARROW_OK) {
+    result = ArrowArrayAppendStorageFromArrayView(out, values_view, error);
+  }
+  if (result == NANOARROW_OK) {
+    result = ArrowArrayFinishBuildingDefault(out, error);
+  }
+  if (result != NANOARROW_OK) {
+    ArrowArrayRelease(out);
+    return result;
+  }
+
+  ArrowIpcWriterClearBitmapPadding(out, values_view);
+  return NANOARROW_OK;
+}
+
+// Compare two copies made by ArrowIpcWriterCopyDictionaryValues() from views of
+// the same type as values_view
+static ArrowErrorCode ArrowIpcWriterDictionaryValuesEqual(
+    const struct ArrowArrayView* values_view, const struct ArrowArray* lhs,
+    const struct ArrowArray* rhs, int* out, struct ArrowError* error) {
+  struct ArrowArrayView lhs_view;
+  struct ArrowArrayView rhs_view;
+  ArrowArrayViewInitFromType(&lhs_view, NANOARROW_TYPE_UNINITIALIZED);
+  ArrowArrayViewInitFromType(&rhs_view, NANOARROW_TYPE_UNINITIALIZED);
+
+  ArrowErrorCode result = ArrowIpcWriterArrayViewInitLike(&lhs_view, values_view);
+  if (result == NANOARROW_OK) {
+    result = ArrowIpcWriterArrayViewInitLike(&rhs_view, values_view);
+  }
+  if (result == NANOARROW_OK) {
+    result = ArrowArrayViewSetArray(&lhs_view, lhs, error);
+  }
+  if (result == NANOARROW_OK) {
+    result = ArrowArrayViewSetArray(&rhs_view, rhs, error);
+  }
+  if (result == NANOARROW_OK) {
+    result = ArrowArrayViewCompare(&lhs_view, &rhs_view, NANOARROW_COMPARE_IDENTICAL, out,
+                                   NULL);
+  }
+
+  ArrowArrayViewReset(&lhs_view);
+  ArrowArrayViewReset(&rhs_view);
+  return result;
+}
+
+static struct ArrowIpcWriterViewDictionary* ArrowIpcWriterFindViewDictionary(
+    struct ArrowIpcWriterPrivate* private, int64_t dictionary_id) {
+  struct ArrowIpcWriterViewDictionary* entries =
+      (struct ArrowIpcWriterViewDictionary*)private->view_dictionaries.data;
+  int64_t n_entries = private->view_dictionaries.size_bytes /
+                      (int64_t)sizeof(struct ArrowIpcWriterViewDictionary);
+  for (int64_t i = 0; i < n_entries; i++) {
+    if (entries[i].dictionary_id == dictionary_id) {
+      return &entries[i];
+    }
+  }
+  return NULL;
+}
+
+// Check whether values_view is physically identical to copy (made by
+// ArrowIpcWriterCopyDictionaryValues() from a view of the same type). If it is, the
+// values are equal; if not, they may still be (e.g., if values_view has an offset).
+static ArrowErrorCode ArrowIpcWriterViewMatchesCopy(
+    const struct ArrowArrayView* values_view, const struct ArrowArray* copy, int* out,
+    struct ArrowError* error) {
+  struct ArrowArrayView copy_view;
+  ArrowArrayViewInitFromType(&copy_view, NANOARROW_TYPE_UNINITIALIZED);
+  ArrowErrorCode result = ArrowIpcWriterArrayViewInitLike(&copy_view, values_view);
+  if (result == NANOARROW_OK) {
+    result = ArrowArrayViewSetArray(&copy_view, copy, error);
+  }
+  if (result == NANOARROW_OK) {
+    result = ArrowArrayViewCompare(values_view, &copy_view, NANOARROW_COMPARE_IDENTICAL,
+                                   out, NULL);
+  }
+  ArrowArrayViewReset(&copy_view);
+  return result;
+}
+
+// Write the dictionary values_view for dictionary_id unless its values are identical
+// to the ones this function last wrote for that ID (and force is not set). Sets
+// *written to whether a DictionaryBatch was written.
+static ArrowErrorCode ArrowIpcWriterWriteViewDictionary(
+    struct ArrowIpcWriter* writer, int64_t dictionary_id,
+    const struct ArrowArrayView* values_view, int force, int* written,
+    struct ArrowError* error) {
+  struct ArrowIpcWriterPrivate* private =
+      (struct ArrowIpcWriterPrivate*)writer->private_data;
+
+  struct ArrowIpcWriterViewDictionary* entry =
+      ArrowIpcWriterFindViewDictionary(private, dictionary_id);
+
+  // The common case: the values are physically identical to the copy (e.g., because
+  // the producer builds each batch's dictionary the same way)
+  if (entry != NULL && !force) {
+    int identical = 0;
+    NANOARROW_RETURN_NOT_OK(
+        ArrowIpcWriterViewMatchesCopy(values_view, &entry->values, &identical, error));
+    if (identical) {
+      *written = 0;
+      return NANOARROW_OK;
+    }
+  }
+
+  // Otherwise, compare a copy of the values made the same way (zero offset, cleared
+  // padding bits, and computed null count)
+  struct ArrowArray values;
+  if (ArrowIpcWriterCopyDictionaryValues(values_view, &values, error) != NANOARROW_OK) {
+    // These values can't be copied (e.g., a dense union), so they can't be compared
+    // with the next batch's either: write them every time
+    ArrowIpcWriterForgetViewDictionary(private, dictionary_id);
+    *written = 1;
+    return ArrowIpcWriterWriteDictionaryBatchImpl(writer, dictionary_id,
+                                                  /*is_delta=*/0, values_view, error);
+  }
+
+  ArrowErrorCode result = NANOARROW_OK;
+  if (entry != NULL && !force) {
+    int equal = 0;
+    result = ArrowIpcWriterDictionaryValuesEqual(values_view, &entry->values, &values,
+                                                 &equal, error);
+    if (result == NANOARROW_OK && equal) {
+      ArrowArrayRelease(&values);
+      *written = 0;
+      return NANOARROW_OK;
+    }
+  }
+
+  if (result == NANOARROW_OK) {
+    result = ArrowIpcWriterWriteDictionaryBatchImpl(writer, dictionary_id,
+                                                    /*is_delta=*/0, values_view, error);
+  }
+
+  if (result == NANOARROW_OK && entry == NULL) {
+    struct ArrowIpcWriterViewDictionary new_entry = {.dictionary_id = dictionary_id};
+    ArrowArrayMove(&values, &new_entry.values);
+    result =
+        ArrowBufferAppend(&private->view_dictionaries, &new_entry, sizeof(new_entry));
+    if (result != NANOARROW_OK) {
+      ArrowArrayRelease(&new_entry.values);
+    }
+  } else if (result == NANOARROW_OK) {
+    ArrowArrayRelease(&entry->values);
+    ArrowArrayMove(&values, &entry->values);
+  } else {
+    ArrowArrayRelease(&values);
+  }
+
+  *written = result == NANOARROW_OK;
+  return result;
+}
+
+// Write the dictionaries of a borrowed array view in the same order as
+// ArrowIpcWriterWriteDictionariesForArray(), skipping those that are identical to
+// the ones last written for their IDs. A dictionary whose values contain a dictionary
+// that was written is written again even if its own values are unchanged: a reader
+// resolves a DictionaryBatch against the nested dictionaries current at that point.
+// Sets *written if any dictionary of array_view was written.
+static ArrowErrorCode ArrowIpcWriterWriteViewDictionaries(
+    struct ArrowIpcWriter* writer, const struct ArrowArrayView* array_view,
+    int64_t* next_id, int* written, struct ArrowError* error) {
+  int64_t dictionary_id = *next_id;
+  if (array_view->dictionary != NULL) {
+    (*next_id)++;
+  }
+
+  for (int64_t i = 0; i < array_view->n_children; i++) {
+    NANOARROW_RETURN_NOT_OK(ArrowIpcWriterWriteViewDictionaries(
+        writer, array_view->children[i], next_id, written, error));
+  }
+
+  if (array_view->dictionary != NULL) {
+    int nested_written = 0;
+    NANOARROW_RETURN_NOT_OK(ArrowIpcWriterWriteViewDictionaries(
+        writer, array_view->dictionary, next_id, &nested_written, error));
+
+    int dictionary_written = 0;
+    NANOARROW_RETURN_NOT_OK(ArrowIpcWriterWriteViewDictionary(
+        writer, dictionary_id, array_view->dictionary, /*force=*/nested_written,
+        &dictionary_written, error));
+    if (nested_written || dictionary_written) {
+      *written = 1;
+    }
+  }
+
+  return NANOARROW_OK;
+}
+
 ArrowErrorCode ArrowIpcWriterWriteArrayViewWithDictionaries(
     struct ArrowIpcWriter* writer, const struct ArrowArrayView* in,
     struct ArrowError* error) {
   NANOARROW_DCHECK(writer != NULL && writer->private_data != NULL && in != NULL);
   int64_t next_dictionary_id = 0;
-  // in is borrowed, so its dictionaries can't be kept alive to compare against the
-  // next batch's: write every one of them
-  NANOARROW_RETURN_NOT_OK(ArrowIpcWriterWriteDictionariesForArray(
-      writer, in, /*array=*/NULL, /*previous=*/NULL, &next_dictionary_id, error));
+  int written = 0;
+  NANOARROW_RETURN_NOT_OK(ArrowIpcWriterWriteViewDictionaries(
+      writer, in, &next_dictionary_id, &written, error));
   return ArrowIpcWriterWriteArrayView(writer, in, error);
 }
 
