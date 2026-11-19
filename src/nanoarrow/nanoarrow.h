@@ -1383,7 +1383,8 @@ static inline void ArrowArrayViewGetDecimalUnsafe(const struct ArrowArrayView* a
 ///
 /// This function moves the ownership of schema to the array_stream. If
 /// this function returns NANOARROW_OK, the caller is responsible for
-/// releasing the ArrowArrayStream.
+/// releasing the ArrowArrayStream; otherwise, the caller retains ownership
+/// of schema.
 NANOARROW_DLL ArrowErrorCode ArrowBasicArrayStreamInit(
     struct ArrowArrayStream* array_stream, struct ArrowSchema* schema, int64_t n_arrays);
 
