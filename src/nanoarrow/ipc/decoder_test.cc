@@ -1395,6 +1395,26 @@ TEST(NanoarrowIpcTest, NanoarrowIpcFooterSizeOverflow) {
   EXPECT_EQ(ArrowIpcDecoderDecodeFooter(decoder.get(), data, &error), ESPIPE);
 }
 
+TEST(NanoarrowIpcTest, NanoarrowIpcVerifyRootOffsetOverflow) {
+  struct ArrowError error;
+
+  nanoarrow::ipc::UniqueDecoder decoder;
+  ArrowIpcDecoderInit(decoder.get());
+
+  // A message whose flatbuffer root offset is 0xFFFFFFFC: where size_t is 32 bits,
+  // adding the size of the offset wraps to zero, which must not pass the bounds check
+  alignas(8) const uint8_t message[] = {0xFF, 0xFF, 0xFF, 0xFF, 8, 0, 0, 0,
+                                        0xFC, 0xFF, 0xFF, 0xFF, 0, 0, 0, 0};
+  struct ArrowBufferView data;
+  data.data.as_uint8 = message;
+  data.size_bytes = sizeof(message);
+
+  EXPECT_EQ(ArrowIpcDecoderVerifyHeader(decoder.get(), data, &error), EINVAL);
+  EXPECT_STREQ(error.message,
+               "Message flatbuffer verification failed (15) table header out of range "
+               "or unaligned");
+}
+
 TEST(NanoarrowIpcTest, NanoarrowIpcFooterMissingSchema) {
   struct ArrowError error;
 
