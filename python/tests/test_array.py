@@ -408,6 +408,24 @@ def test_date64_array():
     assert array.to_pylist() == [d1, d2]
 
 
+@pytest.mark.parametrize("type_", [na.date32(), na.date64()], ids=["date32", "date64"])
+def test_date_array_from_date_objects(type_):
+    dates = [date(1970, 1, 1), date(1969, 12, 31), None, date(2005, 3, 4)]
+    array = na.Array(dates, type_)
+    assert array.to_pylist() == dates
+
+    # Integers in storage units are still accepted, also mixed with dates
+    one_day = 1 if type_.type == na.Type.DATE32 else 86_400_000
+    array = na.Array([one_day, date(1970, 1, 3)], type_)
+    assert array.to_pylist() == [date(1970, 1, 2), date(1970, 1, 3)]
+
+
+@pytest.mark.parametrize("type_", [na.date32(), na.date64()], ids=["date32", "date64"])
+def test_date_array_from_datetime_objects_errors(type_):
+    with pytest.raises(TypeError, match="use .date()"):
+        na.Array([datetime(1970, 1, 1)], type_)
+
+
 def test_duration_array():
     unix_epoch = date(1970, 1, 1)
     d1, d2 = date(1970, 1, 2), date(1970, 1, 3)
