@@ -197,6 +197,41 @@ def test_c_buffer_fixed_size_binary():
     assert list(buffer) == items
 
 
+@pytest.mark.parametrize(
+    "schema,items",
+    [
+        (na.float16(), [1.0, 2.0, 3.0]),
+        (na.fixed_size_binary(2), [b"aa", b"bb", b"cc"]),
+        (na.interval_day_time(), [(1, 2), (3, 4), (5, 6)]),
+        (na.interval_month_day_nano(), [(1, 2, 3), (4, 5, 6), (7, 8, 9)]),
+        (na.decimal128(10, 0), [bytes([i]) * 16 for i in range(3)]),
+        (na.decimal256(10, 0), [bytes([i]) * 32 for i in range(3)]),
+    ],
+)
+def test_c_buffer_struct_elements_slice(schema, items):
+    view = na.c_buffer(items, schema).view()
+    assert memoryview(view).readonly
+    assert list(view) == items
+    assert list(view.elements()) == items
+    assert list(na.c_buffer([], schema).view().elements()) == []
+
+    for offset in range(len(items) + 1):
+        for length in range(len(items) - offset + 1):
+            assert (
+                list(view.elements(offset, length)) == items[offset : offset + length]
+            )
+
+    for offset, length in [(-1, 1), (0, -1), (len(items), 1)]:
+        with pytest.raises(IndexError, match="do not describe a valid slice"):
+            view.elements(offset, length)
+
+    # The iterator must keep the underlying buffer alive after the view is deleted.
+    iterator = view.elements(1, 2)
+    assert next(iterator) == items[1]
+    del view
+    assert list(iterator) == items[2:]
+
+
 def test_c_buffer_builder():
     builder = CBufferBuilder()
     assert builder.size_bytes == 0
