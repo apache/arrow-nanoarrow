@@ -528,6 +528,14 @@ ArrowErrorCode ArrowSchemaSetName(struct ArrowSchema* schema, const char* name) 
   return NANOARROW_OK;
 }
 
+void ArrowSchemaSetNullability(struct ArrowSchema* schema, char nullable) {
+  if (nullable) {
+    schema->flags |= ARROW_FLAG_NULLABLE;
+  } else {
+    schema->flags &= ~((int64_t)ARROW_FLAG_NULLABLE);
+  }
+}
+
 ArrowErrorCode ArrowSchemaSetMetadata(struct ArrowSchema* schema, const char* metadata) {
   if (schema->metadata != NULL) {
     ArrowFree((void*)schema->metadata);

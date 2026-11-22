@@ -82,6 +82,8 @@
 #define ArrowSchemaDeepCopy NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowSchemaDeepCopy)
 #define ArrowSchemaSetFormat NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowSchemaSetFormat)
 #define ArrowSchemaSetName NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowSchemaSetName)
+#define ArrowSchemaSetNullability \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowSchemaSetNullability)
 #define ArrowSchemaSetMetadata \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowSchemaSetMetadata)
 #define ArrowSchemaAllocateChildren \
@@ -549,6 +551,12 @@ NANOARROW_DLL ArrowErrorCode ArrowSchemaSetFormat(struct ArrowSchema* schema,
 /// ArrowSchemaDeepCopy().
 NANOARROW_DLL ArrowErrorCode ArrowSchemaSetName(struct ArrowSchema* schema,
                                                 const char* name);
+
+/// \brief Set whether a schema allows null values
+///
+/// Set ARROW_FLAG_NULLABLE when nullable is nonzero and clear it otherwise.
+/// Other flags and the nullability of children and dictionary values are preserved.
+NANOARROW_DLL void ArrowSchemaSetNullability(struct ArrowSchema* schema, char nullable);
 
 /// \brief Copy metadata into schema->metadata
 ///
