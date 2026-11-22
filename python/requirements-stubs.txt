@@ -16,6 +16,6 @@
 # under the License.
 
 # Keep Black in sync with .pre-commit-config.yaml.
-black==22.3.0
+black==26.10.1
 Cython==3.3.1
 mypy==2.4.1
