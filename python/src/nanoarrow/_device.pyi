@@ -24,6 +24,7 @@ class CSharedSyncEvent:
     @classmethod
     def __init__(cls, *args, **kwargs) -> None:
         """Create and return a new object.  See help(type) for accurate signature."""
+
     def __reduce__(self): ...
 
 class Device:
@@ -41,20 +42,27 @@ class Device:
     @classmethod
     def __init__(cls, *args, **kwargs) -> None:
         """Create and return a new object.  See help(type) for accurate signature."""
+
     @staticmethod
     def resolve(device_type, device_id): ...
     def __eq__(self, other: object) -> bool:
         """Return self==value."""
+
     def __ge__(self, other: object) -> bool:
         """Return self>=value."""
+
     def __gt__(self, other: object) -> bool:
         """Return self>value."""
+
     def __le__(self, other: object) -> bool:
         """Return self<=value."""
+
     def __lt__(self, other: object) -> bool:
         """Return self<value."""
+
     def __ne__(self, other: object) -> bool:
         """Return self!=value."""
+
     def __reduce__(self): ...
 
 class DeviceType(_Enum):

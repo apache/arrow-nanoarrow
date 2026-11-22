@@ -179,13 +179,10 @@ class NanoarrowPxdGenerator(PxdGenerator):
         return content
 
     def _pxd_header(self):
-        return (
-            super()._pxd_header()
-            + """
+        return super()._pxd_header() + """
     from libc.stdint cimport int8_t, uint8_t, int16_t, uint16_t
     from libc.stdint cimport int32_t, uint32_t, int64_t, uint64_t
     """
-        )
 
     def _write_defs(self, output):
         output.write(b"\n")
@@ -206,13 +203,10 @@ class NanoarrowDevicePxdGenerator(PxdGenerator):
         return []
 
     def _pxd_header(self):
-        return (
-            super()._pxd_header()
-            + """
+        return super()._pxd_header() + """
     from libc.stdint cimport int32_t, int64_t
     from nanoarrow_c cimport *
     """
-        )
 
     def _write_defs(self, output):
         output.write(b"\n")

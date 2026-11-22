@@ -47,14 +47,18 @@ class CArray:
     @classmethod
     def __init__(cls, *args, **kwargs) -> None:
         """Create and return a new object.  See help(type) for accurate signature."""
+
     @staticmethod
     def allocate(schema) -> CArray:
         """Allocate a released ArrowArray"""
+
     def child(self, i): ...
     def is_valid(self) -> bool:
         """Check for a non-null and non-released underlying ArrowArray"""
+
     def view(self) -> CArrayView:
         """Allocate a :class:`CArrayView` to access the buffers of this array"""
+
     def __arrow_c_array__(self, requested_schema=...):
         """
         Get a pair of PyCapsules containing a C ArrowArray representation of the object.
@@ -71,10 +75,13 @@ class CArray:
             A pair of PyCapsules containing a C ArrowSchema and ArrowArray,
             respectively.
         """
+
     def __getitem__(self, index):
         """Return self[key]."""
+
     def __len__(self) -> int:
         """Return len(self)."""
+
     def __reduce__(self): ...
 
 class CArrayBuilder:
@@ -87,6 +94,7 @@ class CArrayBuilder:
     @classmethod
     def __init__(cls, *args, **kwargs) -> None:
         """Create and return a new object.  See help(type) for accurate signature."""
+
     @staticmethod
     def allocate(device=...):
         """Create a CArrayBuilder
@@ -95,6 +103,7 @@ class CArrayBuilder:
         ArrowArray private_data/release callback implementation. This should
         usually be followed by :meth:`init_from_type` or :meth:`init_from_schema`.
         """
+
     def append_bytes(self, obj: Iterable[object]) -> CArrayBuilder: ...
     def append_strings(self, obj: Iterable[str | None]) -> CArrayBuilder: ...
     def ensure_buffers(self, n_buffers) -> CArrayBuilder: ...
@@ -112,21 +121,25 @@ class CArrayBuilder:
             validation if possible. Validation may not be possible if children
             were set that were not created by nanoarrow.
         """
+
     def finish_device(self):
         """Finish building this array and export to an ArrowDeviceArray
 
         Calls :meth:`finish`, propagating device information into an ArrowDeviceArray.
         """
+
     def init_from_schema(self, schema) -> CArrayBuilder: ...
     def init_from_type(self, type_id) -> CArrayBuilder: ...
     def is_empty(self) -> bool:
         """Check if any items have been appended to this builder"""
+
     def resolve_null_count(self) -> CArrayBuilder:
         """Ensure the output null count is synchronized with existing buffers
 
         Note that this will not attempt to access non-CPU buffers such that
         :attr:`null_count` might still be -1 after calling this method.
         """
+
     def set_buffer(self, i, buffer, move=...) -> CArrayBuilder:
         """Set an ArrowArray buffer
 
@@ -138,6 +151,7 @@ class CArrayBuilder:
         is False (the default), this function will a make a shallow copy via another
         layer of Python object wrapping.
         """
+
     def set_child(self, i, c_array, move=...) -> CArrayBuilder:
         """Set an ArrowArray child
 
@@ -146,6 +160,7 @@ class CArrayBuilder:
         must have been initialized before this call by initializing this
         builder with a schema containing the correct number of children.
         """
+
     def set_length(self, length) -> CArrayBuilder: ...
     def set_null_count(self, null_count) -> CArrayBuilder: ...
     def set_offset(self, offset) -> CArrayBuilder: ...
@@ -155,6 +170,7 @@ class CArrayBuilder:
         Calling this method is required to produce a valid array prior to calling
         :meth:`append_strings` or `append_bytes`.
         """
+
     def __reduce__(self): ...
 
 class CArrayView:
@@ -181,6 +197,7 @@ class CArrayView:
     @classmethod
     def __init__(cls, *args, **kwargs) -> None:
         """Create and return a new object.  See help(type) for accurate signature."""
+
     def buffer(self, i): ...
     def buffer_type(self, i): ...
     def child(self, i): ...
@@ -190,6 +207,7 @@ class CArrayView:
     def from_schema(schema): ...
     def __len__(self) -> int:
         """Return len(self)."""
+
     def __reduce__(self): ...
 
 class CDeviceArray:
@@ -210,6 +228,7 @@ class CDeviceArray:
     @classmethod
     def __init__(cls, *args, **kwargs) -> None:
         """Create and return a new object.  See help(type) for accurate signature."""
+
     def view(self) -> CArrayView: ...
     def __arrow_c_array__(self, requested_schema=...): ...
     def __arrow_c_device_array__(self, requested_schema=...): ...

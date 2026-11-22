@@ -21,6 +21,7 @@ class CIpcInputStream:
     @classmethod
     def __init__(cls, *args, **kwargs) -> None:
         """Create and return a new object.  See help(type) for accurate signature."""
+
     @staticmethod
     def from_readable(obj, close_obj=...): ...
     def is_valid(self): ...
@@ -31,6 +32,7 @@ class CIpcOutputStream:
     @classmethod
     def __init__(cls, *args, **kwargs) -> None:
         """Create and return a new object.  See help(type) for accurate signature."""
+
     @staticmethod
     def from_writable(obj, close_obj=...): ...
     def is_valid(self): ...
@@ -41,6 +43,7 @@ class CIpcWriter:
     @classmethod
     def __init__(cls, *args, **kwargs) -> None:
         """Create and return a new object.  See help(type) for accurate signature."""
+
     def is_valid(self): ...
     def release(self): ...
     def write_array_stream(self, stream_addr): ...
@@ -55,11 +58,14 @@ class PyStreamPrivate:
     @classmethod
     def __init__(cls, *args, **kwargs) -> None:
         """Create and return a new object.  See help(type) for accurate signature."""
+
     def set_buffer(self, addr, size_bytes): ...
     def __buffer__(self, *args, **kwargs):
         """Return a buffer object that exposes the underlying memory of the object."""
+
     def __len__(self) -> int:
         """Return len(self)."""
+
     def __reduce__(self): ...
     def __release_buffer__(self, *args, **kwargs):
         """Release the buffer object that exposes the underlying memory of the object."""

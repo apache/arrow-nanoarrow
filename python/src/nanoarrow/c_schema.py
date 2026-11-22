@@ -25,7 +25,6 @@ in Cython and their scope is limited to lifecycle management and member access a
 Python objects.
 """
 
-
 from nanoarrow._schema import CSchema, CSchemaView
 from nanoarrow._utils import obj_is_capsule
 

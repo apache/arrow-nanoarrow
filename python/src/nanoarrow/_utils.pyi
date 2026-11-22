@@ -27,6 +27,7 @@ class Error:
     @classmethod
     def __init__(cls, *args, **kwargs) -> None:
         """Create and return a new object.  See help(type) for accurate signature."""
+
     def __reduce__(self): ...
 
 class NanoarrowException(RuntimeError):
