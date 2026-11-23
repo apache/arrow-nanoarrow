@@ -169,6 +169,24 @@ inline void release_pointer(struct ArrowIpcInputStream* data) {
 }
 
 template <>
+inline void init_pointer(struct ArrowIpcRandomAccessInput* data) {
+  data->release = nullptr;
+}
+
+template <>
+inline void move_pointer(struct ArrowIpcRandomAccessInput* src,
+                         struct ArrowIpcRandomAccessInput* dst) {
+  ArrowIpcRandomAccessInputMove(src, dst);
+}
+
+template <>
+inline void release_pointer(struct ArrowIpcRandomAccessInput* data) {
+  if (data->release != nullptr) {
+    data->release(data);
+  }
+}
+
+template <>
 inline void init_pointer(struct ArrowIpcOutputStream* data) {
   data->release = nullptr;
 }
@@ -240,6 +258,9 @@ using UniqueCompressor = internal::Unique<struct ArrowIpcCompressor>;
 
 /// \brief Class wrapping a unique struct ArrowIpcInputStream
 using UniqueInputStream = internal::Unique<struct ArrowIpcInputStream>;
+
+/// \brief Class wrapping a unique struct ArrowIpcRandomAccessInput
+using UniqueRandomAccessInput = internal::Unique<struct ArrowIpcRandomAccessInput>;
 
 /// \brief Class wrapping a unique struct ArrowIpcOutputStream
 using UniqueOutputStream = internal::Unique<struct ArrowIpcOutputStream>;
