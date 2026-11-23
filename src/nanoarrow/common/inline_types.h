@@ -343,6 +343,14 @@ static inline size_t _ArrowInt64ToSizeT(int64_t x) {
   return (size_t)x;
 }
 
+static inline void ArrowSchemaSetNullability(struct ArrowSchema* schema, char nullable) {
+  if (nullable) {
+    schema->flags |= ARROW_FLAG_NULLABLE;
+  } else {
+    schema->flags &= ~((int64_t)ARROW_FLAG_NULLABLE);
+  }
+}
+
 static inline void ArrowSchemaMove(struct ArrowSchema* src, struct ArrowSchema* dst) {
   NANOARROW_DCHECK(src != NULL);
   NANOARROW_DCHECK(dst != NULL);
