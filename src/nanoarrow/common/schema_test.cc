@@ -562,6 +562,20 @@ TEST(SchemaTest, SchemaInitUnion) {
 #endif
 }
 
+TEST(SchemaTest, SchemaSetNullability) {
+  nanoarrow::UniqueSchema schema;
+  ASSERT_EQ(ArrowSchemaInitFromType(schema.get(), NANOARROW_TYPE_INT32), NANOARROW_OK);
+  schema->flags |= ARROW_FLAG_DICTIONARY_ORDERED;
+
+  ArrowSchemaSetNullability(schema.get(), 0);
+  EXPECT_EQ(schema->flags, ARROW_FLAG_DICTIONARY_ORDERED);
+  ArrowSchemaSetNullability(schema.get(), 0);
+  EXPECT_EQ(schema->flags, ARROW_FLAG_DICTIONARY_ORDERED);
+
+  ArrowSchemaSetNullability(schema.get(), 1);
+  EXPECT_EQ(schema->flags, ARROW_FLAG_DICTIONARY_ORDERED | ARROW_FLAG_NULLABLE);
+}
+
 TEST(SchemaTest, SchemaSetFormat) {
   struct ArrowSchema schema;
   ASSERT_EQ(ArrowSchemaInitFromType(&schema, NANOARROW_TYPE_UNINITIALIZED), NANOARROW_OK);
