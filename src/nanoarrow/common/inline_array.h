@@ -1139,17 +1139,22 @@ static struct ArrowBufferView ArrowArrayViewGetBytesFromViewArrayUnsafe(
     const struct ArrowArrayView* array_view, int64_t i) {
   const uint8_t* bv_data =
       array_view->buffer_views[1].data.as_uint8 + i * sizeof(union ArrowBinaryView);
-  union ArrowBinaryView bv;
-  memcpy(&bv, bv_data, sizeof(bv));
-  struct ArrowBufferView out = {{NULL}, bv.inlined.size};
-  if (bv.inlined.size <= NANOARROW_BINARY_VIEW_INLINE_SIZE) {
-    // Point to the inlined bytes in the buffer, not in the local copy
+  // Copy only the size first, so inlined values do not load the whole view
+  int32_t size;
+  memcpy(&size, bv_data, sizeof(size));
+  struct ArrowBufferView out = {{NULL}, size};
+  if (size <= NANOARROW_BINARY_VIEW_INLINE_SIZE) {
     out.data.as_uint8 = bv_data + offsetof(struct ArrowBinaryViewInlined, data);
     return out;
   }
 
-  out.data.data = array_view->variadic_buffers[bv.ref.buffer_index];
-  out.data.as_uint8 += bv.ref.offset;
+  int32_t buffer_index;
+  int32_t offset;
+  memcpy(&buffer_index, bv_data + offsetof(struct ArrowBinaryViewRef, buffer_index),
+         sizeof(buffer_index));
+  memcpy(&offset, bv_data + offsetof(struct ArrowBinaryViewRef, offset), sizeof(offset));
+  out.data.data = array_view->variadic_buffers[buffer_index];
+  out.data.as_uint8 += offset;
   return out;
 }
 
