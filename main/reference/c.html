@@ -512,6 +512,13 @@
 </dd></dl>
 
 <dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv425ArrowSchemaSetNullabilityP11ArrowSchemac">
+<span id="_CPPv325ArrowSchemaSetNullabilityP11ArrowSchemac"></span><span id="_CPPv225ArrowSchemaSetNullabilityP11ArrowSchemac"></span><span id="ArrowSchemaSetNullability__ArrowSchemaP.c"></span><span class="target" id="group__nanoarrow-schema_1ga5b21f60acbda8a06d9bc0e8d79265598"></span><span class="k"><span class="pre">static</span></span><span class="w"> </span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">ArrowSchemaSetNullability</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv411ArrowSchema" title="ArrowSchema"><span class="n"><span class="pre">ArrowSchema</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">schema</span></span>, <span class="kt"><span class="pre">char</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">nullable</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv425ArrowSchemaSetNullabilityP11ArrowSchemac" title="Link to this definition">#</a><br /></dt>
+<dd><p>Set whether a schema allows null values. </p>
+<p>Set ARROW_FLAG_NULLABLE when nullable is nonzero and clear it otherwise. Other flags and the nullability of children and dictionary values are preserved. </p>
+</dd></dl>
+
+<dl class="cpp function">
 <dt class="sig sig-object cpp">
 <span class="target" id="group__nanoarrow-schema_1ga1262f80405aae6863bfb2d16175a0796"></span><span class="sig-name descname"><span class="pre">NANOARROW_DLL</span> <span class="pre">ArrowErrorCode</span> <span class="pre">ArrowSchemaSetMetadata</span> <span class="pre">(struct</span> <span class="pre">ArrowSchema</span> <span class="pre">*schema,</span> <span class="pre">const</span> <span class="pre">char</span> <span class="pre">*metadata)</span></span></dt>
 <dd><p>Copy metadata into schema-&gt;metadata. </p>
@@ -2722,7 +2729,10 @@
   </div>
   <nav id="pst-page-toc-nav" class="page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="pst-show_toc_level nav section-nav flex-column">
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#creating-schemas">Creating schemas</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#creating-schemas">Creating schemas</a><ul class="pst-show_toc_level nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv425ArrowSchemaSetNullabilityP11ArrowSchemac"><code class="docutils literal notranslate"><span class="pre">ArrowSchemaSetNullability()</span></code></a></li>
+</ul>
+</li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#reading-schemas">Reading schemas</a><ul class="pst-show_toc_level nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#c.NANOARROW_FLAG_ALL_SUPPORTED"><code class="docutils literal notranslate"><span class="pre">NANOARROW_FLAG_ALL_SUPPORTED</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#_CPPv415ArrowSchemaView"><code class="docutils literal notranslate"><span class="pre">ArrowSchemaView</span></code></a><ul class="nav section-nav flex-column">
