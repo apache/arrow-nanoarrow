@@ -23,15 +23,24 @@ readme = "README.md"
 description = "Python bindings to the nanoarrow C library"
 authors = [{name = "Apache Arrow Developers", email = "dev@arrow.apache.org"}]
 maintainers = [{name = "Apache Arrow Developers", email = "dev@arrow.apache.org"}]
-license = {text = "Apache-2.0"}
+license = "Apache-2.0"
 requires-python = ">=3.9"
 
-[project.optional-dependencies]
-test = ["pyarrow", "python-dateutil", "pytest", "numpy"]
-verify = ["python-dateutil", "pytest", "numpy"]
+[dependency-groups]
+test-base = ["python-dateutil", "pytest"]
+test = [
+    { include-group = "test-base" },
+    "numpy",
+    "pyarrow",
+]
+verify = [
+    { include-group = "test-base" },
+    "numpy",
+]
 
 [project.urls]
 Homepage = "https://arrow.apache.org"
+Documentation = "https://arrow.apache.org/nanoarrow"
 Repository = "https://github.com/apache/arrow-nanoarrow"
 Issues = "https://github.com/apache/arrow-nanoarrow/issues"
 Changelog = "https://github.com/apache/arrow-nanoarrow/blob/main/CHANGELOG.md"
@@ -39,7 +48,7 @@ Changelog = "https://github.com/apache/arrow-nanoarrow/blob/main/CHANGELOG.md"
 [build-system]
 requires = [
     "meson>=1.3.0",
-    "meson-python",
+    "meson-python>=0.18.0",
     "Cython"
 ]
 build-backend = "mesonpy"

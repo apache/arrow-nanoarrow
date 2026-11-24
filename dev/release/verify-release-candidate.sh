@@ -324,7 +324,7 @@ test_python() {
   activate_or_create_venv
 
   show_info "Installing build utilities"
-  python -m pip install --upgrade build
+  python -m pip install --upgrade build pip
 
   pushd "${NANOARROW_SOURCE_DIR}/python"
 
@@ -343,7 +343,7 @@ test_python() {
   fi
 
   show_info "Installing Python package"
-  python -m pip install --force-reinstall "${PYTHON_WHEEL_PATH}[verify]"
+  python -m pip install --force-reinstall "${PYTHON_WHEEL_PATH}" --group verify
 
   show_info "Testing wheel"
   python -m pytest -vv
