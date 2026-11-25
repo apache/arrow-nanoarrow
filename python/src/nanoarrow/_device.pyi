@@ -15,67 +15,78 @@
 # specific language governing permissions and limitations
 # under the License.
 
-import _cython_3_0_11
-import enum
 from _typeshed import Incomplete
-from typing import Callable, ClassVar
+from enum import Enum as _Enum
 
 DEVICE_CPU: Device
-__reduce_cython__: _cython_3_0_11.cython_function_or_method
-__setstate_cython__: _cython_3_0_11.cython_function_or_method
-__test__: dict
 
 class CSharedSyncEvent:
-    __pyx_vtable__: ClassVar[PyCapsule] = ...
     @classmethod
     def __init__(cls, *args, **kwargs) -> None:
         """Create and return a new object.  See help(type) for accurate signature."""
+
     def __reduce__(self): ...
 
 class Device:
+    """ArrowDevice wrapper
+
+    The ArrowDevice structure is a nanoarrow internal struct (i.e.,
+    not ABI stable) that contains callbacks for device operations
+    beyond its type and identifier (e.g., copy buffers to or from
+    a device).
+    """
+
     device_id: Incomplete
     device_type: Incomplete
     device_type_id: Incomplete
     @classmethod
     def __init__(cls, *args, **kwargs) -> None:
         """Create and return a new object.  See help(type) for accurate signature."""
+
     @staticmethod
-    def resolve(*args, **kwargs): ...
+    def resolve(device_type, device_id): ...
     def __eq__(self, other: object) -> bool:
         """Return self==value."""
+
     def __ge__(self, other: object) -> bool:
         """Return self>=value."""
+
     def __gt__(self, other: object) -> bool:
         """Return self>value."""
+
     def __le__(self, other: object) -> bool:
         """Return self<=value."""
+
     def __lt__(self, other: object) -> bool:
         """Return self<value."""
+
     def __ne__(self, other: object) -> bool:
         """Return self!=value."""
+
     def __reduce__(self): ...
 
-class DeviceType(enum.Enum):
-    __new__: ClassVar[Callable] = ...
-    CPU: ClassVar[DeviceType] = ...
-    CUDA: ClassVar[DeviceType] = ...
-    CUDA_HOST: ClassVar[DeviceType] = ...
-    CUDA_MANAGED: ClassVar[DeviceType] = ...
-    EXT_DEV: ClassVar[DeviceType] = ...
-    HEXAGON: ClassVar[DeviceType] = ...
-    METAL: ClassVar[DeviceType] = ...
-    ONEAPI: ClassVar[DeviceType] = ...
-    OPENCL: ClassVar[DeviceType] = ...
-    ROCM: ClassVar[DeviceType] = ...
-    ROCM_HOST: ClassVar[DeviceType] = ...
-    VPI: ClassVar[DeviceType] = ...
-    VULKAN: ClassVar[DeviceType] = ...
-    WEBGPU: ClassVar[DeviceType] = ...
-    _generate_next_value_: ClassVar[Callable] = ...
-    _member_map_: ClassVar[dict] = ...
-    _member_names_: ClassVar[list] = ...
-    _member_type_: ClassVar[type[object]] = ...
-    _unhashable_values_: ClassVar[list] = ...
-    _use_args_: ClassVar[bool] = ...
-    _value2member_map_: ClassVar[dict] = ...
-    _value_repr_: ClassVar[None] = ...
+class DeviceType(_Enum):
+    """
+    An enumerator providing access to the device constant values
+    defined in the Arrow C Device interface. Unlike the other enum
+    accessors, this Python Enum is defined in Cython so that we can use
+    the bulit-in functionality to do better printing of device identifiers
+    for classes defined in Cython. Unlike the other enums, users don't
+    typically need to specify these (but would probably like them printed
+    nicely).
+    """
+
+    CPU = 1
+    CUDA = 2
+    CUDA_HOST = 3
+    OPENCL = 4
+    VULKAN = 7
+    METAL = 8
+    VPI = 9
+    ROCM = 10
+    ROCM_HOST = 11
+    EXT_DEV = 12
+    CUDA_MANAGED = 13
+    ONEAPI = 14
+    WEBGPU = 15
+    HEXAGON = 16

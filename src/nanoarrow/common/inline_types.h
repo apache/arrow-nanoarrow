@@ -265,7 +265,7 @@ static inline void ArrowErrorSetString(struct ArrowError* error, const char* src
     memcpy(error->message, src, sizeof(error->message) - 1);
     error->message[sizeof(error->message) - 1] = '\0';
   } else {
-    memcpy(error->message, src, src_len);
+    memcpy(error->message, src, (size_t)src_len);
     error->message[src_len] = '\0';
   }
 }
@@ -326,6 +326,30 @@ static inline void ArrowErrorSetString(struct ArrowError* error, const char* src
 #define NANOARROW_ASSERT_OK(EXPR) (void)(EXPR)
 #define NANOARROW_DCHECK(EXPR)
 #endif
+
+// Returns nonzero if x is a valid (non-negative) size_t value on this platform
+static inline int _ArrowInt64FitsInSizeT(int64_t x) {
+#if SIZE_MAX < INT64_MAX
+  return x >= 0 && x <= (int64_t)SIZE_MAX;
+#else
+  return x >= 0;
+#endif
+}
+
+// Convert a size or offset known to fit in size_t (e.g., the size of an existing
+// in-memory allocation). Checked in debug builds only.
+static inline size_t _ArrowInt64ToSizeT(int64_t x) {
+  NANOARROW_DCHECK(_ArrowInt64FitsInSizeT(x));
+  return (size_t)x;
+}
+
+static inline void ArrowSchemaSetNullability(struct ArrowSchema* schema, char nullable) {
+  if (nullable) {
+    schema->flags |= ARROW_FLAG_NULLABLE;
+  } else {
+    schema->flags &= ~((int64_t)ARROW_FLAG_NULLABLE);
+  }
+}
 
 static inline void ArrowSchemaMove(struct ArrowSchema* src, struct ArrowSchema* dst) {
   NANOARROW_DCHECK(src != NULL);
@@ -714,17 +738,63 @@ struct ArrowBufferView {
   int64_t size_bytes;
 };
 
+// Read element i of a buffer that is not necessarily aligned to the element size.
+// Indexing the buffer as an array of byte arrays (instead of computing
+// i * sizeof(value)) avoids an extra multiplication in clang's inlining cost model,
+// so callers like ArrowArrayViewGetIntUnsafe() are still inlined.
 static inline int32_t ArrowBufferViewGetInt32Unsafe(const struct ArrowBufferView* view,
                                                     int64_t i) {
   int32_t value;
-  memcpy(&value, view->data.as_uint8 + i * sizeof(int32_t), sizeof(value));
+  memcpy(&value, ((const uint8_t(*)[sizeof(value)])view->data.data)[i], sizeof(value));
   return value;
 }
 
 static inline int64_t ArrowBufferViewGetInt64Unsafe(const struct ArrowBufferView* view,
                                                     int64_t i) {
   int64_t value;
-  memcpy(&value, view->data.as_uint8 + i * sizeof(int64_t), sizeof(value));
+  memcpy(&value, ((const uint8_t(*)[sizeof(value)])view->data.data)[i], sizeof(value));
+  return value;
+}
+
+static inline int16_t ArrowBufferViewGetInt16Unsafe(const struct ArrowBufferView* view,
+                                                    int64_t i) {
+  int16_t value;
+  memcpy(&value, ((const uint8_t(*)[sizeof(value)])view->data.data)[i], sizeof(value));
+  return value;
+}
+
+static inline uint16_t ArrowBufferViewGetUInt16Unsafe(const struct ArrowBufferView* view,
+                                                      int64_t i) {
+  uint16_t value;
+  memcpy(&value, ((const uint8_t(*)[sizeof(value)])view->data.data)[i], sizeof(value));
+  return value;
+}
+
+static inline uint32_t ArrowBufferViewGetUInt32Unsafe(const struct ArrowBufferView* view,
+                                                      int64_t i) {
+  uint32_t value;
+  memcpy(&value, ((const uint8_t(*)[sizeof(value)])view->data.data)[i], sizeof(value));
+  return value;
+}
+
+static inline uint64_t ArrowBufferViewGetUInt64Unsafe(const struct ArrowBufferView* view,
+                                                      int64_t i) {
+  uint64_t value;
+  memcpy(&value, ((const uint8_t(*)[sizeof(value)])view->data.data)[i], sizeof(value));
+  return value;
+}
+
+static inline float ArrowBufferViewGetFloatUnsafe(const struct ArrowBufferView* view,
+                                                  int64_t i) {
+  float value;
+  memcpy(&value, ((const uint8_t(*)[sizeof(value)])view->data.data)[i], sizeof(value));
+  return value;
+}
+
+static inline double ArrowBufferViewGetDoubleUnsafe(const struct ArrowBufferView* view,
+                                                    int64_t i) {
+  double value;
+  memcpy(&value, ((const uint8_t(*)[sizeof(value)])view->data.data)[i], sizeof(value));
   return value;
 }
 

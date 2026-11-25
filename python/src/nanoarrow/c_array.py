@@ -512,6 +512,15 @@ class ArrayFromIterableBuilder(ArrayBuilder):
 
         self._append_impl = getattr(self, method_name)
 
+        # Some types accept Python objects (e.g., datetime.date) that must be
+        # converted to their storage integer before being appended. Integers
+        # and None are passed through unchanged.
+        converter_name = _ARRAY_BUILDER_FROM_ITERABLE_CONVERTER.get(type_id)
+        if converter_name is not None:
+            convert = getattr(self, converter_name)
+            append = self._append_impl
+            self._append_impl = lambda obj: append(convert(obj))
+
     def start_building(self) -> None:
         self._c_builder.start_appending()
 
@@ -558,6 +567,24 @@ class ArrayFromIterableBuilder(ArrayBuilder):
         self._c_builder.set_null_count(0)
         self._c_builder.set_offset(0)
 
+    def _convert_dates(self, obj: Iterable) -> Iterable:
+        from datetime import date, datetime
+
+        epoch_ordinal = date(1970, 1, 1).toordinal()
+        scale = 1 if self._schema_view.type_id == _types.DATE32 else 86_400_000
+
+        for item in obj:
+            if isinstance(item, datetime):
+                msg = (
+                    f"Can't convert datetime.datetime to {self._schema_view.type}; "
+                    "use .date() to convert it to a datetime.date first"
+                )
+                raise TypeError(msg)
+            elif isinstance(item, date):
+                yield (item.toordinal() - epoch_ordinal) * scale
+            else:
+                yield item
+
     def _append_using_buffer_builder(self, obj: Iterable) -> None:
         builder = CBufferBuilder()
         builder.set_data_type(self._schema_view.type_id)
@@ -598,6 +625,11 @@ _ARRAY_BUILDER_FROM_ITERABLE_METHOD = {
     _types.DATE32: "_append_using_array",
     _types.DATE64: "_append_using_array",
     _types.DURATION: "_append_using_array",
+}
+
+_ARRAY_BUILDER_FROM_ITERABLE_CONVERTER = {
+    _types.DATE32: "_convert_dates",
+    _types.DATE64: "_convert_dates",
 }
 
 _ARRAY_BUILDER_FROM_NULLABLE_ITERABLE_METHOD = {

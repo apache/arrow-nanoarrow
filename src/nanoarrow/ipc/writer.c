@@ -123,7 +123,8 @@ static ArrowErrorCode ArrowIpcOutputStreamFileWrite(struct ArrowIpcOutputStream*
   }
 
   // Do the write
-  int64_t bytes_written = (int64_t)fwrite(buf, 1, buf_size_bytes, private_data->file_ptr);
+  int64_t bytes_written =
+      (int64_t)fwrite(buf, 1, _ArrowInt64ToSizeT(buf_size_bytes), private_data->file_ptr);
   *size_written_out = bytes_written;
 
   if (bytes_written != buf_size_bytes) {

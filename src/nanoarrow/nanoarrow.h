@@ -550,6 +550,12 @@ NANOARROW_DLL ArrowErrorCode ArrowSchemaSetFormat(struct ArrowSchema* schema,
 NANOARROW_DLL ArrowErrorCode ArrowSchemaSetName(struct ArrowSchema* schema,
                                                 const char* name);
 
+/// \brief Set whether a schema allows null values
+///
+/// Set ARROW_FLAG_NULLABLE when nullable is nonzero and clear it otherwise.
+/// Other flags and the nullability of children and dictionary values are preserved.
+static inline void ArrowSchemaSetNullability(struct ArrowSchema* schema, char nullable);
+
 /// \brief Copy metadata into schema->metadata
 ///
 /// schema must have been allocated using ArrowSchemaInitFromType() or

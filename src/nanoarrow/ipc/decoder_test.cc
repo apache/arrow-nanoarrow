@@ -371,6 +371,40 @@ TEST(NanoarrowIpcTest, NanoarrowIpcCheckHeader) {
   ArrowIpcDecoderReset(&decoder);
 }
 
+TEST(NanoarrowIpcTest, NanoarrowIpcCheckHeaderSizeOverflow) {
+  struct ArrowIpcDecoder decoder;
+  struct ArrowError error;
+
+  uint32_t int32_max_le = INT32_MAX;
+  uint32_t pre_015_max_le = INT32_MAX - 3;
+  if (ArrowIpcSystemEndianness() == NANOARROW_IPC_ENDIANNESS_BIG) {
+    int32_max_le = bswap32(int32_max_le);
+    pre_015_max_le = bswap32(pre_015_max_le);
+  }
+
+  int32_t prefix_size_bytes;
+  ArrowIpcDecoderInit(&decoder);
+
+  // A message size whose sum with the 8-byte prefix overflows int32_t
+  uint32_t continued[] = {0xFFFFFFFF, int32_max_le};
+  struct ArrowBufferView data;
+  data.data.as_uint32 = continued;
+  data.size_bytes = sizeof(continued);
+  EXPECT_EQ(ArrowIpcDecoderPeekHeader(&decoder, data, &prefix_size_bytes, &error),
+            EINVAL);
+  EXPECT_STREQ(error.message, "Expected message size <= 2147483639 but found 2147483647");
+
+  // A pre-0.15 message with only the 4-byte length prefix
+  uint32_t legacy[] = {pre_015_max_le, 0};
+  data.data.as_uint32 = legacy;
+  data.size_bytes = sizeof(legacy);
+  EXPECT_EQ(ArrowIpcDecoderPeekHeader(&decoder, data, &prefix_size_bytes, &error),
+            EINVAL);
+  EXPECT_STREQ(error.message, "Expected message size <= 2147483643 but found 2147483644");
+
+  ArrowIpcDecoderReset(&decoder);
+}
+
 TEST(NanoarrowIpcTest, NanoarrowIpcPeekSimpleSchema) {
   struct ArrowIpcDecoder decoder;
   struct ArrowError error;
@@ -1338,6 +1372,71 @@ TEST(NanoarrowIpcTest, NanoarrowIpcFooterDecodingErrors) {
   EXPECT_EQ(decoder->header_size_bytes, 0xFFFF);
 }
 
+TEST(NanoarrowIpcTest, NanoarrowIpcFooterSizeOverflow) {
+  struct ArrowError error;
+
+  nanoarrow::ipc::UniqueDecoder decoder;
+  ArrowIpcDecoderInit(decoder.get());
+
+  // A footer size close to INT32_MAX must not overflow the size computation
+  struct ArrowBufferView data = {{"\0\0\0\0\0\0"
+                                  "\xFE\xFF\xFF\x7F"
+                                  "ARROW1"},
+                                 16};
+  EXPECT_EQ(ArrowIpcDecoderVerifyFooter(decoder.get(), data, &error), ESPIPE);
+  EXPECT_STREQ(error.message,
+               "Expected >= 2147483656 bytes of data but only 16 bytes are in the "
+               "buffer");
+  EXPECT_EQ(decoder->header_size_bytes, 0x7FFFFFFE);
+
+  // DecodeFooter must not read out of bounds either
+  EXPECT_EQ(ArrowIpcDecoderPeekFooter(decoder.get(), data, &error), NANOARROW_OK)
+      << error.message;
+  EXPECT_EQ(ArrowIpcDecoderDecodeFooter(decoder.get(), data, &error), ESPIPE);
+}
+
+TEST(NanoarrowIpcTest, NanoarrowIpcVerifyRootOffsetOverflow) {
+  struct ArrowError error;
+
+  nanoarrow::ipc::UniqueDecoder decoder;
+  ArrowIpcDecoderInit(decoder.get());
+
+  // A message whose flatbuffer root offset is 0xFFFFFFFC: where size_t is 32 bits,
+  // adding the size of the offset wraps to zero, which must not pass the bounds check
+  alignas(8) const uint8_t message[] = {0xFF, 0xFF, 0xFF, 0xFF, 8, 0, 0, 0,
+                                        0xFC, 0xFF, 0xFF, 0xFF, 0, 0, 0, 0};
+  struct ArrowBufferView data;
+  data.data.as_uint8 = message;
+  data.size_bytes = sizeof(message);
+
+  EXPECT_EQ(ArrowIpcDecoderVerifyHeader(decoder.get(), data, &error), EINVAL);
+  EXPECT_STREQ(error.message,
+               "Message flatbuffer verification failed (15) table header out of range "
+               "or unaligned");
+}
+
+TEST(NanoarrowIpcTest, NanoarrowIpcFooterMissingSchema) {
+  struct ArrowError error;
+
+  nanoarrow::ipc::UniqueDecoder decoder;
+  ArrowIpcDecoderInit(decoder.get());
+
+  // A Footer flatbuffer with an empty table (no schema, no blocks), followed by
+  // the footer size (12) and the magic bytes
+  alignas(8) const uint8_t footer_bytes[] = {
+      8, 0, 0, 0, 4, 0, 4, 0, 4, 0, 0, 0, 12, 0, 0, 0, 'A', 'R', 'R', 'O', 'W', '1'};
+  struct ArrowBufferView data = {{footer_bytes}, sizeof(footer_bytes)};
+
+  EXPECT_EQ(ArrowIpcDecoderVerifyFooter(decoder.get(), data, &error), EINVAL);
+  EXPECT_STREQ(error.message, "Footer has no schema");
+
+  EXPECT_EQ(ArrowIpcDecoderPeekFooter(decoder.get(), data, &error), NANOARROW_OK)
+      << error.message;
+  error.message[0] = '\0';
+  EXPECT_EQ(ArrowIpcDecoderDecodeFooter(decoder.get(), data, &error), EINVAL);
+  EXPECT_STREQ(error.message, "Footer has no schema");
+}
+
 #if defined(NANOARROW_BUILD_TESTS_WITH_ARROW)
 class ArrowTypeParameterizedTestFixture
     : public ::testing::TestWithParam<std::shared_ptr<arrow::DataType>> {
@@ -2039,6 +2138,10 @@ INSTANTIATE_TEST_SUITE_P(
         arrow::dense_union({arrow::field("col1", arrow::int32()),
                             arrow::field("col2", arrow::utf8())},
                            {126, 127}),
+        // Run-end encoded
+        arrow::run_end_encoded(arrow::int16(), arrow::utf8()),
+        arrow::run_end_encoded(arrow::int32(), arrow::int64()),
+        arrow::run_end_encoded(arrow::int64(), arrow::float64()),
 
         // Type with nested metadata
         arrow::list(arrow::field("some_custom_name", arrow::int32(),

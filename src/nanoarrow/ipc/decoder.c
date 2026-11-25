@@ -721,7 +721,7 @@ static ArrowErrorCode ArrowIpcDecoderVisitMetadata(
   int64_t n_pairs = ns(KeyValue_vec_len(kv_vec));
 
   for (int64_t i = 0; i < n_pairs; i++) {
-    ns(KeyValue_table_t) kv = ns(KeyValue_vec_at(kv_vec, i));
+    ns(KeyValue_table_t) kv = ns(KeyValue_vec_at(kv_vec, _ArrowInt64ToSizeT(i)));
     flatbuffers_string_t key = ns(KeyValue_key(kv));
     flatbuffers_string_t value = ns(KeyValue_value(kv));
 
@@ -1168,7 +1168,7 @@ static int ArrowIpcDecoderSetTypeUnion(struct ArrowSchema* schema,
 
       for (int64_t i = 1; i < n_type_ids; i++) {
         n_chars = snprintf(format_cursor, format_out_size, ",%" PRId32,
-                           flatbuffers_int32_vec_at(type_ids, i));
+                           flatbuffers_int32_vec_at(type_ids, _ArrowInt64ToSizeT(i)));
         format_cursor += n_chars;
         format_out_size -= n_chars;
 
@@ -1201,6 +1201,22 @@ static int ArrowIpcDecoderSetTypeUnion(struct ArrowSchema* schema,
   }
 
   return ArrowIpcDecoderSetTypeSimpleNested(schema, union_types_str, error);
+}
+
+static int ArrowIpcDecoderSetTypeRunEndEncoded(struct ArrowSchema* schema,
+                                               int64_t n_children,
+                                               struct ArrowError* error) {
+  // The RunEndEncoded type table has no parameters: the run ends and values
+  // types are carried by its two children (run_ends, then values)
+  if (n_children != 2) {
+    ArrowErrorSet(error,
+                  "Expected RunEndEncoded field to have exactly two children but found "
+                  "%" PRId64,
+                  n_children);
+    return EINVAL;
+  }
+
+  return ArrowIpcDecoderSetTypeSimpleNested(schema, "+r", error);
 }
 
 static int ArrowIpcDecoderSetType(struct ArrowSchema* schema, ns(Field_table_t) field,
@@ -1266,8 +1282,7 @@ static int ArrowIpcDecoderSetType(struct ArrowSchema* schema, ns(Field_table_t) 
     case ns(Type_Union):
       return ArrowIpcDecoderSetTypeUnion(schema, type, n_children, error);
     case ns(Type_RunEndEncoded):
-      ArrowErrorSet(error, "RunEndEncoded not yet supported in IPC reader");
-      return ENOTSUP;
+      return ArrowIpcDecoderSetTypeRunEndEncoded(schema, n_children, error);
     default:
       ArrowErrorSet(error, "Unrecognized Field type with value %d", type_type);
       return EINVAL;
@@ -1417,7 +1432,7 @@ static int ArrowIpcDecoderSetChildren(struct ArrowSchema* schema, ns(Field_vec_t
   int64_t n_fields = ns(Schema_vec_len(fields));
 
   for (int64_t i = 0; i < n_fields; i++) {
-    ns(Field_table_t) field = ns(Field_vec_at(fields, i));
+    ns(Field_table_t) field = ns(Field_vec_at(fields, _ArrowInt64ToSizeT(i)));
     NANOARROW_RETURN_NOT_OK(
         ArrowIpcDecoderSetField(schema->children[i], field, dictionaries, error));
   }
@@ -1449,7 +1464,7 @@ static int ArrowIpcDecoderDecodeSchemaHeader(struct ArrowIpcDecoder* decoder,
   decoder->feature_flags = 0;
 
   for (int64_t i = 0; i < n_features; i++) {
-    ns(Feature_enum_t) feature = ns(Feature_vec_at(features, i));
+    ns(Feature_enum_t) feature = ns(Feature_vec_at(features, _ArrowInt64ToSizeT(i)));
     switch (feature) {
       case ns(Feature_COMPRESSED_BODY):
         decoder->feature_flags |= NANOARROW_IPC_FEATURE_COMPRESSED_BODY;
@@ -1612,14 +1627,21 @@ static inline int ArrowIpcDecoderReadHeaderPrefix(struct ArrowIpcDecoder* decode
     length = ArrowIpcReadInt32LE(data_mut, swap_endian);
     *prefix_size_bytes = sizeof(continuation) + sizeof(length);
   }
-  decoder->header_size_bytes = *prefix_size_bytes + length;
-
   if (length < 0) {
     ArrowErrorSet(error,
                   "Expected message size > 0 but found message size of %" PRId32 " bytes",
                   length);
     return EINVAL;
   }
+
+  // The prefix and the message size must together fit in header_size_bytes
+  if (length > INT32_MAX - *prefix_size_bytes) {
+    ArrowErrorSet(error, "Expected message size <= %" PRId32 " but found %" PRId32,
+                  INT32_MAX - *prefix_size_bytes, length);
+    return EINVAL;
+  }
+
+  decoder->header_size_bytes = *prefix_size_bytes + length;
 
   if (length == 0) {
     ArrowErrorSet(error, "End of Arrow stream");
@@ -1728,11 +1750,12 @@ ArrowErrorCode ArrowIpcDecoderVerifyFooter(struct ArrowIpcDecoder* decoder,
 
   // Check that data contains at least the entire footer (return ESPIPE to signal
   // that reading more data may help).
-  int32_t footer_and_size_and_magic_size =
-      decoder->header_size_bytes + sizeof(int32_t) + (int)strlen(NANOARROW_IPC_MAGIC);
+  int64_t footer_and_size_and_magic_size = (int64_t)decoder->header_size_bytes +
+                                           (int64_t)sizeof(int32_t) +
+                                           (int64_t)strlen(NANOARROW_IPC_MAGIC);
   if (data.size_bytes < footer_and_size_and_magic_size) {
     ArrowErrorSet(error,
-                  "Expected >= %d bytes of data but only %" PRId64
+                  "Expected >= %" PRId64 " bytes of data but only %" PRId64
                   " bytes are in the buffer",
                   footer_and_size_and_magic_size, data.size_bytes);
     return ESPIPE;
@@ -1938,11 +1961,26 @@ ArrowErrorCode ArrowIpcDecoderDecodeFooter(struct ArrowIpcDecoder* decoder,
   struct ArrowIpcDecoderPrivate* private_data =
       (struct ArrowIpcDecoderPrivate*)decoder->private_data;
 
-  int32_t footer_and_size_and_magic_size =
-      decoder->header_size_bytes + sizeof(int32_t) + (int)strlen(NANOARROW_IPC_MAGIC);
+  // Check that data contains at least the entire footer (return ESPIPE to signal
+  // that reading more data may help).
+  int64_t footer_and_size_and_magic_size = (int64_t)decoder->header_size_bytes +
+                                           (int64_t)sizeof(int32_t) +
+                                           (int64_t)strlen(NANOARROW_IPC_MAGIC);
+  if (data.size_bytes < footer_and_size_and_magic_size) {
+    ArrowErrorSet(error,
+                  "Expected >= %" PRId64 " bytes of data but only %" PRId64
+                  " bytes are in the buffer",
+                  footer_and_size_and_magic_size, data.size_bytes);
+    return ESPIPE;
+  }
+
   const uint8_t* footer_data =
       data.data.as_uint8 + data.size_bytes - footer_and_size_and_magic_size;
   ns(Footer_table_t) footer = ns(Footer_as_root(footer_data));
+  if (ns(Footer_schema(footer)) == NULL) {
+    ArrowErrorSet(error, "Footer has no schema");
+    return EINVAL;
+  }
 
   NANOARROW_RETURN_NOT_OK(
       ArrowIpcDecoderDecodeSchemaHeader(decoder, ns(Footer_schema(footer)), error));
@@ -2086,7 +2124,8 @@ ArrowErrorCode ArrowIpcDecoderSetSchemaWithDictionaries(
     ArrowErrorSet(error, "Failed to allocate decoder->fields");
     return ENOMEM;
   }
-  memset(private_data->fields, 0, private_data->n_fields * sizeof(struct ArrowIpcField));
+  memset(private_data->fields, 0,
+         _ArrowInt64ToSizeT(private_data->n_fields) * sizeof(struct ArrowIpcField));
 
   // Init field information and calculate starting buffer offset for each
   int64_t field_i = 0;

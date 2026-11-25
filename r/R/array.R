@@ -87,6 +87,10 @@ str.nanoarrow_array <- function(object, ...) {
     # line of the output ("List of 6")
     info <- nanoarrow_array_proxy_safe(object)
     raw_str_output <- utils::capture.output(str(info, ...))
+    # R < 4.7 omitted the space between a list label and an object whose
+    # str() method handled its own output. Normalize to the current format so
+    # array printing is consistent across supported R versions.
+    raw_str_output <- sub("(?<=\\s):(?=\\S)", ": ", raw_str_output, perl = TRUE)
     cat(paste0(raw_str_output[-1], collapse = "\n"))
     cat("\n")
   }

@@ -162,7 +162,8 @@ jobs:
           NANOARROW_PYTHON_CUDA_HOME: "/usr/local/cuda"
         run: |
           cd python
-          python3 -m pip install ".[test]" -vv
+          python3 -m pip install -U pip
+          python3 -m pip install . --group test -vv
           python3 -m pip install cupy-cuda12x
 
       - name: Test Python bindings with CUDA

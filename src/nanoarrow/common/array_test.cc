@@ -20,6 +20,7 @@
 #include <cmath>
 #include <cstdint>
 #include <cstring>
+#include <memory>
 #include <thread>
 
 #if defined(NANOARROW_BUILD_TESTS_WITH_ARROW)
@@ -427,12 +428,15 @@ TEST(ArrayTest, ArrayTestFinishBuildingEmptyArrayOffsets) {
         << error.message;
     ASSERT_NE(array->buffers[1], nullptr);
     EXPECT_EQ(ArrowArrayBuffer(array.get(), 1)->size_bytes, test_case.offset_size);
-    int64_t first_offset = -1;
-    memcpy(&first_offset, array->buffers[1], test_case.offset_size);
     if (test_case.offset_size == 4) {
-      first_offset = static_cast<int32_t>(first_offset);
+      int32_t first_offset = -1;
+      memcpy(&first_offset, array->buffers[1], sizeof(first_offset));
+      EXPECT_EQ(first_offset, 0);
+    } else {
+      int64_t first_offset = -1;
+      memcpy(&first_offset, array->buffers[1], sizeof(first_offset));
+      EXPECT_EQ(first_offset, 0);
     }
-    EXPECT_EQ(first_offset, 0);
   }
 }
 
@@ -2839,6 +2843,178 @@ TEST(ArrayTest, ArrayViewTestMove) {
   ArrowArrayViewReset(&array_view2);
 }
 
+TEST(ArrayTest, ArrayViewTestShortOffsetsBuffer) {
+  // A zero-length array passes minimal validation with an offsets buffer that is
+  // too short to hold one offset; default validation must not read an offset from it
+  struct ArrowError error;
+  for (enum ArrowType type : {NANOARROW_TYPE_STRING, NANOARROW_TYPE_LARGE_STRING,
+                              NANOARROW_TYPE_LIST, NANOARROW_TYPE_LARGE_LIST}) {
+    nanoarrow::UniqueSchema schema;
+    ASSERT_EQ(ArrowSchemaInitFromType(schema.get(), type), NANOARROW_OK);
+    if (type == NANOARROW_TYPE_LIST || type == NANOARROW_TYPE_LARGE_LIST) {
+      ASSERT_EQ(ArrowSchemaSetType(schema->children[0], NANOARROW_TYPE_INT32),
+                NANOARROW_OK);
+    }
+
+    nanoarrow::UniqueArrayView array_view;
+    ASSERT_EQ(ArrowArrayViewInitFromSchema(array_view.get(), schema.get(), &error),
+              NANOARROW_OK);
+    ArrowArrayViewSetLength(array_view.get(), 0);
+
+    // One byte short of a single offset, in a heap buffer of exactly that size
+    int64_t offset_bytes =
+        ArrowArrayViewGetBufferElementSizeBits(array_view.get(), 1) / 8;
+    std::unique_ptr<uint8_t[]> offsets(new uint8_t[offset_bytes - 1]());
+    array_view->buffer_views[1].data.as_uint8 = offsets.get();
+    array_view->buffer_views[1].size_bytes = offset_bytes - 1;
+
+    EXPECT_EQ(ArrowArrayViewValidate(array_view.get(), NANOARROW_VALIDATION_LEVEL_DEFAULT,
+                                     &error),
+              NANOARROW_OK)
+        << ArrowTypeString(type) << ": " << error.message;
+  }
+}
+
+TEST(ArrayTest, ArrayViewTestBufferSizeOverflow) {
+  struct ArrowError error;
+
+  // 4 * (2^62 + 1) wraps around to 4, so without a check a 16-byte data buffer
+  // would pass as large enough for 2^62 + 1 int32 values
+  struct ArrowArrayView array_view;
+  ArrowArrayViewInitFromType(&array_view, NANOARROW_TYPE_INT32);
+  uint8_t data[16] = {0};
+  array_view.length = (int64_t{1} << 62) + 1;
+  array_view.buffer_views[1].data.as_uint8 = data;
+  array_view.buffer_views[1].size_bytes = sizeof(data);
+  EXPECT_EQ(
+      ArrowArrayViewValidate(&array_view, NANOARROW_VALIDATION_LEVEL_MINIMAL, &error),
+      EINVAL);
+  EXPECT_STREQ(error.message,
+               "Offset + length of 4611686018427387905 is too large for int32 array "
+               "buffer 1");
+  ArrowArrayViewReset(&array_view);
+
+  // The same for a fixed-size list's minimum child length
+  nanoarrow::UniqueSchema schema;
+  ArrowSchemaInit(schema.get());
+  ASSERT_EQ(ArrowSchemaSetTypeFixedSize(schema.get(), NANOARROW_TYPE_FIXED_SIZE_LIST, 4),
+            NANOARROW_OK);
+  ASSERT_EQ(ArrowSchemaSetType(schema->children[0], NANOARROW_TYPE_NA), NANOARROW_OK);
+  nanoarrow::UniqueArrayView list_view;
+  ASSERT_EQ(ArrowArrayViewInitFromSchema(list_view.get(), schema.get(), &error),
+            NANOARROW_OK);
+  list_view->length = (int64_t{1} << 62) + 1;
+  list_view->children[0]->length = 4;
+  EXPECT_EQ(
+      ArrowArrayViewValidate(list_view.get(), NANOARROW_VALIDATION_LEVEL_MINIMAL, &error),
+      EINVAL);
+  EXPECT_STREQ(error.message,
+               "Offset + length of 4611686018427387905 is too large for fixed_size_list "
+               "array with list size 4");
+}
+
+TEST(ArrayTest, ArrayViewTestValidateFullUnalignedIntegers) {
+  // Run ends, list view offsets and sizes, and dictionary indices may be in
+  // unaligned buffers; validation must not read them through aligned pointers
+  struct ArrowError error;
+  const int32_t values[] = {7, 8, 9};
+
+  {
+    // Dictionary indices
+    nanoarrow::UniqueSchema schema;
+    ASSERT_EQ(ArrowSchemaInitFromType(schema.get(), NANOARROW_TYPE_INT32), NANOARROW_OK);
+    ASSERT_EQ(ArrowSchemaAllocateDictionary(schema.get()), NANOARROW_OK);
+    ASSERT_EQ(ArrowSchemaInitFromType(schema->dictionary, NANOARROW_TYPE_INT32),
+              NANOARROW_OK);
+    nanoarrow::UniqueArrayView array_view;
+    ASSERT_EQ(ArrowArrayViewInitFromSchema(array_view.get(), schema.get(), &error),
+              NANOARROW_OK);
+
+    uint8_t indices[1 + 2 * sizeof(int32_t)] = {};
+    const int32_t expected[] = {0, 2};
+    memcpy(indices + 1, expected, sizeof(expected));
+    array_view->length = 2;
+    array_view->buffer_views[1].data.as_uint8 = indices + 1;
+    array_view->buffer_views[1].size_bytes = sizeof(expected);
+    array_view->dictionary->length = 3;
+    array_view->dictionary->buffer_views[1].data.as_int32 = values;
+    array_view->dictionary->buffer_views[1].size_bytes = sizeof(values);
+
+    EXPECT_EQ(
+        ArrowArrayViewValidate(array_view.get(), NANOARROW_VALIDATION_LEVEL_FULL, &error),
+        NANOARROW_OK)
+        << error.message;
+  }
+
+  {
+    // Run ends
+    nanoarrow::UniqueSchema schema;
+    ArrowSchemaInit(schema.get());
+    ASSERT_EQ(ArrowSchemaSetTypeRunEndEncoded(schema.get(), NANOARROW_TYPE_INT32),
+              NANOARROW_OK);
+    ASSERT_EQ(ArrowSchemaSetType(schema->children[1], NANOARROW_TYPE_INT32),
+              NANOARROW_OK);
+    nanoarrow::UniqueArrayView array_view;
+    ASSERT_EQ(ArrowArrayViewInitFromSchema(array_view.get(), schema.get(), &error),
+              NANOARROW_OK);
+
+    uint8_t run_ends[1 + 2 * sizeof(int32_t)] = {};
+    const int32_t expected[] = {1, 3};
+    memcpy(run_ends + 1, expected, sizeof(expected));
+    array_view->length = 3;
+    array_view->children[0]->length = 2;
+    array_view->children[0]->buffer_views[1].data.as_uint8 = run_ends + 1;
+    array_view->children[0]->buffer_views[1].size_bytes = sizeof(expected);
+    array_view->children[1]->length = 2;
+    array_view->children[1]->buffer_views[1].data.as_int32 = values;
+    array_view->children[1]->buffer_views[1].size_bytes = 2 * sizeof(int32_t);
+
+    EXPECT_EQ(
+        ArrowArrayViewValidate(array_view.get(), NANOARROW_VALIDATION_LEVEL_FULL, &error),
+        NANOARROW_OK)
+        << error.message;
+  }
+
+  for (enum ArrowType type : {NANOARROW_TYPE_LIST_VIEW, NANOARROW_TYPE_LARGE_LIST_VIEW}) {
+    // List view offsets and sizes
+    nanoarrow::UniqueSchema schema;
+    ASSERT_EQ(ArrowSchemaInitFromType(schema.get(), type), NANOARROW_OK);
+    ASSERT_EQ(ArrowSchemaSetType(schema->children[0], NANOARROW_TYPE_INT32),
+              NANOARROW_OK);
+    nanoarrow::UniqueArrayView array_view;
+    ASSERT_EQ(ArrowArrayViewInitFromSchema(array_view.get(), schema.get(), &error),
+              NANOARROW_OK);
+
+    uint8_t offsets[1 + 2 * sizeof(int64_t)] = {};
+    uint8_t sizes[1 + 2 * sizeof(int64_t)] = {};
+    int64_t width = type == NANOARROW_TYPE_LIST_VIEW ? 4 : 8;
+    if (type == NANOARROW_TYPE_LIST_VIEW) {
+      const int32_t expected_offsets[] = {0, 1};
+      const int32_t expected_sizes[] = {1, 2};
+      memcpy(offsets + 1, expected_offsets, sizeof(expected_offsets));
+      memcpy(sizes + 1, expected_sizes, sizeof(expected_sizes));
+    } else {
+      const int64_t expected_offsets[] = {0, 1};
+      const int64_t expected_sizes[] = {1, 2};
+      memcpy(offsets + 1, expected_offsets, sizeof(expected_offsets));
+      memcpy(sizes + 1, expected_sizes, sizeof(expected_sizes));
+    }
+    array_view->length = 2;
+    array_view->buffer_views[1].data.as_uint8 = offsets + 1;
+    array_view->buffer_views[1].size_bytes = 2 * width;
+    array_view->buffer_views[2].data.as_uint8 = sizes + 1;
+    array_view->buffer_views[2].size_bytes = 2 * width;
+    array_view->children[0]->length = 3;
+    array_view->children[0]->buffer_views[1].data.as_int32 = values;
+    array_view->children[0]->buffer_views[1].size_bytes = sizeof(values);
+
+    EXPECT_EQ(
+        ArrowArrayViewValidate(array_view.get(), NANOARROW_VALIDATION_LEVEL_FULL, &error),
+        NANOARROW_OK)
+        << ArrowTypeString(type) << ": " << error.message;
+  }
+}
+
 TEST(ArrayTest, ArrayViewTestString) {
   struct ArrowArrayView array_view;
   struct ArrowError error;
@@ -3657,6 +3833,100 @@ TEST(ArrayTest, ArrayViewTestListView) {
   ArrowArrayViewReset(&array_view);
 }
 
+class ListViewSizeBufferTest : public ::testing::TestWithParam<enum ArrowType> {
+ protected:
+  void SetUp() override {
+    ArrowArrayViewInitFromType(array_view.get(), GetParam());
+    ASSERT_EQ(ArrowArrayViewAllocateChildren(array_view.get(), 1), NANOARROW_OK);
+    ArrowArrayViewInitFromType(array_view->children[0], NANOARROW_TYPE_NA);
+    element_size = array_view->layout.element_size_bits[2] / 8;
+    array_view->buffer_views[1].data.data = offsets;
+    array_view->buffer_views[1].size_bytes = sizeof(offsets);
+    array_view->buffer_views[2].data.data = sizes;
+  }
+
+  nanoarrow::UniqueArrayView array_view;
+  int64_t element_size;
+  int64_t offsets[2] = {0, 0};
+  int64_t sizes[2] = {0, 0};
+};
+
+TEST_P(ListViewSizeBufferTest, RejectsMissingSizes) {
+  struct ArrowArray child = {};
+  struct ArrowArray* children[] = {&child};
+  const void* buffers[] = {nullptr, offsets, nullptr};
+  struct ArrowArray array = {};
+  array.length = 1;
+  array.n_buffers = 3;
+  array.buffers = buffers;
+  array.n_children = 1;
+  array.children = children;
+  struct ArrowError error;
+
+  EXPECT_EQ(ArrowArrayViewSetArray(array_view.get(), &array, &error), EINVAL);
+}
+
+TEST_P(ListViewSizeBufferTest, RejectsShortSizes) {
+  struct ArrowError error;
+  array_view->length = 1;
+  for (int64_t offset : {0, 1}) {
+    array_view->offset = offset;
+    const int64_t required_size = (offset + array_view->length) * element_size;
+    for (int64_t size = 0; size < required_size; size++) {
+      array_view->buffer_views[2].size_bytes = size;
+      for (auto level :
+           {NANOARROW_VALIDATION_LEVEL_MINIMAL, NANOARROW_VALIDATION_LEVEL_DEFAULT,
+            NANOARROW_VALIDATION_LEVEL_FULL}) {
+        ASSERT_EQ(ArrowArrayViewValidate(array_view.get(), level, &error), EINVAL)
+            << "offset: " << offset << ", size: " << size << ", level: " << level;
+      }
+    }
+  }
+}
+
+TEST_P(ListViewSizeBufferTest, InfersUnknownSizes) {
+  struct ArrowError error;
+  array_view->length = 1;
+  array_view->offset = 1;
+  for (auto level :
+       {NANOARROW_VALIDATION_LEVEL_MINIMAL, NANOARROW_VALIDATION_LEVEL_DEFAULT,
+        NANOARROW_VALIDATION_LEVEL_FULL}) {
+    array_view->buffer_views[2].size_bytes = -1;
+    ASSERT_EQ(ArrowArrayViewValidate(array_view.get(), level, &error), NANOARROW_OK)
+        << error.message;
+    EXPECT_EQ(array_view->buffer_views[2].size_bytes, 2 * element_size);
+  }
+}
+
+TEST_P(ListViewSizeBufferTest, AcceptsSufficientSizes) {
+  struct ArrowError error;
+  array_view->length = 1;
+  for (int64_t offset : {0, 1}) {
+    array_view->offset = offset;
+    array_view->buffer_views[2].size_bytes = (offset + 1) * element_size;
+    EXPECT_EQ(
+        ArrowArrayViewValidate(array_view.get(), NANOARROW_VALIDATION_LEVEL_FULL, &error),
+        NANOARROW_OK)
+        << error.message;
+  }
+}
+
+TEST_P(ListViewSizeBufferTest, AcceptsEmptySizes) {
+  struct ArrowError error;
+  array_view->buffer_views[1].data.data = nullptr;
+  array_view->buffer_views[1].size_bytes = 0;
+  array_view->buffer_views[2].data.data = nullptr;
+  array_view->buffer_views[2].size_bytes = 0;
+  EXPECT_EQ(
+      ArrowArrayViewValidate(array_view.get(), NANOARROW_VALIDATION_LEVEL_FULL, &error),
+      NANOARROW_OK)
+      << error.message;
+}
+
+INSTANTIATE_TEST_SUITE_P(ArrayTest, ListViewSizeBufferTest,
+                         ::testing::Values(NANOARROW_TYPE_LIST_VIEW,
+                                           NANOARROW_TYPE_LARGE_LIST_VIEW));
+
 TEST(ArrayTest, ArrayViewTestListViewGet) {
   struct ArrowArrayView array_view;
   ArrowArrayViewInitFromType(&array_view, NANOARROW_TYPE_LIST_VIEW);
@@ -3844,6 +4114,16 @@ TEST(ArrayTest, ArrayViewTestLargeListView) {
             EINVAL);
   EXPECT_STREQ(error.message,
                "Offset: 1 + size: 42 at index: 1 exceeds length of child view: 1");
+
+  // An offset and a size whose sum overflows int64_t must still be out of bounds
+  offsets[1] = INT64_MAX;
+  sizes[1] = INT64_MAX;
+  EXPECT_EQ(ArrowArrayViewSetArray(&array_view, &array, &error), NANOARROW_OK);
+  EXPECT_EQ(ArrowArrayViewValidate(&array_view, NANOARROW_VALIDATION_LEVEL_FULL, &error),
+            EINVAL);
+  EXPECT_STREQ(error.message,
+               "Offset: 9223372036854775807 + size: 9223372036854775807 at index: 1 "
+               "exceeds length of child view: 1");
   ArrowArrayRelease(&array);
   ArrowArrayViewReset(&array_view);
 }
@@ -4893,6 +5173,152 @@ TEST(ArrayViewTest, ArrayViewTestGetDecimal256) {
   ArrowArrayRelease(&array);
 }
 #endif
+
+// Copies the content of view to an address that is misaligned by misalignment
+// bytes (1-7) relative to an 8-byte boundary. Getters must be able to read from
+// such buffers without misaligned loads (checked by -fsanitize=alignment).
+static const uint8_t* CopyToMisalignedStorage(std::vector<uint64_t>* storage,
+                                              struct ArrowBufferView view,
+                                              int misalignment) {
+  storage->resize(view.size_bytes / sizeof(uint64_t) + 2);
+  uint8_t* out = reinterpret_cast<uint8_t*>(storage->data()) + misalignment;
+  memcpy(out, view.data.data, view.size_bytes);
+  return out;
+}
+
+TEST(ArrayViewTest, ArrayViewTestGetNumericUnaligned) {
+  for (enum ArrowType type :
+       {NANOARROW_TYPE_INT8, NANOARROW_TYPE_UINT8, NANOARROW_TYPE_INT16,
+        NANOARROW_TYPE_UINT16, NANOARROW_TYPE_INT32, NANOARROW_TYPE_UINT32,
+        NANOARROW_TYPE_INT64, NANOARROW_TYPE_UINT64, NANOARROW_TYPE_HALF_FLOAT,
+        NANOARROW_TYPE_FLOAT, NANOARROW_TYPE_DOUBLE}) {
+    SCOPED_TRACE(ArrowTypeString(type));
+    nanoarrow::UniqueArray array;
+    ASSERT_EQ(ArrowArrayInitFromType(array.get(), type), NANOARROW_OK);
+    ASSERT_EQ(ArrowArrayStartAppending(array.get()), NANOARROW_OK);
+    for (int64_t value = 0; value < 5; value++) {
+      ASSERT_EQ(ArrowArrayAppendInt(array.get(), value), NANOARROW_OK);
+    }
+    ASSERT_EQ(ArrowArrayFinishBuildingDefault(array.get(), nullptr), NANOARROW_OK);
+    array->offset = 1;
+    array->length = 4;
+
+    nanoarrow::UniqueArrayView array_view;
+    ArrowArrayViewInitFromType(array_view.get(), type);
+    ASSERT_EQ(ArrowArrayViewSetArray(array_view.get(), array.get(), nullptr),
+              NANOARROW_OK);
+    struct ArrowBufferView data = array_view->buffer_views[1];
+
+    for (int misalignment = 1; misalignment < 8; misalignment++) {
+      SCOPED_TRACE(misalignment);
+      std::vector<uint64_t> storage;
+      array_view->buffer_views[1].data.as_uint8 =
+          CopyToMisalignedStorage(&storage, data, misalignment);
+      for (int64_t i = 0; i < array_view->length; i++) {
+        EXPECT_EQ(ArrowArrayViewGetIntUnsafe(array_view.get(), i), i + 1);
+        EXPECT_EQ(ArrowArrayViewGetUIntUnsafe(array_view.get(), i),
+                  static_cast<uint64_t>(i + 1));
+        EXPECT_EQ(ArrowArrayViewGetDoubleUnsafe(array_view.get(), i),
+                  static_cast<double>(i + 1));
+      }
+    }
+  }
+}
+
+TEST(ArrayViewTest, ArrayViewTestGetStringUnaligned) {
+  // Includes the largest inlined and the smallest non-inlined binary view
+  const std::vector<std::string> values = {"a", "", "twelve bytes", "thirteen byte",
+                                           "fourteen bytes"};
+
+  for (enum ArrowType type : {NANOARROW_TYPE_STRING, NANOARROW_TYPE_LARGE_STRING,
+                              NANOARROW_TYPE_BINARY, NANOARROW_TYPE_LARGE_BINARY,
+                              NANOARROW_TYPE_STRING_VIEW, NANOARROW_TYPE_BINARY_VIEW}) {
+    SCOPED_TRACE(ArrowTypeString(type));
+    nanoarrow::UniqueArray array;
+    ASSERT_EQ(ArrowArrayInitFromType(array.get(), type), NANOARROW_OK);
+    ASSERT_EQ(ArrowArrayStartAppending(array.get()), NANOARROW_OK);
+    for (const auto& value : values) {
+      ASSERT_EQ(ArrowArrayAppendString(array.get(), ArrowCharView(value.c_str())),
+                NANOARROW_OK);
+    }
+    ASSERT_EQ(ArrowArrayFinishBuildingDefault(array.get(), nullptr), NANOARROW_OK);
+    array->offset = 1;
+    array->length = 4;
+
+    nanoarrow::UniqueArrayView array_view;
+    ArrowArrayViewInitFromType(array_view.get(), type);
+    ASSERT_EQ(ArrowArrayViewSetArray(array_view.get(), array.get(), nullptr),
+              NANOARROW_OK);
+    // Offsets, or views for the binary view types
+    struct ArrowBufferView offsets = array_view->buffer_views[1];
+
+    for (int misalignment = 1; misalignment < 8; misalignment++) {
+      SCOPED_TRACE(misalignment);
+      std::vector<uint64_t> storage;
+      array_view->buffer_views[1].data.as_uint8 =
+          CopyToMisalignedStorage(&storage, offsets, misalignment);
+      for (int64_t i = 0; i < array_view->length; i++) {
+        struct ArrowStringView string_view =
+            ArrowArrayViewGetStringUnsafe(array_view.get(), i);
+        EXPECT_EQ(std::string(string_view.data, string_view.size_bytes), values[i + 1]);
+        struct ArrowBufferView bytes_view =
+            ArrowArrayViewGetBytesUnsafe(array_view.get(), i);
+        EXPECT_EQ(std::string(bytes_view.data.as_char, bytes_view.size_bytes),
+                  values[i + 1]);
+
+        if ((type == NANOARROW_TYPE_STRING_VIEW || type == NANOARROW_TYPE_BINARY_VIEW) &&
+            values[i + 1].size() <= NANOARROW_BINARY_VIEW_INLINE_SIZE) {
+          // Inlined bytes must point into the views buffer, after the 4-byte size
+          const uint8_t* view = array_view->buffer_views[1].data.as_uint8 +
+                                (array_view->offset + i) * sizeof(union ArrowBinaryView);
+          EXPECT_EQ(bytes_view.data.as_uint8, view + sizeof(int32_t));
+        }
+      }
+    }
+  }
+}
+
+TEST(ArrayViewTest, ArrayViewTestGetChildOffsetUnaligned) {
+  const int32_t offsets32[] = {0, 1, 3, 6};
+  const int64_t offsets64[] = {0, 1, 3, 6};
+
+  for (enum ArrowType type :
+       {NANOARROW_TYPE_LIST, NANOARROW_TYPE_LARGE_LIST, NANOARROW_TYPE_MAP,
+        NANOARROW_TYPE_LIST_VIEW, NANOARROW_TYPE_LARGE_LIST_VIEW,
+        NANOARROW_TYPE_DENSE_UNION}) {
+    SCOPED_TRACE(ArrowTypeString(type));
+    nanoarrow::UniqueArrayView array_view;
+    ArrowArrayViewInitFromType(array_view.get(), type);
+    array_view->offset = 1;
+    array_view->length = 3;
+
+    struct ArrowBufferView offsets;
+    if (array_view->layout.element_size_bits[1] == 64) {
+      offsets.data.as_int64 = offsets64;
+      offsets.size_bytes = sizeof(offsets64);
+    } else {
+      offsets.data.as_int32 = offsets32;
+      offsets.size_bytes = sizeof(offsets32);
+    }
+
+    for (int misalignment = 1; misalignment < 8; misalignment++) {
+      SCOPED_TRACE(misalignment);
+      std::vector<uint64_t> storage;
+      array_view->buffer_views[1].data.as_uint8 =
+          CopyToMisalignedStorage(&storage, offsets, misalignment);
+      for (int64_t i = 0; i < array_view->length; i++) {
+        if (type == NANOARROW_TYPE_DENSE_UNION) {
+          EXPECT_EQ(ArrowArrayViewUnionChildOffset(array_view.get(), i),
+                    offsets32[i + 1]);
+        } else {
+          // ArrowArrayViewListChildOffset() does not apply the array offset
+          EXPECT_EQ(ArrowArrayViewListChildOffset(array_view.get(), i + 1),
+                    offsets32[i + 1]);
+        }
+      }
+    }
+  }
+}
 
 // Helper to build a simple int32 array with known data for shared array tests
 static void MakeInt32ArrayForSharedTest(struct ArrowArray* array, const int32_t* values,

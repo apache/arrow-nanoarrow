@@ -351,7 +351,8 @@ cdef class CBufferView:
         return iter(memoryview(self)[offset:(offset + length)])
 
     def _iter_struct(self, int64_t offset, int64_t length):
-        for value in iter_unpack(self.format, self):
+        view = memoryview(self)[offset:(offset + length)]
+        for value in iter_unpack(self.format, view):
             if len(value) == 1:
                 yield value[0]
             else:
