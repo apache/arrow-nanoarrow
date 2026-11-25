@@ -667,8 +667,16 @@ def test_iterator_sparse_union():
 @pytest.mark.parametrize("mode", ["sparse", "dense"])
 @pytest.mark.parametrize("type_codes", [[0, 1], [3, 7]])
 @pytest.mark.parametrize("child_offset", [0, 2])
-def test_iterator_union_slices(mode, type_codes, child_offset):
+def test_iterator_union_slices(request, mode, type_codes, child_offset):
     pa = pytest.importorskip("pyarrow")
+
+    request.applymarker(
+        pytest.mark.xfail(
+            mode == "sparse" and int(pa.__version__.split(".")[0]) < 25,
+            reason="pyarrow < 25 returns wrong values for sliced sparse unions",
+            strict=True,
+        )
+    )
 
     type_ids = pa.array([type_codes[i] for i in [0, 0, 1, 1, 0, 1]], pa.int8())
     if mode == "sparse":

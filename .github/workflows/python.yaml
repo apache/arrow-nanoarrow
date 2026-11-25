@@ -59,11 +59,12 @@ jobs:
       - name: Install nanoarrow
         run: |
           pushd python
+          pip install -U pip
           if [[ "${{ matrix.python-version }}" == "3.13" ]]; then
             pip install -r requirements-stubs.txt 'meson>=1.3.0' meson-python
-            pip install --no-build-isolation '.[test]'
+            pip install --no-build-isolation . --group test
           else
-            pip install '.[test]'
+            pip install . --group test
           fi
           popd
           pip list

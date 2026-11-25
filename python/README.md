@@ -431,7 +431,8 @@ Tests use [pytest](https://docs.pytest.org/):
 
 ```shell
 # Install dependencies
-pip install -e ".[test]"
+pip install -U pip
+pip install -e . --group test
 
 # Run tests
 pytest -vvx

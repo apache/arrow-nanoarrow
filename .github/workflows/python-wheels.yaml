@@ -92,6 +92,7 @@ jobs:
     name: ${{ matrix.config.label }}
     runs-on: ${{ matrix.config.os }}
     strategy:
+      fail-fast: false
       matrix:
         config:
           - {os: "ubuntu-latest", label: "pyodide", platform: "pyodide", arch: "auto"}
@@ -139,7 +140,7 @@ jobs:
           arch: x86
 
       - name: Install cibuildwheel
-        run: python -m pip install cibuildwheel==4.3.1
+        run: python -m pip install cibuildwheel==4.3.5
 
       - name: Set nanoarrow Python dev version
         if: github.ref == 'refs/heads/main'
@@ -153,7 +154,9 @@ jobs:
           # The PKG_CONFIG_PATH is set by setup-python; however, its presence causes
           # an issue for pyodide which picks up the wrong Python headers if this is set.
           PKG_CONFIG_PATH: ""
-          CIBW_TEST_REQUIRES: pytest
+          CIBW_TEST_GROUPS: test
+          CIBW_TEST_GROUPS_PYODIDE: test-base
+          CIBW_TEST_GROUPS_WINDOWS: test-base
           CIBW_TEST_COMMAND: pytest {package}/tests -vv
           CIBW_PLATFORM: ${{ matrix.config.platform }}
           CIBW_ARCHS: ${{ matrix.config.arch }}
