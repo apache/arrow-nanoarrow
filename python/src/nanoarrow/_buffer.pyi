@@ -41,11 +41,13 @@ class CBuffer:
     @classmethod
     def __init__(cls, *args, **kwargs) -> None:
         """Create and return a new object.  See help(type) for accurate signature."""
+
     def element(self, i): ...
     def elements(self, offset=..., length=...): ...
     @staticmethod
     def empty():
         """Create an empty CBuffer"""
+
     @staticmethod
     def from_dlpack(obj, stream=...) -> CBuffer:
         """Create a CBuffer using the DLPack protocol
@@ -64,6 +66,7 @@ class CBuffer:
             the caller is responsible for creating a sync event after creating one
             or more buffers in this way).
         """
+
     @staticmethod
     def from_pybuffer(obj) -> CBuffer:
         """Create a CBuffer using the Python buffer protocol
@@ -76,6 +79,7 @@ class CBuffer:
         obj : buffer-like
             The object on which to invoke the Python buffer protocol
         """
+
     def view(self):
         """Export this buffer as a CBufferView
 
@@ -85,14 +89,19 @@ class CBuffer:
         (whereas the CBuffer is primarily used to wrap an existing object in
         a way that it can be used to build a :class:`CArray`).
         """
+
     def __buffer__(self, *args, **kwargs):
         """Return a buffer object that exposes the underlying memory of the object."""
+
     def __getitem__(self, index):
         """Return self[key]."""
+
     def __iter__(self):
         """Implement iter(self)."""
+
     def __len__(self) -> int:
         """Return len(self)."""
+
     def __reduce__(self): ...
     def __release_buffer__(self, *args, **kwargs):
         """Release the buffer object that exposes the underlying memory of the object."""
@@ -116,6 +125,7 @@ class CBufferBuilder:
     @classmethod
     def __init__(cls, *args, **kwargs) -> None:
         """Create and return a new object.  See help(type) for accurate signature."""
+
     def advance(self, additional_bytes):
         """Manually increase :attr:`size_bytes` by ``additional_bytes``
 
@@ -123,6 +133,7 @@ class CBufferBuilder:
         to ensure that :attr:`size_bytes` accurately reflects the number of
         bytes written to the buffer.
         """
+
     def finish(self):
         """Finish building this buffer
 
@@ -131,15 +142,19 @@ class CBufferBuilder:
         on this object after it has been finished is not currently
         defined (but should not crash).
         """
+
     def reserve_bytes(self, additional_bytes):
         """Ensure that the underlying buffer has space for ``additional_bytes``
         more bytes to be written"""
+
     def set_data_type(self, type_id, element_size_bits=...):
         """Set the data type used to interpret elements in :meth:`write_elements`."""
+
     def set_format(self, format):
         """Set the Python buffer format used to interpret elements in
         :meth:`write_elements`.
         """
+
     def write(self, content):
         """Write bytes to this buffer
 
@@ -148,6 +163,7 @@ class CBufferBuilder:
 
         This method returns the number of bytes that were written.
         """
+
     def write_elements(self, obj):
         """ "Write an iterable of elements to this buffer
 
@@ -158,15 +174,19 @@ class CBufferBuilder:
 
         This method returns the number of elements that were written.
         """
+
     def write_fill(self, value, size_bytes):
         """Write fill bytes to this buffer
 
         Appends the byte ``value`` to this buffer ``size_bytes`` times.
         """
+
     def __buffer__(self, *args, **kwargs):
         """Return a buffer object that exposes the underlying memory of the object."""
+
     def __len__(self) -> int:
         """Return len(self)."""
+
     def __reduce__(self): ...
     def __release_buffer__(self, *args, **kwargs):
         """Release the buffer object that exposes the underlying memory of the object."""
@@ -191,6 +211,7 @@ class CBufferView:
     @classmethod
     def __init__(cls, *args, **kwargs) -> None:
         """Create and return a new object.  See help(type) for accurate signature."""
+
     def copy(self, offset=..., length=...): ...
     def copy_into(self, dest, offset=..., length=..., dest_offset=...): ...
     def element(self, i): ...
@@ -199,6 +220,7 @@ class CBufferView:
     def unpack_bits_into(self, dest, offset=..., length=..., dest_offset=...): ...
     def __buffer__(self, *args, **kwargs):
         """Return a buffer object that exposes the underlying memory of the object."""
+
     def __dlpack__(self, stream=...):
         """
         Export CBufferView as a DLPack capsule.
@@ -215,6 +237,7 @@ class CBufferView:
         capsule : PyCapsule
             A DLPack capsule for the array, pointing to a DLManagedTensor.
         """
+
     def __dlpack_device__(self):
         """
         Return the DLPack device tuple this CBufferView resides on.
@@ -226,12 +249,16 @@ class CBufferView:
             CPU = 1, see python/src/nanoarrow/dpack_abi.h) and index of the
             device which is 0 by default for CPU.
         """
+
     def __getitem__(self, index):
         """Return self[key]."""
+
     def __iter__(self):
         """Implement iter(self)."""
+
     def __len__(self) -> int:
         """Return len(self)."""
+
     def __reduce__(self): ...
     def __release_buffer__(self, *args, **kwargs):
         """Release the buffer object that exposes the underlying memory of the object."""
@@ -250,10 +277,13 @@ class NoneAwareWrapperIterator:
     @classmethod
     def __init__(cls, *args, **kwargs) -> None:
         """Create and return a new object.  See help(type) for accurate signature."""
+
     def finish(self):
         """Obtain the total count, null count, and validity bitmap after
         consuming this iterable."""
+
     def reserve(self, additional_elements): ...
     def __iter__(self):
         """Implement iter(self)."""
+
     def __reduce__(self): ...

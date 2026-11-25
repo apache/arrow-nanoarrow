@@ -31,6 +31,7 @@ class CArrowTimeUnit:
     @classmethod
     def __init__(cls, *args, **kwargs) -> None:
         """Create and return a new object.  See help(type) for accurate signature."""
+
     def __reduce__(self): ...
 
 class CLayout:
@@ -46,6 +47,7 @@ class CLayout:
     @classmethod
     def __init__(cls, *args, **kwargs) -> None:
         """Create and return a new object.  See help(type) for accurate signature."""
+
     def __reduce__(self): ...
 
 class CSchema:
@@ -68,12 +70,15 @@ class CSchema:
     @classmethod
     def __init__(cls, *args, **kwargs) -> None:
         """Create and return a new object.  See help(type) for accurate signature."""
+
     @staticmethod
     def allocate() -> CSchema:
         """Allocate a released CSchema"""
+
     def child(self, i): ...
     def is_valid(self) -> bool:
         """Check for a non-null and non-released underlying ArrowSchema"""
+
     def modify(
         self,
         *,
@@ -102,10 +107,12 @@ class CSchema:
             If True, actual and expected will be considered equal if their
             data type information and marked nullability are identical.
         """
+
     def __arrow_c_schema__(self):
         """
         Export to a ArrowSchema PyCapsule
         """
+
     def __deepcopy__(self, memo=...) -> CSchema: ...
     def __reduce__(self): ...
 
@@ -119,6 +126,7 @@ class CSchemaBuilder:
     @classmethod
     def __init__(cls, *args, **kwargs) -> None:
         """Create and return a new object.  See help(type) for accurate signature."""
+
     @staticmethod
     def allocate() -> CSchemaBuilder:
         """Create a CSchemaBuilder
@@ -127,9 +135,11 @@ class CSchemaBuilder:
         ArrowSchema private_data/release callback implementation. This should
         usually be followed by :meth:`set_type` or :meth:`set_format`.
         """
+
     def allocate_children(self, n) -> CSchemaBuilder: ...
     def append_metadata(self, metadata: Mapping[bytes, bytes]) -> CSchemaBuilder:
         """Append key/value metadata"""
+
     def child(self, i) -> CSchemaBuilder: ...
     def finish(self) -> CSchema: ...
     def set_child(self, i, name, child_src) -> CSchemaBuilder: ...
@@ -181,6 +191,7 @@ class CSchemaView:
     @classmethod
     def __init__(cls, *args, **kwargs) -> None:
         """Create and return a new object.  See help(type) for accurate signature."""
+
     def __reduce__(self): ...
 
 class SchemaMetadata:
@@ -196,32 +207,41 @@ class SchemaMetadata:
     @classmethod
     def __init__(cls, *args, **kwargs) -> None:
         """Create and return a new object.  See help(type) for accurate signature."""
+
     @staticmethod
     def empty():
         """Create an empty SchemaMetadata with no keys or values"""
+
     def items(self) -> Iterable[tuple[bytes, bytes]]:
         """Iterate over key/value pairs
 
         The result may contain duplicate keys if they exist in the metadata."""
+
     def keys(self) -> list[bytes]:
         """List meadata keys
 
         The result may contain duplicate keys if they exist in the metadata.
         """
+
     def values(self) -> list[bytes]:
         """List metadata values"""
+
     def __contains__(self, other) -> bool:
         """Return bool(key in self)."""
+
     def __getitem__(self, index):
         """Get the value associated with a unique key
 
         Retrieves the unique value associated with k. Raises KeyError if
         k does not point to exactly one value in the metadata.
         """
+
     def __iter__(self):
         """Implement iter(self)."""
+
     def __len__(self) -> int:
         """Return len(self)."""
+
     def __reduce__(self): ...
 
 def assert_type_equal(actual, expected, check_nullability):
