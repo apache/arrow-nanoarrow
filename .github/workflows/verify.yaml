@@ -52,7 +52,7 @@ concurrency:
 
 jobs:
   verify:
-    name: "${{ matrix.config.label }}"
+    name: Verify "${{ matrix.config.label }}"
     runs-on: ${{ matrix.config.os }}
 
     strategy:

@@ -296,6 +296,19 @@ class TestFile {
 
     // Read the same file with Arrow C++
     auto maybe_table_arrow = ReadTable(io::ReadableFile::Open(path_builder.str()));
+
+    // Arrow C++ can't swap the endianness of run-end encoded arrays,
+    // so on big-endian systems it fails to read the little-endian integration files
+    // that contain them. nanoarrow's own read of the file has already been checked
+    // above. Remove once the Arrow C++ used in CI includes a fix for
+    // https://github.com/apache/arrow/issues/34176.
+    if (ArrowIpcSystemEndianness() == NANOARROW_IPC_ENDIANNESS_BIG &&
+        maybe_table_arrow.status().IsNotImplemented() &&
+        maybe_table_arrow.status().message() ==
+            "swapping endianness of run-end encoded array") {
+      GTEST_SKIP() << "Arrow C++ can't swap the endianness of run-end encoded arrays";
+    }
+
     {
       SCOPED_TRACE("Read the same file with Arrow C++");
       FAIL_RESULT_NOT_OK(maybe_table_arrow);
