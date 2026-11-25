@@ -66,9 +66,6 @@ cython_args = [
     meson.current_source_dir(),
     '--include-dir',
     meson.current_build_dir(),
-    # Declare support for free-threaded builds so importing the extensions does
-    # not re-enable the GIL
-    '-Xfreethreading_compatible=True',
 ]
 if get_option('debug')
     cython_args += ['--gdb']
