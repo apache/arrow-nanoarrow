@@ -1224,6 +1224,84 @@ test_that("convert to vector works for POSIXct", {
   )
 })
 
+test_that("convert timestamp to POSIXct scales before converting to double", {
+  skip_if_not_installed("bit64")
+
+  ticks <- bit64::as.integer64(c(
+    "1700000000000000000",
+    "1700000000123456789",
+    NA,
+    "-1700000000000000000",
+    "-1700000000123456789"
+  ))
+  array <- as_nanoarrow_array(
+    ticks,
+    schema = na_timestamp("ns", timezone = "UTC")
+  )
+
+  expect_warning(result <- convert_array(array), NA)
+  expect_identical(
+    as.numeric(result),
+    c(1700000000, 1700000000.1234567, NA, -1700000000, -1700000000.1234567)
+  )
+
+  sliced <- nanoarrow_array_modify(array, list(offset = 1L, length = 3L))
+  expect_warning(sliced_result <- convert_array(sliced), NA)
+  expect_identical(
+    as.numeric(sliced_result),
+    c(1700000000.1234567, NA, -1700000000)
+  )
+})
+
+test_that("POSIXct conversion warns about whole-second precision", {
+  skip_if_not_installed("bit64")
+
+  seconds <- as_nanoarrow_array(
+    bit64::as.integer64(c(
+      "9007199254740992",
+      "9007199254740993",
+      "-9007199254740992",
+      "-9007199254740993",
+      NA
+    )),
+    schema = na_timestamp("s", timezone = "UTC")
+  )
+  expect_warning(
+    convert_array(seconds),
+    "2 value\\(s\\) may have incurred loss of whole-second precision",
+    class = "nanoarrow_warning_lossy_conversion"
+  )
+
+  millis <- as_nanoarrow_array(
+    bit64::as.integer64("9223372036854775807"),
+    schema = na_timestamp("ms", timezone = "UTC")
+  )
+  expect_warning(
+    convert_array(millis),
+    "1 value\\(s\\) may have incurred loss of whole-second precision",
+    class = "nanoarrow_warning_lossy_conversion"
+  )
+
+  for (unit in c("us", "ns")) {
+    array <- as_nanoarrow_array(
+      bit64::as.integer64("9223372036854775807"),
+      schema = na_timestamp(unit, timezone = "UTC")
+    )
+    expect_warning(convert_array(array), NA)
+  }
+})
+
+test_that("date64 to POSIXct checks precision after scaling", {
+  skip_if_not_installed("bit64")
+
+  millis <- bit64::as.integer64(c("9007199254740993", NA))
+  array <- as_nanoarrow_array(millis, schema = na_int64())
+  nanoarrow_array_set_schema(array, na_date64())
+
+  expect_warning(result <- convert_array(array, as.POSIXct(character())), NA)
+  expect_identical(as.numeric(result), c(9007199254740.992, NA))
+})
+
 test_that("convert to vector works for null -> POSIXct", {
   array <- nanoarrow_array_init(na_na())
   array$length <- 10
