@@ -29,6 +29,7 @@ on:
       - 'CMakeLists.txt'
       - '.github/workflows/examples.yaml'
       - 'src/nanoarrow/**'
+      - 'thirdparty/flatcc/**'
 
 jobs:
   examples:
@@ -147,3 +148,34 @@ jobs:
         run: |
           python3 -m pip install examples/python-package
           python3 -c "import schema_printer"
+
+  external-flatcc:
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        cmake: ['latest']
+        include:
+          - os: ubuntu-latest
+            cmake: '3.18.4.post1'
+          - os: ubuntu-latest
+            cmake: '3.23.3'
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.11'
+      - name: Install CMake
+        shell: bash
+        run: |
+          if [ "${{ matrix.cmake }}" = "latest" ]; then
+            python -m pip install --upgrade cmake
+          else
+            python -m pip install "cmake==${{ matrix.cmake }}"
+          fi
+      - name: Test external flatcc discovery and linking
+        shell: bash
+        run: examples/cmake-flatcc/build.sh
