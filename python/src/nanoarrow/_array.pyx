@@ -402,9 +402,6 @@ cdef class CArray:
         c_array_out.offset = c_array_out.offset + start
         c_array_out.length = stop - start
 
-        # The parent's null count only carries over to the slice if it is
-        # zero or if the slice covers the whole array; otherwise mark it as
-        # unknown so that it can be computed lazily (e.g., by CArrayView).
         if c_array_out.null_count != 0 and c_array_out.length != self._ptr.length:
             c_array_out.null_count = -1
 
