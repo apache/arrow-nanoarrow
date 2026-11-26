@@ -18,7 +18,7 @@
 # under the License.
 #
 # Requirements
-# - cmake >= 3.14
+# - cmake >= 3.18
 # - R >= 3.5.0
 # - Python >= 3.8
 # - gpg (for key verification)
