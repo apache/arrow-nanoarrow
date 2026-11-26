@@ -22,6 +22,7 @@ so that many threads operate on the *same* object at the same time. They are mos
 meaningful on a free-threaded build of Python but are valid on any build.
 """
 
+import sys
 import threading
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
@@ -32,6 +33,13 @@ from nanoarrow._array import CArray, CArrayBuilder
 from nanoarrow._array_stream import CArrayStream
 
 import nanoarrow as na
+
+# Every test in this module starts its own threads, which Pyodide (and other
+# WebAssembly builds of Python) cannot do.
+pytestmark = pytest.mark.skipif(
+    sys.platform in ("emscripten", "wasi"),
+    reason="cannot start new threads on WebAssembly",
+)
 
 N_THREADS = 8
 
