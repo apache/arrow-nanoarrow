@@ -109,6 +109,32 @@ def test_iterator_view_with_variadic_buffers():
 
 
 @pytest.mark.parametrize(
+    "arrow_type, values",
+    [
+        (na.string(), ["a", "b", "c", "d"]),
+        (na.string_view(), ["a", "b", "c", "d"]),
+        (na.binary(), [b"a", b"b", b"c", b"d"]),
+        (na.binary_view(), [b"a", b"b", b"c", b"d"]),
+    ],
+)
+def test_iterator_string_child_with_offset(arrow_type, values):
+    child = na.c_array(values, arrow_type)
+
+    # A list whose values start after the first child element
+    offsets = na.c_buffer([1, 3, 4], na.int32())
+    array = na.c_array_from_buffers(
+        na.list_(arrow_type), 2, [None, offsets], children=[child]
+    )
+    assert list(iter_py(array)) == [values[1:3], values[3:]]
+
+    # A struct with an offset iterates its children from that offset
+    array = na.c_array_from_buffers(
+        na.struct({"col": arrow_type}), 2, [None], children=[child], offset=2
+    )
+    assert list(iter_py(array)) == [{"col": values[2]}, {"col": values[3]}]
+
+
+@pytest.mark.parametrize(
     "arrow_type", [na.binary(), na.large_binary(), na.binary_view()]
 )
 def test_iterator_binary(arrow_type):
