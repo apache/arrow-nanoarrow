@@ -28,7 +28,7 @@
 // ENODATA is an XSI extension and is not defined by all libcs (e.g., older
 // Windows/MinGW toolchains used by R 3.6, FreeBSD, and OpenBSD).
 #if !defined(ENODATA)
-#define ENODATA 120
+#define ENODATA ENOENT
 #endif
 
 #define NANOARROW_IPC_MAGIC "ARROW1"
