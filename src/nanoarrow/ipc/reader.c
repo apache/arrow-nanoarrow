@@ -26,7 +26,7 @@
 // ENODATA is an XSI extension and is not defined by all libcs (e.g., older
 // Windows/MinGW toolchains used by R 3.6, FreeBSD, and OpenBSD).
 #if !defined(ENODATA)
-#define ENODATA 120
+#define ENODATA ENOENT
 #endif
 
 // Sentinel value to indicate that we haven't read a message yet
@@ -225,7 +225,9 @@ static void ArrowIpcArrayStreamReaderRelease(struct ArrowArrayStream* stream) {
 }
 
 static int ArrowIpcArrayStreamReaderNextHeader(
-    struct ArrowIpcArrayStreamReaderPrivate* private_data, int schema_expected) {
+    struct ArrowIpcArrayStreamReaderPrivate* private_data, int schema_expected,
+    int* out_end_of_stream) {
+  *out_end_of_stream = 0;
   private_data->header.size_bytes = 0;
   int64_t bytes_read = 0;
 
@@ -242,7 +244,8 @@ static int ArrowIpcArrayStreamReaderNextHeader(
     // is one of the valid outcomes) but we set the error anyway in case it gets
     // propagated higher (e.g., if the stream is empty and there's no schema message)
     ArrowErrorSet(&private_data->error, "No data available on stream");
-    return ENODATA;
+    *out_end_of_stream = 1;
+    return NANOARROW_OK;
   } else if (bytes_read == 4 && private_data->expected_header_prefix_size == 4) {
     // Special case very, very old IPC streams that used 0x00000000 as the
     // end-of-stream indicator. We may want to remove this case at some point:
@@ -251,7 +254,8 @@ static int ArrowIpcArrayStreamReaderNextHeader(
     memcpy(&last_four_bytes, private_data->header.data, sizeof(uint32_t));
     if (last_four_bytes == 0) {
       ArrowErrorSet(&private_data->error, "No data available on stream");
-      return ENODATA;
+      *out_end_of_stream = 1;
+      return NANOARROW_OK;
     } else {
       ArrowErrorSet(&private_data->error,
                     "Expected 0x00000000 if exactly four bytes are available at the end "
@@ -270,8 +274,13 @@ static int ArrowIpcArrayStreamReaderNextHeader(
 
   // Use PeekHeader to fill in decoder.header_size_bytes
   int32_t prefix_size_bytes = 0;
-  NANOARROW_RETURN_NOT_OK(ArrowIpcDecoderPeekHeader(
-      &private_data->decoder, input_view, &prefix_size_bytes, &private_data->error));
+  int result = ArrowIpcDecoderPeekHeader(&private_data->decoder, input_view,
+                                         &prefix_size_bytes, &private_data->error);
+  if (result == ENODATA) {
+    *out_end_of_stream = 1;
+    return NANOARROW_OK;
+  }
+  NANOARROW_RETURN_NOT_OK(result);
 
   // Check for a consistent header prefix size
   if (private_data->expected_header_prefix_size != kExpectedHeaderPrefixSizeNotSet &&
@@ -389,7 +398,12 @@ static int ArrowIpcArrayStreamReaderReadSchemaIfNeeded(
     return NANOARROW_OK;
   }
 
-  NANOARROW_RETURN_NOT_OK(ArrowIpcArrayStreamReaderNextHeader(private_data, 1));
+  int end_of_stream;
+  NANOARROW_RETURN_NOT_OK(
+      ArrowIpcArrayStreamReaderNextHeader(private_data, 1, &end_of_stream));
+  if (end_of_stream) {
+    return ENODATA;
+  }
 
   // Error if this isn't a schema message
   if (private_data->decoder.message_type != NANOARROW_IPC_MESSAGE_TYPE_SCHEMA) {
@@ -509,17 +523,16 @@ static int ArrowIpcArrayStreamReaderProcessMessage(
     struct ArrowIpcArrayStreamReaderPrivate* private_data,
     enum ArrowIpcMessageType* message_type, struct ArrowArray* out) {
   // Read + decode the next header
-  int result = ArrowIpcArrayStreamReaderNextHeader(private_data, 0);
-  if (result == ENODATA) {
+  int end_of_stream;
+  NANOARROW_RETURN_NOT_OK(
+      ArrowIpcArrayStreamReaderNextHeader(private_data, 0, &end_of_stream));
+  if (end_of_stream) {
     // Stream is finished either because there is no input or because
     // end of stream bytes were read. Read this as a RecordBatch in the
     // sense that we populate out->release to NULL and return OK.
     *message_type = NANOARROW_IPC_MESSAGE_TYPE_RECORD_BATCH;
     out->release = NULL;
     return NANOARROW_OK;
-  } else if (result != NANOARROW_OK) {
-    // Other error
-    return result;
   }
 
   // Make sure we have a RecordBatch message or DictionaryBatch message

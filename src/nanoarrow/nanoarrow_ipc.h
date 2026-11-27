@@ -638,6 +638,7 @@ typedef ArrowErrorCode (*ArrowIpcMessageMetadataVisitFunction)(
 /// these bytes and returns ESPIPE if there are not enough remaining bytes in data to read
 /// the entire header message, EINVAL if the first 8 bytes are not valid, ENODATA if the
 /// Arrow end-of-stream indicator has been reached, or NANOARROW_OK otherwise.
+/// On platforms where ENODATA is not defined, ENOENT is returned for end of stream.
 ///
 /// Pre-1.0 messages were not prefixed with 0xFFFFFFFF. For these messages, a value
 /// of 4 will be placed into prefix_size_bytes; otherwise a value of 8 will be placed

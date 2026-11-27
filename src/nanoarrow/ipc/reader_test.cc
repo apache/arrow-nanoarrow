@@ -527,6 +527,56 @@ TEST(NanoarrowIpcReader, StreamReaderEmptyInput) {
   ArrowArrayStreamRelease(&stream);
 }
 
+TEST(NanoarrowIpcReader, StreamReaderPropagatesEndOfStreamReadError) {
+  for (int error_code : {ENODATA, ENOENT, EIO}) {
+    SCOPED_TRACE(error_code);
+    struct ErrorInput {
+      struct ArrowIpcInputStream input;
+      int error_code;
+    } error_input;
+    error_input.error_code = error_code;
+
+    struct ArrowBuffer input_buffer;
+    ArrowBufferInit(&input_buffer);
+    ASSERT_EQ(ArrowBufferAppend(&input_buffer, kSimpleSchema, sizeof(kSimpleSchema)),
+              NANOARROW_OK);
+    ASSERT_EQ(ArrowIpcInputStreamInitBuffer(&error_input.input, &input_buffer),
+              NANOARROW_OK);
+
+    struct ArrowIpcInputStream input;
+    input.private_data = &error_input;
+    input.read = [](struct ArrowIpcInputStream* stream, uint8_t* buf, int64_t size_bytes,
+                    int64_t* size_read_out, struct ArrowError* error) {
+      auto* state = static_cast<ErrorInput*>(stream->private_data);
+      int result =
+          state->input.read(&state->input, buf, size_bytes, size_read_out, error);
+      if (result == NANOARROW_OK && *size_read_out == 0) {
+        ArrowErrorSet(error, "Injected input read error");
+        return state->error_code;
+      }
+      return result;
+    };
+    input.release = [](struct ArrowIpcInputStream* stream) {
+      auto* state = static_cast<ErrorInput*>(stream->private_data);
+      state->input.release(&state->input);
+      stream->release = nullptr;
+    };
+
+    struct ArrowArrayStream stream;
+    ASSERT_EQ(ArrowIpcArrayStreamReaderInit(&stream, &input, nullptr), NANOARROW_OK);
+    struct ArrowSchema schema;
+    ASSERT_EQ(ArrowArrayStreamGetSchema(&stream, &schema, nullptr), NANOARROW_OK);
+    ArrowSchemaRelease(&schema);
+
+    struct ArrowArray array;
+    struct ArrowError error;
+    ArrowErrorInit(&error);
+    EXPECT_EQ(ArrowArrayStreamGetNext(&stream, &array, &error), error_code);
+    EXPECT_STREQ(error.message, "Injected input read error");
+    ArrowArrayStreamRelease(&stream);
+  }
+}
+
 TEST(NanoarrowIpcReader, StreamReaderIncompletePrefix) {
   struct ArrowBuffer input_buffer;
   ArrowBufferInit(&input_buffer);
