@@ -151,6 +151,17 @@ def test_c_array_slice_null_count():
     assert array[1:3].view().null_count == 1
 
 
+def test_c_array_nulls() -> None:
+    only_nulls = na.c_array_from_buffers(na.null(), 11, [])
+
+    # Every element of a null-type array is null, so slices know their null count
+    assert only_nulls[3:7].null_count == 4
+    assert only_nulls[3:7].view().null_count == 4
+
+    # The null count is resolved correctly
+    assert only_nulls.null_count == 11
+    assert only_nulls.view().null_count == 11
+
 def test_c_array_slice_errors():
     array = na.c_array([1, 2, 3], na.int32())
 

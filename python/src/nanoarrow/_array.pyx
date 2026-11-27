@@ -402,7 +402,10 @@ cdef class CArray:
         c_array_out.offset = c_array_out.offset + start
         c_array_out.length = stop - start
 
-        if c_array_out.null_count != 0 and c_array_out.length != self._ptr.length:
+        # Null-type arrays have no validity buffer: every element is null
+        if self._schema.format == "n":
+            c_array_out.null_count = c_array_out.length
+        elif c_array_out.null_count != 0 and c_array_out.length != self._ptr.length:
             c_array_out.null_count = -1
 
         cdef CArray out = CArray(base, <uintptr_t>c_array_out, self._schema)
@@ -695,6 +698,11 @@ cdef class CArrayBuilder:
 
         # Don't overwrite an explicit null count
         if self._ptr.null_count != -1:
+            return self
+
+        # Null-type arrays have no validity buffer: every element is null
+        if format == "n":
+            self._ptr.null_count = self._ptr.length
             return self
 
         cdef ArrowBuffer* validity_buffer = ArrowArrayBuffer(self._ptr, 0)
