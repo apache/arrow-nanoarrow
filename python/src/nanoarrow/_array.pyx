@@ -401,6 +401,10 @@ cdef class CArray:
 
         c_array_out.offset = c_array_out.offset + start
         c_array_out.length = stop - start
+
+        if c_array_out.null_count != 0 and c_array_out.length != self._ptr.length:
+            c_array_out.null_count = -1
+
         cdef CArray out = CArray(base, <uintptr_t>c_array_out, self._schema)
         out._set_device(self._device_type, self._device_id, self._sync_event)
 

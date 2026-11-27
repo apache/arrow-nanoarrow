@@ -133,6 +133,24 @@ def test_c_array_slice():
     assert array2.length == 2
 
 
+def test_c_array_slice_null_count():
+    array = na.c_array([1, None, 3, None], na.int64())
+    assert array.null_count == 2
+
+    # A full slice has the same null count as its parent
+    assert array[:].null_count == 2
+
+    # A null count of zero applies to any slice
+    no_nulls = na.c_array([1, 2, 3, 4], na.int64())
+    assert no_nulls[1:3].null_count == 0
+
+    # Otherwise, the null count of a slice is unknown until computed
+    array2 = array[2:3]
+    assert array2.null_count == -1
+    assert array2.view().null_count == 0
+    assert array[1:3].view().null_count == 1
+
+
 def test_c_array_slice_errors():
     array = na.c_array([1, 2, 3], na.int32())
 
