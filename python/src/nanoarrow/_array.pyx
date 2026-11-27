@@ -279,7 +279,7 @@ cdef class CArrayView:
 
     def _iter_bytes(self, int64_t offset, int64_t length) -> bytes | None:
         cdef ArrowBufferView item_view
-        for i in range(offset, length):
+        for i in range(offset, offset + length):
             if ArrowArrayViewIsNull(self._ptr, i):
                 yield None
             else:
@@ -288,7 +288,7 @@ cdef class CArrayView:
 
     def _iter_str(self, int64_t offset, int64_t length) -> str | None:
         cdef ArrowStringView item_view
-        for i in range(offset, length):
+        for i in range(offset, offset + length):
             if ArrowArrayViewIsNull(self._ptr, i):
                 yield None
             else:
