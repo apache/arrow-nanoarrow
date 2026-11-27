@@ -66,6 +66,7 @@ cython_args = [
     meson.current_source_dir(),
     '--include-dir',
     meson.current_build_dir(),
+    '-Xfreethreading_compatible=True',
 ]
 if get_option('debug')
     cython_args += ['--gdb']

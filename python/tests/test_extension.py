@@ -22,6 +22,7 @@ import nanoarrow as na
 from nanoarrow import extension
 
 
+@pytest.mark.thread_unsafe(reason="mutates the global extension registry")
 def test_basic_extension():
     class TestExtension(extension.Extension):
         def get_schema(self):

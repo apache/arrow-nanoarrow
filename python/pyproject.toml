@@ -37,6 +37,10 @@ verify = [
     { include-group = "test-base" },
     "numpy",
 ]
+test-parallel = [
+    { include-group = "test" },
+    "pytest-run-parallel",
+]
 
 [project.urls]
 Homepage = "https://arrow.apache.org"
@@ -58,4 +62,8 @@ install = ['--skip-subprojects']
 dist = ['--include-subprojects']
 
 [tool.pytest.ini_options]
+filterwarnings = ["error"]
 norecursedirs = "subprojects/arrow-nanoarrow"
+markers = [
+    "thread_unsafe: test is not safe to run concurrently (used by pytest-run-parallel)",
+]

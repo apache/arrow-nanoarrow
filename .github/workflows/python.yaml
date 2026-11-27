@@ -29,6 +29,9 @@ on:
       - 'src/nanoarrow/**'
       - 'python/**'
 
+env:
+  FORCE_COLOR: 1
+
 permissions:
   contents: read
 
@@ -46,6 +49,7 @@ jobs:
           - '3.13'
           - '3.14'
           - '3.15'
+          - '3.15t'
 
     steps:
       - uses: actions/checkout@v7
@@ -63,6 +67,8 @@ jobs:
           if [[ "${{ matrix.python-version }}" == "3.13" ]]; then
             pip install -r requirements-stubs.txt 'meson>=1.3.0' meson-python
             pip install --no-build-isolation . --group test
+          elif [[ "${{ matrix.python-version }}" == *t ]]; then
+            pip install . --group test-parallel
           else
             pip install . --group test
           fi
@@ -70,8 +76,16 @@ jobs:
           pip list
 
       - name: Run tests
+        if: ${{ !endsWith(matrix.python-version, 't') }}
         run: |
           pytest python/tests -v -s
+
+      - name: Run tests (free-threaded)
+        if: ${{ endsWith(matrix.python-version, 't') }}
+        run: |
+          # None of nanoarrow's modules should re-enable the GIL
+          python -c "import sys, pkgutil, importlib, nanoarrow; [importlib.import_module(m.name) for m in pkgutil.iter_modules(nanoarrow.__path__, 'nanoarrow.')]; assert not sys._is_gil_enabled()"
+          pytest python/tests -v --parallel-threads=auto --iterations=3
 
       - name: Check generated type stubs
         if: matrix.python-version == '3.13'
